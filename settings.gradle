@@ -1,0 +1,2 @@
+rootProject.name = 'ott-project'
+include 'backend' 

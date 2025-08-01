@@ -1,0 +1,83 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15
+    container_name: ott-postgres
+    environment:
+      POSTGRES_DB: ott_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 1234
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ott-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: ott-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ott-network
+
+  # Nginx (리버스 프록시)
+  nginx:
+    image: nginx:alpine
+    container_name: ott-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/conf.d:/etc/nginx/conf.d
+      - ./uploads:/var/www/uploads
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - ott-network
+
+  # Spring Boot Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ott-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/ott_db
+      SPRING_DATA_REDIS_HOST: redis
+    expose:
+      - "8090"
+    volumes:
+      - ./uploads:/app/uploads
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - ott-network
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: ./frontend/nextjs-migration
+      dockerfile: Dockerfile
+    container_name: ott-frontend
+    expose:
+      - "3000"
+    networks:
+      - ott-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  ott-network:
+    driver: bridge 
