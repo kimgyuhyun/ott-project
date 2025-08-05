@@ -1,0 +1,5 @@
+rootProject.name = 'ott-project'
+include 'backend' // backed 폴더도 빌드 대상이다라고 알려줌
+// IDE 에게 backend 폴더도 프로젝트의 일부다라고 알려줌
+// 그래서 IDE 가 backend 폴더 안의 의존성들을 인식할 수 있음
+// backend 폴더를 Gradle 모듈로 등록 하는 명령어임

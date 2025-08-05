@@ -3,8 +3,7 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -19,6 +18,9 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 @Getter
 @Setter
+@Builder // 빌더 패턴
+@NoArgsConstructor // 기본 생성자
+@AllArgsConstructor // 모든 필드 생성자 (빌더와 함께 필요)
 @EntityListeners(AuditingEntityListener.class)
 public class User {
 

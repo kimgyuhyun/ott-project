@@ -27,11 +27,12 @@ replay_pid*
 # Gradle
 .gradle
 backend/.gradle/
-build/
+com.ottproject.ottbackend.build/
+backend/com.ottproject.ottbackend.build/
 backend/build/
 !gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+!**/src/main/**/com.ottproject.ottbackend.build/
+!**/src/test/**/com.ottproject.ottbackend.build/
 
 # Gradle Wrapper
 gradle/wrapper/gradle-wrapper.properties
@@ -64,7 +65,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Production builds
-build/
+com.ottproject.ottbackend.build/
 dist/
 .next/
 out/
@@ -187,10 +188,10 @@ jspm_packages/
 .cache
 .parcel-cache
 
-# ===== Next.js build output =====
+# ===== Next.js com.ottproject.ottbackend.build output =====
 .next
 
-# ===== Nuxt.js build / generate output =====
+# ===== Nuxt.js com.ottproject.ottbackend.build / generate output =====
 .nuxt
 dist
 
@@ -198,7 +199,7 @@ dist
 .cache/
 public
 
-# ===== Storybook build outputs =====
+# ===== Storybook com.ottproject.ottbackend.build outputs =====
 .out
 .storybook-out
 
@@ -209,6 +210,10 @@ temp/
 # ===== Docker =====
 # Docker volumes (데이터베이스 데이터)
 postgres_data/
+
+# Docker files (별도 레지스트리 사용)
+backend/Dockerfile
+Dockerfile
 
 # Docker compose files (민감한 정보 포함)
 docker-compose.yml
