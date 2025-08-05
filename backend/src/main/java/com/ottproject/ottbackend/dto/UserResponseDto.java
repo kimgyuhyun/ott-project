@@ -2,8 +2,7 @@ package com.ottproject.ottbackend.dto;
 
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -14,6 +13,9 @@ import java.time.LocalDateTime;
  */
 @Getter
 @Setter
+@Builder // 빌더 패턴 추가
+@NoArgsConstructor // 기본 생성자
+@AllArgsConstructor // 모든 필드 생성자
 public class UserResponseDto {
     private Long id; // 사용자 고유 ID
     private String email; // 이메일
