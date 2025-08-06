@@ -11,16 +11,16 @@
     @Configuration // spring 설정 클래스로 등록
     public class MailConfig {
 
-        @Value("${spring.mail.host}") // application.yml 에서 메일 호스트 주입
+        @Value("${spring.mail.host}") // application-dev.yml 에서 메일 호스트 주입
         private String host;
 
-        @Value("${spring.mail.port}") // application.yml 에서 메일 포트 주입
+        @Value("${spring.mail.port}") // application-dev.yml 에서 메일 포트 주입
         private int port;
 
-        @Value("${spring.mail.username}") // application.yml 에서 메일 사용자명 주입
+        @Value("${spring.mail.username}") // application-dev.yml 에서 메일 사용자명 주입
         private String username;
 
-        @Value("${spring.mail.password}") // application.yml 에서 메일 비밀번호 주입
+        @Value("${spring.mail.password}") // application-dev.yml 에서 메일 비밀번호 주입
         private String password;
 
         @Bean // javaMailSender Bean 등록 (이메일 발송을 위한 핵심 컴포넌트)

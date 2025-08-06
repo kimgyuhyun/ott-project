@@ -25,4 +25,5 @@ public class UserResponseDto {
     private boolean emailVerified; // 이메일 인증 여부
     private boolean enabled; // 계정 활성화 여부
     private LocalDateTime createdAt; // 가입일시
+    private LocalDateTime updatedAt; // 수정일시
 }

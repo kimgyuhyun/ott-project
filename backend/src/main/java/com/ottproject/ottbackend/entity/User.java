@@ -39,26 +39,33 @@ public class User {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private UserRole role = UserRole.USER;  // 사용자 권한 (기본값: USER)
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    @Builder.Default
     private AuthProvider authProvider = AuthProvider.LOCAL;  // 인증 제공자 (기본값: LOCAL)
 
     @Column(nullable = true)
     private String providerId;          // 소셜 로그인 ID (소셜 로그인용)
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean emailVerified = false;  // 이메일 인증 여부 (기본값: false)
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean enabled = true;     // 계정 활성화 여부 (기본값: true)
 
     @CreatedDate
     @Column(nullable = false)
-    private LocalDateTime createdAt;    // 생성일시 (자동 생성)
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();    // 생성일시 (자동 생성)
 
     @LastModifiedDate
     @Column(nullable = false)
-    private LocalDateTime updatedAt;    // 수정일시 (자동 업데이트)
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();    // 수정일시 (자동 업데이트)
+
 }
