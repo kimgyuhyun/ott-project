@@ -15,7 +15,7 @@ public class EmailService {
 
     private final JavaMailSender mailSender; // spring boot mail 자동 주입 (SMTP 서버 연결용)
 
-    @Value("${spring.mail.username}") // application.yml 에서 발신자 이메일 주소 주입
+    @Value("${spring.mail.username}") // application-dev.yml 에서 발신자 이메일 주소 주입
     private String fromEmail;
 
     // 임시 저장소 (실제로는 Redis 사용 권장) - 인증 코드와 이메일 매핑

@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.entity.User;
+import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,5 +46,18 @@ public class UserService {
     public User updateUser(User user) { // 사용자 정보 업데이트
         return userRepository.save(user); // 기존 사용자 정보를 새로운 정보로 업데이트
         // JPA 의 save 메서드는 ID가 있으면 update, 없으면 insert 수행
+    }
+
+    /**
+     * 이메일과 인증 제공자로 사용자 조회 (소셜 로그인용)
+     * 같은 이메일이라도 다른 소셜 로그인으로 가입한 경우를 구분하기 위해 사용
+     *
+     * @param email 사용자 이메일
+     * @param authProvider 인증 제공자 (GOOGLE, KAKAO, NAVER, LOCAL)
+     * @return 사용자 정보 (Optional)
+     */
+    @Transactional(readOnly = true) // 읽기 전용 트랜잭션 (성능 최적화)
+    public Optional<User> findByEmailAndAuthProvider(String email, AuthProvider authProvider) {
+        return userRepository.findByEmailAndAuthProvider(email, authProvider); // Repository 메서드 호출
     }
 }
