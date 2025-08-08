@@ -26,6 +26,7 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 
 	// MapStruct
 	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
@@ -43,6 +44,13 @@ dependencies {
 
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'org.postgresql:postgresql'
+
+	// Test dependencies
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+	testImplementation 'org.mockito:mockito-core'
+	testImplementation 'org.mockito:mockito-junit-jupiter'
+	testImplementation 'com.h2database:h2' // 테스트용 인메모리 DB
 }
 
 // Lombok과 MapStruct 함께 사용할 때 필요한 설정

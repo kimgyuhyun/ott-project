@@ -27,7 +27,7 @@ import java.util.Set;
 public class AniList {
     @Id // 기본키
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가 전력
-    private String id; // 애니 고유 ID
+    private Long id; // 애니 고유 ID
 
     @Column(nullable = false, unique = true) // null 불허, 고유값
     private String title; // 애니 제목 (한글)
@@ -56,7 +56,7 @@ public class AniList {
     @Column(nullable = false)
     private LocalDate releaseDate; // 방영 시작일
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private LocalDate endDate; // 방영 종료일 (완결된 경우)
 
     @Column(nullable = false)
@@ -93,7 +93,7 @@ public class AniList {
     private String broadcastDay; // 방영 요일 (월,화,수,목,금,토,일)
 
     @Column(nullable = false)
-    private String broadCastTIme; // 방영 시간
+    private String broadCastTime; // 방영 시간
 
     @Column(nullable = false)
     private String season; // 시즌 (봄, 여름, 가을, 겨울)
@@ -122,7 +122,7 @@ public class AniList {
     @CreatedDate // 생성일시 자동 설정
     @Column(nullable = false)
     @Builder.Default // 빌더 패턴에서 기본값 설정
-    private LocalDateTime updatedAt = LocalDateTime.now(); // 수정일시
+    private LocalDateTime updatedAt = LocalDateTime.now(); // 생성일시
 
     // ===== 연관관계 매핑 =====
     /**
@@ -162,7 +162,7 @@ public class AniList {
      * 하나의 AniList 는 하나의 AniDetail 을 가짐 (상세 정보)
      * mappedBy: AniDetail 엔티티에서 관리하는 관계 필드명
      */
-    @OneToOne(mappedBy = "aniLIst", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // 일대일 관계, cascade 로 연쇄 삭제, 지연 로딩, 필수 관계
+    @OneToOne(mappedBy = "aniList", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // 일대일 관계, cascade 로 연쇄 삭제, 지연 로딩, 필수 관계
     private AniDetail aniDetail; // 상세 정보
 
     // ===== 편의 메서드 =====
@@ -200,7 +200,7 @@ public class AniList {
      */
     public void removeStudio(Studio studio) {
         this.studios.remove(studio);
-        studio.getAniLists().add(this); // 양방향 관계 해제
+        studio.getAniLists().remove(this); // 양방향 관계 해제
     }
 
 }
