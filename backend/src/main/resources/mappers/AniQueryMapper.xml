@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8" ?> <!-- XML 헤더 -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- MyBatis DTD 참조 -->
+
+<mapper namespace="com.ottproject.ottbackend.repository.AniQueryMapper"> <!-- 인터페이스 FQCN 과 매핑 -->
+
+    <!-- 목록 조회용 공통 FROM/JOIN 블록 -->
+    <sql id="base_list_from"> <!-- 다른 쿼리에서 include 로 재사용-->
+        FROM ani_list a <!-- 메인 테이블: ani_list -->
+        <if test="genreId != null"> <!-- 장르 필터가 있을때만 조인-->
+            JOIN ani_list_genres ag ON ag.ani_list_id = a.id AND ag.genre_id = #{genreId} <!-- 중간 테이블 조인-->
+        </if>
+    </sql>
+
+    <!-- 목록 조회용 공통 WHERE 블록-->
+    <sql id="base_list_where"> <!-- 재사용 WHERE -->
+        WHERE a.is_active = TRUE <!-- 활성 작품만-->
+        <if test="status != null"> AND a.status = #{status} </if> <!-- 상태 ENUM 필터-->
+        <if test="minRating != null"> AND a.rating &gt;= #{minRating}</if>  <!-- 최소 평점 -->
+        <if test="year != null"> AND a.year = #{year}</if> <!-- 연도 필터 -->
+        <if test="isDub != null"> AND a.is_dub = #{isDub}</if> <!-- 더빙 여부 -->
+        <if test="isSubtitle != null"> AND a.is_subtitle = #{isSubtitle}</if> <!-- 자막 여부 -->
+        <if test="isExclusive != null"> AND a.is_exclusive = #{isExclusive}</if> <!-- 독점 여부 -->
+        <if test="isCompleted != null"> AND a.is_completed = #{isCompleted}</if> <!-- 완결 여부-->
+        <if test="isNew != null"> AND a.is_new = #{isNew}</if> <!-- 신작 여부 -->
+        <if test="isPopular != null"> AND a.is_popular = #{isPopular}</if> <!-- 인기 여부 -->
+    </sql>
+
+    <!-- 목록 데이터 조회 -->
+    <select id="findAniList" resultType="com.ottproject.ottbackend.dto.AniListDto"> <!-- DTO로 자동 매핑 -->
+        SELECT
+        a.id AS aniId, <!-- DTO.aniId -->
+        a.title AS title, <!-- DTO.title -->
+        a.poster_url AS posterUrl, <!-- DTO.posterUrl (snake→camel alias) -->
+        a.rating AS rating, <!-- DTO.rating -->
+        a.rating_count AS ratingCount, <!-- DTO.ratingCount -->
+        a.is_dub AS isDub, <!-- DTO.isDub -->
+        a.is_subtitle AS isSubtitle, <!-- DTO.isSubtitle -->
+        a.is_exclusive AS isExclusive, <!-- DTO.isExclusive -->
+        a.is_new AS isNew, <!-- DTO.isNew -->
+        a.is_popular AS isPopular, <!-- DTO.isPopular -->
+        a.is_completed AS isCompleted, <!-- DTO.isCompleted -->
+        a.status AS animeStatus, <!-- DTO.animeStatus(enum) -->
+        a.year AS year, <!-- DTO.year -->
+        a.type AS type <!-- DTO.type -->
+        <include refid="base_list_from"/> <!-- 공통 FROM/JOIN 삽입 -->
+        <include refid="base_list_where"/> <!-- 공통 WHERE 삽입 -->
+        ORDER BY
+        <choose> <!-- 정렬 분기 -->
+            <when test="sort == 'rating'"> a.rating DESC, a.id DESC </when> <!-- 평점 내림차순 -->
+            <when test="sort == 'year'"> a.year DESC, a.id DESC </when> <!-- 연도 내림차순 -->
+            <when test="sort == 'popular'"> a.is_popular DESC, a.id DESC </when> <!-- 인기 우선 -->
+            <otherwise> a.id DESC </otherwise> <!-- 기본 최신순 -->
+        </choose>
+        LIMIT #{limit} OFFSET #{offset} <!-- 페이지네이션 -->
+    </select>
+
+    <!-- 목록 총 개수 -->
+    <select id="countAniList" resultType="long"> <!-- 개수 반환 -->
+        SELECT COUNT(1) <!-- 총 행 수 -->
+        <include refid="base_list_from"/> <!-- 공통 FROM/JOIN -->
+        <include refid="base_list_where"/> <!-- 동일 WHERE -->
+    </select>
+
+    <!-- 상세 헤더/더보기 영역 (aniId 기준) -->
+    <select id="findAniDetailByAniId" resultType="com.ottproject.ottbackend.dto.AniDetailDto"> <!-- 단건 DTO -->
+        SELECT
+        a.id AS aniId, <!-- DTO.aniId -->
+        d.id AS detailId, <!-- DTO.detailId -->
+        a.title AS title, <!-- DTO.title -->
+        a.title_en AS titleEn, <!-- DTO.titleEn -->
+        a.title_jp AS titleJp, <!-- DTO.titleJp -->
+        a.poster_url AS posterUrl, <!-- DTO.posterUrl -->
+
+        a.rating AS rating, <!-- DTO.rating -->
+        a.rating_count AS ratingCount, <!-- DTO.ratingCount -->
+        a.age_rating AS ageRating, <!-- DTO.ageRating -->
+        a.status AS animeStatus, <!-- DTO.animeStatus(enum) -->
+
+        a.is_completed AS isCompleted, <!-- DTO.isCompleted -->
+        a.is_exclusive AS isExclusive, <!-- DTO.isExclusive -->
+        a.is_popular AS isPopular, <!-- DTO.isPopular -->
+        a.is_new AS isNew, <!-- DTO.isNew -->
+        a.is_subtitle AS isSubtitle, <!-- DTO.isSubtitle -->
+        a.is_dub AS isDub, <!-- DTO.isDub -->
+        a.is_simulcast AS isSimulcast, <!-- DTO.isSimulcast -->
+        a.is_active AS isActive, <!-- DTO.isActive -->
+
+        d.full_synopsis AS fillSynopsis, <!-- DTO.fillSynopsis -->
+        d.voice_actors AS voiceActors, <!-- DTO.voiceActors -->
+
+        a.release_date AS releaseDate, <!-- DTO.releaseDate -->
+        a.end_date AS endDate, <!-- DTO.endDate -->
+        a.broadcast_day AS broadcastDay, <!-- DTO.broadcastDay -->
+        a.broad_cast_time AS broadcastTime, <!-- DTO.broadcastTime-->
+        a.season AS season, <!-- DTO.season -->
+        a.year AS year, <!-- DTO.year -->
+        a.type AS type, <!-- DTO.type -->
+        a.duration AS duration, <!-- DTO.duration -->
+        d.release_quarter AS releaseQuarter, <!-- DTO.releaseQuarter -->
+        a.source AS source, <!-- DTO.source -->
+        a.country AS country, <!-- DTO.country -->
+        a.language AS language, <!-- DTO.language -->
+        d.director AS director, <!-- DTO.director -->
+
+        a.total_episodes AS totalEpisodes, <!-- DTO.totalEpisodes -->
+        d.current_episodes AS currentEpisodes, <!-- DTO.currentEpisodes -->
+
+        d.created_at AS createdAt, <!-- DTO.createdAt -->
+        d.updated_at AS updatedAt <!-- DTO.updatedAt -->
+        FROM ani_detail d <!-- 상세 테이블 -->
+        JOIN ani_list a ON a.id = d.ani_list_id <!-- 목록과 1:1 조인 -->
+        WHERE a.id = #{aniId} <!-- 경로 파라미터 -->
+    </select>
+
+    <!-- 상세: 에피소드 리스트 (aniId 기준) -->
+    <select id="findEpisodesByAniId" resultType="com.ottproject.ottbackend.dto.EpisodeDto"> <!-- 리스트 DTO -->
+        SELECT
+        e.id AS id, <!-- EpisodeDto.id-->
+        e.episode_number AS episodeNumber, <!-- EpisodeDto.episodeNumber-->
+        e.title AS title, <!-- EpisodeDto.title -->
+        e.thumbnail_url AS thumbnailUrl, <!-- EpisodeDto.thumbnailUrl-->
+        e.video_url AS videoUrl, <!-- EpisodeDto.videoUrl -->
+        e.is_active AS isActive, <!-- EpisodeDto.isActive -->
+        e.is_released AS isReleased, <!-- EpisodeDto.isReleased -->
+        e.created_at AS createdAt, <!-- EpisodeDto.createdAt-->
+        e.updated_at AS updatedAt <!-- EpisodeDto.updatedAt-->
+        FROM episode e <!-- 에피소드 테이블 -->
+        JOIN ani_detail d ON d.id = e.ani_detail_id <!-- 상세와 조인 -->
+        WHERE d.ani_list_id = #{aniId} <!-- aniId 기준 조회 -->
+        ORDER BY e.episode_number ASC <!-- 회수 오름차순-->
+    </select>
+
+    <!-- 상세: 장르 리스트 -->
+    <select id="findGenresByAniId" resultType="com.ottproject.ottbackend.dto.GenreSimpleDto"> <!-- 제작사 간단 DTO -->
+        SELECT
+        g.id AS id, <!-- GenreSimpleDto.id -->
+        g.name AS name, <!-- GenreSimpleDto.name -->
+        g.color AS color <!-- GenreSimpleDto.color -->
+        FROM genres g <!-- 장르 테이블 -->
+        JOIN ani_list_genres ag ON ag.genre_id = g.id <!-- 중간 테이블 -->
+        WHERE ag.ani_list_id = #{aniId} <!-- aniId -->
+        ORDER BY g.name ASC <!-- 이름 정렬 -->
+    </select>
+
+    <!-- 상세: 제작사 리스트 -->
+    <select id="findStudiosByAniId" resultType="com.ottproject.ottbackend.dto.StudioSimpleDto"> <!-- 제작사 간단 DTO -->
+        SELECT
+        s.id AS id, <!-- studiosSimpleDto.id -->
+        s.name AS name, <!-- studiosSimpleDto.name -->
+        s.logo_url AS logoUrl, <!-- studiosSimpleDto.logoUrl -->
+        s.country AS country <!-- studiosSimpleDto.country -->
+        FROM studios s <!-- 제작사 테이블 -->
+        JOIN ani_list_studios asg ON asg.studio_id = s.id  <!-- 중간 테이블 -->
+        WHERE asg.ani_list_id = #{aniId} <!-- aniId 기준 -->
+        ORDER BY s.name ASC <!-- 이름 정렬 -->
+    </select>
+
+</mapper>

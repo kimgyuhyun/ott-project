@@ -1,4 +1,4 @@
-package com.ottproject.ottbackend.mapper;
+package com.ottproject.ottbackend.mappers;
 
 import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.entity.User;

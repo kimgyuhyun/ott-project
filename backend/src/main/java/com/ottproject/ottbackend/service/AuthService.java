@@ -5,7 +5,7 @@ import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
-import com.ottproject.ottbackend.mapper.UserMapper;
+import com.ottproject.ottbackend.mappers.UserMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
