@@ -2,9 +2,9 @@ package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.eclipse.angus.mail.imap.protocol.BODY;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -21,7 +21,7 @@ import java.util.Set;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EntityListeners(AutoCloseable.class)
+@EntityListeners(AuditingEntityListener.class)
 public class Studio {
 
     @Id // 기본키 설정

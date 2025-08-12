@@ -1,10 +1,9 @@
 package com.ottproject.ottbackend.entity;
 
-import com.nimbusds.oauth2.sdk.GeneralException;
 import jakarta.persistence.*;
 import lombok.*;
-import org.springframework.cglib.core.Local;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
@@ -43,7 +42,7 @@ public class Rating {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now(); // 등록 일시
 
-    @CreatedDate
+    @LastModifiedDate
     @Column(nullable = false)
     @Builder.Default
     private LocalDateTime updatedAt = LocalDateTime.now(); // 수정 일시
