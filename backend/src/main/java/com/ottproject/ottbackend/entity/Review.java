@@ -21,7 +21,7 @@ public class Review {
 
     @Id // 기본키 지정
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가 전략
-    private Long Id; // 리뷰 고유 ID
+    private Long id; // 리뷰 고유 ID
 
     @Column(columnDefinition = "TEXT") // 긴 텍스트 저장용
     private String content; // 리뷰 내용 (null 가능 - 평점만 달 수도 있음)
