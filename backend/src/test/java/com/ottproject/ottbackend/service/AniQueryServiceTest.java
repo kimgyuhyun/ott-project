@@ -3,7 +3,7 @@ package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.*;
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import com.ottproject.ottbackend.repository.AniQueryMapper;
+import com.ottproject.ottbackend.mybatis.AniQueryMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
