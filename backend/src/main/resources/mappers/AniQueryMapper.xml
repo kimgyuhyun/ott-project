@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?> <!-- XML 헤더 -->
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- MyBatis DTD 참조 -->
 
-<mapper namespace="com.ottproject.ottbackend.repository.AniQueryMapper"> <!-- 인터페이스 FQCN 과 매핑 -->
+<mapper namespace="com.ottproject.ottbackend.mybatis.AniQueryMapper"> <!-- 인터페이스 FQCN 과 매핑 -->
 
     <!-- 목록 조회용 공통 FROM/JOIN 블록 -->
     <sql id="base_list_from"> <!-- 다른 쿼리에서 include 로 재사용-->

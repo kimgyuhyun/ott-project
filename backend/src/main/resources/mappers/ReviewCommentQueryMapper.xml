@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8" ?> <!-- XML 헤더 -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- MyBatis DTD -->
+
+<mapper namespace="com.ottproject.ottbackend.mybatis.ReviewCommentQueryMapper">  <!-- 인터페이스 FQCN -->
+
+    <!-- =====
+            리뷰 공통 SELECT 컬럼 묶음
+            - 리뷰 기본 정보 + 작성자 정보 + 좋아요 개수 + 현재 사용자 좋아요 여부
+            - resultType: ReviewResponseDto 필드명과 alias 일치
+          ===== -->
+    <sql id="review_select_columns">
+    r.id AS id,
+    r.ani_list_id AS aniId,
+    u.id AS userId,
+    u.name AS userName,
+    r.content AS content,
+    r.rating AS rating,
+    r.status AS status,
+    (
+    SELECT COUNT(1)
+    FROM review_likes rl
+    WHERE rl.review_id = r.id
+    ) AS likeCount,
+    (
+    CASE WHEN #{currentUserId} IS NOT NULL AND EXISTS (
+    SELECT 1
+    FROM review_likes rl2
+    WHERE rl2.review_id = r.id AND rl2.user_id = #{currentUserId}
+    )
+    THEN TRUE ELSE FALSE END
+    ) AS isLikedByCurrentUser
+    </sql>
+
+    <!-- =====
+    댓글/대댓글 공통 SELECT 컬럼 묶음
+    - 댓글 기본 정보 + 작성자 정보 + 대댓글 개수 + 좋아요 개수 + 현재 사용자 좋아요 여부
+    - resultType: CommentResponseDto 필드명과 alias 일치
+    ===== -->
+    <sql id="comment_select_columns">
+        c.id AS id,
+        c.review_id AS reviewId,
+        c.parent_id AS parentId,
+        u.id AS userId,
+        u.name AS userName,
+        c.content AS content,
+        c.status AS commentStatus,
+        (
+        SELECT COUNT(1)
+        FROM comments c2
+        WHERE c2.parent_id = c.id
+        AND c2.status = 'ACTIVE'
+        ) AS repliesCount,
+        (
+        SELECT COUNT(1)
+        FROM comment_likes cl
+        WHERE cl.comment_id = c.id
+        ) AS likeCount,
+        (
+        CASE WHEN #{currentUserId} IS NOT NULL AND EXISTS (
+        SELECT 1
+        FROM comment_likes cl2
+        WHERE cl2.comment_id = c.id AND cl2.user_id = #{currentUserId}
+        )
+        THEN TRUE ELSE FALSE END
+        ) AS isLikedByCurrentUser
+    </sql>
+
+    <!-- =====
+    리뷰 목록: 특정 작품(aniId) 기준
+    - ACTIVE 상태만 노출
+    - 정렬: 좋아요순/평점순/최신순(기본)
+    - 페이징: LIMIT/OFFSET
+        ===== -->
+    <select id="findReviewsByAniId" resultType="com.ottproject.ottbackend.dto.ReviewResponseDto">
+        SELECT
+        <include refid="review_select_columns"/>
+            FROM reviews r
+            JOIN users u ON u.id = r.user_id
+            WHERE r.ani_list_id = #{aniId}
+            AND r.status = 'ACTIVE'
+            <choose>
+                <when test="sort == 'likes'">
+                    ORDER BY likeCount DESC, r.id DESC
+                </when>
+                <when test="sort == 'rating'">
+                    ORDER BY r.rating DESC NULLS LAST, r.id DESC
+                </when>
+                <otherwise>
+                    ORDER BY r.id DESC
+                </otherwise>
+            </choose>
+            LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- =====
+    리뷰 총 개수(페이지네이션 total 계산용)
+    - 목록 조건과 동일한 WHERE 사용
+        ===== -->
+    <select id="countReviewsByAniId" resultType="long">
+        SELECT COUNT(1)
+        FROM reviews r
+        WHERE r.ani_list_id = #{aniId}
+        AND r.status = 'ACTIVE'
+    </select>
+
+    <!-- =====
+    리뷰 단건 조회
+    - 단건 상세 조회 시 좋아요/현재 사용자 좋아요 여부 포함
+    - 필요 시 상태 필터(-ACTIVE) 추가 기능
+    ===== -->
+    <select id="findReviewById" resultType="com.ottproject.ottbackend.dto.ReviewResponseDto">
+        SELECT
+        <include refid="review_select_columns"/>
+        FROM reviews r
+        JOIN users u ON u.id = r.user_id
+        WHERE r.id = #{reviewId}
+    </select>
+
+    <!-- =====
+    최상위 댓글 목록: 특정 리뷰 기준
+    - parent_id IS NULL -> 최상위만
+    - ACTIVE 상태만
+    - 오래된 순 정렬(스레드 가독성)
+    - 페이징 지원
+    ===== -->
+    <select id="findCommentsByReviewId" resultType="com.ottproject.ottbackend.dto.CommentResponseDto">
+        SELECT
+        <include refid="comment_select_columns"/>
+        FROM comments c
+        JOIN users u ON u.id = c.user_id
+        WHERE c.review_id = #{reviewId}
+        AND c.parent_id IS NULL
+        AND c.status = 'ACTIVE'
+        ORDER BY c.id ASC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- =====
+    최상위 댓글 총 개수(페이지네이션 total)
+    - 목록 조건과 동일한 WHERE 사용
+    ===== -->
+    <select id="countCommentsByReviewId" resultType="long">
+        SELECT COUNT(1)
+        FROM comments c
+        WHERE c.review_id = #{reviewId}
+        AND c.parent_id IS NULL
+        AND c.status = 'ACTIVE'
+    </select>
+
+    <!-- =====
+    대댓글 목록: 특정 부모 댓글 기준
+    - parent_id = #{parentId}
+    - ACTIVE 상태만
+    - 오래된 순 정렬
+    ===== -->
+    <select id="findRepliesByParentId" resultType="com.ottproject.ottbackend.dto.CommentResponseDto">
+        SELECT
+        <include refid="comment_select_columns"/>
+        FROM comments c
+        JOIN users u ON u.id = c.user_id
+        WHERE c.parent_id = #{parentId}
+        AND c.status = 'ACTIVE'
+        ORDER BY c.id ASC
+    </select>
+</mapper>

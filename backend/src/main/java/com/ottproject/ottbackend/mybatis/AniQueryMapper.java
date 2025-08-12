@@ -1,4 +1,4 @@
-package com.ottproject.ottbackend.repository;
+package com.ottproject.ottbackend.mybatis;
 
 import com.ottproject.ottbackend.dto.*;
 import com.ottproject.ottbackend.enums.AnimeStatus;
@@ -50,3 +50,5 @@ public interface AniQueryMapper { // 목록 상세/연관 조회 정의
     List<GenreSimpleDto> findGenresByAniId(@Param("aniId") Long aniId); // 상세: 장르 리스트
     List<StudioSimpleDto> findStudiosByAniId(@Param("aniId") Long aniId); // 상세: 제작사 리스트
 }
+
+
