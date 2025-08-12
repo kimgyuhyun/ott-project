@@ -4,7 +4,7 @@ import com.ottproject.ottbackend.dto.AniDetailDto;
 import com.ottproject.ottbackend.dto.AniListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import com.ottproject.ottbackend.repository.AniQueryMapper;
+import com.ottproject.ottbackend.mybatis.AniQueryMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

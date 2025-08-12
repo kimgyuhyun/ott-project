@@ -3,6 +3,7 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.CommentStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +19,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EntityListeners(AutoCloseable.class)
+@EntityListeners(AuditingEntityListener.class)
 public class Comment {
 
     @Id // 기본키 지정
