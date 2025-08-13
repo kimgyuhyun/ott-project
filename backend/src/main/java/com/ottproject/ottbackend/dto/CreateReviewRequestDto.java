@@ -1,5 +1,6 @@
 package com.ottproject.ottbackend.dto;
 
+import com.ottproject.ottbackend.validation.ContentOrRatingRequired;
 import com.ottproject.ottbackend.validation.HalfStep;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -18,6 +19,7 @@ import lombok.*;
 @NoArgsConstructor // 기본 생성자
 @AllArgsConstructor // 전체 필드 생성자
 @Valid
+@ContentOrRatingRequired
 public class CreateReviewRequestDto {
 
     @NotNull(message = "aniId는 필수입니다.") // 필수 값

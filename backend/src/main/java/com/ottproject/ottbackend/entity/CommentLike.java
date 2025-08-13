@@ -12,7 +12,10 @@ import java.time.LocalDateTime;
  * 사용자와 댓글 간의 좋아요 관계를 관리하며, 중복 좋아요를 방지합니다.
  */
 @Entity
-@Table(name = "comment_likes")
+@Table( // 테이블 매핑
+        name = "comment_likes", // 테이블명
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id","comment_id"}) // 복합 유니크
+) // 유니크로 동일 사용자 중복 방지
 @Getter
 @Setter
 @Builder
@@ -37,10 +40,4 @@ public class CommentLike  {
     @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계, 지연 로딩으로 성능 최적화
     @JoinColumn(name = "comment_id", nullable = false) // 외래키 설정
     private Comment comment; // 좋아요가 달린 댓글 (다대일 관계 - 여러 좋아요 레코드가 하나의 댓글을 참조)
-
-    // 복합 유니크 제약 조건 (한 사용자가 한 댓글에 좋아요를 한 번만 누를 수 있음)
-    @Table(uniqueConstraints = {
-            @UniqueConstraint(columnNames = {"user_id", "comment_id"})
-    })
-    public static class CommentLikeTable {}
 }

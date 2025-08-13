@@ -17,13 +17,14 @@ public class CommentController { // 댓글 목록/대댓글/작성/상태변경/
 
     @GetMapping // gET /api/reviews/{reviewId}/comments
     public ResponseEntity<PagedResponse<CommentResponseDto>> listByReview( // 최상위 댓글 목록(페이지네이션)
-            @PathVariable Long reviewId, // 경러변수: 리뷰 ID
+            @PathVariable Long reviewId, // 경로변수: 리뷰 ID
             @RequestParam(required = false) Long currentUserId, // 선택: 현재 사용자 ID(좋아요 여부 계산용)
             @RequestParam(defaultValue = "0") int page, // 페이지 번호(0-base)
-            @RequestParam(defaultValue = "10") int size // 페이지 크기
+            @RequestParam(defaultValue = "10") int size, // 페이지 크기
+            @RequestParam(defaultValue = "latest") String sort // latest|best
     ) {
         return ResponseEntity.ok( // 200 OK
-                commentService.listByReview(reviewId, currentUserId, page, size) // 서비스 위임
+                commentService.listByReview(reviewId, currentUserId, page, size, sort) // 서비스 위임
         );
     }
 

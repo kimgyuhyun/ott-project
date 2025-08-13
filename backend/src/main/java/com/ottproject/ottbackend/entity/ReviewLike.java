@@ -12,13 +12,16 @@ import java.time.LocalDateTime;
  * 사용자와 리뷰 간의 좋아요 관계를 관리하며, 중복 좋아요를 방지합니다.
  */
 @Entity
-@Table(name = "review_likes")
+@Table( // 테이블 매핑
+        name = "review_likes", // 테이블명
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id","review_id"}) // 복합 유니크(중복 방지)
+) // 엔티티 레벨에서 유니크 선언(중요)
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@EntityListeners(AuditingEntityListener.class)
+@EntityListeners(AuditingEntityListener.class) // 생성일시 자동 주입
 public class ReviewLike {
     @Id // 기본키 지정
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가 전략
@@ -36,10 +39,4 @@ public class ReviewLike {
     @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계, 지연 로딩
     @JoinColumn(name = "review_id", nullable = false) // 외래키 설정
     private Review review; // 좋아요가 달린 리뷰 (다대일 관계 - 여러 좋아요 레코드가 하나의 리뷰를 참조)
-
-    // 복합 유니크 제약 조건(한 사용자가 한 리뷰에 좋아요를 한 번만 누를 수 있음)
-    @Table(uniqueConstraints = {
-            @UniqueConstraint(columnNames = {"user_id", "review_id"})
-    })
-    public static class ReviewLikeTable {}
 }

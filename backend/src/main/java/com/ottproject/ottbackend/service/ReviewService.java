@@ -4,13 +4,16 @@ import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.ReviewResponseDto;
 import com.ottproject.ottbackend.entity.AniList;
 import com.ottproject.ottbackend.entity.Review;
+import com.ottproject.ottbackend.entity.ReviewLike;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.ReviewStatus;
 import com.ottproject.ottbackend.mybatis.ReviewCommentQueryMapper;
 import com.ottproject.ottbackend.repository.AniListRepository;
+import com.ottproject.ottbackend.repository.ReviewLikeRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +30,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository; // 리뷰 CUD
     private final UserRepository userRepository; // 사용자 연관 검증/지정
     private final AniListRepository aniListRepository; // 애니 연관 검증/지정
-
+    private final ReviewLikeRepository reviewLikeRepository; // 좋아요 CUD
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<ReviewResponseDto> list(Long aniId, Long currentUserId, String sort, int page, int size) {
         int limit = size; // LIMIT 계산
@@ -59,6 +62,48 @@ public class ReviewService {
 
         return reviewRepository.save(review).getId(); // 저장 후 ID 반환
     }
+
+    public void update(Long reviewId, Long userId, String content, Double rating) { // 본인 리뷰 수정
+        Review review = reviewRepository.findByIdForUpdate(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId)); // 락 조회
+        if (!review.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
+        if (content != null) review.setContent(content); // 내용 갱신
+        if (rating != null) review.setRating(rating); // 평점 갱신
+        reviewRepository.save(review); // 저장
+    }
+
+    public void deleteSoft(Long reviewId, Long userId) { // 본인 리뷰 소프트 삭제(상태 전환)
+        Review review = reviewRepository.findByIdForUpdate(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId)); // 락 조회
+        if (!review.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
+        reviewRepository.updateStatus(reviewId, ReviewStatus.DELETED); // 상태 전환
+    }
+
+    public void report(Long reviewId, Long userId) { // 리뷰 신고(누구나 가능)
+        // 필요 시 사용자 존재만 검증
+        userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("user not found: d" + userId));
+        reviewRepository.updateStatus(reviewId, ReviewStatus.REPORTED); // 상태 전환
+    }
+
+    public Boolean toggleLike(Long reviewId, Long userId) {
+        int deleted = reviewLikeRepository.deleteByUserIdAndReviewId(userId, reviewId);
+        if (deleted > 0) return false;
+
+        // on 시도
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
+        try {
+            reviewLikeRepository.save(ReviewLike.builder().user(user).review(review).build());
+            return true;
+        } catch (DataIntegrityViolationException e) {
+            // 경합으로 이미 on -> 멱등성을 위해 off 로 수렴
+            reviewLikeRepository.deleteByUserIdAndReviewId(userId, reviewId);
+            return false;
+        }
+    }
+
 
     public void updateStatus(Long reviewId, ReviewStatus status) {
         int updated = reviewRepository.updateStatus(reviewId, status); // 상태 갱신(DML)
