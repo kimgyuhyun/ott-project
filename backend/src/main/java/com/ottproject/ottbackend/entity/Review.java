@@ -26,7 +26,7 @@ public class Review {
     @Column(columnDefinition = "TEXT") // 긴 텍스트 저장용
     private String content; // 리뷰 내용 (null 가능 - 평점만 달 수도 있음)
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "NUMERIC(2,1)") // Postgres: 0.5~5.0 한 자리 소수
     private Double rating; // 평점(1~5, null 가능 - 댓글만 달 수도 있음
 
     @Enumerated(EnumType.STRING)
