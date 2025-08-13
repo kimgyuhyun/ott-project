@@ -125,6 +125,24 @@ public class CommentService {
         if (updated == 0) throw new IllegalArgumentException("comment not found: " + commentId); // 없으면 예외
     }
 
+    public Long createReply(Long userId, Long parentId, String content) { // 대댓글 생성(부모에서 리뷰 ID 유추)
+        User user = userRepository.findById(userId) // 사용자 조회(필수)
+                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId)); // 없으면 예외
+        Comment parent = commentRepository.findById(parentId) // 부모 댓글 조회(필수)
+                .orElseThrow(() -> new IllegalArgumentException("parent comment not found: " + parentId)); // 없으면 예외
+        Review review = parent.getReview(); // 부모 댓글이 속한 리뷰 엔티티 추출
+
+        Comment reply = Comment.builder() // 댓글 엔티티 빌드
+                .user(user) // 작성자 연관
+                .review(review) // 부모 댓글의 리뷰로 설정
+                .parent(parent) // 부모 댓글 연관
+                .content(content) // 내용
+                .status(CommentStatus.ACTIVE) // 기본 상태
+                .build(); // 엔티티 생성 완료
+
+        return commentRepository.save(reply).getId(); // 저장 후 생성 PK 반환
+    }
+
     public void deleteHardByReview(Long reviewId) {
         commentRepository.deleteByReviewId(reviewId); // 특정 리뷰의 댓글 하드 삭제
     }
