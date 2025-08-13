@@ -3,6 +3,7 @@ package com.ottproject.ottbackend.controller;
 import com.ottproject.ottbackend.dto.CreateReviewRequestDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.ReviewResponseDto;
+import com.ottproject.ottbackend.dto.UpdateReviewRequestDto;
 import com.ottproject.ottbackend.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -50,5 +51,41 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
     ) {
         reviewService.deleteHardByAniList(aniId); // 일괄 하드 삭제
         return ResponseEntity.noContent().build(); // 204 No Content
+    }
+
+    @PutMapping("/api/reviews/{reviewId}") // 절대 경로: PUT
+    public ResponseEntity<Void> update( // 본인 리뷰 수정
+            @PathVariable Long reviewId, // 경로변수: 리뷰 ID
+            @RequestParam Long userId, // 작성자 ID(인증 연동 전 임시
+            @Valid @RequestBody UpdateReviewRequestDto dto // 요청 바디: 수정 필드(content/rating)
+    ) {
+        reviewService.update(reviewId, userId, dto.getContent(), dto.getRating()); // 서비스 위임
+        return ResponseEntity.noContent().build(); // 204 No Content
+    }
+
+    @DeleteMapping("/api/reviews/{reviewId}") // 절대 경로: DELETE
+    public ResponseEntity<Void> delete( // 본인 리뷰 소프트 삭제(상태 전환)
+            @PathVariable Long reviewId, // 경로변수: 리뷰 ID
+            @RequestParam Long userId // 작성자 ID(인증 연동 전 임시)
+    ) {
+        reviewService.deleteSoft(reviewId, userId); // 상태 DELETED 전환
+        return ResponseEntity.noContent().build(); // 204 No Content
+    }
+
+    @PostMapping("/api/reviews/{reviewId}/report") // 절대 경로 Post
+    public ResponseEntity<Void> report( // 리뷰 신고
+            @PathVariable Long reviewId, // 경로변수: 리뷰 ID
+            @RequestParam Long userId // 신고자 ID(인증 연동 전 임시
+    ) {
+        reviewService.report(reviewId, userId); // 상태 REPORTED 전환
+        return ResponseEntity.noContent().build(); // 204 No Content
+    }
+
+    @PostMapping("/api/reviews/{reviewId}/like") // 절대 경로: POST
+    public ResponseEntity<Boolean> toggleLike( // 좋아요 토글(true=on, false=off
+            @PathVariable Long reviewId, // 경로변수: 리뷰 ID
+            @RequestParam Long userId // 사용자 ID(인증 연동 전 임시)
+    ) {
+        return ResponseEntity.ok(reviewService.toggleLike(reviewId, userId)); // 200 OK + 토글 결과
     }
 }
