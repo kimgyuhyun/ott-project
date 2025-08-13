@@ -1,5 +1,7 @@
 package com.ottproject.ottbackend.dto;
 
+import com.ottproject.ottbackend.validation.ContentOrRatingRequired;
+import com.ottproject.ottbackend.validation.HalfStep;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -16,6 +18,7 @@ import lombok.*;
 @NoArgsConstructor // 기본 생성자
 @AllArgsConstructor // 전체 필드 생성자
 @Valid
+@ContentOrRatingRequired
 public class UpdateReviewRequestDto {
 
     @Size(max = 1000, message = "내용은 최대 1000자입니다.")
@@ -23,5 +26,6 @@ public class UpdateReviewRequestDto {
 
     @DecimalMin(value = "0.5", message = "평정믄 0.5 이상이어야 합니다.")
     @DecimalMax(value = "5.0", message = "평점은 5.0 이하여야 합니다.")
+    @HalfStep
     private Double rating; // 수정할 평점(선택)
 }
