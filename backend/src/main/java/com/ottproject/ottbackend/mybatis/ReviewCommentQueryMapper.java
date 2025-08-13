@@ -35,6 +35,7 @@ public interface ReviewCommentQueryMapper {
     List<CommentResponseDto> findCommentsByReviewId(
             @Param("reviewId") Long reviewId, // 대상 리뷰 ID
             @Param("currentUserId") Long currentUserId, // 현재 사용자 ID
+            @Param("sort") String sort, // 정렬 latest|best
             @Param("limit") int limit, // 페이지 크기
             @Param("offset") int offset // 오프셋
     );
