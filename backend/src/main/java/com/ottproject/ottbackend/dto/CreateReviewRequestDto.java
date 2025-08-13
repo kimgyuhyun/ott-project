@@ -1,5 +1,6 @@
 package com.ottproject.ottbackend.dto;
 
+import com.ottproject.ottbackend.validation.HalfStep;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -27,5 +28,6 @@ public class CreateReviewRequestDto {
 
     @DecimalMin(value = "0.5", message = "평점은 0.5 이상이어야 합니다.") // 최소
     @DecimalMax(value = "5.0", message = "평점은 5.0 이하여야 합니다.") // 최대
+    @HalfStep
     private Double rating; // 평점(선택)
 }

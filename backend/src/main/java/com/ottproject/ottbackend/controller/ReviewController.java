@@ -1,8 +1,10 @@
 package com.ottproject.ottbackend.controller;
 
+import com.ottproject.ottbackend.dto.CreateReviewRequestDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.ReviewResponseDto;
 import com.ottproject.ottbackend.service.ReviewService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -31,10 +33,14 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
     public ResponseEntity<Long> create( // 생성된 리뷰의 PK(ID)를 반환
             @PathVariable Long aniId, // 경로 변수: 애니 ID
             @RequestParam Long userId, // 작성자 ID(인증 연동 전 임시)
-            @RequestParam(required = false) String content, // 내용(선택)
-            @RequestParam(required = false) Double rating // 평점(선택)
+            @Valid @RequestBody CreateReviewRequestDto dto
     ) {
-        Long id = reviewService.create(userId, aniId, content, rating); // 리뷰 생성
+        Long id = reviewService.create(
+                userId,
+                aniId,
+                dto.getContent(),
+                dto.getRating()
+        );
         return ResponseEntity.ok(id); // 200 OK + 리뷰 ID
     }
 
