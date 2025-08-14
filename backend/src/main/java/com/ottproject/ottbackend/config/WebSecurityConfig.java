@@ -59,6 +59,9 @@ public class WebSecurityConfig {
                         .requestMatchers("/api/oauth2/**").permitAll() // OAuth2 API 엔드포인트 허용
                         .requestMatchers("/oauth2/success").permitAll() // OAuth2 성공 페이지 허용
                         .requestMatchers("/oauth2/failure").permitAll() // OAuth2 실패 페이지 허용
+                        .requestMatchers("/api/episodes/*/skips").permitAll() // 스킵 메타 조회 공개
+                        .requestMatchers("/api/episodes/*/skips/track").permitAll() // 스킵 사용 로깅 공개
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll() // OpenAPI
                         .requestMatchers("/").permitAll() // 루트 경로 허용 (헬스체크용)
                         .requestMatchers("/health").permitAll() // 헬스체크 경로 허용
                         .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
