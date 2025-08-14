@@ -32,6 +32,7 @@ import java.util.Optional;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService { // DefaultOAuth2UserService 를 상속받아 커스터마이징
 
     private final UserRepository userRepository; // 사용자 Repository 주입 (final 로 선언하여 생성자 주입)
+    private final com.ottproject.ottbackend.repository.UserSocialAccountRepository userSocialAccountRepository; // 소셜 연동 리포지토리
 
     /**
      * OAuth2 사용자 정보를 로드하고 처리하는 메서드
@@ -242,43 +243,56 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService { // Defau
      * @return 처리된 사용자 정보 (기존 사용자 또는 신규 생성된 사용자)
      */
     private User processOAuth2User(String email, String name, String providerId, AuthProvider authProvider) {
-        // 먼저 이메일로만 사용자 조회
-        Optional<User> existingUserByEmail = userRepository.findByEmail(email);
-        
-        if (existingUserByEmail.isPresent()) { // 같은 이메일로 가입된 사용자가 존재하는 경우
-            User existingUser = existingUserByEmail.get();
-            
-            // 같은 인증 제공자로 가입된 경우 - 기존 사용자 정보 업데이트
-            if (existingUser.getAuthProvider() == authProvider) {
-                existingUser.setName(name); // 이름 업데이트
-                existingUser.setProviderId(providerId); // 소셜 로그인 ID 업데이트
-                existingUser.setEmailVerified(true); // 소셜 로그인은 이메일 인증 완료로 간주
-                return userRepository.save(existingUser); // 업데이트된 사용자 정보를 DB에 저장
-            } else {
-                // 다른 인증 제공자로 가입된 경우 - 기존 사용자의 인증 제공자 정보 업데이트
-                log.info("기존 사용자가 다른 인증 제공자로 가입되어 있음 - Email: {}, 기존 Provider: {}, 새 Provider: {}", 
-                        email, existingUser.getAuthProvider(), authProvider);
-                
-                existingUser.setAuthProvider(authProvider); // 인증 제공자 변경
-                existingUser.setProviderId(providerId); // 소셜 로그인 ID 업데이트
-                existingUser.setName(name); // 이름 업데이트
-                existingUser.setEmailVerified(true); // 소셜 로그인은 이메일 인증 완료로 간주
-                return userRepository.save(existingUser); // 업데이트된 사용자 정보를 DB에 저장
-            }
-        } else { // 같은 이메일로 가입된 사용자가 존재하지 않는 경우 (신규 사용자)
-            // 신규 사용자 생성 (빌더 패턴 사용)
-            User newUser = User.builder() // User 빌더 시작
-                    .email(email) // 이메일 설정
-                    .name(name) // 이름 설정
-                    .authProvider(authProvider) // 인증 제공자 설정
-                    .providerId(providerId) // 소셜 로그인 제공자에서의 고유 ID 설정
-                    .emailVerified(true) // 소셜 로그인은 이메일 인증 완료로 간주
-                    .enabled(true) // 계정 활성화 상태로 설정
-                    .role(UserRole.USER) // 사용자 역할 설정 (USER 로 기본 설정)
-                    .build(); // User 객체 생성 완료
-
-            return userRepository.save(newUser); // 신규 사용자를 DB에 저장
+        // 1) (provider, providerId)로 연동 우선 조회
+        Optional<com.ottproject.ottbackend.entity.UserSocialAccount> linked =
+                userSocialAccountRepository.findByProviderAndProviderId(authProvider, providerId);
+        if (linked.isPresent()) { // 이미 연동된 계정 → 해당 사용자 반환
+            User user = linked.get().getUser();
+            // 사용자 정보 최소 업데이트(이름 등)
+            user.setName(name);
+            user.setEmailVerified(true);
+            return userRepository.save(user);
         }
+
+        // 2) 이메일 기준 기존 사용자 존재 → 자동 연동(정책에 따라 동의 플로우로 변경 가능)
+        Optional<User> existingUserByEmail = userRepository.findByEmail(email);
+        if (existingUserByEmail.isPresent()) {
+            User user = existingUserByEmail.get();
+            // 연동 중복 방지 체크 후 추가
+            if (!userSocialAccountRepository.existsByUserAndProvider(user, authProvider)) {
+                com.ottproject.ottbackend.entity.UserSocialAccount account = com.ottproject.ottbackend.entity.UserSocialAccount.builder()
+                        .user(user)
+                        .provider(authProvider)
+                        .providerId(providerId)
+                        .emailVerified(true)
+                        .build();
+                userSocialAccountRepository.save(account);
+            }
+            // 사용자 프로필 최소 업데이트
+            user.setName(name);
+            user.setEmailVerified(true);
+            return userRepository.save(user);
+        }
+
+        // 3) 신규 사용자 + 연동 생성
+        User newUser = User.builder()
+                .email(email)
+                .name(name)
+                .authProvider(authProvider) // 기존 필드 유지(첫 연동값 보관)
+                .providerId(providerId)     // 기존 필드 유지(첫 연동값 보관)
+                .emailVerified(true)
+                .enabled(true)
+                .role(UserRole.USER)
+                .build();
+        User saved = userRepository.save(newUser);
+        com.ottproject.ottbackend.entity.UserSocialAccount firstLink = com.ottproject.ottbackend.entity.UserSocialAccount.builder()
+                .user(saved)
+                .provider(authProvider)
+                .providerId(providerId)
+                .emailVerified(true)
+                .build();
+        userSocialAccountRepository.save(firstLink);
+        return saved;
     }
 
     /**
