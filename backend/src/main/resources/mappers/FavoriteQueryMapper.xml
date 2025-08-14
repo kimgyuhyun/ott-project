@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?> <!-- XML 헤더 -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- DTD -->
+
+<mapper namespace="com.ottproject.ottbackend.mybatis.FavoriteQueryMapper"> <!-- 네임스페이스 -->
+
+    <select id="findFavoriteAnimesByUser" resultType="com.ottproject.ottbackend.dto.FavoriteAniDto"> <!-- 유저별 찜 목록 -->
+        SELECT
+        a.id AS aniId, <!-- DTO.aniId -->
+        a.title AS title, <!-- DTO.title -->
+        a.poster_url AS posterUrl, <!-- DTO.posterUrl -->
+        a.rating AS rating, <!-- DTO.rating -->
+        a.rating_count AS ratingCount, <!-- DTO.ratingCount -->
+        a.is_dub AS isDub, <!-- DTO.isDub -->
+        a.is_subtitle AS isSubtitle, <!-- DTO.isSubtitle -->
+        a.is_exclusive AS isExclusive, <!-- DTO.isExclusive -->
+        a.is_new AS isNew, <!-- DTO.isNew -->
+        a.is_popular AS isPopular, <!-- DTO.isPopular -->
+        a.is_completed AS isCompleted, <!-- DTO.isCompleted -->
+        a.status AS animeStatus, <!-- DTO.animeStatus -->
+        a.year AS year, <!-- DTO.year -->
+        a.type AS type, <!-- DTO.type -->
+        f.created_at AS favoritedAt <!-- DTO.favoritedAt -->
+        FROM ani_favorites f <!-- 찜 테이블 -->
+        JOIN ani_list a ON a.id = f.ani_list_id <!-- 작품 조인 -->
+        WHERE f.user_id = #{userId} <!-- 사용자 기준 -->
+        ORDER BY
+        CASE WHEN #{sort} = 'title' THEN a.title END ASC, <!-- 제목 정렬 -->
+        CASE WHEN #{sort} = 'popular' THEN a.is_popular END DESC, <!-- 인기 정렬 -->
+        f.created_at DESC, a.id DESC <!-- 기본: 최신 찜순 -->
+        LIMIT #{limit} OFFSET #{offset} <!-- 페이지네이션 -->
+    </select> <!-- select 끝 -->
+
+    <select id="countFavoriteAnimesByUser" resultType="long"> <!-- 총 개수 -->
+        SELECT COUNT(1) <!-- 행 수 -->
+        FROM ani_favorites f <!-- 찜 테이블 -->
+        WHERE f.user_id = #{userId} <!-- 사용자 기준 -->
+    </select> <!-- select 끝 -->
+
+</mapper> <!-- 매퍼 끝 -->

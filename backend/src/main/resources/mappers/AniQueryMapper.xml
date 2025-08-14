@@ -85,7 +85,7 @@
         a.is_simulcast AS isSimulcast, <!-- DTO.isSimulcast -->
         a.is_active AS isActive, <!-- DTO.isActive -->
 
-        d.full_synopsis AS fillSynopsis, <!-- DTO.fillSynopsis -->
+        d.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis -->
         d.voice_actors AS voiceActors, <!-- DTO.voiceActors -->
 
         a.release_date AS releaseDate, <!-- DTO.releaseDate -->
@@ -153,6 +153,67 @@
         JOIN ani_list_studios asg ON asg.studio_id = s.id  <!-- 중간 테이블 -->
         WHERE asg.ani_list_id = #{aniId} <!-- aniId 기준 -->
         ORDER BY s.name ASC <!-- 이름 정렬 -->
+    </select>
+
+    <select id="findAniDetailByAniIdWithUser" resultType="com.ottproject.ottbackend.dto.AniDetailDto"> <!-- 상세 + 찜 여부 동시 조회 -->
+        SELECT /* 헤더 기본 컬럼들 */
+        a.id AS aniId, <!-- DTO.aniId -->
+        d.id AS detailId, <!-- DTO.detailId -->
+        a.title AS title, <!-- DTO.title -->
+        a.title_en AS titleEn, <!-- DTO.titleEn -->
+        a.title_jp AS titleJp, <!-- DTO.titleJp -->
+        a.poster_url AS posterUrl, <!-- DTO.posterUrl -->
+
+        a.rating AS rating, <!-- DTO.rating -->
+        a.rating_count AS ratingCount, <!-- DTO.ratingCount -->
+        a.age_rating AS ageRating, <!-- DTO.ageRating -->
+        a.status AS animeStatus, <!-- DTO.animeStatus -->
+
+        a.is_completed AS isCompleted, <!-- DTO.isCompleted -->
+        a.is_exclusive AS isExclusive, <!-- DTO.isExclusive -->
+        a.is_popular AS isPopular, <!-- DTO.isPopular -->
+        a.is_new AS isNew, <!-- DTO.isNew -->
+        a.is_subtitle AS isSubtitle, <!-- DTO.isSubtitle -->
+        a.is_dub AS isDub, <!-- DTO.isDub -->
+        a.is_simulcast AS isSimulcast, <!-- DTO.isSimulcast -->
+        a.is_active AS isActive, <!-- DTO.isActive -->
+
+        d.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis (기존 오탈자 fillSynopsis → fullSynopsis) -->
+        d.voice_actors AS voiceActors, <!-- DTO.voiceActors -->
+
+        a.release_date AS releaseDate, <!-- DTO.releaseDate -->
+        a.end_date AS endDate, <!-- DTO.endDate -->
+        a.broadcast_day AS broadcastDay, <!-- DTO.broadcastDay -->
+        a.broad_cast_time AS broadcastTime, <!-- DTO.broadcastTime -->
+        a.season AS season, <!-- DTO.season -->
+        a.year AS year, <!-- DTO.year -->
+        a.type AS type, <!-- DTO.type -->
+        a.duration AS duration, <!-- DTO.duration -->
+        d.release_quarter AS releaseQuarter, <!-- DTO.releaseQuarter -->
+        a.source AS source, <!-- DTO.source -->
+        a.country AS country, <!-- DTO.country -->
+        a.language AS language, <!-- DTO.language -->
+        d.director AS director, <!-- DTO.director -->
+
+        a.total_episodes AS totalEpisodes, <!-- DTO.totalEpisodes -->
+        d.current_episodes AS currentEpisodes, <!-- DTO.currentEpisodes -->
+
+        d.created_at AS createdAt, <!-- DTO.createdAt -->
+        d.updated_at AS updatedAt, <!-- DTO.updatedAt -->
+
+        <!-- 찜 여부: 로그인 시 LEFT JOIN 결과로 판단, 비로그인 시 false 고정 -->
+        <if test="currentUserId != null">
+            CASE WHEN f.user_id IS NULL THEN FALSE ELSE TRUE END AS isFavorited <!-- DTO.isFavorited -->
+        </if>
+        <if test="currentUserId == null">
+            FALSE AS isFavorited <!-- DTO.isFavorited: 비로그인 기본 false -->
+        </if>
+        FROM ani_detail d <!-- 상세 테이블 -->
+        JOIN ani_list a ON a.id = d.ani_list_id <!-- 목록과 1:1 조인 -->
+        <if test="currentUserId != null">
+            LEFT JOIN ani_favorites f ON f.ani_list_id = a.id AND f.user_id = #{currentUserId} <!-- 사용자 기준 찜 조인 -->
+        </if>
+        WHERE a.id = #{aniId} <!-- 대상 aniId -->
     </select>
 
 </mapper>
