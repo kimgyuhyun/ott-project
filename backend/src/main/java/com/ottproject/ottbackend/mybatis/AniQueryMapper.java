@@ -45,6 +45,10 @@ public interface AniQueryMapper { // 목록 상세/연관 조회 정의
     );
 
     AniDetailDto findAniDetailByAniId(@Param("aniId") Long aniId); // 상세 헤더/더보기 영역 조회(aniId 기준)
+    AniDetailDto findAniDetailByAniIdWithUser( // 사용자 포함 상세 조회 메서드 시그니처
+                                               @Param("aniId") Long aniId, // 조회할 애니 ID
+                                               @Param("currentUserId") Long currentUserId // 현재 사용자 ID(비로그인 null 허용)
+    ); // 인터페이스 메서드 끝
 
     List<EpisodeDto> findEpisodesByAniId(@Param("aniId") Long aniId); // 상세: 에피소드 리스트
     List<GenreSimpleDto> findGenresByAniId(@Param("aniId") Long aniId); // 상세: 장르 리스트

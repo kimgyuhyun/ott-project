@@ -80,4 +80,6 @@ public class AniDetailDto {
     // 타임 스탬프 상세 기준
     private LocalDateTime createdAt; // 생성일시
     private LocalDateTime updatedAt; // 수정일시
+
+    private Boolean isFavorited; // 현재 사용자 기준 찜 여부(true = 찜됨, false = 찜안됨) 비로그인 시 기본 false
 }

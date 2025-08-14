@@ -35,12 +35,24 @@ public class AniQueryService { // 읽기(조회) 전용 서비스
         return new PagedResponse<>(items, total, page, size); // 표준 페이지 응답으로 래핑
     }
 
-    public AniDetailDto detail(long aniId) { // 상세(헤더/더보기 + 연관목록) 조회
-        AniDetailDto dto = mapper.findAniDetailByAniId(aniId); // 단건 상세 조회
-        if (dto == null) return null; // 없는 경우 null 반환(컨트롤러에서 404 처리 고려)
-        dto.setEpisodes(mapper.findEpisodesByAniId(aniId)); // 연관: 에피소드 목록 세팅
-        dto.setGenres(mapper.findGenresByAniId(aniId)); // 연관: 장르 목록 세팅
-        dto.setStudios(mapper.findStudiosByAniId(aniId)); // 연관: 제작사 목록 세팅
-        return dto; // 완성된 상세 DTO 반환
+    public AniDetailDto detail(long aniId) { // 기존 시그니처 유지(호환)
+        AniDetailDto dto = mapper.findAniDetailByAniId(aniId); // 사용자 없이 상세 조회
+        if (dto == null) return null; // 없으면 null
+        dto.setEpisodes(mapper.findEpisodesByAniId(aniId)); // 에피소드
+        dto.setGenres(mapper.findGenresByAniId(aniId)); // 장르
+        dto.setStudios(mapper.findStudiosByAniId(aniId)); // 제작사
+        return dto; // 반환
+    }
+
+    public AniDetailDto detail(long aniId, Long currentUserId) { // 사용자 포함 상세 조회(찜 여부 포함)
+        AniDetailDto dto = mapper.findAniDetailByAniIdWithUser( // MyBatis 에서 isFavorited 까지 계산
+                aniId, // 애니 ID
+                currentUserId // 현재 사용자 ID(비로그인 null)
+        ); // 상세 + 찜 여부 단건 조회
+        if (dto == null) return null; // 대상 없음 보호
+        dto.setEpisodes(mapper.findEpisodesByAniId(aniId)); // 에피소드 리스트 세팅
+        dto.setGenres(mapper.findGenresByAniId(aniId)); // 장르 리스트 세팅
+        dto.setStudios(mapper.findStudiosByAniId(aniId)); // 제작사 리스트 세팅
+        return dto; // 완성된 DTO 반환
     }
 }
