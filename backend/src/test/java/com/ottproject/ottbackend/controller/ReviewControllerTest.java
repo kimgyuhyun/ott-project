@@ -82,7 +82,7 @@ class ReviewControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 �
         String body = String.format("{\"aniId\":%d,\"content\":\"%s\",\"rating\":%.1f}", ani.getId(), content, rating); // CreateReviewRequestDto 요구사항에 맞춰 aniId/내용/평점 JSON 구성
         String idStr = mockMvc.perform( // HTTP 요청 실행
                         post("/api/anime/{aniId}/reviews", ani.getId()) // 엔드포인트(경로변수 aniId 포함)
-                                .param("userId", String.valueOf(user.getId())) // 작성자 ID는 쿼리 파라미터로
+                                .sessionAttr("userEmail", user.getEmail()) // 세션 기반 사용자 식별
                                 .contentType(MediaType.APPLICATION_JSON) // JSON 타입 지정
                                 .content(body) // 바디로 DTO 전달
                 )
@@ -99,9 +99,10 @@ class ReviewControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 �
         User user = seedUser("list@a.com"); // 사용자 시드
         AniList ani = seedAni(); // 애니 시드
         Long reviewId = createReviewViaApi(ani, user, "good", 4.5); // 컨트롤러부터 시작해 리뷰 생성
+        Review created = reviewRepository.findById(reviewId).orElseThrow(); // DB에서 상태 확인
+        assertEquals(ReviewStatus.ACTIVE, created.getStatus()); // 생성 시 기본 상태 ACTIVE 검증
         mockMvc.perform( // 목록 조회(읽기는 MyBatis XML)
                         get("/api/anime/{aniId}/reviews", ani.getId()) // 애니 하위 리뷰 목록
-                                .param("currentUserId", String.valueOf(user.getId())) // 좋아요 여부 계산용
                                 .param("sort", "latest") // 최신순 정렬
                                 .param("page", "0") // 0페이지
                                 .param("size", "10") // 페이지 크기 10
@@ -121,7 +122,7 @@ class ReviewControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 �
         String body = "{\"content\":\"edited\",\"rating\":4.0}"; // 수정 JSON 바디
         mockMvc.perform( // 수정 호출
                         put("/api/reviews/{id}", reviewId) // 리뷰 단건 수정 엔드포인트
-                                .param("userId", String.valueOf(user.getId())) // 본인 검증(임시)
+                                .sessionAttr("userEmail", user.getEmail()) // 세션 사용자
                                 .contentType(MediaType.APPLICATION_JSON) // JSON
                                 .content(body) // 수정 바디
                 )
@@ -139,7 +140,7 @@ class ReviewControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 �
         Long reviewId = createReviewViaApi(ani, user, "c", 3.0); // API 생성
         mockMvc.perform( // 삭제 호출
                         delete("/api/reviews/{id}", reviewId) // 단건 삭제(소프트)
-                                .param("userId", String.valueOf(user.getId())) // 본인 확인
+                                .sessionAttr("userEmail", user.getEmail()) // 세션 사용자
                 )
                 .andExpect(status().isNoContent()); // 204
         mockMvc.perform( // 목록 재호출
@@ -158,7 +159,7 @@ class ReviewControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 �
         Long reviewId = createReviewViaApi(ani, user, "c", 3.0); // 생성
         mockMvc.perform( // 신고 호출
                         post("/api/reviews/{id}/report", reviewId) // 신고 엔드포인트
-                                .param("userId", String.valueOf(user.getId())) // 신고자 ID
+                                .sessionAttr("userEmail", user.getEmail()) // 세션 사용자
                 )
                 .andExpect(status().isNoContent()); // 204
         mockMvc.perform( // 목록 재호출
@@ -177,14 +178,14 @@ class ReviewControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 �
         Long reviewId = createReviewViaApi(ani, user, "c", 3.0); // 생성
         mockMvc.perform( // 첫 토글(on)
                         post("/api/reviews/{id}/like", reviewId)
-                                .param("userId", String.valueOf(user.getId()))
+                                .sessionAttr("userEmail", user.getEmail())
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk()) // 200
                 .andExpect(content().string("true")); // true(on)
         mockMvc.perform( // 두번째 토글(off)
                         post("/api/reviews/{id}/like", reviewId)
-                                .param("userId", String.valueOf(user.getId()))
+                                .sessionAttr("userEmail", user.getEmail())
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk()) // 200
