@@ -1,31 +1,45 @@
 <?xml version="1.0" encoding="UTF-8" ?> <!-- XML 헤더 -->
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- MyBatis DTD 참조 -->
 
+<!--
+  Mapper: AniQueryMapper
+  - 목록/상세/연관(에피소드/장르/제작사) 조회 전용 MyBatis 매퍼
+  - Snake_case 컬럼 → camelCase DTO 필드로 alias 매핑
+  - 파라미터: 상태/장르/필터/정렬/페이징(limit/offset)
+-->
 <mapper namespace="com.ottproject.ottbackend.mybatis.AniQueryMapper"> <!-- 인터페이스 FQCN 과 매핑 -->
 
     <!-- 목록 조회용 공통 FROM/JOIN 블록 -->
-    <sql id="base_list_from"> <!-- 다른 쿼리에서 include 로 재사용-->
-        FROM ani_list a <!-- 메인 테이블: ani_list -->
-        <if test="genreId != null"> <!-- 장르 필터가 있을때만 조인-->
-            JOIN ani_list_genres ag ON ag.ani_list_id = a.id AND ag.genre_id = #{genreId} <!-- 중간 테이블 조인-->
+    <sql id="base_list_from"> <!-- 다른 쿼리에서 include 로 재사용 -->
+        FROM ani_list a <!-- FROM: 작품 목록 테이블 a 에서 시작 -->
+        <if test="genreId != null"> <!-- 입력 파라미터 genreId 가 있으면 장르로 필터링 → 성능을 위해 조건부 조인 -->
+            JOIN ani_list_genres ag ON ag.ani_list_id = a.id AND ag.genre_id = #{genreId} <!-- JOIN: 장르 중간 테이블에서 대상 장르(#{genreId})만 매칭 -->
         </if>
     </sql>
 
-    <!-- 목록 조회용 공통 WHERE 블록-->
+    <!-- 목록 조회용 공통 WHERE 블록 -->
     <sql id="base_list_where"> <!-- 재사용 WHERE -->
-        WHERE a.is_active = TRUE <!-- 활성 작품만-->
-        <if test="status != null"> AND a.status = #{status} </if> <!-- 상태 ENUM 필터-->
-        <if test="minRating != null"> AND a.rating &gt;= #{minRating}</if>  <!-- 최소 평점 -->
-        <if test="year != null"> AND a.year = #{year}</if> <!-- 연도 필터 -->
-        <if test="isDub != null"> AND a.is_dub = #{isDub}</if> <!-- 더빙 여부 -->
-        <if test="isSubtitle != null"> AND a.is_subtitle = #{isSubtitle}</if> <!-- 자막 여부 -->
-        <if test="isExclusive != null"> AND a.is_exclusive = #{isExclusive}</if> <!-- 독점 여부 -->
-        <if test="isCompleted != null"> AND a.is_completed = #{isCompleted}</if> <!-- 완결 여부-->
-        <if test="isNew != null"> AND a.is_new = #{isNew}</if> <!-- 신작 여부 -->
-        <if test="isPopular != null"> AND a.is_popular = #{isPopular}</if> <!-- 인기 여부 -->
+        WHERE a.is_active = TRUE <!-- WHERE: 비활성 제외(서비스 노출 가능 작품만) -->
+        <if test="status != null"> AND a.status = #{status} </if> <!-- 상태 필터: ONGOING/COMPLETED/UPCOMING/HIATUS 중 선택 -->
+        <if test="minRating != null"> AND a.rating &gt;= #{minRating}</if>  <!-- 평점 하한: #{minRating} 이상 -->
+        <if test="year != null"> AND a.year = #{year}</if> <!-- 방영 연도: 정확히 일치 -->
+        <if test="isDub != null"> AND a.is_dub = #{isDub}</if> <!-- 더빙 제공 여부: true/false 매칭 -->
+        <if test="isSubtitle != null"> AND a.is_subtitle = #{isSubtitle}</if> <!-- 자막 제공 여부: true/false 매칭 -->
+        <if test="isExclusive != null"> AND a.is_exclusive = #{isExclusive}</if> <!-- 독점 여부: true/false 매칭 -->
+        <if test="isCompleted != null"> AND a.is_completed = #{isCompleted}</if> <!-- 완결 여부: true/false 매칭 -->
+        <if test="isNew != null"> AND a.is_new = #{isNew}</if> <!-- 신작 여부: true/false 매칭 -->
+        <if test="isPopular != null"> AND a.is_popular = #{isPopular}</if> <!-- 인기 여부: true/false 매칭 -->
     </sql>
 
-    <!-- 목록 데이터 조회 -->
+    <!--
+      목록 데이터 조회
+      - SELECT: 카드에 필요한 최소 컬럼들을 alias로 DTO 필드에 매핑
+      - FROM: ani_list a (+ 선택 장르 조인)
+      - WHERE: 활성 작품 + 선택적 필터(status/minRating/year/배지들)
+      - ORDER BY: sort 파라미터에 따른 분기(평점/연도/인기/기본)
+      - LIMIT/OFFSET: 페이지네이션
+    -->
+    <!-- 파라미터: {status, genreId, minRating, year, isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular, sort, limit, offset} -->
     <select id="findAniList" resultType="com.ottproject.ottbackend.dto.AniListDto"> <!-- DTO로 자동 매핑 -->
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
@@ -42,26 +56,35 @@
         a.status AS animeStatus, <!-- DTO.animeStatus(enum) -->
         a.year AS year, <!-- DTO.year -->
         a.type AS type <!-- DTO.type -->
-        <include refid="base_list_from"/> <!-- 공통 FROM/JOIN 삽입 -->
-        <include refid="base_list_where"/> <!-- 공통 WHERE 삽입 -->
+        <include refid="base_list_from"/> <!-- FROM ani_list a (+ 장르 필터가 있으면 중간테이블 조인) -->
+        <include refid="base_list_where"/> <!-- WHERE 활성 + 전달된 필터 조건들 결합 -->
         ORDER BY
-        <choose> <!-- 정렬 분기 -->
-            <when test="sort == 'rating'"> a.rating DESC, a.id DESC </when> <!-- 평점 내림차순 -->
-            <when test="sort == 'year'"> a.year DESC, a.id DESC </when> <!-- 연도 내림차순 -->
-            <when test="sort == 'popular'"> a.is_popular DESC, a.id DESC </when> <!-- 인기 우선 -->
-            <otherwise> a.id DESC </otherwise> <!-- 기본 최신순 -->
+        <choose> <!-- 정렬 분기: sort 파라미터가 rating/year/popular 인지에 따라 주요 키 선택, 보조키는 최신순(id DESC) -->
+            <when test="sort == 'rating'"> a.rating DESC, a.id DESC </when> <!-- 평점 높은 순 → 같은 평점이면 최신순 -->
+            <when test="sort == 'year'"> a.year DESC, a.id DESC </when> <!-- 최신 연도 우선 → 같은 연도면 최신순 -->
+            <when test="sort == 'popular'"> a.is_popular DESC, a.id DESC </when> <!-- 인기 플래그 우선 → 최신순 -->
+            <otherwise> a.id DESC </otherwise> <!-- 기본: 최신 등록순 -->
         </choose>
         LIMIT #{limit} OFFSET #{offset} <!-- 페이지네이션 -->
     </select>
 
-    <!-- 목록 총 개수 -->
+    <!--
+      목록 총 개수
+      - SELECT COUNT(1)
+      - FROM/WHERE는 목록과 동일 → 페이지네이션 total 계산
+    -->
     <select id="countAniList" resultType="long"> <!-- 개수 반환 -->
         SELECT COUNT(1) <!-- 총 행 수 -->
         <include refid="base_list_from"/> <!-- 공통 FROM/JOIN -->
         <include refid="base_list_where"/> <!-- 동일 WHERE -->
     </select>
 
-    <!-- 상세 헤더/더보기 영역 (aniId 기준) -->
+    <!--
+      상세 헤더/더보기 영역 (aniId 기준)
+      - SELECT: 헤더·배지·상태·방영정보·집계·타임스탬프를 DTO로 매핑
+      - FROM ani_detail d JOIN ani_list a (1:1)
+      - WHERE a.id = #{aniId}
+    -->
     <select id="findAniDetailByAniId" resultType="com.ottproject.ottbackend.dto.AniDetailDto"> <!-- 단건 DTO -->
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
@@ -112,7 +135,13 @@
         WHERE a.id = #{aniId} <!-- 경로 파라미터 -->
     </select>
 
-    <!-- 상세: 에피소드 리스트 (aniId 기준) -->
+    <!--
+      상세: 에피소드 리스트 (aniId 기준)
+      - SELECT: 에피소드 표시 컬럼
+      - FROM episode e JOIN ani_detail d
+      - WHERE d.ani_list_id = #{aniId}
+      - ORDER BY 화수 오름차순
+    -->
     <select id="findEpisodesByAniId" resultType="com.ottproject.ottbackend.dto.EpisodeDto"> <!-- 리스트 DTO -->
         SELECT
         e.id AS id, <!-- EpisodeDto.id-->
@@ -130,7 +159,12 @@
         ORDER BY e.episode_number ASC <!-- 회수 오름차순-->
     </select>
 
-    <!-- 상세: 장르 리스트 -->
+    <!--
+      상세: 장르 리스트 (aniId 기준)
+      - SELECT: 장르 표시 컬럼
+      - FROM genres g JOIN ani_list_genres ag
+      - WHERE ag.ani_list_id = #{aniId}
+    -->
     <select id="findGenresByAniId" resultType="com.ottproject.ottbackend.dto.GenreSimpleDto"> <!-- 제작사 간단 DTO -->
         SELECT
         g.id AS id, <!-- GenreSimpleDto.id -->
@@ -142,7 +176,12 @@
         ORDER BY g.name ASC <!-- 이름 정렬 -->
     </select>
 
-    <!-- 상세: 제작사 리스트 -->
+    <!--
+      상세: 제작사 리스트 (aniId 기준)
+      - SELECT: 제작사 표시 컬럼
+      - FROM studios s JOIN ani_list_studios asg
+      - WHERE asg.ani_list_id = #{aniId}
+    -->
     <select id="findStudiosByAniId" resultType="com.ottproject.ottbackend.dto.StudioSimpleDto"> <!-- 제작사 간단 DTO -->
         SELECT
         s.id AS id, <!-- studiosSimpleDto.id -->
@@ -155,6 +194,12 @@
         ORDER BY s.name ASC <!-- 이름 정렬 -->
     </select>
 
+    <!--
+      상세 + 찜 여부 동시 조회
+      - SELECT: 상세 헤더 컬럼 + CASE 로 isFavorited 계산(로그인 시)
+      - FROM ani_detail d JOIN ani_list a (+ 로그인 시 LEFT JOIN ani_favorites f)
+      - WHERE a.id = #{aniId}
+    -->
     <select id="findAniDetailByAniIdWithUser" resultType="com.ottproject.ottbackend.dto.AniDetailDto"> <!-- 상세 + 찜 여부 동시 조회 -->
         SELECT /* 헤더 기본 컬럼들 */
         a.id AS aniId, <!-- DTO.aniId -->
@@ -216,4 +261,5 @@
         WHERE a.id = #{aniId} <!-- 대상 aniId -->
     </select>
 
+<!-- end of AniQueryMapper -->
 </mapper>

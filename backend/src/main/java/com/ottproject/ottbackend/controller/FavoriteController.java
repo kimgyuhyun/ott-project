@@ -10,6 +10,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 찜 컨트롤러
+ * - 작품 찜 토글, 마이페이지 찜 목록, 상세+찜 여부 조회
+ */
 @RestController // REST 컨트롤러
 @RequiredArgsConstructor // 생성자 주입
 public class FavoriteController { // 찜 전용 컨트롤러

@@ -4,6 +4,11 @@ package com.ottproject.ottbackend.validation;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
+/**
+ * HalfStep 제약 검증기
+ * - null 은 통과
+ * - 값*2 가 정수면 0.5 단위로 간주하여 통과
+ */
 public class HalfStepValidator // HalfStep 어노테이션 검증기
         implements ConstraintValidator<HalfStep, Double> {
 

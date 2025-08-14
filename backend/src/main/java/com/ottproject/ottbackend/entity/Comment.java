@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * f리뷰에 대한 댓글을 저장하는 엔티티
+ * 리뷰에 대한 댓글을 저장하는 엔티티
  * 대댓글 구조를 지원하며, 플랫 구조로 렌더링
  */
 @Entity

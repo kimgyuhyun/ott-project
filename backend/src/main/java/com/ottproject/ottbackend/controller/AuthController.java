@@ -12,7 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-
+/**
+ * 인증/계정 컨트롤러
+ * - 회원가입/중복확인/로그인/로그아웃/비밀번호변경/탈퇴
+ * - 이메일 인증 코드 발송/검증
+ */
 @RestController // REST API 컨트롤러로 지정, @ResponseBody 를 모든 메서드에 자동 적용
 @RequestMapping("/api/auth") // 모든 엔드포인트의 기본 경로를 /api/auth 로 설정
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성

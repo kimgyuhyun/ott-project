@@ -1,5 +1,9 @@
 package com.ottproject.ottbackend.enums;
 
+/**
+ * 리뷰 상태
+ * - ACTIVE/DELETED/REPORTED
+ */
 public enum ReviewStatus {
     ACTIVE("활성"),
     DELETED("삭제됨"),

@@ -12,6 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 리뷰 컨트롤러
+ * - 목록/작성/수정/삭제/신고/좋아요, 관리용 일괄 삭제
+ */
 @RequiredArgsConstructor // final 필드 기반 생성자 자동 생성(의존성 주입)
 @RestController // REST 컨트롤러로 등록(메서드 반환값을 JSON 으로 직렬화)
 @RequestMapping("/api/anime/{aniId}/reviews") // 상세 페이지 하위: 리뷰 컬렉션 경로
