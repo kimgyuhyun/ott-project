@@ -70,7 +70,7 @@ class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 
         String body = String.format("{\"content\":\"%s\"}", content);
         String idStr = mockMvc.perform( // HTTP 실행
                         post("/api/reviews/{reviewId}/comments", review.getId()) // 최상위 댓글 생성 엔드포인트
-                                .param("userId", String.valueOf(user.getId())) // 작성자 ID
+                                .sessionAttr("userEmail", user.getEmail()) // 세션 사용자
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body) // 내용(JSON 바디)
                 )
@@ -85,7 +85,7 @@ class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 
         String body = String.format("{\"content\":\"%s\"}", content);
         String idStr = mockMvc.perform( // HTTP 실행
                         post("/api/comments/{commentId}/replies", parentCommentId) // 대댓글 생성 엔드포인트
-                                .param("userId", String.valueOf(userId)) // 작성자 ID
+                                .sessionAttr("userEmail", "u@a.com") // 세션 사용자(임의 값)
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body) // 대댓글 내용(JSON 바디)
                 )
@@ -166,7 +166,7 @@ class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 
         String body = "{\"content\":\"edited\"}"; // 수정 바디
         mockMvc.perform( // 수정 호출
                         put("/api/comments/{id}", commentId)
-                                .param("userId", String.valueOf(user.getId()))
+                                .sessionAttr("userEmail", user.getEmail())
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(body)
                 )
@@ -184,7 +184,7 @@ class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 
         Long commentId = createCommentViaApi(review, user, "seed"); // 댓글 생성
         mockMvc.perform( // 삭제 호출
                         delete("/api/comments/{id}", commentId)
-                                .param("userId", String.valueOf(user.getId()))
+                                .sessionAttr("userEmail", user.getEmail())
                 )
                 .andExpect(status().isNoContent()); // 204
         mockMvc.perform( // 목록 확인
@@ -204,7 +204,7 @@ class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 
         Long commentId = createCommentViaApi(review, user, "seed"); // 댓글 생성
         mockMvc.perform( // 신고 호출
                         post("/api/comments/{id}/report", commentId)
-                                .param("userId", String.valueOf(user.getId()))
+                                .sessionAttr("userEmail", user.getEmail())
                 )
                 .andExpect(status().isNoContent()); // 204
         mockMvc.perform( // 목록 확인
@@ -224,14 +224,14 @@ class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 
         Long commentId = createCommentViaApi(review, user, "seed"); // 댓글 생성
         mockMvc.perform( // 첫 토글(on)
                         post("/api/comments/{id}/like", commentId)
-                                .param("userId", String.valueOf(user.getId()))
+                                .sessionAttr("userEmail", user.getEmail())
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk()) // 200
                 .andExpect(content().string("true")); // on
         mockMvc.perform( // 두번째 토글(off)
                         post("/api/comments/{id}/like", commentId)
-                                .param("userId", String.valueOf(user.getId()))
+                                .sessionAttr("userEmail", user.getEmail())
                                 .accept(MediaType.APPLICATION_JSON)
                 )
                 .andExpect(status().isOk()) // 200
@@ -248,7 +248,7 @@ class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 
         Long replyId = createReplyViaApi(parentId, user.getId(), "child"); // 대댓글 생성
         mockMvc.perform( // 대댓글 목록 호출
                         get("/api/comments/{commentId}/replies", parentId)
-                                .param("currentUserId", String.valueOf(user.getId()))
+                                .sessionAttr("userEmail", user.getEmail())
                 )
                 .andExpect(status().isOk()) // 200
                 .andExpect(jsonPath("$.length()").value(1)) // 한 건
@@ -265,8 +265,8 @@ class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 
         Review review = seedReview(u1, ani); // 리뷰
         Long c1 = createCommentViaApi(review, u1, "a"); // 댓글1
         Long c2 = createCommentViaApi(review, u1, "b"); // 댓글2
-        mockMvc.perform(post("/api/comments/{id}/like", c2).param("userId", String.valueOf(u1.getId()))); // c2 like by u1
-        mockMvc.perform(post("/api/comments/{id}/like", c2).param("userId", String.valueOf(u2.getId()))); // c2 like by u2
+        mockMvc.perform(post("/api/comments/{id}/like", c2).sessionAttr("userEmail", u1.getEmail())); // c2 like by u1
+        mockMvc.perform(post("/api/comments/{id}/like", c2).sessionAttr("userEmail", u2.getEmail())); // c2 like by u2
         mockMvc.perform( // best 정렬 목록 호출
                         get("/api/reviews/{reviewId}/comments", review.getId())
                                 .param("page","0").param("size","10").param("sort","best")
