@@ -9,6 +9,11 @@ import org.springframework.stereotype.Service;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * 이메일 발송/인증 서비스
+ * - 인증 코드 발송/검증, 비밀번호 재설정 메일 지원
+ * - 실제 운영은 Redis 등 외부 저장소 사용 권장
+ */
 @Service // Bean 으로 등록
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성
 public class EmailService {
@@ -26,18 +31,18 @@ public class EmailService {
     // 이메일 인증 코드 발송 메서드
     public void sendVerificationEmail(String to) {
         //6자리 인증 코드 생성 (0~9 숫자로 구성)
-        String verificationCode = generateVerificationCode();
-        emailVerificationCodes.put(to, verificationCode); // 이메일과 인증 코드를 임시 저장
+        String verificationCode = generateVerificationCode(); // 6자리 코드 생성
+        emailVerificationCodes.put(to, verificationCode); // 이메일과 코드 매핑 저장
 
-        SimpleMailMessage message = new SimpleMailMessage(); // 간단한 텍스트 메일 객체 생성
-        message.setFrom(fromEmail); // 발신자 주소 설정
-        message.setTo(to); // 수신자 이메일 주소 설정
-        message.setSubject("OTT 프로젝트 인증 코드"); // 메일 제목 설정
-        message.setText("이메일 인증 코드: " + verificationCode + "\n\n" +
-                "이 코드를 입력하여 이메일 인증을 완료해주세요.\n" +
-                "인증 코드는 10분간 유효합니다.");
+        SimpleMailMessage message = new SimpleMailMessage(); // 텍스트 메일
+        message.setFrom(fromEmail);
+        message.setTo(to);
+        message.setSubject("OTT 프로젝트 인증 코드");
+        message.setText("이메일 인증 코드: " + verificationCode + "\n\n"
+                + "이 코드를 입력하여 이메일 인증을 완료해주세요.\n"
+                + "인증 코드는 10분간 유효합니다.");
 
-        mailSender.send(message); // SMTP 서버를 통해 이메일 발송
+        mailSender.send(message); // SMTP 발송
     }
 
 
@@ -72,9 +77,9 @@ public class EmailService {
         message.setFrom(fromEmail);
         message.setTo(to); // 수신자 이메일 주소 설정
         message.setSubject("OTT 프로젝트 비밀번호 재설정"); // 메일 제목 설정
-        message.setText("비밀번호를 재설정하려면 다음 링크를 클릭하세요:\n\n" +
-                "http://localhost:8090/api/auth/reset-password?token=" + resetToken + "\n\n" +
-                "이 링크는 1시간 동안 유효합니다."); // 메일 본문 내용 설정 (비밀번호 재설정 링크 포함)
+        message.setText("비밀번호를 재설정하려면 다음 링크를 클릭하세요:\n\n"
+                + "http://localhost:8090/api/auth/reset-password?token=" + resetToken + "\n\n"
+                + "이 링크는 1시간 동안 유효합니다."); // 메일 본문 내용 설정 (비밀번호 재설정 링크 포함)
 
         mailSender.send(message); // SMTP 서버를 통해 이메일 발송
     }

@@ -29,15 +29,15 @@ import java.util.Set;
 public class AniDetail {
 
     @Id // 기본키 설정
-    @GeneratedValue(strategy = GenerationType.AUTO) // 자동 증가 전력
+    @GeneratedValue(strategy = GenerationType.AUTO) // 자동 증가 전략
     private Long id; // 상세 정보 고유 ID
 
-    // ===== ANiList 와의 관계 =====
+    // ===== AniList 와의 관계 =====
 
     /**
-     * ANiLIst 와의 일대일 관계
-     * 하나의 ANiList 는 하나의 ANiDetail 을 가짐
-     * 외래키를 ANiDEmail 에서 관리 (주인)
+     * AniList 와의 일대일 관계
+     * 하나의 AniList 는 하나의 AniDetail 을 가짐
+     * 외래키를 AniDetail 에서 관리 (주인)
      */
     @OneToOne(fetch = FetchType.LAZY) // 일대일 관계, 지연 로딩
     @JoinColumn(name = "ani_list_id", nullable = false, unique = true) // 외래키 설정, null 불허, 고유값
@@ -48,11 +48,11 @@ public class AniDetail {
     private String fullSynopsis; // 전체 줄거리 (더보기에서 보여지는 전체 내용)
 
     @Column(columnDefinition = "TEXT") // 긴 텍스트 저장용
-    private String tags; // 태그 정보 (JSON 배열 형태": ["#가족", "#감동"}
+    private String tags; // 태그 정보 (JSON 배열 형태: ["#가족", "#감동"])
 
     // ===== 성우 정보 =====
     @Column(columnDefinition = "TEXT") // 긴 텍스트 저장용
-    private String voiceActors; // 성우 정보 (JSON 형태: [{"character": "짱구", "actor": "박영남}, ...}]
+    private String voiceActors; // 성우 정보 (JSON 형태: [{"character": "짱구", "actor": "박영남"}, ...])
 
     // ===== 제작 정보 =====
 
@@ -64,7 +64,7 @@ public class AniDetail {
 
     // ===== 상세 페이지 추가 정보 =====
     @Column(nullable = false)
-    private Boolean isCompleted; // 완결 여뷰
+    private Boolean isCompleted; // 완결 여부
 
     @Column(nullable = false)
     private Boolean isPopular; // 인기작 여부
@@ -74,11 +74,11 @@ public class AniDetail {
     // ===== 에피소드 관련 =====
     /**
      * 에피소드와의 일대다 관계
-     * 하나의 ANiDetail 은 여러 에피소드를 가짐
+     * 하나의 AniDetail 은 여러 에피소드를 가짐
      */
     @OneToMany(mappedBy = "aniDetail", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // 일대다 관계, cascade 로 연쇄 삭제, 지연 로딩
     @Builder.Default
-    private List<Episode> episodes = new ArrayList<>(); // 에피소드 목록
+    private java.util.List<Episode> episodes = new java.util.ArrayList<>(); // 에피소드 목록
 
     @Column(nullable = false)
     private Integer currentEpisodes; // 현재 업로드된 에피소드 수
@@ -101,7 +101,7 @@ public class AniDetail {
 
     /**
      * AniList 설정 메서드
-     * @Param aniList 연결할 AniList 엔티티
+     * @param aniList 연결할 AniList 엔티티
      */
     public void setAniList(AniList aniList) {
         this.aniList = aniList;
@@ -113,18 +113,18 @@ public class AniDetail {
 
     /**
      * 장르 정보 가져오기
-     * @retrun 장르 목록
+     * @return 장르 목록
      */
-    public Set<Genre> getGenres() {
-        return this.aniList != null ? this.aniList.getGenres() : new HashSet<>();
+    public java.util.Set<Genre> getGenres() {
+        return this.aniList != null ? this.aniList.getGenres() : new java.util.HashSet<>();
     }
 
     /**
      * 제작사 정보 가져오기
-     * @retrun 제작사 목록
+     * @return 제작사 목록
      */
-    public Set<Studio> getStudios() {
-        return this.aniList != null ? this.aniList.getStudios() : new HashSet<>();
+    public java.util.Set<Studio> getStudios() {
+        return this.aniList != null ? this.aniList.getStudios() : new java.util.HashSet<>();
     }
 
     /**
@@ -138,11 +138,11 @@ public class AniDetail {
 
     /**
      * 에피소드 제거 메서드
-     * @Param episode 제거할 에피소드
+     * @param episode 제거할 에피소드
      */
     public void removeEpisode(Episode episode) {
         this.episodes.remove(episode);
-        episode.setAniDetail(null); // 양방향 관계 헤제
+        episode.setAniDetail(null); // 양방향 관계 해제
     }
 
 }

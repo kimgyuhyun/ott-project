@@ -4,6 +4,10 @@ import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
 import java.lang.annotation.*;
 
+/**
+ * 0.5 단위인지 확인하는 제약 애노테이션
+ * - Double 필드에 적용, null 은 허용(다른 제약으로 제한 가능)
+ */
 @Documented // javadoc 포함
 @Constraint(validatedBy = HalfStepValidator.class) // 이 어노테이션의 검증기 연결
 @Target({ ElementType.FIELD, ElementType.PARAMETER })  // 필드/파라미터에 부착 가능

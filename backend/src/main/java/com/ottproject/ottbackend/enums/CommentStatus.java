@@ -3,7 +3,7 @@ package com.ottproject.ottbackend.enums;
 // ========== 댓글 상태 enum ==========
 
 /**
- * 댓글 상태를 나타내는 enum
+ * 댓글 상태
  */
 public enum CommentStatus {
     ACTIVE("활성"),      // 정상 상태

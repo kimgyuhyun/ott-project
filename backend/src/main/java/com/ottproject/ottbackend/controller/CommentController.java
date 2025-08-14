@@ -15,6 +15,11 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+/**
+ * 댓글 컨트롤러
+ * - 리뷰 하위 댓글 컬렉션: 생성/목록/상태변경/일괄삭제
+ * - 개별 댓글: 수정/삭제/신고/좋아요/대댓글
+ */
 @RequiredArgsConstructor // final 필드 기반 생성자 자동 생성
 @RestController
 @RequestMapping("/api/reviews/{reviewId}/comments") // 리뷰 상세 하위: 댓글 컬렉션 경로

@@ -6,16 +6,16 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 /**
- * ContentOrRatingRequired 에노테이션의 실제 검증 로직
+ * ContentOrRatingRequired 애노테이션의 실제 검증 로직
  * - create/update 두 DTO 모두 지원
  */
 public class ContentOrRatingRequiredValidator implements ConstraintValidator<ContentOrRatingRequired, Object> {
     @Override
     public boolean isValid(Object value, ConstraintValidatorContext context) {
-        if (value == null) return true; // null 객체는 다른 @NotNUll 에서 걸리도록 통과
+        if (value == null) return true; // null 객체는 다른 @NotNull 에서 걸리도록 통과
 
         // 생성 요청 DTO 처리
-        if (value instanceof CreateReviewRequestDto dto) {
+        if (value instanceof com.ottproject.ottbackend.dto.CreateReviewRequestDto dto) {
             String content = dto.getContent();
             Double rating = dto.getRating();
 
@@ -26,7 +26,7 @@ public class ContentOrRatingRequiredValidator implements ConstraintValidator<Con
         }
 
         // 수정 요청 DTO 처리(의도: no-op 업데이트 방지)
-        if (value instanceof UpdateReviewRequestDto dto) {
+        if (value instanceof com.ottproject.ottbackend.dto.UpdateReviewRequestDto dto) {
             String content = dto.getContent();
             Double rating = dto.getRating();
 

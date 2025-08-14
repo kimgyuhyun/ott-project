@@ -5,6 +5,10 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+/**
+ * 마이페이지 찜 목록 항목 DTO
+ * - 작품 기본 정보 + 찜한 시각
+ */
 @Getter
 @Setter
 @Builder
