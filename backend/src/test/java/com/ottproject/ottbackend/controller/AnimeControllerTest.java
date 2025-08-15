@@ -1,8 +1,8 @@
 package com.ottproject.ottbackend.controller; // 패키지 선언
 
-import com.ottproject.ottbackend.entity.AniList;
+import com.ottproject.ottbackend.entity.AnimeList;
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import com.ottproject.ottbackend.repository.AniListRepository;
+import com.ottproject.ottbackend.repository.AnimeListRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -21,23 +21,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false) // MockMvc 주입 + 보안 필터 비활성화(인증 없이 호출)
 @ActiveProfiles("test") // 테스트 프로파일(H2 등) 사용
 @Transactional // 각 테스트 종료 시 롤백(데이터 격리)
-class AniControllerTest { // AniController 통합 테스트 클래스
+class AnimeControllerTest { // AnimeController 통합 테스트 클래스
 
     @Autowired // 스프링이 MockMvc 빈을 주입(실제 MVC 파이프라인 호출)
     private MockMvc mockMvc; // HTTP 요청/응답 모킹 도구
 
     @Autowired // 스프링이 레포지토리 빈을 주입(JPA 로 시드 데이터 저장)
-    private AniListRepository aniListRepository; // 목록 시드/검증용 JPA 레포지토리
+    private AnimeListRepository animeListRepository; // 목록 시드/검증용 JPA 레포지토리
 
-    private AniList seedAni( // 목록 API 가 조회할 애니 시드 데이터 생성
-                             String title, // 제목
-                             AnimeStatus status, // 방영 상태
-                             double rating, // 평점
-                             int year, // 연도
-                             boolean isPopular // 인기 여부
+    private AnimeList seedAni( // 목록 API 가 조회할 애니 시드 데이터 생성
+                               String title, // 제목
+                               AnimeStatus status, // 방영 상태
+                               double rating, // 평점
+                               int year, // 연도
+                               boolean isPopular // 인기 여부
     ) {
-        return aniListRepository.save( // JPA 저장(커밋 전 롤백 예정)
-                AniList.builder() // 엔티티 빌더 시작
+        return animeListRepository.save( // JPA 저장(커밋 전 롤백 예정)
+                AnimeList.builder() // 엔티티 빌더 시작
                         .title(title) // 제목
                         .posterUrl("http://img") // 포스터 URL(필수)
                         .totalEpisodes(12) // 총 화수(필수)

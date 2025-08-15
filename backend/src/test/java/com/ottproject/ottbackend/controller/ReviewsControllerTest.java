@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false) // 인증 필터 비활성화(HTTP 레이어를 단순화)
 @ActiveProfiles("test") // 테스트 프로파일(H2) 사용
 @Transactional // 각 테스트 종료 시 롤백 보장(테스트 간 데이터 격리)
-class ReviewControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 시작
+class ReviewsControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 시작
 
     @Autowired private MockMvc mockMvc; // HTTP 요청/응답 모킹 도구 주입
     @Autowired private UserRepository userRepository; // 사용자 JPA 레포지토리(시드/검증)
@@ -191,4 +191,4 @@ class ReviewControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 �
                 .andExpect(status().isOk()) // 200
                 .andExpect(content().string("false")); // false(off)
     } // toggleReviewLike_ok 끝
-} // ReviewControllerTest 끝
+} // ReviewsControllerTest 끝

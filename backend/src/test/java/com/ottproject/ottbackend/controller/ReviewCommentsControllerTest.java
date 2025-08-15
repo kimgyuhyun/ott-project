@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false) // 인증 필터 비활성화
 @ActiveProfiles("test") // 테스트 프로파일 사용(H2)
 @Transactional // 각 테스트 케이스 종료 후 롤백
-class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 클래스
+class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 클래스
 
     @Autowired private MockMvc mockMvc; // HTTP 호출 도구
     @Autowired private UserRepository userRepository; // 사용자 시드/검증
@@ -274,4 +274,4 @@ class CommentControllerTest { // 댓글/대댓글 컨트롤러 통합 테스트 
                 .andExpect(status().isOk()) // 200
                 .andExpect(jsonPath("$.items[0].id").value(c2)); // 좋아요 더 많은 c2가 첫 번째
     } // comment_sort_best_ok 끝
-} // CommentControllerTest 끝
+} // ReviewCommentsControllerTest 끝

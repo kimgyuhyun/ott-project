@@ -3,7 +3,7 @@ package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.*;
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import com.ottproject.ottbackend.mybatis.AniQueryMapper;
+import com.ottproject.ottbackend.mybatis.AnimeQueryMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,17 +17,17 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class) // Mockito 확장 활성화: @Mock/@InjectMocks 초기화 자동 수행
-class AniQueryServiceTest { //서비스 유닛 테스트(비즈니스 로직 검증)
+class AnimeQueryServiceTest { //서비스 유닛 테스트(비즈니스 로직 검증)
 
     @Mock // 테스트 중 실제 구현 대신 사용할 모의 객체 선언
-    private AniQueryMapper mapper; // DB 접근을 수행하는 MyBatis 매퍼를 모킹하여 DB 의존 제거
+    private AnimeQueryMapper mapper; // DB 접근을 수행하는 MyBatis 매퍼를 모킹하여 DB 의존 제거
 
     @InjectMocks // 서비스는 @InjectMocks 로 실제 메서드 동작
-    private AniQueryService service; // 비즈니스 로직을 가진 서비스(테스트 타깃)
+    private AnimeQueryService service; // 비즈니스 로직을 가진 서비스(테스트 타깃)
 
     @Test // 케이스1: 목록 조회 시 페이징 응답이 올바른지
     void 목록_조회_페이지응답() {
-        var item = AniListDto.builder() // 가짜 목록 아이템
+        var item = AnimeListDto.builder() // 가짜 목록 아이템
                 .aniId(1L).title("짱구") // 식별자/제목
                 .posterUrl("img.jpg") // 포스터
                 .rating(4.5).ratingCount(10) // 평점/평가 수
@@ -83,7 +83,7 @@ class AniQueryServiceTest { //서비스 유닛 테스트(비즈니스 로직 검
     
     @Test // 케이스2 상세 조회 시 연관 목록(에피소드/장르/제작사)이 세팅되는지
     void 상세_조회_연관목록_조립() {
-        var base = AniDetailDto.builder() // 상세/헤더/기본 정보 스텁
+        var base = AnimeDetailDto.builder() // 상세/헤더/기본 정보 스텁
                 .aniId(1L).detailId(10L).title("짱구")
                 .build(); // DTO 생성
         var episodes = List.of(EpisodeDto.builder() // 에피소드 리스트 스텁
