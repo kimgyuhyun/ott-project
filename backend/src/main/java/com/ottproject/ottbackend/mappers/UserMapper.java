@@ -1,6 +1,6 @@
 package com.ottproject.ottbackend.mappers; // 매퍼 패키지
 
-import com.ottproject.ottbackend.dto.RegisterRequestDto; // 가입 요청 DTO(입력 전용)
+import com.ottproject.ottbackend.dto.AuthRegisterRequestDto;
 import com.ottproject.ottbackend.dto.UserResponseDto;    // 사용자 응답 DTO(출력 전용)
 import com.ottproject.ottbackend.entity.User;            // 사용자 엔티티
 import org.mapstruct.*;                                  // MapStruct 애노테이션들
@@ -9,7 +9,7 @@ import java.util.List;                                   // 리스트 매핑용
 /**
  * User 매핑 규칙
  * - 출력: 엔티티 -> 응답 DTO(UserResponseDto)
- * - 입력: 가입 요청 DTO(RegisterRequestDto) -> 엔티티(User)
+ * - 입력: 가입 요청 DTO(AuthRegisterRequestDto) -> 엔티티(User)
  * - 민감/내부 필드(password, providerId 등)는 요청에서만 사용하거나 서비스에서 설정
  */
 @Mapper(
@@ -33,7 +33,7 @@ public interface UserMapper {
             @Mapping(target = "enabled", constant = "true")         // 계정 활성 기본 true
             // createdAt/updatedAt 등은 Auditing 으로 자동 처리 → 명시 불필요
     })
-    User fromRegister(RegisterRequestDto dto);              // RegisterRequestDto -> User
+    User fromRegister(AuthRegisterRequestDto dto);              // AuthRegisterRequestDto -> User
 
     // 참고:
     // - 응답 DTO(UserResponseDto) -> 엔티티 변환 메서드는 보안/정합성 문제로 제공하지 않음(의도적으로 비권장).
