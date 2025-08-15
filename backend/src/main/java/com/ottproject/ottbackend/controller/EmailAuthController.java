@@ -1,11 +1,11 @@
 package com.ottproject.ottbackend.controller;
 
+import com.ottproject.ottbackend.dto.AuthLoginRequestDto;
 import com.ottproject.ottbackend.dto.ChangePasswordRequestDto;
-import com.ottproject.ottbackend.dto.LoginRequestDto;
-import com.ottproject.ottbackend.dto.RegisterRequestDto;
+import com.ottproject.ottbackend.dto.AuthRegisterRequestDto;
 import com.ottproject.ottbackend.dto.UserResponseDto;
-import com.ottproject.ottbackend.service.AuthService;
-import com.ottproject.ottbackend.service.EmailService;
+import com.ottproject.ottbackend.service.EmailAuthService;
+import com.ottproject.ottbackend.service.VerificationEmailService;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,19 +27,19 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @RequestMapping("/api/auth") // 모든 엔드포인트의 기본 경로를 /api/auth 로 설정
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성
 @CrossOrigin(origins = "*") // CORS 설정 (개발용) - 모든 도메인에서의 요청 허용
-public class AuthController {
-    private final AuthService authService; // 인증 서비스 주입 (회원가입, 로그인 등 비즈니스 로직 처리
-    private final EmailService emailService; // 이메일 서비스 주입 (이메일 발송 처리)
+public class EmailAuthController {
+    private final EmailAuthService emailAuthService; // 인증 서비스 주입 (회원가입, 로그인 등 비즈니스 로직 처리
+    private final VerificationEmailService verificationEmailService; // 이메일 서비스 주입 (이메일 발송 처리)
 
     // 회원가입 API 엔드포인트 - POST /api/auth/register
     @Operation(summary = "회원가입", description = "이메일/비밀번호/프로필 정보로 신규 계정을 생성합니다.")
     @ApiResponse(responseCode = "200", description = "성공",
             content = @Content(schema = @Schema(implementation = UserResponseDto.class)))
     @PostMapping("/register")
-    public ResponseEntity<UserResponseDto> register(@Valid @RequestBody RegisterRequestDto requestDto) {
+    public ResponseEntity<UserResponseDto> register(@Valid @RequestBody AuthRegisterRequestDto requestDto) {
         //@Valid 로 입력 데이터 유효성 검증 (이메일 형식, 비밀번호 길이 등)
         //@RequestBody 로 JSON 형태의 요청 데이터를 DTO 객체로 변환
-        UserResponseDto responseDto = authService.register(requestDto); // AuthService 를 통해 회원가입 처리
+        UserResponseDto responseDto = emailAuthService.register(requestDto); // EmailAuthService 를 통해 회원가입 처리
         return ResponseEntity.ok(responseDto); // 200 OK 상태코드와 함께 생성된 사용자 정보 반환(비밀번호 제외)
     }
 
@@ -49,7 +49,7 @@ public class AuthController {
     @GetMapping("/check-email")
     public ResponseEntity<Boolean> checkEmailDuplicate(@Parameter(description = "이메일") @RequestParam String email) {
         //RequestParam 으로 URL 파라미터로 전달된 이메일을 받음
-        boolean isDuplicate = authService.checkEmailDuplicate(email); // 이메일 중복 확인 처리
+        boolean isDuplicate = emailAuthService.checkEmailDuplicate(email); // 이메일 중복 확인 처리
         return ResponseEntity.ok(isDuplicate); // true: 중복된 이메일, false: 사용 가능한 이메일
     }
 
@@ -66,11 +66,11 @@ public class AuthController {
     @ApiResponse(responseCode = "200", description = "성공",
             content = @Content(schema = @Schema(implementation = UserResponseDto.class)))
     @PostMapping("/login")
-    public ResponseEntity<UserResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto, HttpSession session) {
+    public ResponseEntity<UserResponseDto> login(@Valid @RequestBody AuthLoginRequestDto requestDto, HttpSession session) {
         //@Valid 로 입력 데이터 유효성 검증 (이메일 형식, 필수 필드 등)
-        //@RequestBody 로 JSON 형태의 로그인 정보를 LoginRequestDto 객체로 변환
-        // LoginRequestDto: { "email": "test@example.com", "password": "123456" }
-        UserResponseDto responseDto = authService.login(requestDto.getEmail(), requestDto.getPassword()); // authService 를 통해 로그인 처리
+        //@RequestBody 로 JSON 형태의 로그인 정보를 AuthLoginRequestDto 객체로 변환
+        // AuthLoginRequestDto: { "email": "test@example.com", "password": "123456" }
+        UserResponseDto responseDto = emailAuthService.login(requestDto.getEmail(), requestDto.getPassword()); // emailAuthService 를 통해 로그인 처리
 
         // 로그인 성공 시 세션에 사용자 이메일 저장 (회원탈퇴, 비밀번호 변경 시 사용)
         session.setAttribute("userEmail", requestDto.getEmail()); // 세션에 사용자 이메일 저장
@@ -95,7 +95,7 @@ public class AuthController {
     @PostMapping("/send-verification-code")
     public ResponseEntity<String> sendVerificationCode(@Parameter(description = "이메일") @RequestParam String email) {
         // @RequestParam 으로 URL 파라미터로 전달된 이메일을 받음
-        emailService.sendVerificationEmail(email); // EmailService 를 통해 인증 코드 이메일 발송
+        verificationEmailService.sendVerificationEmail(email); // VerificationEmailService 를 통해 인증 코드 이메일 발송
         return ResponseEntity.ok("인증 코드가 발송되었습니다. 이메일을 확인해주세요."); // 200 OK 상태코드와 함께 발송 완료 메시지 반환
     }
 
@@ -109,7 +109,7 @@ public class AuthController {
     public ResponseEntity<String> verifyCode(@Parameter(description = "이메일") @RequestParam String email,
                                              @Parameter(description = "인증코드") @RequestParam String code) {
         // @RequestParam 으로 URL 파라미터로 전달된 이메일과 인증 코드를 받음
-        boolean isVerified = emailService.verifyCode(email, code); // EmailService 를 통해 인증 코드 확인
+        boolean isVerified = verificationEmailService.verifyCode(email, code); // VerificationEmailService 를 통해 인증 코드 확인
         if (isVerified) {
             return ResponseEntity.ok("이메일 인증이 완료되었습니다."); // 인증 성공 시 200 OK
         } else {
@@ -130,7 +130,7 @@ public class AuthController {
         if (userEmail == null) {
             return ResponseEntity.badRequest().body("로그인이 필요합니다."); // 로그인되지 않은 경우 400 bad Request
         }
-        authService.withdraw(userEmail); // authService 를 통해 회원탈퇴 처리
+        emailAuthService.withdraw(userEmail); // emailAuthService 를 통해 회원탈퇴 처리
         session.invalidate(); // 세션 무효화 (로그아웃 처리)
         return ResponseEntity.ok("회원탈퇴가 완료되었습니다."); // 200 OK 상태코드와 함께 탈퇴 완료 메시지 반환
     }
@@ -149,7 +149,7 @@ public class AuthController {
             return ResponseEntity.badRequest().body("로그인이 필요합니다."); // 로그인되지 않은 경우 400 bad Request
         }
 
-        authService.changePassword(userEmail, requestDto.getCurrentPassword(), requestDto.getNewPassword()); // AuthService 를 통해 비밀번호 변경 처리
+        emailAuthService.changePassword(userEmail, requestDto.getCurrentPassword(), requestDto.getNewPassword()); // EmailAuthService 를 통해 비밀번호 변경 처리
         return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다."); // 200 ok 상태코드와 함께 변경 완료
     }
 

@@ -2,7 +2,7 @@ package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.dto.SkipMetaResponseDto;
 import com.ottproject.ottbackend.dto.SkipUsageRequestDto;
-import com.ottproject.ottbackend.service.SkipService;
+import com.ottproject.ottbackend.service.PlayerSkipService;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -23,8 +23,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
  */
 @RestController // REST 컨트롤러
 @RequiredArgsConstructor // 생성자 주입
-public class SkipController { // 스킵 메타
-	private final SkipService service; private final SecurityUtil securityUtil; // 의존성
+public class PlayerSkipController { // 스킵 메타
+	private final PlayerSkipService service; private final SecurityUtil securityUtil; // 의존성
 
 	/**
 	 * 에피소드 스킵 메타 조회

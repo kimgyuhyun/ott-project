@@ -4,7 +4,7 @@ import com.ottproject.ottbackend.dto.CreateReviewRequestDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.ReviewResponseDto;
 import com.ottproject.ottbackend.dto.UpdateReviewRequestDto;
-import com.ottproject.ottbackend.service.ReviewService;
+import com.ottproject.ottbackend.service.ReviewsService;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
@@ -22,9 +22,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RequiredArgsConstructor // final 필드 기반 생성자 자동 생성(의존성 주입)
 @RestController // REST 컨트롤러로 등록(메서드 반환값을 JSON 으로 직렬화)
 @RequestMapping("/api/anime/{aniId}/reviews") // 상세 페이지 하위: 리뷰 컬렉션 경로
-public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨트롤러
+public class ReviewsController { // 리뷰 목록/작성/일괄삭제 담당 컨트롤러
 
-    private final ReviewService reviewService; // 비즈니스 로직을 담당하는 서비스 주입
+    private final ReviewsService reviewsService; // 비즈니스 로직을 담당하는 서비스 주입
     private final SecurityUtil securityUtil; // 세션 → 사용자 ID 해석 유틸
 
     @Operation(summary = "리뷰 목록", description = "특정 작품의 리뷰 목록을 페이지네이션으로 조회합니다.")
@@ -38,7 +38,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             HttpSession session // 세션(선택 로그인)
     ) {
         Long currentUserId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
-        return ResponseEntity.ok(reviewService.list(aniId, currentUserId, sort, page, size)); // 200 OK + 본문
+        return ResponseEntity.ok(reviewsService.list(aniId, currentUserId, sort, page, size)); // 200 OK + 본문
     }
 
     @Operation(summary = "리뷰 작성", description = "본문/평점을 입력해 리뷰를 작성합니다.")
@@ -50,7 +50,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             HttpSession session // 세션에서 사용자 확인
     ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        Long id = reviewService.create(userId, aniId, dto.getContent(), dto.getRating()); // 서비스 호출
+        Long id = reviewsService.create(userId, aniId, dto.getContent(), dto.getRating()); // 서비스 호출
         return ResponseEntity.ok(id); // 200 OK + 리뷰 ID
     }
 
@@ -60,7 +60,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
     public ResponseEntity<Void> deleteAllByAni( // 특정 애니의 리뷰 일괄 삭제(관리용)
             @Parameter(description = "애니 ID") @PathVariable Long aniId // 경로변수: 애니 ID
     ) {
-        reviewService.deleteHardByAniList(aniId); // 일괄 하드 삭제
+        reviewsService.deleteHardByAniList(aniId); // 일괄 하드 삭제
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 
@@ -73,7 +73,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             HttpSession session // 세션에서 사용자 확인
     ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        reviewService.update(reviewId, userId, dto.getContent(), dto.getRating()); // 서비스 위임
+        reviewsService.update(reviewId, userId, dto.getContent(), dto.getRating()); // 서비스 위임
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 
@@ -85,7 +85,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             HttpSession session // 세션에서 사용자 확인
     ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        reviewService.deleteSoft(reviewId, userId); // 상태 DELETED 전환
+        reviewsService.deleteSoft(reviewId, userId); // 상태 DELETED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 
@@ -97,7 +97,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             HttpSession session // 세션에서 사용자 확인
     ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        reviewService.report(reviewId, userId); // 상태 REPORTED 전환
+        reviewsService.report(reviewId, userId); // 상태 REPORTED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 
@@ -109,6 +109,6 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             HttpSession session // 세션에서 사용자 확인
     ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        return ResponseEntity.ok(reviewService.toggleLike(reviewId, userId)); // 200 OK + 토글 결과
+        return ResponseEntity.ok(reviewsService.toggleLike(reviewId, userId)); // 200 OK + 토글 결과
     }
 }
