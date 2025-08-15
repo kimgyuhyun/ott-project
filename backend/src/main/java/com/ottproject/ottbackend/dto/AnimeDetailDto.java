@@ -23,10 +23,10 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AniDetailDto {
+public class AnimeDetailDto {
 
     private Long aniId; // AniLIst.id (목록 식별자
-    private Long detailId; // aniDetail.id (상세 식별자)
+    private Long detailId; // animeDetail.id (상세 식별자)
 
     private String title; // 제목(한글)
     private String titleEn; // 제목(영문)
@@ -69,7 +69,7 @@ public class AniDetailDto {
     private String director; // 감독
 
     // 에피소드 집계
-    private Integer totalEpisodes; // 총 에피소드(AniList.total_episodes 에서 조인)
+    private Integer totalEpisodes; // 총 에피소드(AnimeList.total_episodes 에서 조인)
     private Integer currentEpisodes; // 현재 업로드 화수
     
     // 연관 목록

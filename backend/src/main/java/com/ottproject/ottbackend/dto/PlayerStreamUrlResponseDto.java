@@ -11,6 +11,6 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class StreamUrlResponseDto { // 스트림 URL 응답
+public class PlayerStreamUrlResponseDto { // 스트림 URL 응답
     private String url; // 서명된 master.m3u8 URL
 }

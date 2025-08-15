@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor // 기본 생성자
 @AllArgsConstructor // 전체 필드 생성자
-public class FavoriteAniDto { // 마이페이지 찜 목록 DTO
+public class FavoriteAnimeDto { // 마이페이지 찜 목록 DTO
     private Long aniId; // 애니 ID
     private String title; // 제목
     private String posterUrl; // 포스터 URL

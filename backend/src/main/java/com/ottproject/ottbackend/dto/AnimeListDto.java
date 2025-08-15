@@ -1,6 +1,5 @@
 package com.ottproject.ottbackend.dto;
 
-import com.ottproject.ottbackend.enums.AnimeStatus;
 import lombok.*;
 
 /**
@@ -12,7 +11,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AniListDto {
+public class AnimeListDto {
 
 	private Long aniId; // 애니 ID (목록용 기본 식별자)
 	private String title; // 제목(한글)

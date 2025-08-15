@@ -1,6 +1,5 @@
 package com.ottproject.ottbackend.dto;
 
-import com.ottproject.ottbackend.enums.CommentStatus;
 import lombok.*;
 
 /**
@@ -13,7 +12,7 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CommentResponseDto {
+public class ReviewCommentsResponseDto {
 
 	private Long id; // 댓글 ID
 	private Long reviewId; // 대상 리뷰 ID
