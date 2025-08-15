@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +39,8 @@ public class OAuth2Controller {
      *
      * @return 로그인 상태 정보
      */
+    @Operation(summary = "OAuth2 상태", description = "소셜 로그인 인증 상태와 로그인 URL을 제공합니다.")
+    @ApiResponse(responseCode = "200", description = "정상")
     @GetMapping("/status") // GET 요청 처리 - /api/oauth2/status 경로로 접근
     public ResponseEntity<Map<String, Object>> getOAuth2Status() { // HTTP 응답을 위한 ResponseEntity 반환
         log.info("OAuth2 로그인 상태 확인 요청"); // 로그 출력 - 요청 시작을 알림
@@ -86,6 +90,8 @@ public class OAuth2Controller {
      *
      * @return 소셜 로그인 URL들 (JSON 형태)
      */
+    @Operation(summary = "OAuth2 로그인 URL", description = "각 소셜 로그인 진입 URL을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "정상")
     @GetMapping("/login-urls") // GET 요청 처리 - /api/oauth2/login-urls 경로로 접근
     public ResponseEntity<Map<String, Object>> getOAuth2LoginUrls() { // HTTP 응답을 위한 ResponseEntity 반환
         log.info("OAuth2 로그인 URL 요청"); // 로그 출력 - 요청 시작을 알림
@@ -109,6 +115,8 @@ public class OAuth2Controller {
      *
      * @return 사용자 정보 (JSON 형태)
      */
+    @Operation(summary = "OAuth2 사용자 정보", description = "현재 인증된 소셜 사용자 정보를 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "정상")
     @GetMapping("/user-info") // GET 요청 처리 - /api/oauth2/user-info 경로로 접근
     public ResponseEntity<Map<String, Object>> getCurrentUserInfo() { // HTTP 응답을 위한 ResponseEntity 반환
         log.info("현재 사용자 정보 조회 요청"); // 로그 출력 - 요청 시작을 알림
@@ -153,6 +161,8 @@ public class OAuth2Controller {
      *
      * @return 로그아웃 결과 (JSON 형태)
      */
+    @Operation(summary = "OAuth2 로그아웃", description = "현재 인증 컨텍스트를 초기화합니다.")
+    @ApiResponse(responseCode = "200", description = "정상")
     @PostMapping("/logout") // POST 요청 처리 - /api/oauth2/logout 경로로 접근
     public ResponseEntity<Map<String, Object>> logout() { // HTTP 응답을 위한 ResponseEntity 반환
         log.info("OAuth2 로그아웃 요청"); // 로그 출력 - 요청 시작을 알림

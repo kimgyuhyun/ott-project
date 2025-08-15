@@ -9,6 +9,9 @@ import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 /**
  * 찜 컨트롤러
@@ -21,9 +24,11 @@ public class FavoriteController { // 찜 전용 컨트롤러
     private final AniQueryService aniQueryService; // 상세 조회(찜 여부 포함)
     private final com.ottproject.ottbackend.util.AuthUtil authUtil; // 세션 → userId 해석 유틸
 
+    @Operation(summary = "찜 토글", description = "작품 찜 상태를 토글합니다.")
+    @ApiResponse(responseCode = "200", description = "토글 결과 반환")
     @PostMapping("/api/anime/{aniId}/favorite") // 찜 토글 엔드포인트
     public ResponseEntity<Boolean> toggle( // true:on, false:off 응답
-                                           @PathVariable Long aniId, // 애니 ID
+                                           @Parameter(description = "애니 ID") @PathVariable Long aniId, // 애니 ID
                                            HttpSession session // 세션에서 사용자 확인
     ) {
         Long userId = authUtil.requireCurrentUserId(session); // 현재 사용자 ID 확인(401 처리)
@@ -31,6 +36,8 @@ public class FavoriteController { // 찜 전용 컨트롤러
         return ResponseEntity.ok(state); // 200 OK 반환
     }
 
+    @Operation(summary = "찜 목록", description = "마이페이지의 찜 목록을 페이지네이션으로 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/api/mypage/favorites/anime") // 마이페이지 내 찜 목록
     public ResponseEntity<PagedResponse<FavoriteAniDto>> list( // 페이지 응답
                                                                @RequestParam(defaultValue = "0") int page, // 페이지 번호
@@ -43,9 +50,11 @@ public class FavoriteController { // 찜 전용 컨트롤러
         return ResponseEntity.ok(body); // 200 OK
     }
 
+    @Operation(summary = "상세+찜 여부", description = "작품 상세 정보와 현재 사용자 찜 여부를 함께 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/api/anime/{aniId}/detail") // 상세(찜 여부 포함) 예시
     public ResponseEntity<AniDetailDto> detailWithFavorite( // 상세 + isFavorited
-                                                            @PathVariable Long aniId, // 애니 ID
+                                                            @Parameter(description = "애니 ID") @PathVariable Long aniId, // 애니 ID
                                                             HttpSession session // 세션에서 사용자 확인(옵션)
     ) {
         Long userId = authUtil.getCurrentUserIdOrNull(session); // 로그인 시 ID, 아니면 null
