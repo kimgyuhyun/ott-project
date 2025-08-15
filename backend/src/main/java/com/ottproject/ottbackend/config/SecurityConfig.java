@@ -28,7 +28,7 @@ import org.springframework.security.web.SecurityFilterChain;
 @Configuration // spring 설정 클래스
 @EnableWebSecurity // spring security 활성화
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성 (의존성 주입용)
-public class WebSecurityConfig {
+public class SecurityConfig {
 
     private final LocalUserDetailsService localUserDetailsService; // 기존 이메일 로그인용 사용자 서비스 주입
     private final OAuth2UserService OAuth2UserService; // OAuth2 소셜 로그인용 사용자 서비스 주입
