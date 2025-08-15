@@ -15,7 +15,7 @@ import java.util.Optional;
  * - 조회(R)는 MyBatis 에서 담당하고, 여기서는 쓰기(저장/수정/삭제)와 유효성 검증만 처리
  */
 @Repository // 스프링 컴포넌트 스캔 + JPA 예외 → Spring 표준 예외 변환
-public interface AniListRepository extends JpaRepository<AnimeList, Long> { // <엔티티, ID>
+public interface AnimeListRepository extends JpaRepository<AnimeList, Long> { // <엔티티, ID>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE) // 동일 레코드 동시 수정 방지(쓰기 락)
     @Query("select a from AnimeList a where a.id = :id") // JPQL 단건 조회(트랜잭션 내 호출)

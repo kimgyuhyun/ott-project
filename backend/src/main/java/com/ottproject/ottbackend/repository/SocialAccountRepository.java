@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository // 스프링 컴포넌트 스캔
-public interface UserSocialAccountRepository extends JpaRepository<SocialAccount, Long> { // 연동 리포지토리
+public interface SocialAccountRepository extends JpaRepository<SocialAccount, Long> { // 연동 리포지토리
     Optional<SocialAccount> findByProviderAndProviderId(AuthProvider provider, String providerId); // 1건 조회
     List<SocialAccount> findByUser(User user); // 사용자에 연결된 모든 연동
     boolean existsByUserAndProvider(User user, AuthProvider provider); // 이미 연동 여부

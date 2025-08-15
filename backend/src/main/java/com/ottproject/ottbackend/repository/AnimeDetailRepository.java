@@ -17,7 +17,7 @@ import java.util.Optional;
  * - 조회(R)는 MyBatis 매퍼에서 DTO 로 반환
  */
 @Repository
-public interface AniDetailRepository extends JpaRepository<AnimeDetail, Long> { // CUD 전용
+public interface AnimeDetailRepository extends JpaRepository<AnimeDetail, Long> { // CUD 전용
 
     @Lock(LockModeType.PESSIMISTIC_WRITE) // 수정/삭제 직전 충돌 방지
     @Query("select d from AnimeDetail d where d.id = :id") // 잠금용 단건 조회
