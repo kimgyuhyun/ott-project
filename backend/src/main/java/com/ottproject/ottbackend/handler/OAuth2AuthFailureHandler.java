@@ -28,7 +28,7 @@ import java.util.Map;
 @Slf4j // Lombok 로깅 어노테이션 - log 객체 자동 생성
 @Component // Spring Bean으로 등록
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성
-public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler { // SimpleUrlAuthenticationSuccessHandler 상속
+public class OAuth2AuthFailureHandler extends SimpleUrlAuthenticationSuccessHandler { // SimpleUrlAuthenticationSuccessHandler 상속
 
     private final ObjectMapper objectMapper; // JSON 변환용 객체 주입
 
