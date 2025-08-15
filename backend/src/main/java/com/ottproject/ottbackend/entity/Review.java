@@ -37,5 +37,5 @@ public class Review {
     private User user; // 리뷰 작성자
 
     @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계, 지연 로딩
-    private AniList aniList; // 리뷰가 달린 애니
+    private AnimeList animeList; // 리뷰가 달린 애니
 }

@@ -19,7 +19,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class) // 생성 시각 자동 기록
-public class UserSocialAccount { // 소셜 계정 연동 엔티티
+public class SocialAccount { // 소셜 계정 연동 엔티티
 
     @Id // 기본키
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가

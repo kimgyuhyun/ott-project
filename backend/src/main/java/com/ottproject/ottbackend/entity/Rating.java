@@ -34,7 +34,7 @@ public class Rating {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ani_list_id")
-    private AniList aniList; // 평점을 달린 애니
+    private AnimeList animeList; // 평점을 달린 애니
 
     
     @CreatedDate

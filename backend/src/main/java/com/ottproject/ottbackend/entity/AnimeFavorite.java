@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor // 기본 생성자
 @AllArgsConstructor // 전체 필드 생성자
 @EntityListeners(AuditingEntityListener.class) // 생성 시각 자동 기록
-public class AniFavorite { // 애니 찜 엔티티
+public class AnimeFavorite { // 애니 찜 엔티티
     @Id // 기본키
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가
     private Long id; // PK

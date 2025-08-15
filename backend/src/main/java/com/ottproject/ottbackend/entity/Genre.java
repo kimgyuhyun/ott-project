@@ -54,11 +54,11 @@ public class Genre {
     // ===== 연관관계 매핑
 
     /**
-     * AniList 와의 다대다 관계
+     * AnimeList 와의 다대다 관계
      * 하나의 장르는 여러 애니에 속할 수 있고, 하나의 애니는 여러 장르를 가질 수 있음
-     * mappedBy: AniList 엔티티에서 관리하는 관계 필드명
+     * mappedBy: AnimeList 엔티티에서 관리하는 관계 필드명
      */
     @ManyToMany(mappedBy = "genres", fetch = FetchType.LAZY) // 다대다 관계, 지연 로딩
     @Builder.Default
-    private Set<AniList> aniLists = new HashSet<>(); // 해당 장르를 가진 애니목록
+    private Set<AnimeList> animeLists = new HashSet<>(); // 해당 장르를 가진 애니목록
 }

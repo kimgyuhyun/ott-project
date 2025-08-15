@@ -21,7 +21,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class AniDetail {
+public class AnimeDetail {
 
     @Id // 기본키 설정
     @GeneratedValue(strategy = GenerationType.AUTO) // 자동 증가 전략
@@ -31,8 +31,8 @@ public class AniDetail {
 
     /**
      * AnimeList 와의 일대일 관계
-     * 하나의 AnimeList 는 하나의 AniDetail 을 가짐
-     * 외래키를 AniDetail 에서 관리 (주인)
+     * 하나의 AnimeList 는 하나의 AnimeDetail 을 가짐
+     * 외래키를 AnimeDetail 에서 관리 (주인)
      */
     @OneToOne(fetch = FetchType.LAZY) // 일대일 관계, 지연 로딩
     @JoinColumn(name = "ani_list_id", nullable = false, unique = true) // 외래키 설정, null 불허, 고유값
@@ -68,9 +68,9 @@ public class AniDetail {
     // ===== 에피소드 관련 =====
     /**
      * 에피소드와의 일대다 관계
-     * 하나의 AniDetail 은 여러 에피소드를 가짐
+     * 하나의 AnimeDetail 은 여러 에피소드를 가짐
      */
-    @OneToMany(mappedBy = "aniDetail", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // 일대다 관계, cascade 로 연쇄 삭제, 지연 로딩
+    @OneToMany(mappedBy = "animeDetail", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // 일대다 관계, cascade 로 연쇄 삭제, 지연 로딩
     @Builder.Default
     private java.util.List<Episode> episodes = new java.util.ArrayList<>(); // 에피소드 목록
 
@@ -100,8 +100,8 @@ public class AniDetail {
     public void setAnimeList(AnimeList animeList) {
         this.animeList = animeList;
         // 양방향 관계 설정
-        if (animeList != null && animeList.getAniDetail() != this) {
-            animeList.setAniDetail(this);
+        if (animeList != null && animeList.getAnimeDetail() != this) {
+            animeList.setAnimeDetail(this);
         }
     }
 
@@ -127,7 +127,7 @@ public class AniDetail {
      */
     public void addEpisode(Episode episode) {
         this.episodes.add(episode);
-        episode.setAniDetail(this); // 양방향 관계 설정
+        episode.setAnimeDetail(this); // 양방향 관계 설정
     }
 
     /**
@@ -136,7 +136,7 @@ public class AniDetail {
      */
     public void removeEpisode(Episode episode) {
         this.episodes.remove(episode);
-        episode.setAniDetail(null); // 양방향 관계 해제
+        episode.setAnimeDetail(null); // 양방향 관계 해제
     }
 
 }

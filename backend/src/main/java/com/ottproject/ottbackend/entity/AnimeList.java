@@ -18,7 +18,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @NoArgsConstructor // 기본 생성자 생성
 @AllArgsConstructor // 모든 필드 생성자 생성
 @EntityListeners(AuditingEntityListener.class) // JPA Auditing 기능 활성화
-public class AniList {
+public class AnimeList {
 	@Id // 기본키
 	@GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가 전략
 	private Long id; // 애니 고유 ID
@@ -124,7 +124,7 @@ public class AniList {
 	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 지연 로딩, 영속성 전이 설정
 	@JoinTable(
 			name = "ani_list_genres", // 중간 테이블명
-			joinColumns = @JoinColumn(name = "ani_list_id", referencedColumnName = "id"), // 현재 엔티티(AniList)의 외래키
+			joinColumns = @JoinColumn(name = "ani_list_id", referencedColumnName = "id"), // 현재 엔티티(AnimeList)의 외래키
 			inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id" ), // 연관 엔티티(Genre)의 외래키
 			uniqueConstraints = @UniqueConstraint(columnNames = {"ani_list_id", "genre_id"}) // 복합 유니크 제약 조건
 	)
@@ -152,7 +152,7 @@ public class AniList {
 	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 지연 로딩, 영속성 전이 설정
 	@JoinTable(
 			name = "ani_list_studios", // 중간 테이블명
-			joinColumns = @JoinColumn(name = "ani_list_id", referencedColumnName = "id"), // 현재 엔티티(AniList)의 외래키
+			joinColumns = @JoinColumn(name = "ani_list_id", referencedColumnName = "id"), // 현재 엔티티(AnimeList)의 외래키
 			inverseJoinColumns = @JoinColumn(name = "studio_id", referencedColumnName = "id"), // 연관 엔티티(Studio)의 외래키
 			uniqueConstraints = @UniqueConstraint(columnNames = {"ani_list_id", "studio_id"}) // 복합 유니크 제약조건
 	)
@@ -160,11 +160,11 @@ public class AniList {
 	private java.util.Set<Studio> studios = new java.util.HashSet<>(); // 제작사 목록 (Set 으로 중복 방지)
 
 	/**
-	 * AniDetail 과의 일대일 관계
-	 * 하나의 AniList 는 하나의 AniDetail 을 가짐 (상세 정보)
+	 * AnimeDetail 과의 일대일 관계
+	 * 하나의 AnimeList 는 하나의 AnimeDetail 을 가짐 (상세 정보)
 	 */
-	@OneToOne(mappedBy = "aniList", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // 일대일 관계, cascade 연쇄, 지연 로딩
-	private AniDetail aniDetail; // 상세 정보
+	@OneToOne(mappedBy = "animeList", cascade = CascadeType.ALL, fetch = FetchType.LAZY) // 일대일 관계, cascade 연쇄, 지연 로딩
+	private AnimeDetail animeDetail; // 상세 정보
 
 	// ===== 편의 메서드 =====
 	/**
@@ -173,7 +173,7 @@ public class AniList {
 	 */
 	public void addGenre(Genre genre) {
 		this.genres.add(genre);
-		genre.getAniLists().add(this); // 양방향 관계 설정
+		genre.getAnimeLists().add(this); // 양방향 관계 설정
 	}
 
 	/**
@@ -182,7 +182,7 @@ public class AniList {
 	 */
 	public void removeGenre(Genre genre) {
 		this.genres.remove(genre);
-		genre.getAniLists().remove(this); // 양방향 관계 해제
+		genre.getAnimeLists().remove(this); // 양방향 관계 해제
 	}
 
 	/**
@@ -191,7 +191,7 @@ public class AniList {
 	 */
 	public void addStudio(Studio studio) {
 		this.studios.add(studio);
-		studio.getAniLists().add(this); // 양방향 관계 설정
+		studio.getAnimeLists().add(this); // 양방향 관계 설정
 	}
 
 	/**
@@ -200,7 +200,7 @@ public class AniList {
 	 */
 	public void removeStudio(Studio studio) {
 		this.studios.remove(studio);
-		studio.getAniLists().remove(this); // 양방향 관계 해제
+		studio.getAnimeLists().remove(this); // 양방향 관계 해제
 	}
 
 }
