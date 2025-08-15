@@ -17,7 +17,8 @@ public interface AniQueryMapper { // 목록 상세/연관 조회 정의
     // 목록 조회
     List<AniListDto> findAniList( // 목록 조회 // 카드 그리드 데이터
             @Param("status") AnimeStatus status, // 상태 필터(ENUM) // DB 문자열과 매칭
-            @Param("genreId") Long genreId, // 장르 필터 // 조인 사용
+            @Param("genreIds") List<Long> genreIds, // 장르 다중 AND 필터
+            @Param("genreCount") Integer genreCount, // AND 개수 매핑용
             @Param("minRating") Double minRating, // 최소 평점
             @Param("year") Integer year, // 방영 연도
             @Param("isDub") Boolean isDub, // 더빙 여부
@@ -33,7 +34,8 @@ public interface AniQueryMapper { // 목록 상세/연관 조회 정의
 
     long countAniList( // 목록 총 개수 // 페이지네이션용
             @Param("status") AnimeStatus status, // 위와 동일 필터들
-            @Param("genreId") Long genreId,
+            @Param("genreIds") List<Long> genreIds, // 장르 다중 AND 필터
+            @Param("genreCount") Integer genreCount, // AND 개수 매핑용
             @Param("minRating") Double minRating,
             @Param("year") Integer year,
             @Param("isDub") Boolean isDub,

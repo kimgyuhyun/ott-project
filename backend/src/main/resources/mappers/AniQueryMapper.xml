@@ -12,8 +12,17 @@
     <!-- 목록 조회용 공통 FROM/JOIN 블록 -->
     <sql id="base_list_from"> <!-- 다른 쿼리에서 include 로 재사용 -->
         FROM ani_list a <!-- FROM: 작품 목록 테이블 a 에서 시작 -->
-        <if test="genreId != null"> <!-- 입력 파라미터 genreId 가 있으면 장르로 필터링 → 성능을 위해 조건부 조인 -->
-            JOIN ani_list_genres ag ON ag.ani_list_id = a.id AND ag.genre_id = #{genreId} <!-- JOIN: 장르 중간 테이블에서 대상 장르(#{genreId})만 매칭 -->
+        <if test="genreCount != null and genreCount &gt; 0"> <!-- genreIds 가 1개 이상일 때만 장르 AND 필터 적용 -->
+            JOIN ( <!-- 장르 AND 매칭된 작품들만 추출하는 서브쿼리 -->
+                SELECT ag.ani_list_id <!-- 작품 ID -->
+                FROM ani_list_genres ag <!-- 작품 장르 매핑 테이블 -->
+                WHERE ag.genre_id IN <!-- 선택된 장르 집합에 속하는 행만 -->
+                <foreach collection="genreIds" item="gid" open="(" close=")" separator=","> <!-- IN 절 값 바인딩 -->
+                    #{gid} <!-- 단일 장르 ID 바인딩 -->
+                </foreach>
+                GROUP BY ag.ani_list_id <!-- 작품별로 집계 -->
+                HAVING COUNT(DISTINCT ag.genre_id) = #{genreCount} <!-- 모든 선택 장르를 모두 포함한 작품만 남김(AND) -->
+            ) gf ON gf.ani_list_id = a.id <!-- 서브 쿼리 결과와 메인 테이블 조인 -->
         </if>
     </sql>
 
@@ -33,14 +42,14 @@
 
     <!--
       목록 데이터 조회
-      - SELECT: 카드에 필요한 최소 컬럼들을 alias로 DTO 필드에 매핑
+      - SELECT: 카드에 필요한 최소 컬럼들을 alias 로 DTO 필드에 매핑
       - FROM: ani_list a (+ 선택 장르 조인)
       - WHERE: 활성 작품 + 선택적 필터(status/minRating/year/배지들)
       - ORDER BY: sort 파라미터에 따른 분기(평점/연도/인기/기본)
       - LIMIT/OFFSET: 페이지네이션
     -->
-    <!-- 파라미터: {status, genreId, minRating, year, isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular, sort, limit, offset} -->
-    <select id="findAniList" resultType="com.ottproject.ottbackend.dto.AniListDto"> <!-- DTO로 자동 매핑 -->
+    <!-- 파라미터: {status, genreIds, getCount, minRating, year, isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular, sort, limit, offset} -->
+    <select id="findAniList" resultType="com.ottproject.ottbackend.dto.AniListDto"> <!-- DTO 로 자동 매핑 -->
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
         a.title AS title, <!-- DTO.title -->
@@ -56,7 +65,7 @@
         a.status AS animeStatus, <!-- DTO.animeStatus(enum) -->
         a.year AS year, <!-- DTO.year -->
         a.type AS type <!-- DTO.type -->
-        <include refid="base_list_from"/> <!-- FROM ani_list a (+ 장르 필터가 있으면 중간테이블 조인) -->
+        <include refid="base_list_from"/> <!-- FROM ani_list a (+ 장르 AND 필터 서브쿼리 조인) -->
         <include refid="base_list_where"/> <!-- WHERE 활성 + 전달된 필터 조건들 결합 -->
         ORDER BY
         <choose> <!-- 정렬 분기: sort 파라미터가 rating/year/popular 인지에 따라 주요 키 선택, 보조키는 최신순(id DESC) -->
