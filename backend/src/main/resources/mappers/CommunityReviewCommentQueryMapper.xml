@@ -3,11 +3,11 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- MyBatis DTD -->
 
 <!--
-  Mapper: ReviewCommentQueryMapper
+  Mapper: CommunityReviewCommentQueryMapper
   - 리뷰 목록/단건/총개수 + 댓글/대댓글 목록/총개수 조회
   - 현재 사용자 좋아요 여부 계산 포함
 -->
-<mapper namespace="com.ottproject.ottbackend.mybatis.ReviewCommentQueryMapper">  <!-- 인터페이스 FQCN -->
+<mapper namespace="com.ottproject.ottbackend.mybatis.CommunityReviewCommentQueryMapper">  <!-- 인터페이스 FQCN -->
 
     <!-- =====
             리뷰 공통 SELECT 컬럼 묶음
@@ -40,27 +40,27 @@
     <!-- =====
     댓글/대댓글 공통 SELECT 컬럼 묶음
     - 댓글 기본 정보 + 작성자 정보 + 대댓글 개수 + 좋아요 개수 + 현재 사용자 좋아요 여부
-    - resultType: CommentResponseDto 필드명과 alias 일치
+    - resultType: ReviewCommentsResponseDto 필드명과 alias 일치
     ===== -->
     <sql id="comment_select_columns">
-        c.id AS id, <!-- CommentResponseDto.id -->
-        c.review_id AS reviewId, <!-- CommentResponseDto.reviewId -->
-        c.parent_id AS parentId, <!-- CommentResponseDto.parentId -->
-        u.id AS userId, <!-- CommentResponseDto.userId -->
-        u.name AS userName, <!-- CommentResponseDto.userName -->
-        c.content AS content, <!-- CommentResponseDto.content -->
-        c.status AS commentStatus, <!-- CommentResponseDto.commentStatus(enum) -->
+        c.id AS id, <!-- ReviewCommentsResponseDto.id -->
+        c.review_id AS reviewId, <!-- ReviewCommentsResponseDto.reviewId -->
+        c.parent_id AS parentId, <!-- ReviewCommentsResponseDto.parentId -->
+        u.id AS userId, <!-- ReviewCommentsResponseDto.userId -->
+        u.name AS userName, <!-- ReviewCommentsResponseDto.userName -->
+        c.content AS content, <!-- ReviewCommentsResponseDto.content -->
+        c.status AS commentStatus, <!-- ReviewCommentsResponseDto.commentStatus(enum) -->
         (
         SELECT COUNT(1) <!-- 대댓글 수 -->
         FROM comments c2
         WHERE c2.parent_id = c.id
         AND c2.status = 'ACTIVE'
-        ) AS repliesCount, <!-- CommentResponseDto.repliesCount -->
+        ) AS repliesCount, <!-- ReviewCommentsResponseDto.repliesCount -->
         (
         SELECT COUNT(1) <!-- 댓글 좋아요 수 -->
         FROM comment_likes cl
         WHERE cl.comment_id = c.id
-        ) AS likeCount, <!-- CommentResponseDto.likeCount -->
+        ) AS likeCount, <!-- ReviewCommentsResponseDto.likeCount -->
         (
         CASE WHEN #{currentUserId} IS NOT NULL AND EXISTS (
         SELECT 1
@@ -68,7 +68,7 @@
         WHERE cl2.comment_id = c.id AND cl2.user_id = #{currentUserId} <!-- 현재 사용자 좋아요 여부 -->
         )
         THEN TRUE ELSE FALSE END
-        ) AS isLikedByCurrentUser <!-- CommentResponseDto.isLikedByCurrentUser -->
+        ) AS isLikedByCurrentUser <!-- ReviewCommentsResponseDto.isLikedByCurrentUser -->
     </sql>
 
     <!-- =====
@@ -129,7 +129,7 @@
     - 오래된 순 정렬(스레드 가독성)
     - 페이징 지원
     ===== -->
-    <select id="findCommentsByReviewId" resultType="com.ottproject.ottbackend.dto.CommentResponseDto">
+    <select id="findCommentsByReviewId" resultType="com.ottproject.ottbackend.dto.ReviewCommentsResponseDto">
         SELECT <!-- SELECT: 댓글 표시 컬럼 묶음 사용 -->
         <include refid="comment_select_columns"/> <!-- include: 공통 SELECT 컬럼(대댓글 수/좋아요/현재 사용자 좋아요 여부 포함) 삽입 -->
         FROM comments c <!-- 댓글 테이블 -->
@@ -166,7 +166,7 @@
     - ACTIVE 상태만
     - 오래된 순 정렬
     ===== -->
-    <select id="findRepliesByParentId" resultType="com.ottproject.ottbackend.dto.CommentResponseDto">
+    <select id="findRepliesByParentId" resultType="com.ottproject.ottbackend.dto.ReviewCommentsResponseDto">
         SELECT <!-- SELECT: 대댓글 표시 컬럼 묶음 사용 -->
         <include refid="comment_select_columns"/> <!-- include: 공통 SELECT 컬럼 삽입 -->
         FROM comments c <!-- 댓글 테이블 -->
@@ -175,5 +175,5 @@
         AND c.status = 'ACTIVE' <!-- 활성 대댓글만 -->
         ORDER BY c.id ASC <!-- 오래된 순 -->
     </select>
-<!-- end of ReviewCommentQueryMapper -->
+<!-- end of CommunityReviewCommentQueryMapper -->
 </mapper>

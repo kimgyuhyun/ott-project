@@ -2,12 +2,12 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- MyBatis DTD 참조 -->
 
 <!--
-  Mapper: AniQueryMapper
+  Mapper: AnimeQueryMapper
   - 목록/상세/연관(에피소드/장르/제작사) 조회 전용 MyBatis 매퍼
   - Snake_case 컬럼 → camelCase DTO 필드로 alias 매핑
   - 파라미터: 상태/장르/필터/정렬/페이징(limit/offset)
 -->
-<mapper namespace="com.ottproject.ottbackend.mybatis.AniQueryMapper"> <!-- 인터페이스 FQCN 과 매핑 -->
+<mapper namespace="com.ottproject.ottbackend.mybatis.AnimeQueryMapper"> <!-- 인터페이스 FQCN 과 매핑 -->
 
     <!-- 목록 조회용 공통 FROM/JOIN 블록 -->
     <sql id="base_list_from"> <!-- 다른 쿼리에서 include 로 재사용 -->
@@ -59,7 +59,7 @@
       - LIMIT/OFFSET: 페이지네이션
     -->
     <!-- 파라미터: {status, genreIds, getCount, minRating, year, isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular, sort, limit, offset} -->
-    <select id="findAniList" resultType="com.ottproject.ottbackend.dto.AniListDto"> <!-- DTO 로 자동 매핑 -->
+    <select id="findAniList" resultType="com.ottproject.ottbackend.dto.AnimeListDto"> <!-- DTO 로 자동 매핑 -->
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
         a.title AS title, <!-- DTO.title -->
@@ -116,7 +116,7 @@
       - FROM ani_detail d JOIN ani_list a (1:1)
       - WHERE a.id = #{aniId}
     -->
-    <select id="findAniDetailByAniId" resultType="com.ottproject.ottbackend.dto.AniDetailDto"> <!-- 단건 DTO -->
+    <select id="findAniDetailByAniId" resultType="com.ottproject.ottbackend.dto.AnimeDetailDto"> <!-- 단건 DTO -->
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
         d.id AS detailId, <!-- DTO.detailId -->
@@ -231,7 +231,7 @@
       - FROM ani_detail d JOIN ani_list a (+ 로그인 시 LEFT JOIN ani_favorites f)
       - WHERE a.id = #{aniId}
     -->
-    <select id="findAniDetailByAniIdWithUser" resultType="com.ottproject.ottbackend.dto.AniDetailDto"> <!-- 상세 + 찜 여부 동시 조회 -->
+    <select id="findAniDetailByAniIdWithUser" resultType="com.ottproject.ottbackend.dto.AnimeDetailDto"> <!-- 상세 + 찜 여부 동시 조회 -->
         SELECT /* 헤더 기본 컬럼들 */
         a.id AS aniId, <!-- DTO.aniId -->
         d.id AS detailId, <!-- DTO.detailId -->
@@ -292,5 +292,5 @@
         WHERE a.id = #{aniId} <!-- 대상 aniId -->
     </select>
 
-<!-- end of AniQueryMapper -->
+<!-- end of AnimeQueryMapper -->
 </mapper>
