@@ -11,6 +11,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 /**
  * 인증/계정 컨트롤러
@@ -26,6 +32,9 @@ public class AuthController {
     private final EmailService emailService; // 이메일 서비스 주입 (이메일 발송 처리)
 
     // 회원가입 API 엔드포인트 - POST /api/auth/register
+    @Operation(summary = "회원가입", description = "이메일/비밀번호/프로필 정보로 신규 계정을 생성합니다.")
+    @ApiResponse(responseCode = "200", description = "성공",
+            content = @Content(schema = @Schema(implementation = UserResponseDto.class)))
     @PostMapping("/register")
     public ResponseEntity<UserResponseDto> register(@Valid @RequestBody RegisterRequestDto requestDto) {
         //@Valid 로 입력 데이터 유효성 검증 (이메일 형식, 비밀번호 길이 등)
@@ -35,20 +44,27 @@ public class AuthController {
     }
 
     // 이메일 중복 확인 API 엔드포인트 - GET /api/auth/check-email?email=test@example.com
+    @Operation(summary = "이메일 중복 확인", description = "주어진 이메일이 사용 중인지 여부 반환")
+    @ApiResponse(responseCode = "200", description = "중복 여부 반환")
     @GetMapping("/check-email")
-    public ResponseEntity<Boolean> checkEmailDuplicate(@RequestParam String email) {
+    public ResponseEntity<Boolean> checkEmailDuplicate(@Parameter(description = "이메일") @RequestParam String email) {
         //RequestParam 으로 URL 파라미터로 전달된 이메일을 받음
         boolean isDuplicate = authService.checkEmailDuplicate(email); // 이메일 중복 확인 처리
         return ResponseEntity.ok(isDuplicate); // true: 중복된 이메일, false: 사용 가능한 이메일
     }
 
     // API 상태 확인용 헬스체크
+    @Operation(summary = "헬스체크", description = "인증 API 상태 확인")
+    @ApiResponse(responseCode = "200", description = "정상")
     @GetMapping("/health")
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("Auth API is running!"); // API 서버가 정상 동작 중임을 알리는 메시지 반환
     }
 
     // 로그인 API 엔드포인트 - POST /api/auth/login
+    @Operation(summary = "로그인", description = "세션 기반 로그인 수행")
+    @ApiResponse(responseCode = "200", description = "성공",
+            content = @Content(schema = @Schema(implementation = UserResponseDto.class)))
     @PostMapping("/login")
     public ResponseEntity<UserResponseDto> login(@Valid @RequestBody LoginRequestDto requestDto, HttpSession session) {
         //@Valid 로 입력 데이터 유효성 검증 (이메일 형식, 필수 필드 등)
@@ -63,6 +79,8 @@ public class AuthController {
     }
 
     // 로그아웃 API 엔드포인트 - POST /api/auth/logout
+    @Operation(summary = "로그아웃", description = "세션 무효화")
+    @ApiResponse(responseCode = "200", description = "성공")
     @PostMapping("/logout")
     public ResponseEntity<String> logout(HttpSession session) {
         // HttpSession 객체를 통해 현재 사용자의 세션 정보에 접근
@@ -72,16 +90,24 @@ public class AuthController {
 
 
     // 이메일 인증 코드 발송 API - POST /api/auth/send-verification-code
+    @Operation(summary = "이메일 인증코드 발송", description = "입력 이메일로 인증코드 전송")
+    @ApiResponse(responseCode = "200", description = "발송됨")
     @PostMapping("/send-verification-code")
-    public ResponseEntity<String> sendVerificationCode(@RequestParam String email) {
+    public ResponseEntity<String> sendVerificationCode(@Parameter(description = "이메일") @RequestParam String email) {
         // @RequestParam 으로 URL 파라미터로 전달된 이메일을 받음
         emailService.sendVerificationEmail(email); // EmailService 를 통해 인증 코드 이메일 발송
         return ResponseEntity.ok("인증 코드가 발송되었습니다. 이메일을 확인해주세요."); // 200 OK 상태코드와 함께 발송 완료 메시지 반환
     }
 
     // 이메일 인증 코드 확인 API - POST /api/auth/verify-code
+    @Operation(summary = "인증코드 검증", description = "이메일/코드로 인증 여부 확인")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "인증 성공"),
+            @ApiResponse(responseCode = "400", description = "실패")
+    })
     @PostMapping("/verify-code")
-    public ResponseEntity<String> verifyCode(@RequestParam String email, @RequestParam String code) {
+    public ResponseEntity<String> verifyCode(@Parameter(description = "이메일") @RequestParam String email,
+                                             @Parameter(description = "인증코드") @RequestParam String code) {
         // @RequestParam 으로 URL 파라미터로 전달된 이메일과 인증 코드를 받음
         boolean isVerified = emailService.verifyCode(email, code); // EmailService 를 통해 인증 코드 확인
         if (isVerified) {
@@ -92,6 +118,11 @@ public class AuthController {
     }
 
     // 회원탈퇴 API 엔드포인트 - DELETE /api/auth/withdraw
+    @Operation(summary = "회원탈퇴", description = "세션 사용자 탈퇴")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "탈퇴 완료"),
+            @ApiResponse(responseCode = "400", description = "로그인 필요")
+    })
     @DeleteMapping("/withdraw")
     public ResponseEntity<String> withdraw(HttpSession session) {
         // HttpSession 객체를 통해 현재 사용자의 세션 정보에 접근
@@ -105,6 +136,11 @@ public class AuthController {
     }
 
     // 비밀번호 변경 API 엔드포인트 - PUT /api/auth/change-password
+    @Operation(summary = "비밀번호 변경", description = "세션 사용자 비밀번호 변경")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "변경 완료"),
+            @ApiResponse(responseCode = "400", description = "로그인 필요")
+    })
     @PutMapping("/change-password")
     public ResponseEntity<String> changePassword(HttpSession session, @RequestBody ChangePasswordRequestDto requestDto) {
         //@RequestBody 로 JSON 형태의 비밀번호 변경 요청 데이터를 DTO 객체로 변환

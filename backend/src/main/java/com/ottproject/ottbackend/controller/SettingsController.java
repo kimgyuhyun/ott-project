@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 /**
  * 사용자 재생 환경 설정 API
@@ -23,7 +25,9 @@ public class SettingsController { // 사용자 재생 설정
 	/**
 	 * 현재 사용자 재생 설정 조회
 	 */
-	@GetMapping("/api/users/me/settings")
+    @Operation(summary = "내 설정 조회", description = "현재 로그인 사용자의 재생 환경 설정을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/api/users/me/settings")
 	public ResponseEntity<UserSettingsDto> get(HttpSession session) { // 세션 입력
 		Long userId = authUtil.requireCurrentUserId(session); // 사용자 확인(401 가능)
 		return ResponseEntity.ok(service.get(userId)); // 설정 반환
@@ -31,7 +35,9 @@ public class SettingsController { // 사용자 재생 설정
 	/**
 	 * 현재 사용자 재생 설정 갱신
 	 */
-	@PutMapping("/api/users/me/settings")
+    @Operation(summary = "내 설정 갱신", description = "현재 로그인 사용자의 재생 환경 설정을 갱신합니다.")
+    @ApiResponse(responseCode = "204", description = "갱신 완료")
+    @PutMapping("/api/users/me/settings")
 	public ResponseEntity<Void> put(@RequestBody UserSettingsDto dto, HttpSession session) { // 바디 입력
 		Long userId = authUtil.requireCurrentUserId(session); // 사용자 확인
 		service.update(userId, dto); // 부분 갱신 처리

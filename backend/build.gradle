@@ -39,8 +39,8 @@ dependencies {
 	// Lombok + MapStruct 함께 사용할 때 필요한 설정
 	annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
-	// SpringDoc OpenAPI (Swagger)
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.3.0'
+	// SpringDoc OpenAPI (Swagger) - Boot 3.5.x 호환 버전으로 상향
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
 
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'org.postgresql:postgresql'
