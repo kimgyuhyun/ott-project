@@ -37,7 +37,8 @@ class PlayerControllerIntegrationTest { // PlayerController에 대한 통합 테
     @Autowired ObjectMapper om; // ObjectMapper: JSON 직렬화/역직렬화
 
     @Autowired UserRepository userRepository; // 유저 리포지토리 의존성 주입
-    @Autowired AniDetailRepository aniDetailRepository; // 애니 상세 리포지토리 의존성 주입
+    @Autowired
+    AnimeDetailRepository animeDetailRepository; // 애니 상세 리포지토리 의존성 주입
     @Autowired EpisodeRepository episodeRepository; // 에피소드 리포지토리 의존성 주입
     @Autowired EpisodeSkipMetaRepository episodeSkipMetaRepository; // 스킵 메타 리포지토리 의존성 주입
     @Autowired EpisodeProgressRepository episodeProgressRepository; // 에피소드 진행률 리포지토리 의존성 주입
@@ -84,10 +85,10 @@ class PlayerControllerIntegrationTest { // PlayerController에 대한 통합 테
     }
 
     /**
-     * 테스트 에피소드 생성(간단 AniDetail 포함)
+     * 테스트 에피소드 생성(간단 AnimeDetail 포함)
      */
     private Episode createEpisode(int epNo) { // 에피소드와 연관된 간단한 상세를 함께 생성/저장
-        AniDetail detail = aniDetailRepository.save(AniDetail.builder() // 상세 빌드/저장
+        AnimeDetail detail = animeDetailRepository.save(AnimeDetail.builder() // 상세 빌드/저장
                 .isCompleted(false) // 완결 아님
                 .isPopular(false) // 인기 아님
                 .isExclusive(false) // 독점 아님
@@ -101,7 +102,7 @@ class PlayerControllerIntegrationTest { // PlayerController에 대한 통합 테
                 .videoUrl("https://cdn.example.com/vod/ani/1/ep" + epNo + "/master.m3u8") // 비디오 마스터 m3u8 경로 설정
                 .isActive(true) // 활성 플래그 설정
                 .isReleased(true) // 공개 플래그 설정
-                .aniDetail(detail) // 연관된 상세 엔티티 설정
+                .animeDetail(detail) // 연관된 상세 엔티티 설정
                 .build(); // 빌더 종료로 Episode 인스턴스 생성
         return episodeRepository.save(ep); // 저장/반환
     }
@@ -171,7 +172,7 @@ class PlayerControllerIntegrationTest { // PlayerController에 대한 통합 테
                 .videoUrl("https://cdn.example.com/vod/ani/1/ep2/master.m3u8") // 다음 화 m3u8 경로 설정
                 .isActive(true) // 활성 플래그 설정
                 .isReleased(true) // 공개 플래그 설정
-                .aniDetail(ep1.getAniDetail()) // 같은 상세 엔티티로 연관 설정
+                .animeDetail(ep1.getAnimeDetail()) // 같은 상세 엔티티로 연관 설정
                 .build()); // 빌더 종료로 Episode 인스턴스 생성 후 저장
         
         // 다음 화 조회(현재 화 기준)
@@ -269,7 +270,7 @@ class PlayerControllerIntegrationTest { // PlayerController에 대한 통합 테
                 .videoUrl("https://cdn.example.com/vod/ani/1/ep2/master.m3u8") // m3u8
                 .isActive(true) // 활성
                 .isReleased(true) // 공개
-                .aniDetail(ep1.getAniDetail()) // 같은 상세에 속함
+                .animeDetail(ep1.getAnimeDetail()) // 같은 상세에 속함
                 .build()); // 엔티티 생성/저장
 
         mvc.perform(get("/api/episodes/{id}/next", ep1.getId())) // GET /api/episodes/{id}/next

@@ -17,7 +17,7 @@
       - LIMIT/OFFSET: 페이지네이션
     -->
     <!-- 파라미터: {userId, sort, limit, offset} -->
-    <select id="findFavoriteAnimesByUser" resultType="com.ottproject.ottbackend.dto.FavoriteAniDto"> <!-- 유저별 찜 목록 -->
+    <select id="findFavoriteAnimesByUser" resultType="com.ottproject.ottbackend.dto.FavoriteAnimeDto"> <!-- 유저별 찜 목록 -->
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
         a.title AS title, <!-- DTO.title -->

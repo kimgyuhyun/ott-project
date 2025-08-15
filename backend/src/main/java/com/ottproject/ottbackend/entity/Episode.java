@@ -44,7 +44,7 @@ public class Episode {
     private Boolean isReleased; // 공개 여부
 
     @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계, 지연 로딩
-    private AniDetail aniDetail; // 에피소드가 속한 애니 상세 정보
+    private AnimeDetail animeDetail; // 에피소드가 속한 애니 상세 정보
 
     @CreatedDate // 생성일시 자동 설정
     @Column(nullable = false)
@@ -59,14 +59,14 @@ public class Episode {
     // ===== 편의 메서드 =====
 
     /**
-     * AniDetail 설정 메서드
-     * @param aniDetail 연결할 AniDetail 엔티티
+     * AnimeDetail 설정 메서드
+     * @param animeDetail 연결할 AnimeDetail 엔티티
      */
-    public void setAniDetail(AniDetail aniDetail) {
-        this.aniDetail = aniDetail;
+    public void setAnimeDetail(AnimeDetail animeDetail) {
+        this.animeDetail = animeDetail;
         // 양방향 관계 설정
-        if (aniDetail != null && !aniDetail.getEpisodes().contains(this)) {
-            aniDetail.getEpisodes().add(this);
+        if (animeDetail != null && !animeDetail.getEpisodes().contains(this)) {
+            animeDetail.getEpisodes().add(this);
         }
     }
 }

@@ -1,7 +1,6 @@
 package com.ottproject.ottbackend.validation;
 
 import com.ottproject.ottbackend.dto.CreateReviewRequestDto;
-import com.ottproject.ottbackend.dto.UpdateReviewRequestDto;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
@@ -15,7 +14,7 @@ public class ContentOrRatingRequiredValidator implements ConstraintValidator<Con
         if (value == null) return true; // null 객체는 다른 @NotNull 에서 걸리도록 통과
 
         // 생성 요청 DTO 처리
-        if (value instanceof com.ottproject.ottbackend.dto.CreateReviewRequestDto dto) {
+        if (value instanceof CreateReviewRequestDto dto) {
             String content = dto.getContent();
             Double rating = dto.getRating();
 
