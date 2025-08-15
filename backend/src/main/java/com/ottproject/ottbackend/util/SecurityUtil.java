@@ -15,7 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @Component // 스프링 빈 등록
 @RequiredArgsConstructor // 생성자 주입
-public class AuthUtil { // 인증/세션 유틸리티
+public class SecurityUtil { // 인증/세션 유틸리티
 
     private final UserRepository userRepository; // 사용자 조회 리포지토리
 

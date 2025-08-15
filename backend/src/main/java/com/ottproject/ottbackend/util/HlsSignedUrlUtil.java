@@ -10,8 +10,8 @@ import java.util.Base64;
  * Nginx secure_link 서명 유틸리티
  * - MD5 기반 서명(st)과 만료 시각(e) 계산
  */
-public final class SecureLinkUtil { // Nginx secure_link 서명 유틸리티
-    private SecureLinkUtil() {} // 인스턴스화 방지
+public final class HlsSignedUrlUtil { // Nginx secure_link 서명 유틸리티
+    private HlsSignedUrlUtil() {} // 인스턴스화 방지
 
     /**
      * secure_link 서명값(st) 생성
