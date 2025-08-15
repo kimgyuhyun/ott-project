@@ -1,6 +1,6 @@
 package com.ottproject.ottbackend.mybatis;
 
-import com.ottproject.ottbackend.dto.CommentResponseDto;
+import com.ottproject.ottbackend.dto.ReviewCommentsResponseDto;
 import com.ottproject.ottbackend.dto.ReviewResponseDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -11,7 +11,7 @@ import java.util.List;
  * 리뷰/댓글 읽기 전용(Mybatis) 매퍼
  */
 @Mapper
-public interface ReviewCommentQueryMapper {
+public interface CommunityReviewCommentQueryMapper {
 
     // 리뷰 목록: 특정 애니(aniId) 기준
     List<ReviewResponseDto> findReviewsByAniId(
@@ -32,7 +32,7 @@ public interface ReviewCommentQueryMapper {
     );
 
     // 댓글 목록: 특정 리뷰(reviewId) 기준(최상위 댓글만)
-    List<CommentResponseDto> findCommentsByReviewId(
+    List<ReviewCommentsResponseDto> findCommentsByReviewId(
             @Param("reviewId") Long reviewId, // 대상 리뷰 ID
             @Param("currentUserId") Long currentUserId, // 현재 사용자 ID
             @Param("sort") String sort, // 정렬 latest|best
@@ -44,7 +44,7 @@ public interface ReviewCommentQueryMapper {
     long countCommentsByReviewId(@Param("reviewId") Long reviewId);
 
     // 대댓글 목록: 특정 부모(parentId) 기준
-    List<CommentResponseDto> findRepliesByParentId(
+    List<ReviewCommentsResponseDto> findRepliesByParentId(
             @Param("parentId") Long parentId, // 부모 댓글 ID
             @Param("currentUserId") Long currentUserId // 현재 사용자 ID
     );
