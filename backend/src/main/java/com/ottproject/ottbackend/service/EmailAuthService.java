@@ -1,13 +1,11 @@
 package com.ottproject.ottbackend.service;
 
-import com.ottproject.ottbackend.dto.RegisterRequestDto;
+import com.ottproject.ottbackend.dto.AuthRegisterRequestDto;
 import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
-import com.ottproject.ottbackend.mappers.UserMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,14 +16,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service // spring bean 으로 등록, 싱글턴 패턴
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성
 @Transactional // 클래스 레벨 트랜잭션 관리
-public class AuthService {
+public class EmailAuthService {
 
 	private final UserService userService; // 사용자 서비스 주입
 	private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder; // 비밀번호 암호화 주입
 	private final com.ottproject.ottbackend.mappers.UserMapper userMapper; // 사용자 매퍼 주입
 
 	// 회원가입 처리
-	public UserResponseDto register(RegisterRequestDto requestDto) { // 회원가입 요청 처리
+	public UserResponseDto register(AuthRegisterRequestDto requestDto) { // 회원가입 요청 처리
 		if (userService.existsByEmail(requestDto.getEmail())) { // 이미 가입된 이메일인지 확인
 			throw new RuntimeException("이미 가입된 이메일입니다."); // 중복 시 예외 발생
 		}

@@ -3,7 +3,7 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.repository.AnimeListRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
-import com.ottproject.ottbackend.util.SecureLinkUtil;
+import com.ottproject.ottbackend.util.HlsSignedUrlUtil;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @RequiredArgsConstructor
-public class PlayerAuthService { // 재생 권한/URL 발급
+public class PlaybackAuthService { // 재생 권한/URL 발급
 	private final UserRepository userRepository; // 권한 확인(멤버십 여부 판단용)
 	private final MembershipService membershipService; // 멤버십 추상화
 	private final AnimeListRepository animeListRepository; // 작품 소속 판단(에피소드 → ani)
@@ -53,9 +53,9 @@ public class PlayerAuthService { // 재생 권한/URL 발급
 
 		String uriPath = filtered.replaceFirst("https?://[^/]+", ""); // 도메인 제거해 path 추출
 
-		long expires = SecureLinkUtil.defaultExpiryFromNowSeconds(600); // TTL 10분
+		long expires = HlsSignedUrlUtil.defaultExpiryFromNowSeconds(600); // TTL 10분
 		String secret = System.getProperty("secure.link.secret", System.getenv().getOrDefault("SECURE_LINK_SECRET", "change_me")); // 시크릿 로드
-		String st = SecureLinkUtil.generateSignature(uriPath, expires, secret); // 서명 생성
+		String st = HlsSignedUrlUtil.generateSignature(uriPath, expires, secret); // 서명 생성
 
 		String join = filtered.contains("?") ? "&" : "?"; // 쿼리 구분자
 		return filtered + join + "e=" + expires + "&st=" + st; // 최종 URL 반환

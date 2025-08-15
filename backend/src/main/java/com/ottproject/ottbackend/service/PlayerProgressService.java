@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Transactional
-public class ProgressService { // 진행률 저장/조회
+public class PlayerProgressService { // 진행률 저장/조회
 	private final EpisodeProgressRepository repo; // 진행률
 	private final UserRepository userRepo; private final EpisodeRepository episodeRepo; // 참조 조회
 

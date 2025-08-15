@@ -1,13 +1,13 @@
 package com.ottproject.ottbackend.service;
 
-import com.ottproject.ottbackend.dto.CommentResponseDto;
+import com.ottproject.ottbackend.dto.ReviewCommentsResponseDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.entity.Comment;
 import com.ottproject.ottbackend.entity.CommentLike;
 import com.ottproject.ottbackend.entity.Review;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.CommentStatus;
-import com.ottproject.ottbackend.mybatis.ReviewCommentQueryMapper;
+import com.ottproject.ottbackend.mybatis.CommunityReviewCommentQueryMapper;
 import com.ottproject.ottbackend.repository.CommentLikeRepository;
 import com.ottproject.ottbackend.repository.CommentRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
@@ -22,10 +22,10 @@ import java.util.List;
 @RequiredArgsConstructor // final 필드 주입용 생성자 자동 생성
 @Service
 @Transactional // 쓰기 메서드 트랜잭션 관리
-public class CommentService {
+public class ReviewCommentsService {
 
     // MyBatis 조회 매퍼(목록/대댓글/카운트)
-    private final ReviewCommentQueryMapper commentQueryMapper; // 읽기 전용(댓글 목록/대댓글 카운트)
+    private final CommunityReviewCommentQueryMapper commentQueryMapper; // 읽기 전용(댓글 목록/대댓글 카운트)
     // JPA 저장/수정/삭제
     private final CommentRepository commentRepository; // 댓글 CUD
     private final ReviewRepository reviewRepository; // 부모 리뷰 검증/연관
@@ -33,25 +33,25 @@ public class CommentService {
     private final CommentLikeRepository commentLikeRepository; // 좋아요 CUD
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
-    public PagedResponse<CommentResponseDto> listByReview(Long reviewId, Long currentUserId, int page, int size) {
+    public PagedResponse<ReviewCommentsResponseDto> listByReview(Long reviewId, Long currentUserId, int page, int size) {
         int limit = size; // LIMIT 계산
         int offset = Math.max(page, 0) * size; // OFFSET 계산(0 미만 보호)
-        List<CommentResponseDto> items = commentQueryMapper
+        List<ReviewCommentsResponseDto> items = commentQueryMapper
                 .findCommentsByReviewId(reviewId, currentUserId, "latest", limit, offset);
         long total = commentQueryMapper.countCommentsByReviewId(reviewId); // 총 개수 조회
         return new PagedResponse<>(items, total, page, size); // 표준 페이지 응답
     }
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
-    public List<CommentResponseDto> listReplies(Long parentId, Long currentUserId) {
+    public List<ReviewCommentsResponseDto> listReplies(Long parentId, Long currentUserId) {
         return commentQueryMapper.findRepliesByParentId(parentId, currentUserId); // 대댓글 목록
     }
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
-    public PagedResponse<CommentResponseDto> listByReview(Long reviewId, Long currentUserId, int page, int size, String sort) { // [NEW]
+    public PagedResponse<ReviewCommentsResponseDto> listByReview(Long reviewId, Long currentUserId, int page, int size, String sort) { // [NEW]
         int limit = size; // LIMIT 계산
         int offset = Math.max(page, 0) * size; // OFFSET 계산(0 미만 보호)
-        List<CommentResponseDto> items = commentQueryMapper
+        List<ReviewCommentsResponseDto> items = commentQueryMapper
                 .findCommentsByReviewId(reviewId, currentUserId, sort, limit, offset); // [NEW]
         long total = commentQueryMapper.countCommentsByReviewId(reviewId); // 총 개수 조회
         return new PagedResponse<>(items, total, page, size); // 표준 페이지 응답

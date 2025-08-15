@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class SkipService { // 스킵 메타 조회
+public class PlayerSkipService { // 스킵 메타 조회
 	private final EpisodeSkipMetaRepository repo; // 메타 리포지토리
 	private final SkipUsageRepository skipUsageRepository; // 사용 로그 리포지토리
 	private final UserRepository userRepository; // 사용자 조회

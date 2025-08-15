@@ -1,10 +1,10 @@
 package com.ottproject.ottbackend.service; // 패키지 선언
 
-import com.ottproject.ottbackend.dto.AniDetailDto;
-import com.ottproject.ottbackend.dto.AniListDto;
+import com.ottproject.ottbackend.dto.AnimeDetailDto;
+import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import com.ottproject.ottbackend.mybatis.AniQueryMapper;
+import com.ottproject.ottbackend.mybatis.AnimeQueryMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,15 +18,15 @@ import java.util.List;
 @RequiredArgsConstructor // 생성자 주입을 자동 생성(final 필드 대상)
 @Service // 스프링 서비스 컴포넌트로 등록
 @Transactional(readOnly = true) // 기본적으로 읽기 전용 트랜잭션으로 실행
-public class AniQueryService { // 애니 조회 관련 비즈니스 로직 제공
-	private final AniQueryMapper mapper; // MyBatis 매퍼 의존성
+public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제공
+	private final AnimeQueryMapper mapper; // MyBatis 매퍼 의존성
 
 	// 단일 genreId → 다중 genreIds 지원 + AND 개수(genreCount) 계산 후 전달, 태그 OR 필터(tagIds) 지원
-	public PagedResponse<AniListDto> list( // 목록 조회 + 페이징 응답
-				AnimeStatus status, List<Long> genreIds, Double minRating, Integer year, // 상태/장르/최소평점/연도 필터
-				Boolean isDub, Boolean isSubtitle, Boolean isExclusive, Boolean isCompleted, // 옵션 배지 필터
-				Boolean isNew, Boolean isPopular, String sort, int page, int size, // 정렬/페이지 파라미터
-				List<Long> tagIds // 태그 OR 필터
+	public PagedResponse<AnimeListDto> list( // 목록 조회 + 페이징 응답
+											 AnimeStatus status, List<Long> genreIds, Double minRating, Integer year, // 상태/장르/최소평점/연도 필터
+											 Boolean isDub, Boolean isSubtitle, Boolean isExclusive, Boolean isCompleted, // 옵션 배지 필터
+											 Boolean isNew, Boolean isPopular, String sort, int page, int size, // 정렬/페이지 파라미터
+											 List<Long> tagIds // 태그 OR 필터
 	) { // 목록 메서드 시작
 		int limit = size; // LIMIT 값 계산(페이지 크기)
 		int offset = Math.max(page, 0) * size; // OFFSET 계산(0 미만 방지)
@@ -56,7 +56,7 @@ public class AniQueryService { // 애니 조회 관련 비즈니스 로직 제�
 			}
 		}
 
-		java.util.List<AniListDto> items = mapper.findAniList( // 목록 데이터 조회
+		java.util.List<AnimeListDto> items = mapper.findAniList( // 목록 데이터 조회
 					status, distinctGenreIds, genreCount, distinctTagIds, minRating, year, isDub, isSubtitle, isExclusive,
 					isCompleted, isNew, isPopular, sort, limit, offset
 		); // 조회된 목록 아이템들
@@ -69,8 +69,8 @@ public class AniQueryService { // 애니 조회 관련 비즈니스 로직 제�
 		return new PagedResponse<>(items, total, page, size); // 표준 페이지 응답으로 래핑하여 반환
 	}
 
-	public AniDetailDto detail(long aniId) { // 상세 조회(비로그인/찜여부 제외)
-		AniDetailDto dto = mapper.findAniDetailByAniId(aniId); // 상세 헤더/배지 등 기본 정보 조회
+	public AnimeDetailDto detail(long aniId) { // 상세 조회(비로그인/찜여부 제외)
+		AnimeDetailDto dto = mapper.findAniDetailByAniId(aniId); // 상세 헤더/배지 등 기본 정보 조회
 		if (dto == null) return null; // 대상 없으면 null 반환
 		dto.setEpisodes(mapper.findEpisodesByAniId(aniId)); // 에피소드 리스트 채우기
 		dto.setGenres(mapper.findGenresByAniId(aniId)); // 장르 리스트 채우기
@@ -78,8 +78,8 @@ public class AniQueryService { // 애니 조회 관련 비즈니스 로직 제�
 		return dto; // 완성된 DTO 반환
 	}
 
-	public AniDetailDto detail(long aniId, Long currentUserId) { // 상세 조회(로그인 포함/찜여부 포함)
-		AniDetailDto dto = mapper.findAniDetailByAniIdWithUser( // 찜 여부 계산 포함 상세 조회
+	public AnimeDetailDto detail(long aniId, Long currentUserId) { // 상세 조회(로그인 포함/찜여부 포함)
+		AnimeDetailDto dto = mapper.findAniDetailByAniIdWithUser( // 찜 여부 계산 포함 상세 조회
 					aniId, // 대상 애니 ID
 					currentUserId // 현재 사용자 ID(비로그인 시 null)
 		); // DB 조회 실행

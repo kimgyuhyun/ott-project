@@ -7,7 +7,7 @@ import com.ottproject.ottbackend.entity.Review;
 import com.ottproject.ottbackend.entity.ReviewLike;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.ReviewStatus;
-import com.ottproject.ottbackend.mybatis.ReviewCommentQueryMapper;
+import com.ottproject.ottbackend.mybatis.CommunityReviewCommentQueryMapper;
 import com.ottproject.ottbackend.repository.AnimeListRepository;
 import com.ottproject.ottbackend.repository.ReviewLikeRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
@@ -22,10 +22,10 @@ import java.util.List;
 @RequiredArgsConstructor // final 필드 주입용 생성자 자동 생성
 @Service
 @Transactional // 쓰기 메서드 트랜잭션 관리
-public class ReviewService {
+public class ReviewsService {
 
     // MyBatis 조회 매퍼(목록/상세)
-    private final ReviewCommentQueryMapper reviewQueryMapper; // 읽기 전용(목록/상세/카운트)
+    private final CommunityReviewCommentQueryMapper reviewQueryMapper; // 읽기 전용(목록/상세/카운트)
     // JPA 저장/수정/삭제
     private final ReviewRepository reviewRepository; // 리뷰 CUD
     private final UserRepository userRepository; // 사용자 연관 검증/지정

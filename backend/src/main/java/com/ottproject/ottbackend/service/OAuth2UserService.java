@@ -1,8 +1,10 @@
 package com.ottproject.ottbackend.service;
 
+import com.ottproject.ottbackend.entity.SocialAccount;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
+import com.ottproject.ottbackend.repository.SocialAccountRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,10 +31,10 @@ import java.util.Optional;
 @Slf4j // Lombok 로깅 어노테이션 - log 객체 자동 생성
 @Service // Spring Bean으로 등록
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성
-public class CustomOAuth2UserService extends DefaultOAuth2UserService { // DefaultOAuth2UserService 를 상속받아 커스터마이징
+public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAuth2UserService 를 상속받아 커스터마이징
 
     private final UserRepository userRepository; // 사용자 Repository 주입 (final 로 선언하여 생성자 주입)
-    private final com.ottproject.ottbackend.repository.UserSocialAccountRepository userSocialAccountRepository; // 소셜 연동 리포지토리
+    private final SocialAccountRepository socialAccountRepository; // 소셜 연동 리포지토리
 
     /**
      * OAuth2 사용자 정보를 로드하고 처리하는 메서드
@@ -244,8 +246,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService { // Defau
      */
     private User processOAuth2User(String email, String name, String providerId, AuthProvider authProvider) {
         // 1) (provider, providerId)로 연동 우선 조회
-        Optional<com.ottproject.ottbackend.entity.UserSocialAccount> linked =
-                userSocialAccountRepository.findByProviderAndProviderId(authProvider, providerId);
+        Optional<SocialAccount> linked =
+                socialAccountRepository.findByProviderAndProviderId(authProvider, providerId);
         if (linked.isPresent()) { // 이미 연동된 계정 → 해당 사용자 반환
             User user = linked.get().getUser();
             // 사용자 정보 최소 업데이트(이름 등)
@@ -259,14 +261,14 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService { // Defau
         if (existingUserByEmail.isPresent()) {
             User user = existingUserByEmail.get();
             // 연동 중복 방지 체크 후 추가
-            if (!userSocialAccountRepository.existsByUserAndProvider(user, authProvider)) {
-                com.ottproject.ottbackend.entity.UserSocialAccount account = com.ottproject.ottbackend.entity.UserSocialAccount.builder()
+            if (!socialAccountRepository.existsByUserAndProvider(user, authProvider)) {
+                SocialAccount account = SocialAccount.builder()
                         .user(user)
                         .provider(authProvider)
                         .providerId(providerId)
                         .emailVerified(true)
                         .build();
-                userSocialAccountRepository.save(account);
+                socialAccountRepository.save(account);
             }
             // 사용자 프로필 최소 업데이트
             user.setName(name);
@@ -285,13 +287,13 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService { // Defau
                 .role(UserRole.USER)
                 .build();
         User saved = userRepository.save(newUser);
-        com.ottproject.ottbackend.entity.UserSocialAccount firstLink = com.ottproject.ottbackend.entity.UserSocialAccount.builder()
+        SocialAccount firstLink = SocialAccount.builder()
                 .user(saved)
                 .provider(authProvider)
                 .providerId(providerId)
                 .emailVerified(true)
                 .build();
-        userSocialAccountRepository.save(firstLink);
+        socialAccountRepository.save(firstLink);
         return saved;
     }
 
