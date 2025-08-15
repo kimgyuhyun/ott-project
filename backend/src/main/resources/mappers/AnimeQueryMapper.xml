@@ -24,6 +24,16 @@
                 HAVING COUNT(DISTINCT ag.genre_id) = #{genreCount} <!-- 모든 선택 장르를 모두 포함한 작품만 남김(AND) -->
             ) gf ON gf.ani_list_id = a.id <!-- 서브 쿼리 결과와 메인 테이블 조인 -->
         </if>
+        <if test="tagIds != null and tagIds.size() &gt; 0"> <!-- 태그 OR 필터: 하나라도 포함하면 통과 -->
+            JOIN (
+                SELECT DISTINCT alt.ani_list_id
+                FROM ani_list_tags alt
+                WHERE alt.tag_id IN
+                <foreach collection="tagIds" item="tid" open="(" close=")" separator=",">
+                    #{tid}
+                </foreach>
+            ) tf ON tf.ani_list_id = a.id
+        </if>
     </sql>
 
     <!-- 목록 조회용 공통 WHERE 블록 -->
@@ -65,7 +75,7 @@
         a.status AS animeStatus, <!-- DTO.animeStatus(enum) -->
         a.year AS year, <!-- DTO.year -->
         a.type AS type <!-- DTO.type -->
-        <include refid="base_list_from"/> <!-- FROM ani_list a (+ 장르 AND 필터 서브쿼리 조인) -->
+        <include refid="base_list_from"/> <!-- FROM ani_list a (+ 장르 AND / 태그 OR 서브쿼리 조인) -->
         <include refid="base_list_where"/> <!-- WHERE 활성 + 전달된 필터 조건들 결합 -->
         ORDER BY
         <choose> <!-- 정렬 분기: sort 파라미터가 rating/year/popular 인지에 따라 주요 키 선택, 보조키는 최신순(id DESC) -->
@@ -86,6 +96,18 @@
         SELECT COUNT(1) <!-- 총 행 수 -->
         <include refid="base_list_from"/> <!-- 공통 FROM/JOIN -->
         <include refid="base_list_where"/> <!-- 동일 WHERE -->
+    </select>
+
+    <!-- 상세: 태그 리스트 (aniId 기준) -->
+    <select id="findTagsByAniId" resultType="com.ottproject.ottbackend.dto.TagSimpleDto">
+        SELECT
+        t.id AS id,
+        t.name AS name,
+        t.color AS color
+        FROM tags t
+        JOIN ani_list_tags alt ON alt.tag_id = t.id
+        WHERE alt.ani_list_id = #{aniId}
+        ORDER BY t.name ASC
     </select>
 
     <!--

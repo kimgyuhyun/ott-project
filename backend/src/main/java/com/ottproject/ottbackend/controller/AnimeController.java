@@ -44,13 +44,14 @@ public class AniController { // 애니 목록/상세 조회 컨트롤러
             @RequestParam(required = false) Boolean isPopular, //?isPopular=true 인기 여부(옵션)
             @RequestParam(defaultValue = "id") String sort, //?sort-rating|year|popular|id 정렬 키(기본 id)
             @RequestParam(defaultValue = "0") int page, // ?page=0 페이지 번호(0-base, 기본 0)
-            @RequestParam(defaultValue = "20") int size // ?size=20 페이지 크기 (기본 20)
+            @RequestParam(defaultValue = "20") int size, // ?size=20 페이지 크기 (기본 20)
+            @RequestParam(required = false, name = "tagIds") List<Long> tagIds // NEW: 태그 OR 필터
             ) {
         // 위 필터/정렬/페이지 정보를 서비스에 위임하여 MyBatis 쿼리 실행 후 페이지 응답으로 반환
         return queryService.list(
                 status, genreIds, minRating, year,
                 isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular,
-                sort, page, size
+                sort, page, size, tagIds
         );
     }
 

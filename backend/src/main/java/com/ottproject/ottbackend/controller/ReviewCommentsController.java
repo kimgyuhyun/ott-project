@@ -6,7 +6,7 @@ import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.UpdateCommentRequestDto;
 import com.ottproject.ottbackend.enums.CommentStatus;
 import com.ottproject.ottbackend.service.CommentService;
-import com.ottproject.ottbackend.util.AuthUtil;
+import com.ottproject.ottbackend.util.SecurityUtil;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,7 @@ import java.util.List;
 public class CommentController { // 댓글 목록/대댓글/작성/상태변경/일괄삭제 담당 컨트롤러
 
     private final CommentService commentService; // 댓글 서비스 의존성
-    private final AuthUtil authUtil; // 세션 → 사용자 ID 해석 유틸
+    private final SecurityUtil securityUtil; // 세션 → 사용자 ID 해석 유틸
 
 
     @Operation(summary = "댓글 생성", description = "리뷰 하위에 최상위 댓글을 생성합니다.")
@@ -40,7 +40,7 @@ public class CommentController { // 댓글 목록/대댓글/작성/상태변경/
 			@Valid @RequestBody CreateCommentRequestDto dto, // 요청 바디(JSON)로 내용 수신
             HttpSession session // 세션에서 사용자 확인
     ) {
-		Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+		Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
 		Long id  = commentService.create(userId, reviewId, null, dto.getContent()); // parentId = null(최상위)
         return ResponseEntity.ok(id); // 200 + 생성 ID
     }
@@ -55,7 +55,7 @@ public class CommentController { // 댓글 목록/대댓글/작성/상태변경/
             @RequestParam(defaultValue = "latest") String sort, // latest|best
             HttpSession session // 세션(선택 로그인)
     ) {
-        Long currentUserId = authUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
+        Long currentUserId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
         return ResponseEntity.ok(commentService.listByReview(reviewId, currentUserId, page, size, sort)); // 서비스 위임
     }
 
@@ -90,7 +90,7 @@ public class CommentController { // 댓글 목록/대댓글/작성/상태변경/
             @Valid @RequestBody UpdateCommentRequestDto dto, // 요청바디: 수정 내용
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         commentService.updateContent(commentId, userId, dto.getContent()); // 서비스 위임
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -102,7 +102,7 @@ public class CommentController { // 댓글 목록/대댓글/작성/상태변경/
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         commentService.deleteSoft(commentId, userId); // 상태 DELETED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -114,7 +114,7 @@ public class CommentController { // 댓글 목록/대댓글/작성/상태변경/
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         commentService.report(commentId, userId); // 상태 REPORTED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -126,7 +126,7 @@ public class CommentController { // 댓글 목록/대댓글/작성/상태변경/
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 Id
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         return ResponseEntity.ok(commentService.toggleLike(commentId, userId)); // 200 OK + 토글 결과
     }
 
@@ -137,7 +137,7 @@ public class CommentController { // 댓글 목록/대댓글/작성/상태변경/
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모댓글 ID
             HttpSession session // 세션(선택 로그인)
     ) {
-        Long currentUserId = authUtil.getCurrentUserIdOrNull(session); // 로그인 시 ID, 아니면 null
+        Long currentUserId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 ID, 아니면 null
         return ResponseEntity.ok(commentService.listReplies(commentId, currentUserId)); // 200 OK + 리스트
     }
 
@@ -149,7 +149,7 @@ public class CommentController { // 댓글 목록/대댓글/작성/상태변경/
             @Valid @RequestBody CreateCommentRequestDto dto, // 요청 바디(JSON)
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         return ResponseEntity.ok(commentService.createReply(userId, commentId, dto.getContent())); // 200 OK + 생성 ID
     }
 }

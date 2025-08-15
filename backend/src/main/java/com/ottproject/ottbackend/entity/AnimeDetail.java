@@ -2,21 +2,16 @@ package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.Fetch;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 /**
  * 애니메이션 상세 정보를 저장하는 엔티티
  * 라프텔의 "더보기" 팝업에서 보여지는 정보들
- * AniList 와 일대일 관계로 연결
+ * AnimeList 와 일대일 관계로 연결
  */
 @Entity
 @Table(name = "ani_detail")
@@ -32,23 +27,22 @@ public class AniDetail {
     @GeneratedValue(strategy = GenerationType.AUTO) // 자동 증가 전략
     private Long id; // 상세 정보 고유 ID
 
-    // ===== AniList 와의 관계 =====
+    // ===== AnimeList 와의 관계 =====
 
     /**
-     * AniList 와의 일대일 관계
-     * 하나의 AniList 는 하나의 AniDetail 을 가짐
+     * AnimeList 와의 일대일 관계
+     * 하나의 AnimeList 는 하나의 AniDetail 을 가짐
      * 외래키를 AniDetail 에서 관리 (주인)
      */
     @OneToOne(fetch = FetchType.LAZY) // 일대일 관계, 지연 로딩
     @JoinColumn(name = "ani_list_id", nullable = false, unique = true) // 외래키 설정, null 불허, 고유값
-    private AniList aniList; // 연결된 AniList 엔티티
+    private AnimeList animeList; // 연결된 AnimeList 엔티티
 
     // ===== 상세 정보 필드 ======
     @Column(columnDefinition = "TEXT") // 긴 텍스트 저장용
     private String fullSynopsis; // 전체 줄거리 (더보기에서 보여지는 전체 내용)
 
-    @Column(columnDefinition = "TEXT") // 긴 텍스트 저장용
-    private String tags; // 태그 정보 (JSON 배열 형태: ["#가족", "#감동"])
+    // 태그는 정규화된 테이블(tags, ani_list_tags)로 관리합니다. (JSON/Text 컬럼 제거)
 
     // ===== 성우 정보 =====
     @Column(columnDefinition = "TEXT") // 긴 텍스트 저장용
@@ -100,14 +94,14 @@ public class AniDetail {
     // ===== 편의 메서드 =====
 
     /**
-     * AniList 설정 메서드
-     * @param aniList 연결할 AniList 엔티티
+     * AnimeList 설정 메서드
+     * @param animeList 연결할 AnimeList 엔티티
      */
-    public void setAniList(AniList aniList) {
-        this.aniList = aniList;
+    public void setAnimeList(AnimeList animeList) {
+        this.animeList = animeList;
         // 양방향 관계 설정
-        if (aniList != null && aniList.getAniDetail() != this) {
-            aniList.setAniDetail(this);
+        if (animeList != null && animeList.getAniDetail() != this) {
+            animeList.setAniDetail(this);
         }
     }
 
@@ -116,7 +110,7 @@ public class AniDetail {
      * @return 장르 목록
      */
     public java.util.Set<Genre> getGenres() {
-        return this.aniList != null ? this.aniList.getGenres() : new java.util.HashSet<>();
+        return this.animeList != null ? this.animeList.getGenres() : new java.util.HashSet<>();
     }
 
     /**
@@ -124,7 +118,7 @@ public class AniDetail {
      * @return 제작사 목록
      */
     public java.util.Set<Studio> getStudios() {
-        return this.aniList != null ? this.aniList.getStudios() : new java.util.HashSet<>();
+        return this.animeList != null ? this.animeList.getStudios() : new java.util.HashSet<>();
     }
 
     /**

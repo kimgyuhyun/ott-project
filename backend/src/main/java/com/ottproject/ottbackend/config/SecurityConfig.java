@@ -1,9 +1,9 @@
 package com.ottproject.ottbackend.config;
 
-import com.ottproject.ottbackend.handler.OAuth2FailureHandler;
-import com.ottproject.ottbackend.handler.OAuth2SuccessHandler;
-import com.ottproject.ottbackend.service.CustomOAuth2UserService;
-import com.ottproject.ottbackend.service.CustomUserDetailsService;
+import com.ottproject.ottbackend.handler.OAuth2AuthSuccessHandler;
+import com.ottproject.ottbackend.handler.OAuth2AuthFailureHandler;
+import com.ottproject.ottbackend.service.OAuth2UserService;
+import com.ottproject.ottbackend.service.LocalUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,10 +30,10 @@ import org.springframework.security.web.SecurityFilterChain;
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성 (의존성 주입용)
 public class WebSecurityConfig {
 
-    private final CustomUserDetailsService customUserDetailsService; // 기존 이메일 로그인용 사용자 서비스 주입
-    private final CustomOAuth2UserService customOAuth2UserService; // OAuth2 소셜 로그인용 사용자 서비스 주입
-    private final OAuth2SuccessHandler oAuth2SuccessHandler; // OAuth2 성공 핸들러 주입
-    private final OAuth2FailureHandler oAuth2FailureHandler; // OAuth2 실패 핸들러 주입
+    private final LocalUserDetailsService localUserDetailsService; // 기존 이메일 로그인용 사용자 서비스 주입
+    private final OAuth2UserService OAuth2UserService; // OAuth2 소셜 로그인용 사용자 서비스 주입
+    private final OAuth2AuthFailureHandler oAuth2AuthFailureHandler; // OAuth2 성공 핸들러 주입
+    private final OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler; // OAuth2 실패 핸들러 주입
 
     @Bean // PasswordEncoder Bean 등록
     public PasswordEncoder passwordEncoder() { // 비밀번호 암호화를 위한 BCrypt 인코더
@@ -71,17 +71,17 @@ public class WebSecurityConfig {
 
                 // OAuth2 소셜 로그인 설정
                 .oauth2Login(oauth2 -> oauth2
-                        .successHandler(oAuth2SuccessHandler) // OAuth2 로그인 성공 시 처리할 핸들러
-                        .failureHandler(oAuth2FailureHandler) // OAuth2 로그인 실패 시 처리할 핸들러
+                        .successHandler(oAuth2AuthFailureHandler) // OAuth2 로그인 성공 시 처리할 핸들러
+                        .failureHandler(oAuth2AuthSuccessHandler) // OAuth2 로그인 실패 시 처리할 핸들러
                         .userInfoEndpoint(userInfo -> userInfo
-                                .userService(customOAuth2UserService) // OAuth2 사용자 정보 처리 서비스 (customOAuth2UserService 사용)
+                                .userService(OAuth2UserService) // OAuth2 사용자 정보 처리 서비스 (OAuth2UserService 사용)
                         )
                 )
                 .sessionManagement(session -> session
                         .maximumSessions(1) // 동시 세션 수 제한(1개)
                         .maxSessionsPreventsLogin(false) // 기본 세션 무효화
                 )
-                .userDetailsService(customUserDetailsService); // 기존 이메일 로그인용 customUserDetailService 등록
+                .userDetailsService(localUserDetailsService); // 기존 이메일 로그인용 customUserDetailService 등록
 
         return http.build(); // 설정된 securityFilterChain 반환
     }

@@ -36,16 +36,45 @@ class AniQueryServiceTest { //서비스 유닛 테스트(비즈니스 로직 검
                 .isNew(false).isPopular(true).isCompleted(true) // 배지 플래그
                 .build(); // DTO 생성
 
-        when(mapper.findAniList(any(), any(), any(), any(), // 목록 데이터 스텁
-                any(), any(), any(), any(), any(), any(), anyString(), anyInt(), anyInt()))
-                .thenReturn(List.of(item)); // 1건 반환
-        when(mapper.countAniList(any(), any(), any(), any(), // 총 개수 스텁
-                any(), any(), any(), any(), any(), any()))
-                .thenReturn(1L); // total=1
+        when(mapper.findAniList(
+                any(),        // NEW status
+                anyList(),    // NEW genreIds
+                anyInt(),     // NEW genreCount
+                anyList(),    // NEW tagIds
+                any(),        // NEW minRating
+                any(),        // NEW year
+                any(),        // NEW isDub
+                any(),        // NEW isSubtitle
+                any(),        // NEW isExclusive
+                any(),        // NEW isCompleted
+                any(),        // NEW isNew
+                any(),        // NEW isPopular
+                anyString(),  // NEW sort
+                anyInt(),     // NEW limit
+                anyInt()      // NEW offset
+        )).thenReturn(List.of(item));
 
-        var res = service.list(null, null, null, null, // 테스트 대상 메서드 호출
-        null, null, null, null, null, null,
-        "id", 0, 20); // sort/page/size
+        when(mapper.countAniList(
+                any(),      // NEW status
+                anyList(),  // NEW genreIds
+                anyInt(),   // NEW genreCount
+                anyList(),  // NEW tagIds
+                any(),      // NEW minRating
+                any(),      // NEW year
+                any(),      // NEW isDub
+                any(),      // NEW isSubtitle
+                any(),      // NEW isExclusive
+                any(),      // NEW isCompleted
+                any(),      // NEW isNew
+                any()       // NEW isPopular
+        )).thenReturn(1L);
+
+        var res = service.list(
+                null, null, null, null,
+                null, null, null, null, null, null,
+                "id", 0, 20,
+                null // NEW tagIds
+        );
 
         assertThat(res.getItems()).hasSize(1);
         assertThat(res.getTotal()).isEqualTo(1); // total 검증

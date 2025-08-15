@@ -5,7 +5,7 @@ import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.ReviewResponseDto;
 import com.ottproject.ottbackend.dto.UpdateReviewRequestDto;
 import com.ottproject.ottbackend.service.ReviewService;
-import com.ottproject.ottbackend.util.AuthUtil;
+import com.ottproject.ottbackend.util.SecurityUtil;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨트롤러
 
     private final ReviewService reviewService; // 비즈니스 로직을 담당하는 서비스 주입
-    private final AuthUtil authUtil; // 세션 → 사용자 ID 해석 유틸
+    private final SecurityUtil securityUtil; // 세션 → 사용자 ID 해석 유틸
 
     @Operation(summary = "리뷰 목록", description = "특정 작품의 리뷰 목록을 페이지네이션으로 조회합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
@@ -37,7 +37,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             @RequestParam(defaultValue = "10") int size, // 페이지 크기
             HttpSession session // 세션(선택 로그인)
     ) {
-        Long currentUserId = authUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
+        Long currentUserId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
         return ResponseEntity.ok(reviewService.list(aniId, currentUserId, sort, page, size)); // 200 OK + 본문
     }
 
@@ -49,7 +49,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             @Valid @RequestBody CreateReviewRequestDto dto,
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         Long id = reviewService.create(userId, aniId, dto.getContent(), dto.getRating()); // 서비스 호출
         return ResponseEntity.ok(id); // 200 OK + 리뷰 ID
     }
@@ -72,7 +72,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             @Valid @RequestBody UpdateReviewRequestDto dto, // 요청 바디: 수정 필드(content/rating)
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         reviewService.update(reviewId, userId, dto.getContent(), dto.getRating()); // 서비스 위임
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -84,7 +84,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         reviewService.deleteSoft(reviewId, userId); // 상태 DELETED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -96,7 +96,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         reviewService.report(reviewId, userId); // 상태 REPORTED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -108,7 +108,7 @@ public class ReviewController { // 리뷰 목록/작성/일괄삭제 담당 컨�
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = authUtil.requireCurrentUserId(session); // 로그인 필수
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         return ResponseEntity.ok(reviewService.toggleLike(reviewId, userId)); // 200 OK + 토글 결과
     }
 }

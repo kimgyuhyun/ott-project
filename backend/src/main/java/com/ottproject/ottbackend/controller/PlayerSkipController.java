@@ -3,7 +3,7 @@ package com.ottproject.ottbackend.controller;
 import com.ottproject.ottbackend.dto.SkipMetaResponseDto;
 import com.ottproject.ottbackend.dto.SkipUsageRequestDto;
 import com.ottproject.ottbackend.service.SkipService;
-import com.ottproject.ottbackend.util.AuthUtil;
+import com.ottproject.ottbackend.util.SecurityUtil;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,7 +24,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RestController // REST 컨트롤러
 @RequiredArgsConstructor // 생성자 주입
 public class SkipController { // 스킵 메타
-	private final SkipService service; private final AuthUtil authUtil; // 의존성
+	private final SkipService service; private final SecurityUtil securityUtil; // 의존성
 
 	/**
 	 * 에피소드 스킵 메타 조회
@@ -43,7 +43,7 @@ public class SkipController { // 스킵 메타
     @ApiResponse(responseCode = "202", description = "기록 접수")
     @PostMapping("/api/episodes/{id}/skips/track") // 스킵 사용 수집
 	public ResponseEntity<Void> track(@PathVariable Long id, @Valid @RequestBody SkipUsageRequestDto body, HttpSession session) { // 요청 바디 검증
-		Long userId = authUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
+		Long userId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
 		service.trackUsage(userId, id, body.getType(), body.getAtSec()); // DB 적재
 		return ResponseEntity.accepted().build(); // 202 Accepted
 	}

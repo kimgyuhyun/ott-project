@@ -19,6 +19,7 @@ public interface AniQueryMapper { // 목록 상세/연관 조회 정의
             @Param("status") AnimeStatus status, // 상태 필터(ENUM) // DB 문자열과 매칭
             @Param("genreIds") List<Long> genreIds, // 장르 다중 AND 필터
             @Param("genreCount") Integer genreCount, // AND 개수 매핑용
+            @Param("tagIds") List<Long> tagIds, // 태그 OR 필터
             @Param("minRating") Double minRating, // 최소 평점
             @Param("year") Integer year, // 방영 연도
             @Param("isDub") Boolean isDub, // 더빙 여부
@@ -36,6 +37,7 @@ public interface AniQueryMapper { // 목록 상세/연관 조회 정의
             @Param("status") AnimeStatus status, // 위와 동일 필터들
             @Param("genreIds") List<Long> genreIds, // 장르 다중 AND 필터
             @Param("genreCount") Integer genreCount, // AND 개수 매핑용
+            @Param("tagIds") List<Long> tagIds, // 태그 OR 필터
             @Param("minRating") Double minRating,
             @Param("year") Integer year,
             @Param("isDub") Boolean isDub,
@@ -45,6 +47,9 @@ public interface AniQueryMapper { // 목록 상세/연관 조회 정의
             @Param("isNew") Boolean isNew,
             @Param("isPopular") Boolean isPopular
     );
+
+    // 상세: 태그 목록 조회(선택)
+    java.util.List<TagSimpleDto> findTagsByAniId(@Param("aniId") Long aniId);
 
     AniDetailDto findAniDetailByAniId(@Param("aniId") Long aniId); // 상세 헤더/더보기 영역 조회(aniId 기준)
     AniDetailDto findAniDetailByAniIdWithUser( // 사용자 포함 상세 조회 메서드 시그니처

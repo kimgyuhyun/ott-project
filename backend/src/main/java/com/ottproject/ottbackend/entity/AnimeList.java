@@ -1,15 +1,9 @@
 package com.ottproject.ottbackend.entity;
 
-import com.ottproject.ottbackend.enums.AnimeStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * 애니메이션 목록에 보여줄 기본 정보를 저장하는 엔티티
@@ -136,6 +130,20 @@ public class AniList {
 	)
 	@Builder.Default // 빌더 패턴에서 기본값 설정
 	private java.util.Set<Genre> genres = new java.util.HashSet<>(); // 장르 목록 (Set 으로 중복 방지)
+
+	/**
+	 * 태그와의 다대다 관계(정규화 테이블: ani_list_tags)
+	 * - 장르와 동일한 패턴으로 JoinTable 정의
+	 */
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+	@JoinTable(
+			name = "ani_list_tags",
+			joinColumns = @JoinColumn(name = "ani_list_id", referencedColumnName = "id"),
+			inverseJoinColumns = @JoinColumn(name = "tag_id", referencedColumnName = "id"),
+			uniqueConstraints = @UniqueConstraint(columnNames = {"ani_list_id", "tag_id"})
+	)
+	@Builder.Default
+	private java.util.Set<Tag> tags = new java.util.HashSet<>(); // 태그 목록
 
 	/**
 	 * 제작사와의 다대다 관계

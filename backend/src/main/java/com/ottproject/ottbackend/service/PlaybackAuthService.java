@@ -1,10 +1,9 @@
 package com.ottproject.ottbackend.service;
 
-import com.ottproject.ottbackend.repository.AniListRepository;
+import com.ottproject.ottbackend.repository.AnimeListRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.util.SecureLinkUtil;
-import com.ottproject.ottbackend.service.MembershipService;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +19,7 @@ import org.springframework.stereotype.Service;
 public class PlayerAuthService { // 재생 권한/URL 발급
 	private final UserRepository userRepository; // 권한 확인(멤버십 여부 판단용)
 	private final MembershipService membershipService; // 멤버십 추상화
-	private final AniListRepository aniListRepository; // 작품 소속 판단(에피소드 → ani)
+	private final AnimeListRepository animeListRepository; // 작품 소속 판단(에피소드 → ani)
 	private final EpisodeRepository episodeRepository; // 에피소드 조회(존재/소속)
 
 	/**
@@ -68,12 +67,12 @@ public class PlayerAuthService { // 재생 권한/URL 발급
 	@Transactional(readOnly = true)
 	public Long nextEpisodeId(Long currentEpisodeId) { // 다음 화 조회
 		var current = episodeRepository.findById(currentEpisodeId).orElse(null); // 현재 화
-		if (current == null || current.getAniDetail() == null) {
+		if (current == null || current.getAnimeDetail() == null) {
 			return null; // 없으면 null
 		}
 		var next = episodeRepository
 				.findFirstByAniDetailIdAndEpisodeNumberGreaterThanAndIsReleasedTrueOrderByEpisodeNumberAsc(
-						current.getAniDetail().getId(), current.getEpisodeNumber()
+						current.getAnimeDetail().getId(), current.getEpisodeNumber()
 				); // 다음 화 탐색
 		return (next != null) ? next.getId() : null; // 다음 화 ID 또는 null
 	}

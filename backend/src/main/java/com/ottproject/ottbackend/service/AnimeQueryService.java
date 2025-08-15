@@ -21,11 +21,12 @@ import java.util.List;
 public class AniQueryService { // 애니 조회 관련 비즈니스 로직 제공
 	private final AniQueryMapper mapper; // MyBatis 매퍼 의존성
 
-	// 단일 genreId → 다중 genreIds 지원 + AND 개수(genreCount) 계산 후 전달
+	// 단일 genreId → 다중 genreIds 지원 + AND 개수(genreCount) 계산 후 전달, 태그 OR 필터(tagIds) 지원
 	public PagedResponse<AniListDto> list( // 목록 조회 + 페이징 응답
 				AnimeStatus status, List<Long> genreIds, Double minRating, Integer year, // 상태/장르/최소평점/연도 필터
 				Boolean isDub, Boolean isSubtitle, Boolean isExclusive, Boolean isCompleted, // 옵션 배지 필터
-				Boolean isNew, Boolean isPopular, String sort, int page, int size // 정렬/페이지 파라미터
+				Boolean isNew, Boolean isPopular, String sort, int page, int size, // 정렬/페이지 파라미터
+				List<Long> tagIds // 태그 OR 필터
 	) { // 목록 메서드 시작
 		int limit = size; // LIMIT 값 계산(페이지 크기)
 		int offset = Math.max(page, 0) * size; // OFFSET 계산(0 미만 방지)
@@ -43,13 +44,25 @@ public class AniQueryService { // 애니 조회 관련 비즈니스 로직 제�
 		}
 		Integer genreCount = (distinctGenreIds == null) ? 0 : distinctGenreIds.size(); // AND 매칭용 선택 장르 개수
 
+		// 태그 ID 입력값 정리: null 제거 + 중복 제거 → 비어 있으면 null 처리(필터 미적용)
+		java.util.List<Long> distinctTagIds = null; // 정제된 태그 ID 목록 초기값
+		if (tagIds != null) { // 태그 파라미터가 전달된 경우에만 처리
+			distinctTagIds = tagIds.stream()
+				.filter(java.util.Objects::nonNull)
+				.distinct()
+				.collect(java.util.stream.Collectors.toList());
+			if (distinctTagIds.isEmpty()) {
+				distinctTagIds = null; // 필터 비적용으로 간주
+			}
+		}
+
 		java.util.List<AniListDto> items = mapper.findAniList( // 목록 데이터 조회
-					status, distinctGenreIds, genreCount, minRating, year, isDub, isSubtitle, isExclusive,
+					status, distinctGenreIds, genreCount, distinctTagIds, minRating, year, isDub, isSubtitle, isExclusive,
 					isCompleted, isNew, isPopular, sort, limit, offset
 		); // 조회된 목록 아이템들
 
 		long total = mapper.countAniList( // 총 개수 조회(페이지네이션 total)
-					status, distinctGenreIds, genreCount, minRating, year, isDub, isSubtitle, isExclusive,
+					status, distinctGenreIds, genreCount, distinctTagIds, minRating, year, isDub, isSubtitle, isExclusive,
 					isCompleted, isNew, isPopular
 		); // 조건 동일한 COUNT(1)
 
