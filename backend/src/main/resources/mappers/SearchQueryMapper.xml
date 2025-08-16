@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?> <!-- XML 헤더 -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- DTD 참조 -->
+
+<!--
+  SearchQueryMapper XML
+  - 자동완성(제목만 반환)
+  - 통합 검색(키워드/장르 AND/태그 OR/정렬/페이지)
+  - 대상 테이블: anime / anime_genres / anime_tags
+-->
+<mapper namespace="com.ottproject.ottbackend.mybatis.SearchQueryMapper"> <!-- 네임스페이스 매핑 -->
+
+    <!-- 공통 FROM (장르 AND / 태그 OR 포함) -->
+    <sql id="base_from"> <!-- 재사용 FROM -->
+        FROM anime a <!-- 통합 애니 테이블 -->
+        <if test="genreCount != null and genreCount &gt; 0"> <!-- 장르 선택됨 -->
+            JOIN (
+            SELECT ag.anime_id <!-- 작품 ID -->
+            FROM anime_genres ag <!-- 장르 매핑 테이블 -->
+            WHERE ag.genre_id IN
+            <foreach collection="genreIds" item="gid" open="(" close=")" separator=","> <!-- IN 바인딩 -->
+                #{gid} <!-- 단일 장르 ID -->
+            </foreach>
+            GROUP BY ag.anime_id <!-- 작품별 집계 -->
+            HAVING COUNT(DISTINCT ag.genre_id) = #{genreCount} <!-- 모두 포함(AND 매칭) -->
+            ) gf ON gf.anime_id = a.id <!-- 장르 AND 조인 -->
+        </if>
+        <if test="tagIds != null and tagIds.size() &gt; 0"> <!-- 태그 선택됨 -->
+            JOIN (
+            SELECT DISTINCT alt.anime_id <!-- 작품 ID -->
+            FROM anime_tags alt <!-- 태그 매핑 테이블 -->
+            WHERE alt.tag_id IN
+            <foreach collection="tagIds" item="tid" open="(" close=")" separator=","> <!-- IN 바인딩 -->
+                #{tid} <!-- 단일 태그 ID -->
+            </foreach>
+            ) tf ON tf.anime_id = a.id <!-- 태그 OR 조인 -->
+        </if>
+    </sql>
+
+    <!-- 공통 WHERE (활성 + 키워드 부분일치) -->
+    <sql id="base_where"> <!-- 재사용 WHERE -->
+        WHERE a.is_active = TRUE <!-- 활성 작품만 -->
+        <if test="query != null and query.trim().length() &gt; 0"> <!-- 키워드 존재 시 -->
+            AND (
+            a.title ILIKE '%' || #{query} || '%' <!-- 한글 제목 부분일치 -->
+            OR a.title_en ILIKE '%' || #{query} || '%' <!-- 영문 제목 부분일치 -->
+            OR a.title_jp ILIKE '%' || #{query} || '%' <!-- 일문 제목 부분일치 -->
+            )
+        </if>
+    </sql>
+
+    <!-- 자동완성: 제목만 반환 -->
+    <select id="suggestTitles" resultType="com.ottproject.ottbackend.dto.SearchSuggestTitleDto"> <!-- DTO 매핑 -->
+        SELECT
+        a.title AS title <!-- DTO.title -->
+        FROM anime a <!-- 대상 테이블 -->
+        <include refid="base_where"/> <!-- 활성+키워드 -->
+        ORDER BY a.is_popular DESC, a.rating DESC, a.id DESC <!-- 노출 우선순위 -->
+        LIMIT #{limit} <!-- 최대 건수 -->
+    </select>
+
+    <!-- 본검색: 목록 -->
+    <select id="searchAnimes" resultType="com.ottproject.ottbackend.dto.AnimeListDto"> <!-- DTO 매핑 -->
+        SELECT
+        a.id AS aniId, <!-- 목록 아이템 ID -->
+        a.title AS title, <!-- 제목 -->
+        a.poster_url AS posterUrl, <!-- 포스터 -->
+        a.rating AS rating, <!-- 평점 -->
+        a.rating_count AS ratingCount, <!-- 평점 수 -->
+        a.is_dub AS isDub, <!-- 더빙 -->
+        a.is_subtitle AS isSubtitle, <!-- 자막 -->
+        a.is_exclusive AS isExclusive, <!-- 독점 -->
+        a.is_new AS isNew, <!-- 신작 -->
+        a.is_popular AS isPopular, <!-- 인기 -->
+        a.is_completed AS isCompleted, <!-- 완결 -->
+        a.status AS animeStatus, <!-- 상태 ENUM -->
+        a.year AS year, <!-- 연도 -->
+        a.type AS type <!-- 타입 -->
+        <include refid="base_from"/> <!-- 장르 AND/태그 OR 조인 -->
+        <include refid="base_where"/> <!-- 활성+키워드 -->
+        ORDER BY
+        <choose> <!-- 정렬 분기 -->
+            <when test="sort == 'rating'"> a.rating DESC, a.id DESC </when> <!-- 평점순 -->
+            <when test="sort == 'year'"> a.year DESC, a.id DESC </when> <!-- 최신연도순 -->
+            <when test="sort == 'popular'"> a.is_popular DESC, a.id DESC </when> <!-- 인기순 -->
+            <otherwise> a.id DESC </otherwise> <!-- 최신 등록순 -->
+        </choose>
+        LIMIT #{limit} OFFSET #{offset} <!-- 페이지네이션 -->
+    </select>
+
+    <!-- 본검색: 총 개수 -->
+    <select id="countSearchAnimes" resultType="long"> <!-- 총 카운트 -->
+        SELECT COUNT(1) <!-- 총 행 수 -->
+        <include refid="base_from"/> <!-- 동일 FROM -->
+        <include refid="base_where"/> <!-- 동일 WHERE -->
+    </select>
+
+</mapper>
