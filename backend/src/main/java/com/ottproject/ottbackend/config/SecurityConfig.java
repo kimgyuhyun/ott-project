@@ -64,6 +64,7 @@ public class SecurityConfig {
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll() // OpenAPI
                         .requestMatchers("/").permitAll() // 루트 경로 허용 (헬스체크용)
                         .requestMatchers("/health").permitAll() // 헬스체크 경로 허용
+                        .requestMatchers("/api/search/**").permitAll() // 검색(자동완성/본검색) 익명 허용
                         .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
                 )
                 .formLogin(form -> form.disable()) // 기본 로그인 폼 비활성화 (REST API용)
