@@ -94,6 +94,10 @@ backend/*.iml
 *.dump
 *.backup
 
+# Allow Flyway migration SQLs to be committed
+!backend/src/main/resources/db/migration/*.sql
+!backend/src/main/resources/db/migration/**/*.sql
+
 # ===== Redis =====
 dump.rdb
 *.rdb
