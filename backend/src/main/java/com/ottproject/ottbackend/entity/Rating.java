@@ -33,8 +33,8 @@ public class Rating {
     private User user; // 평점을 남긴 사용자
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ani_list_id")
-    private AnimeList animeList; // 평점을 달린 애니
+    @JoinColumn(name = "ani_id") // 통합 애니 FK
+    private Anime anime; // 평점이 달린 애니
 
     
     @CreatedDate

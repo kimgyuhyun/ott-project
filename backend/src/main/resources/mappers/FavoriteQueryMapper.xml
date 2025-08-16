@@ -35,7 +35,7 @@
         a.type AS type, <!-- DTO.type -->
         f.created_at AS favoritedAt <!-- DTO.favoritedAt -->
         FROM ani_favorites f <!-- 찜 테이블 -->
-        JOIN ani_list a ON a.id = f.ani_list_id <!-- 작품 조인 -->
+        JOIN anime a ON a.id = f.ani_id <!-- 작품 조인: FK 변경 -->
         WHERE f.user_id = #{userId} <!-- 사용자 기준 -->
         ORDER BY
         CASE WHEN #{sort} = 'title' THEN a.title END ASC, <!-- sort=title 이면 제목 오름차순, 아니면 NULL(정렬 영향 없음) -->

@@ -28,8 +28,8 @@ public class AnimeFavorite { // 애니 찜 엔티티
     private User user; // 찜한 사용자
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false) // 다대일: 애니
-    @JoinColumn(name = "ani_list_id", nullable = false) // FK: ani_list_id
-    private AnimeList animeList; // 대상 애니
+    @JoinColumn(name = "ani_id", nullable = false) // FK: ani_id
+    private Anime anime; // 대상 애니
 
     @CreatedDate // 생성 시각 자동
     @Column(name = "created_at", nullable = false, updatable = false) // 불변 컬럼

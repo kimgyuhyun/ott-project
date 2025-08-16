@@ -65,12 +65,12 @@ public class Studio {
     // ===== 연관관계 매핑 =====
 
     /**
-     * AMniList 와의 다대다 관계
+     * Anime 와의 다대다 관계
      * 하나의 제작사는 여러 애니를 제작할 수 있고 하나의 애니는 여러 제작사가 참여할수있음
-     * mappedBy : AnimeList 엔티티에서 관리하는 관계 필드명
+     * mappedBy : Anime 엔티티에서 관리하는 관계 필드명
      */
     @ManyToMany(mappedBy = "studios", fetch = FetchType.LAZY) // 다대다 관계, 지연로딩
     @Builder.Default
-    private Set<AnimeList> animeLists = new HashSet<>(); // 해당 제작사가 제작한 애니 목록
+    private Set<Anime> animes = new HashSet<>(); // 해당 제작사가 제작한 애니 목록
 
 }

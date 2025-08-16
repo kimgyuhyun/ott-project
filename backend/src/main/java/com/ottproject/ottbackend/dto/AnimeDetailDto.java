@@ -69,7 +69,7 @@ public class AnimeDetailDto {
     private String director; // 감독
 
     // 에피소드 집계
-    private Integer totalEpisodes; // 총 에피소드(AnimeList.total_episodes 에서 조인)
+    private Integer totalEpisodes; // 총 에피소드(anime.total_episodes 에서 조인)
     private Integer currentEpisodes; // 현재 업로드 화수
     
     // 연관 목록

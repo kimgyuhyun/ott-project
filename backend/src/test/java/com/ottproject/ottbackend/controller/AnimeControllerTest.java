@@ -1,8 +1,8 @@
 package com.ottproject.ottbackend.controller; // 패키지 선언
 
-import com.ottproject.ottbackend.entity.AnimeList;
+import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import com.ottproject.ottbackend.repository.AnimeListRepository;
+import com.ottproject.ottbackend.repository.AnimeRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,17 +27,17 @@ class AnimeControllerTest { // AnimeController 통합 테스트 클래스
     private MockMvc mockMvc; // HTTP 요청/응답 모킹 도구
 
     @Autowired // 스프링이 레포지토리 빈을 주입(JPA 로 시드 데이터 저장)
-    private AnimeListRepository animeListRepository; // 목록 시드/검증용 JPA 레포지토리
+    private AnimeRepository animeListRepository; // 통합 Anime 시드/검증용 JPA 레포지토리
 
-    private AnimeList seedAni( // 목록 API 가 조회할 애니 시드 데이터 생성
-                               String title, // 제목
-                               AnimeStatus status, // 방영 상태
-                               double rating, // 평점
-                               int year, // 연도
-                               boolean isPopular // 인기 여부
+    private Anime seedAni( // 목록 API 가 조회할 애니 시드 데이터 생성
+            String title, // 제목
+            AnimeStatus status, // 방영 상태
+            double rating, // 평점
+            int year, // 연도
+            boolean isPopular // 인기 여부
     ) {
         return animeListRepository.save( // JPA 저장(커밋 전 롤백 예정)
-                AnimeList.builder() // 엔티티 빌더 시작
+                Anime.builder() // 엔티티 빌더 시작
                         .title(title) // 제목
                         .posterUrl("http://img") // 포스터 URL(필수)
                         .totalEpisodes(12) // 총 화수(필수)
@@ -74,14 +74,14 @@ class AnimeControllerTest { // AnimeController 통합 테스트 클래스
         seedAni("B", AnimeStatus.ONGOING, 3.0, 2021, false); // 조건 불일치(제외 기대)
 
         mockMvc.perform( // 목록 API 호출
-                        get("/api/anime") // 엔드포인트
-                                .param("status", "COMPLETED") // 상태 필터
-                                .param("minRating", "4.0") // 최소 평점
-                                .param("year", "2020") // 연도 필터
-                                .param("sort", "popular") // 정렬 키
-                                .param("page", "0") // 페이지
-                                .param("size", "10") // 페이지 크기
-                )
+                get("/api/anime") // 엔드포인트
+                        .param("status", "COMPLETED") // 상태 필터
+                        .param("minRating", "4.0") // 최소 평점
+                        .param("year", "2020") // 연도 필터
+                        .param("sort", "popular") // 정렬 키
+                        .param("page", "0") // 페이지
+                        .param("size", "10") // 페이지 크기
+        )
                 .andExpect(status().isOk()) // 200 OK
                 .andExpect(jsonPath("$.total").value(1)) // 총 1건
                 .andExpect(jsonPath("$.items[0].title").value("A")); // 첫 아이템 제목 검증
@@ -91,8 +91,8 @@ class AnimeControllerTest { // AnimeController 통합 테스트 클래스
     void 상세_API_OK() throws Exception { // 단건 상세 조회 정상 동작 검증
         var saved = seedAni("C", AnimeStatus.COMPLETED, 4.5, 2019, false); // 상세 대상 시드
         mockMvc.perform( // 상세 API 호출
-                        get("/api/anime/{aniId}", saved.getId()) // 경로변수 aniId
-                )
+                get("/api/anime/{aniId}", saved.getId()) // 경로변수 aniId
+        )
                 .andExpect(status().isOk()) // 200 OK
                 .andExpect(jsonPath("$.aniId").value(saved.getId())); // 응답의 aniId 일치 검증
     }

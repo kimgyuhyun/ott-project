@@ -2,13 +2,13 @@ package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.ReviewResponseDto;
-import com.ottproject.ottbackend.entity.AnimeList;
+import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.Review;
 import com.ottproject.ottbackend.entity.ReviewLike;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.ReviewStatus;
 import com.ottproject.ottbackend.mybatis.CommunityReviewCommentQueryMapper;
-import com.ottproject.ottbackend.repository.AnimeListRepository;
+import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.ReviewLikeRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
@@ -29,7 +29,7 @@ public class ReviewsService {
     // JPA 저장/수정/삭제
     private final ReviewRepository reviewRepository; // 리뷰 CUD
     private final UserRepository userRepository; // 사용자 연관 검증/지정
-    private final AnimeListRepository animeListRepository; // 애니 연관 검증/지정
+    private final AnimeRepository animeListRepository; // 애니 연관 검증/지정
     private final ReviewLikeRepository reviewLikeRepository; // 좋아요 CUD
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<ReviewResponseDto> list(Long aniId, Long currentUserId, String sort, int page, int size) {
@@ -49,12 +49,12 @@ public class ReviewsService {
     public Long create(Long userId, Long aniListId, String content, Double rating) {
         User user = userRepository.findById(userId) // 사용자 조회(필수)
                 .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
-        AnimeList animeList = animeListRepository.findById(aniListId) // 애니 조회(필수)
+        Anime animeList = animeListRepository.findById(aniListId) // NEW 애니 조회(필수)
                 .orElseThrow(() -> new IllegalArgumentException("animeList not found: " + aniListId));
 
         Review review = Review.builder() // 리뷰 엔티티 생성
                 .user(user) // 연관: 작성자
-                .animeList(animeList) // 연관: 대상 애니
+                .anime(animeList) // NEW 연관: 대상 애니
                 .content(content) // 내용(선택)
                 .rating(rating) // 평점(선택)
                 .status(ReviewStatus.ACTIVE) // 기본 상태: ACTIVE
@@ -111,6 +111,6 @@ public class ReviewsService {
     }
 
     public void deleteHardByAniList(Long aniListId) {
-        reviewRepository.deleteByAniListId(aniListId); // 특정 리뷰 하드 삭제(관리용)
+        reviewRepository.deleteByAniId(aniListId); // NEW 특정 리뷰 하드 삭제(관리용)
     }
 }

@@ -30,12 +30,12 @@ public class Tag { // 태그 마스터
     private String color; // 배지 색상(선택)
 
     /**
-     * AnimeList 와의 다대다 관계(역방향)
-     * - 소유자는 AnimeList.tags(@JoinTable 사용)
+     * Anime 와의 다대다 관계(역방향) // NEW
+     * - 소유자는 Anime.tags(@JoinTable 사용)
      */
     @ManyToMany(mappedBy = "tags", fetch = FetchType.LAZY)
     @Builder.Default
-    private java.util.Set<AnimeList> animeLists = new HashSet<>(); // 역방향 참조
+    private java.util.Set<Anime> animes = new HashSet<>(); // 역방향 참조
 }
 
 

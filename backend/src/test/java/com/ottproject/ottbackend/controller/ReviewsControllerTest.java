@@ -1,11 +1,11 @@
 package com.ottproject.ottbackend.controller;
 
-import com.ottproject.ottbackend.entity.AnimeList;
+import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.Review;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.enums.ReviewStatus;
-import com.ottproject.ottbackend.repository.AnimeListRepository;
+import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -32,7 +32,7 @@ class ReviewsControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 
 
     @Autowired private MockMvc mockMvc; // HTTP 요청/응답 모킹 도구 주입
     @Autowired private UserRepository userRepository; // 사용자 JPA 레포지토리(시드/검증)
-    @Autowired private AnimeListRepository animeListRepository; // 애니 JPA 레포지토리(시드)
+    @Autowired private AnimeRepository animeListRepository; // 애니 JPA 레포지토리(시드)
     @Autowired private ReviewRepository reviewRepository; // 리뷰 JPA 레포지토리(DB 상태 검증)
 
     private User seedUser(String email) { // 사용자 시드 생성 헬퍼
@@ -45,9 +45,9 @@ class ReviewsControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 
         ); // 저장 후 영속 엔티티 반환
     } // seedUser 끝
 
-    private AnimeList seedAni() { // 애니 시드 생성 헬퍼
+    private Anime seedAni() { // 애니 시드 생성 헬퍼
         return animeListRepository.save( // JPA 저장
-                AnimeList.builder() // 빌더 시작
+                Anime.builder() // 빌더 시작
                         .title("Test Title") // 제목
                         .posterUrl("http://poster") // 포스터 URL
                         .totalEpisodes(12) // 총 화수
@@ -78,7 +78,7 @@ class ReviewsControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 
         ); // 저장 후 반환
     } // seedAni 끝
 
-    private Long createReviewViaApi(AnimeList ani, User user, String content, double rating) throws Exception { // 리뷰를 API 로 생성하는 헬퍼(컨트롤러부터 시작 보장)
+    private Long createReviewViaApi(Anime ani, User user, String content, double rating) throws Exception { // 리뷰를 API 로 생성하는 헬퍼(컨트롤러부터 시작 보장)
         String body = String.format("{\"aniId\":%d,\"content\":\"%s\",\"rating\":%.1f}", ani.getId(), content, rating); // CreateReviewRequestDto 요구사항에 맞춰 aniId/내용/평점 JSON 구성
         String idStr = mockMvc.perform( // HTTP 요청 실행
                         post("/api/anime/{aniId}/reviews", ani.getId()) // 엔드포인트(경로변수 aniId 포함)
@@ -97,7 +97,7 @@ class ReviewsControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 
     @DisplayName("리뷰 목록은 API 생성 후 MyBatis 로 조회된다") // CUD=JPA(API 경유), R=MyBatis(목록 XML) 검증
     void listReviews_viaApiSeed_ok() throws Exception { // 목록 테스트
         User user = seedUser("list@a.com"); // 사용자 시드
-        AnimeList ani = seedAni(); // 애니 시드
+        Anime ani = seedAni(); // 애니 시드
         Long reviewId = createReviewViaApi(ani, user, "good", 4.5); // 컨트롤러부터 시작해 리뷰 생성
         Review created = reviewRepository.findById(reviewId).orElseThrow(); // DB에서 상태 확인
         assertEquals(ReviewStatus.ACTIVE, created.getStatus()); // 생성 시 기본 상태 ACTIVE 검증
@@ -117,7 +117,7 @@ class ReviewsControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 
     @DisplayName("리뷰 수정(본인) → 204, DB 반영 확인") // PUT /api/reviews/{id}
     void updateReview_allViaApi_ok() throws Exception { // 수정 플로우
         User user = seedUser("upd@a.com"); // 사용자 시드
-        AnimeList ani = seedAni(); // 애니 시드
+        Anime ani = seedAni(); // 애니 시드
         Long reviewId = createReviewViaApi(ani, user, "orig", 3.0); // API 로 리뷰 생성
         String body = "{\"content\":\"edited\",\"rating\":4.0}"; // 수정 JSON 바디
         mockMvc.perform( // 수정 호출
@@ -136,7 +136,7 @@ class ReviewsControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 
     @DisplayName("리뷰 삭제(본인) → 목록에서 제외") // DELETE /api/reviews/{id}
     void deleteReview_soft_ok() throws Exception { // 소프트 삭제 플로우
         User user = seedUser("del@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Long reviewId = createReviewViaApi(ani, user, "c", 3.0); // API 생성
         mockMvc.perform( // 삭제 호출
                         delete("/api/reviews/{id}", reviewId) // 단건 삭제(소프트)
@@ -155,7 +155,7 @@ class ReviewsControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 
     @DisplayName("리뷰 신고 → 목록에서 제외") // POST /api/reviews/{id}/report
     void reportReview_ok() throws Exception { // 신고 플로우
         User user = seedUser("rep@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Long reviewId = createReviewViaApi(ani, user, "c", 3.0); // 생성
         mockMvc.perform( // 신고 호출
                         post("/api/reviews/{id}/report", reviewId) // 신고 엔드포인트
@@ -174,7 +174,7 @@ class ReviewsControllerTest { // 리뷰 컨트롤러 통합 테스트 클래스 
     @DisplayName("리뷰 좋아요 토글 → true → false") // POST /api/reviews/{id}/like
     void toggleReviewLike_ok() throws Exception { // 좋아요 on/off 플로우
         User user = seedUser("like@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Long reviewId = createReviewViaApi(ani, user, "c", 3.0); // 생성
         mockMvc.perform( // 첫 토글(on)
                         post("/api/reviews/{id}/like", reviewId)

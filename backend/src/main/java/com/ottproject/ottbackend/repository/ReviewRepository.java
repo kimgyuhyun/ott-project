@@ -28,7 +28,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> { // 기�
 
     // 필요 시: 특정 애니의 모든 리뷰 하드 삭제(관리 기능 등)
     @Modifying(clearAutomatically = true, flushAutomatically = true) // + DML 컨텍스트 동기화
-    @Query("delete from Review r where r.animeList.id = :aniListId") // 부모 FK 기준 일괄 삭제
-    // 해당 애니(ani_list)의 모든 리뷰를 하드 삭제
-    int deleteByAniListId(@Param("aniListId") Long aniListId); // 삭제 행 수 반환
+    @Query("delete from Review r where r.anime.id = :aniId") // 부모 FK 기준 일괄 삭제
+    // 해당 애니(anime)의 모든 리뷰를 하드 삭제 
+    int deleteByAniId(@Param("aniId") Long aniId); // 삭제 행 수 반환
 }

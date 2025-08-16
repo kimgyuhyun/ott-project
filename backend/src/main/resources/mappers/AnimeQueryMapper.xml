@@ -11,7 +11,7 @@
 
     <!-- 목록 조회용 공통 FROM/JOIN 블록 -->
     <sql id="base_list_from"> <!-- 다른 쿼리에서 include 로 재사용 -->
-        FROM ani_list a <!-- FROM: 작품 목록 테이블 a 에서 시작 -->
+        FROM anime a <!-- FROM: 통합 애니 테이블 a 에서 시작 -->
         <if test="genreCount != null and genreCount &gt; 0"> <!-- genreIds 가 1개 이상일 때만 장르 AND 필터 적용 -->
             JOIN ( <!-- 장르 AND 매칭된 작품들만 추출하는 서브쿼리 -->
                 SELECT ag.ani_list_id <!-- 작품 ID -->
@@ -105,8 +105,8 @@
         t.name AS name,
         t.color AS color
         FROM tags t
-        JOIN ani_list_tags alt ON alt.tag_id = t.id
-        WHERE alt.ani_list_id = #{aniId}
+        JOIN anime_tags alt ON alt.tag_id = t.id
+        WHERE alt.anime_id = #{aniId}
         ORDER BY t.name ASC
     </select>
 
@@ -119,7 +119,7 @@
     <select id="findAniDetailByAniId" resultType="com.ottproject.ottbackend.dto.AnimeDetailDto"> <!-- 단건 DTO -->
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
-        d.id AS detailId, <!-- DTO.detailId -->
+        a.id AS detailId, <!-- DTO.detailId: 통합 엔티티 동일 ID 사용 -->
         a.title AS title, <!-- DTO.title -->
         a.title_en AS titleEn, <!-- DTO.titleEn -->
         a.title_jp AS titleJp, <!-- DTO.titleJp -->
@@ -139,8 +139,8 @@
         a.is_simulcast AS isSimulcast, <!-- DTO.isSimulcast -->
         a.is_active AS isActive, <!-- DTO.isActive -->
 
-        d.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis -->
-        d.voice_actors AS voiceActors, <!-- DTO.voiceActors -->
+        a.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis -->
+        a.voice_actors AS voiceActors, <!-- DTO.voiceActors -->
 
         a.release_date AS releaseDate, <!-- DTO.releaseDate -->
         a.end_date AS endDate, <!-- DTO.endDate -->
@@ -150,19 +150,18 @@
         a.year AS year, <!-- DTO.year -->
         a.type AS type, <!-- DTO.type -->
         a.duration AS duration, <!-- DTO.duration -->
-        d.release_quarter AS releaseQuarter, <!-- DTO.releaseQuarter -->
+        a.release_quarter AS releaseQuarter, <!-- DTO.releaseQuarter -->
         a.source AS source, <!-- DTO.source -->
         a.country AS country, <!-- DTO.country -->
         a.language AS language, <!-- DTO.language -->
-        d.director AS director, <!-- DTO.director -->
+        a.director AS director, <!-- DTO.director -->
 
         a.total_episodes AS totalEpisodes, <!-- DTO.totalEpisodes -->
-        d.current_episodes AS currentEpisodes, <!-- DTO.currentEpisodes -->
+        a.current_episodes AS currentEpisodes, <!-- DTO.currentEpisodes -->
 
-        d.created_at AS createdAt, <!-- DTO.createdAt -->
-        d.updated_at AS updatedAt <!-- DTO.updatedAt -->
-        FROM ani_detail d <!-- 상세 테이블 -->
-        JOIN ani_list a ON a.id = d.ani_list_id <!-- 목록과 1:1 조인 -->
+        a.created_at AS createdAt, <!-- DTO.createdAt -->
+        a.updated_at AS updatedAt <!-- DTO.updatedAt -->
+        FROM anime a <!-- 통합 애니 테이블 -->
         WHERE a.id = #{aniId} <!-- 경로 파라미터 -->
     </select>
 
@@ -185,8 +184,7 @@
         e.created_at AS createdAt, <!-- EpisodeDto.createdAt-->
         e.updated_at AS updatedAt <!-- EpisodeDto.updatedAt-->
         FROM episode e <!-- 에피소드 테이블 -->
-        JOIN ani_detail d ON d.id = e.ani_detail_id <!-- 상세와 조인 -->
-        WHERE d.ani_list_id = #{aniId} <!-- aniId 기준 조회 -->
+        WHERE e.anime_id = #{aniId} <!-- aniId 기준 조회 -->
         ORDER BY e.episode_number ASC <!-- 회수 오름차순-->
     </select>
 
@@ -202,8 +200,8 @@
         g.name AS name, <!-- GenreSimpleDto.name -->
         g.color AS color <!-- GenreSimpleDto.color -->
         FROM genres g <!-- 장르 테이블 -->
-        JOIN ani_list_genres ag ON ag.genre_id = g.id <!-- 중간 테이블 -->
-        WHERE ag.ani_list_id = #{aniId} <!-- aniId -->
+        JOIN anime_genres ag ON ag.genre_id = g.id <!-- 중간 테이블 -->
+        WHERE ag.anime_id = #{aniId} <!-- aniId -->
         ORDER BY g.name ASC <!-- 이름 정렬 -->
     </select>
 
@@ -220,8 +218,8 @@
         s.logo_url AS logoUrl, <!-- studiosSimpleDto.logoUrl -->
         s.country AS country <!-- studiosSimpleDto.country -->
         FROM studios s <!-- 제작사 테이블 -->
-        JOIN ani_list_studios asg ON asg.studio_id = s.id  <!-- 중간 테이블 -->
-        WHERE asg.ani_list_id = #{aniId} <!-- aniId 기준 -->
+        JOIN anime_studios asg ON asg.studio_id = s.id  <!-- 중간 테이블 -->
+        WHERE asg.anime_id = #{aniId} <!-- aniId 기준 -->
         ORDER BY s.name ASC <!-- 이름 정렬 -->
     </select>
 
@@ -234,7 +232,7 @@
     <select id="findAniDetailByAniIdWithUser" resultType="com.ottproject.ottbackend.dto.AnimeDetailDto"> <!-- 상세 + 찜 여부 동시 조회 -->
         SELECT /* 헤더 기본 컬럼들 */
         a.id AS aniId, <!-- DTO.aniId -->
-        d.id AS detailId, <!-- DTO.detailId -->
+        a.id AS detailId, <!-- DTO.detailId: 통합 엔티티 동일 ID 사용 -->
         a.title AS title, <!-- DTO.title -->
         a.title_en AS titleEn, <!-- DTO.titleEn -->
         a.title_jp AS titleJp, <!-- DTO.titleJp -->
@@ -254,8 +252,8 @@
         a.is_simulcast AS isSimulcast, <!-- DTO.isSimulcast -->
         a.is_active AS isActive, <!-- DTO.isActive -->
 
-        d.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis (기존 오탈자 fillSynopsis → fullSynopsis) -->
-        d.voice_actors AS voiceActors, <!-- DTO.voiceActors -->
+        a.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis -->
+        a.voice_actors AS voiceActors, <!-- DTO.voiceActors -->
 
         a.release_date AS releaseDate, <!-- DTO.releaseDate -->
         a.end_date AS endDate, <!-- DTO.endDate -->
@@ -265,17 +263,17 @@
         a.year AS year, <!-- DTO.year -->
         a.type AS type, <!-- DTO.type -->
         a.duration AS duration, <!-- DTO.duration -->
-        d.release_quarter AS releaseQuarter, <!-- DTO.releaseQuarter -->
+        a.release_quarter AS releaseQuarter, <!-- DTO.releaseQuarter -->
         a.source AS source, <!-- DTO.source -->
         a.country AS country, <!-- DTO.country -->
         a.language AS language, <!-- DTO.language -->
-        d.director AS director, <!-- DTO.director -->
+        a.director AS director, <!-- DTO.director -->
 
         a.total_episodes AS totalEpisodes, <!-- DTO.totalEpisodes -->
-        d.current_episodes AS currentEpisodes, <!-- DTO.currentEpisodes -->
+        a.current_episodes AS currentEpisodes, <!-- DTO.currentEpisodes -->
 
-        d.created_at AS createdAt, <!-- DTO.createdAt -->
-        d.updated_at AS updatedAt, <!-- DTO.updatedAt -->
+        a.created_at AS createdAt, <!-- DTO.createdAt -->
+        a.updated_at AS updatedAt, <!-- DTO.updatedAt -->
 
         <!-- 찜 여부: 로그인 시 LEFT JOIN 결과로 판단, 비로그인 시 false 고정 -->
         <if test="currentUserId != null">
@@ -284,10 +282,9 @@
         <if test="currentUserId == null">
             FALSE AS isFavorited <!-- DTO.isFavorited: 비로그인 기본 false -->
         </if>
-        FROM ani_detail d <!-- 상세 테이블 -->
-        JOIN ani_list a ON a.id = d.ani_list_id <!-- 목록과 1:1 조인 -->
+        FROM anime a <!-- 통합 애니 테이블 -->
         <if test="currentUserId != null">
-            LEFT JOIN ani_favorites f ON f.ani_list_id = a.id AND f.user_id = #{currentUserId} <!-- 사용자 기준 찜 조인 -->
+            LEFT JOIN ani_favorites f ON f.ani_id = a.id AND f.user_id = #{currentUserId} <!-- 사용자 기준 찜 조인 -->
         </if>
         WHERE a.id = #{aniId} <!-- 대상 aniId -->
     </select>
