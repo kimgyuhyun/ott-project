@@ -3,11 +3,11 @@ package com.ottproject.ottbackend.service; // 서비스 패키지
 import com.ottproject.ottbackend.dto.FavoriteAnimeDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.entity.AnimeFavorite;
-import com.ottproject.ottbackend.entity.AnimeList;
+import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.mybatis.FavoriteQueryMapper;
 import com.ottproject.ottbackend.repository.AnimeFavoriteRepository;
-import com.ottproject.ottbackend.repository.AnimeListRepository;
+import com.ottproject.ottbackend.repository.AnimeRepository; // NEW
 import com.ottproject.ottbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,18 +22,18 @@ import java.util.Optional;
 public class FavoriteAnimeService { // 찜 도메인 서비스
     private final AnimeFavoriteRepository favoriteRepository; // 찜 JPA 리포지토리
     private final UserRepository userRepository; // 사용자 조회
-    private final AnimeListRepository animeListRepository; // 애니 조회 리포지토리
+    private final AnimeRepository animeListRepository; // 통합 Anime 리포지토리
     private final FavoriteQueryMapper favoriteQueryMapper; // 찜 목록 조회(MyBatis)
 
     public boolean toggle(Long aniId, Long userId) { // 찜 토글(true:on, false:off 반환)
-        Optional<AnimeFavorite> existing = favoriteRepository.findByUserIdAndAniListId(userId, aniId); // 기존 찜 조회
+        Optional<AnimeFavorite> existing = favoriteRepository.findByUserIdAndAniId(userId, aniId); // 기존 찜 조회
         if (existing.isPresent()) { // 이미 찜됨
-            favoriteRepository.deleteByUserIdAndAniListId(userId, aniId); // 삭제로 off
+            favoriteRepository.deleteByUserIdAndAniId(userId, aniId); // 삭제로 off
             return false; // 현재 상태: off
         } // 미찜 상태
         User user = userRepository.findById(userId).orElseThrow(); // 사용자 존재 확인
-        AnimeList ani = animeListRepository.findById(aniId).orElseThrow(); // 애니 존재 확인
-        AnimeFavorite entity = AnimeFavorite.builder().user(user).animeList(ani).build(); // 엔티티 구성
+        Anime ani = animeListRepository.findById(aniId).orElseThrow(); // 통합 Anime 조회
+        AnimeFavorite entity = AnimeFavorite.builder().user(user).anime(ani).build(); // NEW 엔티티 구성
         favoriteRepository.save(entity); // 저장으로 on
         return true; // 현재 상태: on
     }
@@ -50,6 +50,6 @@ public class FavoriteAnimeService { // 찜 도메인 서비스
     @Transactional(readOnly = true) // 읽기 전용
     public boolean isFavorited(Long aniId, Long userId) { // 개별 찜 여부 조회
         if (userId == null) return false; // 비로그인 보호
-        return favoriteRepository.existsByUserIdAndAniListId(userId, aniId); // 존재 여부 반환
+        return favoriteRepository.existsByUserIdAndAniId(userId, aniId); // NEW 존재 여부 반환
     }
 }

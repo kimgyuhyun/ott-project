@@ -23,9 +23,9 @@ public interface EpisodeRepository extends JpaRepository<Episode, Long> { // 에
     Optional<Episode> findByIdForUpdate(@Param("id") Long id); // :id 바인딩
 
     @Modifying(clearAutomatically = true, flushAutomatically = true) // DML + 동기화
-    @Query("delete from Episode e where e.animeDetail.id = :aniDetailId") // 상세에 속한 에피소드 전체 삭제
-    int deleteByAniDetailId(@Param("aniDetailId") Long aniDetailId); // 삭제 행 수
+    @Query("delete from Episode e where e.anime.id = :aniId") // 애니 기준 일괄 삭제
+    int deleteByAniId(@Param("aniId") Long aniId); // 삭제 행 수
 
-    // 다음 화 조회(동일 AnimeDetail 기준, 공개된 것만)
-    Episode findFirstByAniDetailIdAndEpisodeNumberGreaterThanAndIsReleasedTrueOrderByEpisodeNumberAsc(Long aniDetailId, Integer episodeNumber);
+    // 다음 화 조회(동일 Anime 기준, 공개된 것만)
+    Episode findFirstByAnimeIdAndEpisodeNumberGreaterThanAndIsReleasedTrueOrderByEpisodeNumberAsc(Long aniId, Integer episodeNumber); // NEW
 }

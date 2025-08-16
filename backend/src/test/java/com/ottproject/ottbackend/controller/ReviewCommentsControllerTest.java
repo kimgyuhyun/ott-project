@@ -1,13 +1,13 @@
 package com.ottproject.ottbackend.controller;
 
-import com.ottproject.ottbackend.entity.AnimeList;
+import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.Comment;
 import com.ottproject.ottbackend.entity.Review;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.enums.CommentStatus;
 import com.ottproject.ottbackend.enums.ReviewStatus;
-import com.ottproject.ottbackend.repository.AnimeListRepository;
+import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.CommentRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
@@ -35,7 +35,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
 
     @Autowired private MockMvc mockMvc; // HTTP 호출 도구
     @Autowired private UserRepository userRepository; // 사용자 시드/검증
-    @Autowired private AnimeListRepository animeListRepository; // 애니 시드
+    @Autowired private AnimeRepository animeListRepository; // 애니 시드
     @Autowired private ReviewRepository reviewRepository; // 리뷰 시드/검증
     @Autowired private CommentRepository commentRepository; // DB 상태 검증
 
@@ -45,9 +45,9 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
         ); // 저장 후 반환
     } // seedUser 끝
 
-    private AnimeList seedAni() { // 애니 시드 생성
+    private Anime seedAni() { // 애니 시드 생성
         return animeListRepository.save( // JPA 저장
-                AnimeList.builder()
+                Anime.builder()
                         .title("Test Title").posterUrl("http://poster").totalEpisodes(12)
                         .status(AnimeStatus.ONGOING).releaseDate(LocalDate.now()).endDate(null)
                         .isExclusive(true).isNew(false).isPopular(false).isCompleted(false)
@@ -58,10 +58,10 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
         ); // 저장 후 반환
     } // seedAni 끝
 
-    private Review seedReview(User user, AnimeList ani) { // 리뷰 시드 생성(댓글 상위 리소스)
+    private Review seedReview(User user, Anime ani) { // 리뷰 시드 생성(댓글 상위 리소스)
         return reviewRepository.save( // JPA 저장
                 Review.builder()
-                        .user(user).animeList(ani).status(ReviewStatus.ACTIVE)
+                        .user(user).anime(ani).status(ReviewStatus.ACTIVE)
                         .content("seed").rating(3.5).build()
         ); // 저장 후 반환
     } // seedReview 끝
@@ -98,7 +98,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
     @DisplayName("댓글 목록(MyBatis) 조회가 H2에서 동작한다") // 목록 XML 동작 검증
     void listComments_ok() throws Exception { // 최상위 댓글 목록 테스트
         User user = seedUser("x@a.com"); // 사용자 시드
-        AnimeList ani = seedAni(); // 애니 시드
+        Anime ani = seedAni(); // 애니 시드
         Review review = seedReview(user, ani); // 리뷰 시드
         createCommentViaApi(review, user, "c1"); // API로 최상위 댓글 1건 생성
         mockMvc.perform( // 목록 조회
@@ -115,7 +115,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
     @DisplayName("댓글 생성 → 상태변경(PATCH) → 목록 제외") // 생성/상태변경/목록 제외 플로우
     void createThenPatchStatus_ok() throws Exception { // 관리/모더레이션 엔드포인트 검증
         User user = seedUser("y@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Review review = seedReview(user, ani); // 리뷰
         Long commentId = createCommentViaApi(review, user, "hello"); // 최상위 댓글 생성
         mockMvc.perform( // 목록 확인
@@ -141,7 +141,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
     @DisplayName("리뷰의 모든 댓글 일괄 삭제 후 목록이 비어있다") // DELETE /api/reviews/{reviewId}/comments
     void deleteAllByReview_ok() throws Exception { // 일괄 삭제
         User user = seedUser("z@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Review review = seedReview(user, ani); // 리뷰
         createCommentViaApi(review, user, "seed"); // 댓글 생성
         mockMvc.perform( // 일괄 삭제 호출
@@ -160,7 +160,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
     @DisplayName("댓글 수정(본인) → 204, 목록에 변경 내용 반영") // PUT /api/comments/{id}
     void updateComment_ok() throws Exception { // 본인 수정 플로우
         User user = seedUser("c-upd@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Review review = seedReview(user, ani); // 리뷰
         Long commentId = createCommentViaApi(review, user, "orig"); // 댓글 생성
         String body = "{\"content\":\"edited\"}"; // 수정 바디
@@ -179,7 +179,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
     @DisplayName("댓글 삭제(본인) → 목록에서 제외") // DELETE /api/comments/{id}
     void deleteComment_soft_ok() throws Exception { // 소프트 삭제
         User user = seedUser("c-del@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Review review = seedReview(user, ani); // 리뷰
         Long commentId = createCommentViaApi(review, user, "seed"); // 댓글 생성
         mockMvc.perform( // 삭제 호출
@@ -199,7 +199,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
     @DisplayName("댓글 신고 → 목록에서 제외") // POST /api/comments/{id}/report
     void reportComment_ok() throws Exception { // 신고 플로우
         User user = seedUser("c-rep@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Review review = seedReview(user, ani); // 리뷰
         Long commentId = createCommentViaApi(review, user, "seed"); // 댓글 생성
         mockMvc.perform( // 신고 호출
@@ -219,7 +219,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
     @DisplayName("댓글 좋아요 토글 → true → false") // POST /api/comments/{id}/like
     void toggleCommentLike_ok() throws Exception { // 좋아요 토글
         User user = seedUser("c-like@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Review review = seedReview(user, ani); // 리뷰
         Long commentId = createCommentViaApi(review, user, "seed"); // 댓글 생성
         mockMvc.perform( // 첫 토글(on)
@@ -242,7 +242,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
     @DisplayName("대댓글 생성 → 대댓글 목록에서 조회된다") // POST/GET /api/comments/{commentId}/replies
     void replies_create_and_list_ok() throws Exception { // 대댓글 플로우
         User user = seedUser("c-reply@a.com"); // 사용자
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Review review = seedReview(user, ani); // 리뷰
         Long parentId = createCommentViaApi(review, user, "parent"); // 부모 댓글 생성
         Long replyId = createReplyViaApi(parentId, user.getId(), "child"); // 대댓글 생성
@@ -261,7 +261,7 @@ class ReviewCommentsControllerTest { // 댓글/대댓글 컨트롤러 통합 테
     void comment_sort_best_ok() throws Exception { // MyBatis 정렬 분기 테스트
         User u1 = seedUser("s1@a.com"); // 사용자1
         User u2 = seedUser("s2@a.com"); // 사용자2
-        AnimeList ani = seedAni(); // 애니
+        Anime ani = seedAni(); // 애니
         Review review = seedReview(u1, ani); // 리뷰
         Long c1 = createCommentViaApi(review, u1, "a"); // 댓글1
         Long c2 = createCommentViaApi(review, u1, "b"); // 댓글2

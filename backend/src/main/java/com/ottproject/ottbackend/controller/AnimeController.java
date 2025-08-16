@@ -5,7 +5,9 @@ import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.service.AnimeQueryService;
+import com.ottproject.ottbackend.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,6 +26,7 @@ import java.util.List;
 public class AnimeController { // 애니 목록/상세 조회 컨트롤러
 
     private final AnimeQueryService queryService; // 조회 서비스 의존성
+    private final SecurityUtil securityUtil; // 현재 사용자 ID 해석용(로그인 여부 반영)
 
     /**
      * 애니 목록 조회(페이지네이션)
@@ -32,38 +35,40 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping // GET /api/anime -> 목록 조회
     public PagedResponse<AnimeListDto> list( // 표준 페이지 포맷으로 목록 반환
-                                             @RequestParam(required = false) AnimeStatus status, // 쿼리스트링 ?status=COMPLETED -> ENUM 으로 바인딩(옵션)
-                                             @RequestParam(required = false, name = "genreIds") List<Long> genreIds, // ?genreIds=1%genreIds=2 ...
-                                             @RequestParam(required = false) Double minRating, // ?minRating=4.0 최소 평점 필터(옵션)
-                                             @RequestParam(required = false) Integer year, // ?year=2024 방영 연도 필터(옵션)
-                                             @RequestParam(required = false) Boolean isDub, // ?isDub=true 더빙 여부(옵션)
-                                             @RequestParam(required = false) Boolean isSubtitle, // ?isSubtitle=true 자막 여부(옵션)
-                                             @RequestParam(required = false) Boolean isExclusive, // ?isExclusive=true 독점 여부(옵션)
-                                             @RequestParam(required = false) Boolean isCompleted, // ?isCompleted=true 완결 여부(옵션)
-                                             @RequestParam(required = false) Boolean isNew, // ?isNew=true 신작 여부(옵션)
-                                             @RequestParam(required = false) Boolean isPopular, //?isPopular=true 인기 여부(옵션)
-                                             @RequestParam(defaultValue = "id") String sort, //?sort-rating|year|popular|id 정렬 키(기본 id)
-                                             @RequestParam(defaultValue = "0") int page, // ?page=0 페이지 번호(0-base, 기본 0)
-                                             @RequestParam(defaultValue = "20") int size, // ?size=20 페이지 크기 (기본 20)
-                                             @RequestParam(required = false, name = "tagIds") List<Long> tagIds // NEW: 태그 OR 필터
-            ) {
+            @RequestParam(required = false) AnimeStatus status, // 쿼리스트링 ?status=COMPLETED -> ENUM 으로 바인딩(옵션)
+            @RequestParam(required = false, name = "genreIds") List<Long> genreIds, // ?genreIds=1%genreIds=2 ...
+            @RequestParam(required = false) Double minRating, // ?minRating=4.0 최소 평점 필터(옵션)
+            @RequestParam(required = false) Integer year, // ?year=2024 방영 연도 필터(옵션)
+            @RequestParam(required = false) Boolean isDub, // ?isDub=true 더빙 여부(옵션)
+            @RequestParam(required = false) Boolean isSubtitle, // ?isSubtitle=true 자막 여부(옵션)
+            @RequestParam(required = false) Boolean isExclusive, // ?isExclusive=true 독점 여부(옵션)
+            @RequestParam(required = false) Boolean isCompleted, // ?isCompleted=true 완결 여부(옵션)
+            @RequestParam(required = false) Boolean isNew, // ?isNew=true 신작 여부(옵션)
+            @RequestParam(required = false) Boolean isPopular, //?isPopular=true 인기 여부(옵션)
+            @RequestParam(defaultValue = "id") String sort, //?sort-rating|year|popular|id 정렬 키(기본 id)
+            @RequestParam(defaultValue = "0") int page, // ?page=0 페이지 번호(0-base, 기본 0)
+            @RequestParam(defaultValue = "20") int size, // ?size=20 페이지 크기 (기본 20)
+            @RequestParam(required = false, name = "tagIds") List<Long> tagIds // NEW: 태그 OR 필터
+    ) {
         // 위 필터/정렬/페이지 정보를 서비스에 위임하여 MyBatis 쿼리 실행 후 페이지 응답으로 반환
         return queryService.list(
-                status, genreIds, minRating, year,
-                isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular,
-                sort, page, size, tagIds
+            status, genreIds, minRating, year,
+            isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular,
+            sort, page, size, tagIds
         );
     }
 
     /**
      * 애니 상세 조회
      */
-    @Operation(summary = "애니 상세 조회", description = "에피소드/장르/제작사 포함 단건 상세 정보를 반환합니다.")
+    @Operation(summary = "애니 상세 조회", description = "에피소드/장르/제작사 포함 단건 상세 정보를 반환합니다. 로그인 시 isFavorited 포함")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/{aniId}") // GET /api/anime/{aniId} -> 상세 조회
     public AnimeDetailDto detail( // 단건 상세 DTO 반환
-                                  @Parameter(description = "애니 ID", required = true) @PathVariable Long aniId // 경로 변수{aniId}를 Long 타입으로 바인딩
+            @Parameter(description = "애니 ID", required = true) @PathVariable Long aniId, // 경로 변수{aniId}를 Long 타입으로 바인딩
+            HttpSession session // 로그인 사용자 여부 확인
     ) {
-        return queryService.detail(aniId); // 헤더/더보기 + 에피소드/장르/제작사까지 채워서 반환
+        Long userId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
+        return queryService.detail(aniId, userId); // isFavorited 포함 상세 반환
     }
 }
