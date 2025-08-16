@@ -26,9 +26,9 @@ public class FavoriteAnimeService { // 찜 도메인 서비스
     private final FavoriteQueryMapper favoriteQueryMapper; // 찜 목록 조회(MyBatis)
 
     public boolean toggle(Long aniId, Long userId) { // 찜 토글(true:on, false:off 반환)
-        Optional<AnimeFavorite> existing = favoriteRepository.findByUserIdAndAniId(userId, aniId); // 기존 찜 조회
+        Optional<AnimeFavorite> existing = favoriteRepository.findByUser_IdAndAnime_Id(userId, aniId); // 기존 찜 조회
         if (existing.isPresent()) { // 이미 찜됨
-            favoriteRepository.deleteByUserIdAndAniId(userId, aniId); // 삭제로 off
+            favoriteRepository.deleteByUser_IdAndAnime_Id(userId, aniId); // 삭제로 off
             return false; // 현재 상태: off
         } // 미찜 상태
         User user = userRepository.findById(userId).orElseThrow(); // 사용자 존재 확인
@@ -50,6 +50,6 @@ public class FavoriteAnimeService { // 찜 도메인 서비스
     @Transactional(readOnly = true) // 읽기 전용
     public boolean isFavorited(Long aniId, Long userId) { // 개별 찜 여부 조회
         if (userId == null) return false; // 비로그인 보호
-        return favoriteRepository.existsByUserIdAndAniId(userId, aniId); // NEW 존재 여부 반환
+        return favoriteRepository.existsByUser_IdAndAnime_Id(userId, aniId); // NEW 존재 여부 반환
     }
 }
