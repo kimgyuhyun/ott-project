@@ -152,6 +152,34 @@ public class Anime {
 	@Builder.Default
 	private java.util.List<Episode> episodes = new java.util.ArrayList<>(); // NEW 에피소드 목록
 
+	// ===== 장르/태그/제작사 연관 =====
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 장르 다대다
+	@JoinTable(
+			name = "anime_genres", // 조인 테이블
+			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK
+			inverseJoinColumns = @JoinColumn(name = "genre_id", referencedColumnName = "id") // 대상 FK
+	)
+	@Builder.Default
+	private java.util.Set<Genre> genres = new java.util.HashSet<>(); // 장르 집합
+
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 태그 다대다
+	@JoinTable(
+			name = "anime_tags", // 조인 테이블
+			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK
+			inverseJoinColumns = @JoinColumn(name = "tag_id", referencedColumnName = "id") // 대상 FK
+	)
+	@Builder.Default
+	private java.util.Set<Tag> tags = new java.util.HashSet<>(); // 태그 집합
+
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 스튜디오 다대다
+	@JoinTable(
+			name = "anime_studios", // 조인 테이블
+			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK
+			inverseJoinColumns = @JoinColumn(name = "studio_id", referencedColumnName = "id") // 대상 FK
+	)
+	@Builder.Default
+	private java.util.Set<Studio> studios = new java.util.HashSet<>(); // 스튜디오 집합
+
 	// ===== 편의 메서드 =====
 	public void addEpisode(Episode episode) { // NEW
 		this.episodes.add(episode); // NEW

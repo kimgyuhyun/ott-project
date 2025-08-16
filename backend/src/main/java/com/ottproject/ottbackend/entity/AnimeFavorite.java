@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Entity // JPA 엔티티
 @Table( // 테이블 매핑
         name = "ani_favorites", // 테이블명
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id","ani_list_id"}) // 동일 유저-작품 중복 방지
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id","ani_id"}) // 동일 유저-작품 중복 방지
 ) // 유니크 제약
 @Getter // 게터
 @Setter // 세터
