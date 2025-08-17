@@ -2,7 +2,7 @@ package com.ottproject.ottbackend.controller; // 테스트 클래스의 패키�
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.entity.*;
-import com.ottproject.ottbackend.enums.SubscriptionStatus;
+import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.repository.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -42,7 +42,8 @@ class PlayerControllerIntegrationTest { // PlayerController에 대한 통합 테
     @Autowired EpisodeSkipMetaRepository episodeSkipMetaRepository; // 스킵 메타 리포지토리 의존성 주입
     @Autowired EpisodeProgressRepository episodeProgressRepository; // 에피소드 진행률 리포지토리 의존성 주입
     @Autowired SkipUsageRepository skipUsageRepository; // 스킵 사용 이력 리포지토리 의존성 주입
-    @Autowired SubscriptionRepository subscriptionRepository; // 구독 리포지토리 의존성 주입
+    @Autowired
+    MembershipSubscriptionRepository membershipSubscriptionRepository; // 구독 리포지토리 의존성 주입
 
     private static final String TEST_EMAIL = "user@test.com"; // 고정 테스트 이메일(세션 및 조회 공통 사용)
 
@@ -65,20 +66,20 @@ class PlayerControllerIntegrationTest { // PlayerController에 대한 통합 테
                 .build(); // 빌더 종료로 User 인스턴스 생성
         u = userRepository.save(u); // 저장
         if (member) { // 멤버십 사용 시
-            Subscription s = Subscription.builder() // 구독 빌드
+            MembershipSubscription s = MembershipSubscription.builder() // 구독 빌드
                     .user(u) // 대상 유저
-                    .plan( // 플랜(간단 생성)
-                            Plan.builder() // 플랜 빌더
+                    .membershipPlan( // 플랜(간단 생성)
+                            MembershipPlan.builder() // 플랜 빌더
                                     .name("Premium") // 플랜명
                                     .code("PREMIUM") // 코드
                                     .maxQuality("1080p") // 허용 최대 화질
-                                    .build() // Plan 인스턴스 생성
+                                    .build() // MembershipPlan 인스턴스 생성
                     )
-                    .status(SubscriptionStatus.ACTIVE) // 활성 구독
+                    .status(MembershipSubscriptionStatus.ACTIVE) // 활성 구독
                     .startAt(LocalDateTime.now().minusDays(1)) // 시작일
                     .endAt(null) // 종료일 없음
                     .build(); // 구독 생성
-            subscriptionRepository.save(s); // 구독 저장
+            membershipSubscriptionRepository.save(s); // 구독 저장
         }
         return u; // 유저 반환
     }
@@ -132,7 +133,7 @@ class PlayerControllerIntegrationTest { // PlayerController에 대한 통합 테
                 .andExpect(status().isForbidden()); // 403 Forbidden 기대
 
         // 멤버십 부여 후: 1080p(master.m3u8) 반환
-        subscriptionRepository.deleteAll(); // 기존 구독 초기화
+        membershipSubscriptionRepository.deleteAll(); // 기존 구독 초기화
         createUser(true); // 재생성(같은 이메일)로 ACTIVE 구독 삽입
 
         mvc.perform(get("/api/episodes/{id}/stream-url", ep4.getId()).session(loginSession())) // 멤버십 적용 후 재요청
