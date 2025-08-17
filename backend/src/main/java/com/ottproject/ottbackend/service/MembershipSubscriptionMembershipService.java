@@ -1,7 +1,7 @@
 package com.ottproject.ottbackend.service;
 
-import com.ottproject.ottbackend.enums.SubscriptionStatus;
-import com.ottproject.ottbackend.repository.SubscriptionRepository;
+import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
+import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,17 +15,16 @@ import java.time.LocalDateTime;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class SubscriptionMembershipService implements MembershipService { // 실제 멤버십 연동 기본 구현
-	private final SubscriptionRepository subscriptionRepository; // 구독 조회 리포지토리
+public class MembershipSubscriptionMembershipService implements MembershipService { // 실제 멤버십 연동 기본 구현
+	private final MembershipSubscriptionRepository membershipSubscriptionRepository; // 구독 조회 리포지토리
 
 	@Override
 	public boolean isMember(Long userId) {
 		if (userId == null) return false; // 미로그인 비회원
 		var now = LocalDateTime.now(); // 현재 시각
-		return subscriptionRepository
-				.findFirstByUser_IdAndStatusAndStartAtBeforeAndEndAtAfterOrEndAtIsNullOrderByStartAtDesc(
-						userId, SubscriptionStatus.ACTIVE, now, now
-				).isPresent(); // 유효 구독 존재 여부
+		return membershipSubscriptionRepository
+				.findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
+				.isPresent(); // 유효 구독 존재 여부
 	}
 
 	@Override

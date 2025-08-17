@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?> <!-- XML 선언: 버전 1.0, UTF-8 인코딩을 사용 -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- MyBatis 매퍼용 DTD 선언: XML 구조 검증 및 자동완성 기준 -->
+<mapper namespace="com.ottproject.ottbackend.mybatis.MembershipQueryMapper"> <!-- 이 매퍼가 연결될 인터페이스의 FQCN 네임스페이스 -->
+    <!-- 플랜 목록: 가격 오름차순 --> <!-- 개발자 주석: 플랜을 가격 기준 오름차순으로 조회 -->
+    <select id="listPlans" resultType="com.ottproject.ottbackend.dto.MembershipPlanDto"> <!-- 호출 메서드 id=listPlans, 결과를 MembershipPlanDto로 매핑 -->
+        SELECT <!-- SELECT 문 시작 -->
+        id, <!-- 플랜 고유 식별자 -->
+        name, <!-- 플랜 이름 -->
+        price_monthly_vat_included AS monthlyPrice, <!-- 월 구독가(VAT 포함) 컬럼을 DTO의 camelCase 필드로 별칭 매핑 -->
+        period_months AS periodMonths, <!-- 구독 기간(월) 컬럼을 DTO 필드로 별칭 매핑 -->
+        concurrent_streams AS concurrentStreams, <!-- 동시 재생 가능 스트림 수를 DTO 필드로 별칭 매핑 -->
+        max_quality AS maxQuality <!-- 제공 최대 화질을 DTO 필드로 별칭 매핑 -->
+        FROM plans <!-- 데이터 소스 테이블: plans -->
+        ORDER BY price_monthly_vat_included ASC, id ASC <!-- 1차 정렬: 가격 오름차순, 2차 정렬: id 오름차순(동일 가격 시 일관된 순서 보장) -->
+    </select> <!-- SELECT 문 종료 -->
+</mapper> <!-- 매퍼 종료 -->

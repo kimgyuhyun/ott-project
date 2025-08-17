@@ -6,7 +6,7 @@ package com.ottproject.ottbackend.enums;
  * - CANCELED: 해지
  * - EXPIRED: 만료
  */
-public enum SubscriptionStatus {
+public enum MembershipSubscriptionStatus {
     ACTIVE,
     CANCELED,
     EXPIRED
