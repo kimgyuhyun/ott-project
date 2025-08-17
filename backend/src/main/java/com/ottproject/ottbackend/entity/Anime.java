@@ -165,8 +165,8 @@ public class Anime {
 	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 태그 다대다
 	@JoinTable(
 			name = "anime_tags", // 조인 테이블
-			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK
-			inverseJoinColumns = @JoinColumn(name = "tag_id", referencedColumnName = "id") // 대상 FK
+			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK (Anime에 기본키)
+			inverseJoinColumns = @JoinColumn(name = "tag_id", referencedColumnName = "id") // 대상 FK (tag에 기본키)
 	)
 	@Builder.Default
 	private java.util.Set<Tag> tags = new java.util.HashSet<>(); // 태그 집합
