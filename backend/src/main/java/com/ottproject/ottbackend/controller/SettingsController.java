@@ -20,7 +20,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RestController // REST 컨트롤러
 @RequiredArgsConstructor // 생성자 주입
 public class SettingsController { // 사용자 재생 설정
-	private final SettingsService service; private final SecurityUtil securityUtil; // 의존성
+	private final SettingsService service; // 사용자 재생 설정 조회/갱신 서비스
+	private final SecurityUtil securityUtil; // 세션 사용자 식별 유틸
 
 	/**
 	 * 현재 사용자 재생 설정 조회
