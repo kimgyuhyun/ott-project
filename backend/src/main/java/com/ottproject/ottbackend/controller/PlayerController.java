@@ -3,6 +3,7 @@ package com.ottproject.ottbackend.controller;
 import com.ottproject.ottbackend.dto.EpisodeProgressRequestDto;
 import com.ottproject.ottbackend.dto.BulkProgressRequestDto;
 import com.ottproject.ottbackend.dto.PlayerStreamUrlResponseDto;
+import com.ottproject.ottbackend.dto.EpisodeProgressResponseDto;
 import com.ottproject.ottbackend.service.PlaybackAuthService;
 import com.ottproject.ottbackend.service.PlayerProgressService;
 import com.ottproject.ottbackend.util.SecurityUtil;
@@ -33,7 +34,9 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @RequiredArgsConstructor // 생성자 주입 자동 생성
 @Validated // 요청 검증 활성화
 public class PlayerController { // 스트리밍/진행률
-    private final PlaybackAuthService auth; private final PlayerProgressService progress; private final SecurityUtil securityUtil; // 의존성 주입
+    private final PlaybackAuthService auth; // 스트림 권한 검사 및 서명 URL 생성 서비스
+    private final PlayerProgressService progress; // 시청 진행률 저장/조회 서비스
+    private final SecurityUtil securityUtil; // 세션에서 사용자 ID 확인 유틸
 
     /**
      * 에피소드 재생용 서명된 스트림 URL 발급
@@ -45,7 +48,7 @@ public class PlayerController { // 스트리밍/진행률
             description = "세션의 사용자 권한을 검사한 뒤 secure_link 파라미터가 포함된 m3u8 URL을 반환합니다. 1화는 비멤버 720p, 이후 화는 멤버십 필요.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "성공",
-                    content = @Content(schema = @Schema(implementation = PlayerStreamUrlResponseDto.class))),
+            content = @Content(schema = @Schema(implementation = PlayerStreamUrlResponseDto.class))),
             @ApiResponse(responseCode = "401", description = "미인증"),
             @ApiResponse(responseCode = "403", description = "권한 없음")
     })
@@ -63,14 +66,14 @@ public class PlayerController { // 스트리밍/진행률
      * 시청 진행률 저장(멱등 upsert)
      */
     @Operation(summary = "진행률 저장", description = "에피소드의 현재 시청 위치와 총 길이를 저장합니다. 멱등 upsert.")
-    @ApiResponse(responseCode = "200", description = "저장 완료")
+    @ApiResponse(responseCode = "200", description = "저장 완료: 최신 진행률 반환")
     @PostMapping("/api/episodes/{id}/progress") // 진행률 저장 엔드포인트
-    public ResponseEntity<Void> saveProgress(
+    public ResponseEntity<EpisodeProgressResponseDto> saveProgress(
             @Parameter(description = "에피소드 ID", required = true) @PathVariable Long id,
             @Valid @RequestBody EpisodeProgressRequestDto body, HttpSession session) { // 검증 적용
         Long userId = securityUtil.requireCurrentUserId(session); // 세션 사용자 확인
         progress.upsert(userId, id, body.getPositionSec(), body.getDurationSec()); // 진행 위치/총 길이 저장(업서트)
-        return ResponseEntity.ok().build(); // 본문 없는 200 OK
+        return ResponseEntity.ok(progress.find(userId, id).orElse(null)); // 저장 직후 최신 진행률 반환
     }
 
     /**

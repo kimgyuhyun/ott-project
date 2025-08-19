@@ -24,7 +24,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RestController // REST 컨트롤러
 @RequiredArgsConstructor // 생성자 주입
 public class PlayerSkipController { // 스킵 메타
-	private final PlayerSkipService service; private final SecurityUtil securityUtil; // 의존성
+	private final PlayerSkipService service; // 스킵 메타 조회/사용 로깅 서비스
+	private final SecurityUtil securityUtil; // 세션 사용자 식별 유틸
 
 	/**
 	 * 에피소드 스킵 메타 조회
