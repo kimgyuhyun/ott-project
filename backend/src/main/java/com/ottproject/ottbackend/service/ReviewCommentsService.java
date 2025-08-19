@@ -85,7 +85,7 @@ public class ReviewCommentsService {
     }
 
     public void updateContent(Long commentId, Long userId, String content) { // 본인 댓글 수정
-        Comment comment = commentRepository.findByIdForUpdate(commentId)
+        Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
         if (!comment.getUser().getId().equals(userId)) throw new SecurityException("forbidden");
         comment.setContent(content); // 내용 갱신
@@ -93,16 +93,20 @@ public class ReviewCommentsService {
     }
 
     public void deleteSoft(Long commentId, Long userId) { // 본인 댓글 소프트 삭제(상태 전환)
-        Comment comment = commentRepository.findByIdForUpdate(commentId)
+        Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
         if (!comment.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
-        commentRepository.updateStatus(commentId, CommentStatus.DELETED); // 상태 전환
+        comment.setStatus(CommentStatus.DELETED); // 상태 전환
+        commentRepository.save(comment); // 저장
     }
 
     public void report(Long commentId, Long userId) { // 댓글 신고(누구나 가능)
         // 필요 시 사용자 존재만 검증
         userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
-        commentRepository.updateStatus(commentId, CommentStatus.REPORTED); // 상태 전환
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
+        comment.setStatus(CommentStatus.REPORTED);
+        commentRepository.save(comment);
     }
 
     public boolean toggleLike(Long commentId, Long userId) { // 좋아요 토글(C/D 만 사용, insert-first 전략)
@@ -121,8 +125,10 @@ public class ReviewCommentsService {
     }
 
     public void updateStatus(Long commentId, CommentStatus status) {
-        int updated = commentRepository.updateStatus(commentId, status); // 상태 갱신(DML)
-        if (updated == 0) throw new IllegalArgumentException("comment not found: " + commentId); // 없으면 예외
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
+        comment.setStatus(status);
+        commentRepository.save(comment);
     }
 
     public Long createReply(Long userId, Long parentId, String content) { // 대댓글 생성(부모에서 리뷰 ID 유추)
@@ -144,6 +150,6 @@ public class ReviewCommentsService {
     }
 
     public void deleteHardByReview(Long reviewId) {
-        commentRepository.deleteByReviewId(reviewId); // 특정 리뷰의 댓글 하드 삭제
+        commentRepository.deleteByReview_Id(reviewId); // 파생 삭제로 대체
     }
 }

@@ -64,7 +64,7 @@ public class ReviewsService {
     }
 
     public void update(Long reviewId, Long userId, String content, Double rating) { // 본인 리뷰 수정
-        Review review = reviewRepository.findByIdForUpdate(reviewId)
+        Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId)); // 락 조회
         if (!review.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
         if (content != null) review.setContent(content); // 내용 갱신
@@ -73,16 +73,20 @@ public class ReviewsService {
     }
 
     public void deleteSoft(Long reviewId, Long userId) { // 본인 리뷰 소프트 삭제(상태 전환)
-        Review review = reviewRepository.findByIdForUpdate(reviewId)
+        Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId)); // 락 조회
         if (!review.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
-        reviewRepository.updateStatus(reviewId, ReviewStatus.DELETED); // 상태 전환
+        review.setStatus(ReviewStatus.DELETED); // 상태 전환
+        reviewRepository.save(review); // 저장
     }
 
     public void report(Long reviewId, Long userId) { // 리뷰 신고(누구나 가능)
         // 필요 시 사용자 존재만 검증
         userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("user not found: d" + userId));
-        reviewRepository.updateStatus(reviewId, ReviewStatus.REPORTED); // 상태 전환
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
+        review.setStatus(ReviewStatus.REPORTED);
+        reviewRepository.save(review); // 저장
     }
 
     public Boolean toggleLike(Long reviewId, Long userId) {
@@ -105,12 +109,14 @@ public class ReviewsService {
     }
 
 
-    public void updateStatus(Long reviewId, ReviewStatus status) {
-        int updated = reviewRepository.updateStatus(reviewId, status); // 상태 갱신(DML)
-        if (updated == 0) throw new IllegalArgumentException("review not found: " + reviewId); // 없으면 예외
+    public void updateStatus(Long reviewId, ReviewStatus status) { // 상태 갱신 공용
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
+        review.setStatus(status);
+        reviewRepository.save(review);
     }
 
-    public void deleteHardByAniList(Long aniListId) {
-        reviewRepository.deleteByAniId(aniListId); // NEW 특정 리뷰 하드 삭제(관리용)
+    public void deleteHardByAniList(Long aniListId) { // 특정 애니의 모든 리뷰 하드 삭제
+        reviewRepository.deleteByAnime_Id(aniListId); // 파생 삭제로 대체
     }
 }
