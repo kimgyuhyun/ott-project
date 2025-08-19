@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ottproject.ottbackend.mybatis.PaymentQueryMapper">
+
+    <!-- 결제 이력 목록 조회 -->
+    <select id="listHistory" resultType="com.ottproject.ottbackend.dto.PaymentHistoryItemDto">
+        select
+            p.id as paymentId,
+            mp.code as planCode,
+            mp.name as planName,
+            p.amount as amount,
+            p.currency as currency,
+            p.status as status,
+            p.receipt_url as receiptUrl,
+            p.paid_at as paidAt,
+            p.refunded_at as refundedAt
+        from payments p
+        join plans mp on mp.id = p.plan_id
+        where p.user_id = #{userId}
+          <if test="start != null">
+            and p.created_at &gt;= #{start}
+          </if>
+          <if test="end != null">
+            and p.created_at &lt;= #{end}
+          </if>
+        order by p.created_at desc
+    </select>
+
+    <!-- 결제시각 이후 & 4화 이상 누적 시청 초 합 -->
+    <select id="sumWatchedSecondsSincePaidEpisodes" resultType="int">
+        select coalesce(sum(ep.position_sec), 0)
+        from episode_progress ep
+        join episode e on e.id = ep.episode_id
+        where ep.user_id = #{userId}
+          and ep.updated_at &gt;= #{since}
+          and e.episode_number &gt;= 4
+    </select>
+
+</mapper>
+
+
