@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ottproject.ottbackend.mybatis.PlayerProgressQueryMapper">
+
+	<!-- 결제시각 이후 & 4화 이상(1~3 무료 제외) 누적 시청 초 합 -->
+	<select id="sumWatchedSecondsSincePaidEpisodes" resultType="int">
+		select coalesce(sum(ep.position_sec), 0)
+		from episode_progress ep
+		join episode e on e.id = ep.episode_id
+		where ep.user_id = #{userId}
+		  and ep.updated_at &gt;= #{since}
+		  and e.episode_number &gt;= 4
+	</select>
+
+</mapper>
+
+
