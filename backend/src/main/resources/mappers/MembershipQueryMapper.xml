@@ -13,4 +13,21 @@
         FROM plans <!-- 데이터 소스 테이블: plans -->
         ORDER BY price_monthly_vat_included ASC, id ASC <!-- 1차 정렬: 가격 오름차순, 2차 정렬: id 오름차순(동일 가격 시 일관된 순서 보장) -->
     </select> <!-- SELECT 문 종료 -->
+
+    <!-- 내 멤버십 상태 단건 조회: 가장 최근 시작된 유효 구독 기준 -->
+    <select id="findMyMembership" resultType="com.ottproject.ottbackend.dto.UserMembershipDto">
+        SELECT
+            p.code AS planCode,
+            p.name AS planName,
+            s.end_at AS endAt,
+            s.auto_renew AS autoRenew,
+            CASE WHEN s.cancel_at_period_end = TRUE THEN 'CANCELED' ELSE s.status END AS status
+        FROM subscriptions s
+        JOIN plans p ON p.id = s.plan_id
+        WHERE s.user_id = #{userId}
+          AND s.start_at <= #{now}
+          AND (s.end_at IS NULL OR s.end_at >= #{now})
+        ORDER BY s.start_at DESC
+        LIMIT 1
+    </select>
 </mapper> <!-- 매퍼 종료 -->
