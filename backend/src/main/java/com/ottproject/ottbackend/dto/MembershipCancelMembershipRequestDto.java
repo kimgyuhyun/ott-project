@@ -2,8 +2,11 @@ package com.ottproject.ottbackend.dto;
 
 /**
  * 구독 해지 요청 DTO
- * - 즉시 해지 옵션 포함
+ * - 말일 해지 고정
+ * - 아이드엠포턴시 토큰으로 중복요청 방지
  */
 public class MembershipCancelMembershipRequestDto {
-    public boolean immediate; // 즉시 해지 여부(true 면 즉시 종료)
+    public String idempotencyKey; // 중복 방지용 토큰(선택)
 }
+
+
