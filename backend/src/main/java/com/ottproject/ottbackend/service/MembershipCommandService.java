@@ -34,6 +34,7 @@ public class MembershipCommandService {
     private final MembershipPlanRepository planRepository; // 플랜 조회(JPA)
     private final MembershipSubscriptionRepository subscriptionRepository; // 구독 변경(JPA)
     private final com.ottproject.ottbackend.repository.IdempotencyKeyRepository idempotencyKeyRepository; // 멱등키 저장소
+    private final MembershipNotificationService notificationService; // 알림 메일 서비스
 
     /**
      * 구독 신청/연장
@@ -57,13 +58,15 @@ public class MembershipCommandService {
         MembershipSubscription sub = MembershipSubscription.builder() // 엔티티 생성
                 .user(User.builder().id(userId).build()) // FK 바인딩(프록시)
                 .membershipPlan(plan) // 플랜 설정
-                .status(MembershipSubscriptionStatus.ACTIVE) // 활성
+                .status(MembershipSubscriptionStatus.ACTIVE) // 활성(자동갱신 전제)
                 .startAt(start) // 시작
                 .endAt(end) // 종료
                 .autoRenew(true) // 자동갱신 ON
-                .cancelAtPeriodEnd(false) // 말일해지 해제
-                .canceledAt(null) // 취소시각 없음
+                .cancelAtPeriodEnd(false) // 말일 해지 예약 해제
+                .canceledAt(null) // 해지 확정 시각 초기화
                 .nextBillingAt(end) // 다음 청구 앵커
+                .retryCount(0) // 재시도 초기화
+                .maxRetry(3) // 최대 재시도 3회
                 .build(); // 빌드
 
         subscriptionRepository.save(sub); // 저장
@@ -90,6 +93,9 @@ public class MembershipCommandService {
 
         // 말일 해지 예약만 수행 (상태 ACTIVE 유지, 만료일까지 혜택 유지)
         sub.setCancelAtPeriodEnd(true);
+
+        // 알림: 말일 해지 예약 안내 메일 발송
+        notificationService.sendCancelAtPeriodEnd(sub.getUser(), sub);
 
         // 멱등 키 저장
         if (req != null && req.idempotencyKey != null && !req.idempotencyKey.isBlank()) {
