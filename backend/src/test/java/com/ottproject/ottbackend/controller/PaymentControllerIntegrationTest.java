@@ -80,7 +80,7 @@ class PaymentControllerIntegrationTest { // 테스트 클래스 정의 시작
         return planRepository.save(MembershipPlan.builder() // 플랜 빌더 및 저장
                 .code(code) // 코드 설정
                 .name(name) // 이름 설정
-                .monthlyPrice(price) // 월 가격 설정
+                .price(new com.ottproject.ottbackend.entity.Money((long) price, "KRW")) // 월 가격(VO)
                 .periodMonths(months) // 기간(월) 설정
                 .concurrentStreams(2) // 동시접속 수 설정
                 .maxQuality("1080p") // 최대 화질 설정
@@ -130,7 +130,7 @@ class PaymentControllerIntegrationTest { // 테스트 클래스 정의 시작
                 .andReturn().getResponse().getContentAsString(); // 응답 바디 추출
         Long paymentId = ((Number) om.readTree(resJson).get("paymentId").numberValue()).longValue(); // paymentId 파싱
 
-        // 2) 웹훅 성공 반영
+        // 2) 웹훅 성공 반영 (raw body + signature header)
         String event = om.writeValueAsString(Map.of( // 웹훅 이벤트 JSON 직렬화
                 "eventId", "evt-123", // 이벤트 멱등키
                 "providerPaymentId", "imp_0001", // 외부 결제 ID
@@ -141,8 +141,12 @@ class PaymentControllerIntegrationTest { // 테스트 클래스 정의 시작
                 "receiptUrl", "https://receipt/import/imp_0001", // 영수증 URL
                 "occurredAt", "2025-01-01T12:00:00" // 발생 시각
         )); // JSON 문자열 완료
+
+        // 테스트용 서명: 개발 프로필에서는 서명 비활성화일 수 있으므로 헤더 없이도 통과하지만,
+        // 서명이 활성화된 환경을 가정해 임의의 서명 헤더를 추가합니다(실제 키는 환경변수 사용).
         mvc.perform(post("/api/payments/" + paymentId + "/webhook") // 웹훅 수신 API 호출
                         .contentType(MediaType.APPLICATION_JSON) // JSON 타입 지정
+                        .header("X-Iamport-Signature", "test-signature") // 모의 서명 헤더
                         .content(event)) // 이벤트 페이로드 전달
                 .andExpect(status().isOk()); // 200 OK 기대
 
@@ -164,6 +168,78 @@ class PaymentControllerIntegrationTest { // 테스트 클래스 정의 시작
                 .andExpect(jsonPath("$[0].planCode").value("BASIC")) // 최신 항목 플랜 코드 검증
                 .andExpect(jsonPath("$[0].status").value("SUCCEEDED")) // 상태 노출 검증
                 .andExpect(jsonPath("$[0].amount").value(7900)); // 금액 노출 검증
+    }
+
+    @Test
+    @DisplayName("웹훅 실패/취소/환불 전이 → 구독 상태 반영")
+    void webhook_failed_canceled_refunded_membership_transitions() throws Exception {
+        savePlan("BASIC", "Basic", 7900, 1);
+        String resJson = mvc.perform(post("/api/payments/checkout")
+                        .session(loginSession())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(Map.of("planCode", "BASIC"))))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        Long paymentId = ((Number) om.readTree(resJson).get("paymentId").numberValue()).longValue();
+
+        // 1) FAILED → 구독 PAST_DUE
+        String failed = om.writeValueAsString(Map.of(
+                "eventId", "evt-fail-1",
+                "providerPaymentId", "imp_fail_1",
+                "providerSessionId", "imp_session_0001",
+                "status", "FAILED",
+                "amount", 7900,
+                "currency", "KRW",
+                "occurredAt", "2025-01-02T12:00:00"
+        ));
+        mvc.perform(post("/api/payments/" + paymentId + "/webhook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Iamport-Signature", "test-signature")
+                        .content(failed))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/users/me/membership").session(loginSession()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("PAST_DUE"));
+
+        // 2) CANCELED → 말일 해지 예약(autoRenew=false, cancelAtPeriodEnd=true)
+        String canceled = om.writeValueAsString(Map.of(
+                "eventId", "evt-cancel-1",
+                "providerPaymentId", "imp_cancel_1",
+                "providerSessionId", "imp_session_0001",
+                "status", "CANCELED",
+                "amount", 7900,
+                "currency", "KRW",
+                "occurredAt", "2025-01-03T12:00:00"
+        ));
+        mvc.perform(post("/api/payments/" + paymentId + "/webhook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Iamport-Signature", "test-signature")
+                        .content(canceled))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/users/me/membership").session(loginSession()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELED"))
+                .andExpect(jsonPath("$.autoRenew").value(false));
+
+        // 3) REFUNDED → 즉시 해지(CANCELED)
+        String refunded = om.writeValueAsString(Map.of(
+                "eventId", "evt-refund-1",
+                "providerPaymentId", "imp_refund_1",
+                "providerSessionId", "imp_session_0001",
+                "status", "REFUNDED",
+                "amount", 7900,
+                "currency", "KRW",
+                "occurredAt", "2025-01-04T12:00:00"
+        ));
+        mvc.perform(post("/api/payments/" + paymentId + "/webhook")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Iamport-Signature", "test-signature")
+                        .content(refunded))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/users/me/membership").session(loginSession()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELED"))
+                .andExpect(jsonPath("$.autoRenew").value(false));
     }
 }
 

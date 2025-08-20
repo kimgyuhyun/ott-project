@@ -73,7 +73,7 @@ class MembershipControllerIntegrationTest { // MembershipController 통합 테�
         return planRepository.save(MembershipPlan.builder() // 플랜 빌더 시작 후 저장
                 .code(code) // 코드 설정
                 .name(name) // 이름 설정
-                .monthlyPrice(price) // 월 가격 설정
+                .price(new com.ottproject.ottbackend.entity.Money((long) price, "KRW")) // 월 가격(VO)
                 .periodMonths(months) // 기간(월) 설정
                 .concurrentStreams(streams) // 동시접속 수 설정
                 .maxQuality(quality) // 최대 화질 설정

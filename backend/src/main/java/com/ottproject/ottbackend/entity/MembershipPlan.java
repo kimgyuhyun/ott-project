@@ -27,8 +27,12 @@ public class MembershipPlan { // 멤버쉽 플랜
     @Column(nullable = false)
     private String maxQuality; // "720p" / "1080p"
 
-    @Column(name = "price_monthly_vat_included", nullable = false)
-    private Integer monthlyPrice; // 월 가격(KRW, VAT 포함)
+    @Embedded
+    @AttributeOverrides({
+        @AttributeOverride(name = "amount", column = @Column(name = "price_monthly_vat_included", nullable = false)),
+        @AttributeOverride(name = "currency", column = @Column(name = "price_currency", length = 3, nullable = false))
+    })
+    private Money price; // 월 가격(VO: 금액/통화)
 
     @Column(nullable = false)
     private Integer periodMonths; // 청구주기 (월 단위, 1~월간, 12~연간 등)

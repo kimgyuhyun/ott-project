@@ -9,10 +9,13 @@ import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.PaymentStatus;
+import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
+import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +40,31 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final MembershipCommandService membershipCommandService; // 멤버십 쓰기 서비스
 	private final PaymentGateway paymentGateway; // 게이트웨이 어댑터(IMPORT 구현 주입)
 	private final PlayerProgressReadService playerProgressReadService; // 플레이어 진행률 읽기 서비스(누적 시청 검증)
+	private final MembershipSubscriptionRepository subscriptionRepository; // 구독 리포지토리(웹훅 전이 반영)
+
+	/**
+	 * 웹훅 서명 검증
+	 */
+	@Transactional(readOnly = true)
+	public boolean verifyWebhook(HttpHeaders headers, String rawBody) {
+		java.util.Map<String, String> map = new java.util.HashMap<>(); // 헤더 맵으로 변환
+		headers.forEach((k, v) -> map.put(k, String.join(",", v))); // 다중값 결합
+		return paymentGateway.verifyWebhookSignature(rawBody, map); // 게이트웨이 위임
+	}
+
+	/**
+	 * 웹훅 페이로드 파싱
+	 * - 서명 검증 후에만 호출해야 합니다.
+	 */
+	@Transactional(readOnly = true)
+	public com.ottproject.ottbackend.dto.PaymentWebhookEventDto parseWebhookPayload(String rawBody) {
+		try {
+			com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper(); // ObjectMapper 생성
+			return om.readValue(rawBody, com.ottproject.ottbackend.dto.PaymentWebhookEventDto.class); // JSON 파싱
+		} catch (Exception e) {
+			throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid webhook payload"); // 400
+		}
+	}
 
 	/**
 	 * 체크아웃 생성
@@ -56,8 +84,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				.user(User.builder().id(userId).build()) // 사용자 FK
 				.membershipPlan(plan) // 플랜 FK
 				.provider(com.ottproject.ottbackend.enums.PaymentProvider.IMPORT) // IMPORT 사용
-				.amount(plan.getMonthlyPrice().longValue()) // 월가격(원화, VAT 포함)
-				.currency("KRW") // 통화
+				.price(new com.ottproject.ottbackend.entity.Money(plan.getPrice().getAmount(), plan.getPrice().getCurrency())) // 금액/통화 VO
 				.status(PaymentStatus.PENDING) // 초기 상태
 				.build(); // 빌드
 		paymentRepository.save(payment); // 저장
@@ -100,6 +127,17 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		Payment payment = paymentRepository.findById(paymentId) // 결제 단건 조회
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제가 존재하지 않습니다.")); // 400
 
+		// 페이로드 재검증: 금액/통화/세션ID(가능 시) 대조
+		if (event.amount != null && payment.getPrice() != null && event.amount.longValue() != payment.getPrice().getAmount()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "amount mismatch");
+		}
+		if (event.currency != null && payment.getPrice() != null && !event.currency.equals(payment.getPrice().getCurrency())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "currency mismatch");
+		}
+		if (event.providerSessionId != null && payment.getProviderSessionId() != null && !event.providerSessionId.equals(payment.getProviderSessionId())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "session mismatch");
+		}
+
 		LocalDateTime ts = event.occurredAt != null ? event.occurredAt : LocalDateTime.now(); // 타임스탬프
 
 		if (event.status == PaymentStatus.SUCCEEDED) { // 성공
@@ -115,15 +153,34 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		} else if (event.status == PaymentStatus.FAILED) { // 실패
 			payment.setStatus(PaymentStatus.FAILED); // 상태
 			payment.setFailedAt(ts); // 시각
+			// 구독 전이: 활성 구독이 있으면 PAST_DUE로 표시(즉시 경고 상태), 재시도는 배치가 수행
+			subscriptionRepository.findActiveEffectiveByUser(payment.getUser().getId(), MembershipSubscriptionStatus.ACTIVE, ts)
+					.ifPresent(sub -> {
+						sub.setStatus(MembershipSubscriptionStatus.PAST_DUE); // 연체 상태 전환
+						sub.setLastRetryAt(ts); // 최근 실패 시각 기록
+					});
 
 		} else if (event.status == PaymentStatus.CANCELED) { // 취소
 			payment.setStatus(PaymentStatus.CANCELED); // 상태
 			payment.setCanceledAt(ts); // 시각
+			// 구독 전이: 자동갱신 중단 + 말일 해지 예약
+			subscriptionRepository.findActiveEffectiveByUser(payment.getUser().getId(), MembershipSubscriptionStatus.ACTIVE, ts)
+					.ifPresent(sub -> {
+						sub.setAutoRenew(false); // 자동갱신 중단
+						sub.setCancelAtPeriodEnd(true); // 말일 해지 예약
+					});
 
 		} else if (event.status == PaymentStatus.REFUNDED) { // 환불
 			payment.setStatus(PaymentStatus.REFUNDED); // 상태
 			payment.setRefundedAt(ts); // 시각
 			payment.setRefundedAmount(event.amount); // 금액
+			// 구독 전이: 환불 시 즉시 해지 처리(정책)
+			subscriptionRepository.findActiveEffectiveByUser(payment.getUser().getId(), MembershipSubscriptionStatus.ACTIVE, ts)
+					.ifPresent(sub -> {
+						sub.setStatus(MembershipSubscriptionStatus.CANCELED); // 즉시 해지
+						sub.setAutoRenew(false); // 자동갱신 중단
+						sub.setCanceledAt(ts); // 해지 확정 시각
+					});
 
 		} else { // 방어
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 이벤트 상태입니다."); // 400
@@ -164,9 +221,9 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "시청 기록으로 환불 불가 정책입니다."); // 400
 		}
 		// 게이트웨이 환불 실행(전액 환불)
-		PaymentGateway.RefundResult rr = paymentGateway.issueRefund(payment.getProviderPaymentId(), payment.getAmount()); // 환불 호출
+		PaymentGateway.RefundResult rr = paymentGateway.issueRefund(payment.getProviderPaymentId(), payment.getPrice().getAmount()); // 환불 호출
 		payment.setStatus(PaymentStatus.REFUNDED); // 상태 전환
-		payment.setRefundedAmount(payment.getAmount()); // 전액 환불
+		payment.setRefundedAmount(payment.getPrice().getAmount()); // 전액 환불
 		payment.setRefundedAt(rr.refundedAt != null ? rr.refundedAt : LocalDateTime.now()); // 환불 시각 기록
 		paymentRepository.save(payment); // 저장
 	}

@@ -51,11 +51,8 @@ public class Payment {
     @Column(nullable = false)
     private PaymentProvider provider; // 결제 제공자(STRIPE/IMPORT 등)
     
-    @Column(nullable = false)
-    private Long amount; // 결제 금액(최소 화폐단위, VAT 포함 월 기준)
-    
-    @Column(nullable = false, length = 3) // ISO 4217 3자리 통화 코드 길이 제한
-    private String currency; // 통화 코드(KRW/USD 등)
+    @Embedded // 금액/통화 VO 임베드
+    private Money price; // 결제 금액 및 통화(VO)
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -80,7 +77,7 @@ public class Payment {
     @Column LocalDateTime canceledAt; // 결제 취소 시각
     
     @Column
-    private Long refundedAmount; // 환불 금액
+    private Long refundedAmount; // 환불 금액(최소 화폐단위)
     
     @Column
     private LocalDateTime refundedAt; // 환불 완료 시각
