@@ -17,13 +17,15 @@ import java.io.IOException;
 import java.util.Map;
 
 /**
- * OAuth2 소셜 로그인 성공 시 처리하는 핸들러
- * CustomOAuth2UserService에서 처리된 사용자 정보를 받아서 성공 응답을 전송
+ * OAuth2AuthFailureHandler (실제 동작은 성공 핸들러)
  *
- * 주요 기능:
- * 1. 소셜 로그인 성공 후 JSON 응답 전송
- * 2. 세션에 사용자 정보 저장 (필요한 경우)
- * 3. 성공 로그 기록
+ * 큰 흐름
+ * - OAuth2 로그인 성공 시 사용자 속성 정보를 세션에 저장하고, 리다이렉트 또는 JSON 응답을 처리한다.
+ *   (클래스 파일명이 목적과 달라 보이지만, 현재 구현은 성공 핸들러 역할을 수행한다.)
+ *
+ * 메서드 개요
+ * - onAuthenticationSuccess: 성공 후 세션에 사용자 정보 저장 및 리다이렉트 수행
+ * - sendSuccessResponse: 성공 정보를 JSON으로 응답(필요 시)
  */
 @Slf4j // Lombok 로깅 어노테이션 - log 객체 자동 생성
 @Component // Spring Bean으로 등록

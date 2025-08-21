@@ -17,9 +17,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 /**
- * 스킵 메타 조회 및 사용 로깅 API
- * - 메타는 공개 조회
- * - 사용 로깅은 비로그인 허용(사용자 있으면 식별 포함)
+ * PlayerSkipController
+ *
+ * 큰 흐름
+ * - 에피소드의 스킵 메타 조회와 스킵 사용 로깅을 제공한다.
+ *
+ * 엔드포인트 개요
+ * - GET /api/episodes/{id}/skips: 스킵 메타 조회
+ * - POST /api/episodes/{id}/skips/track: 스킵 사용 로깅(비로그인 허용)
  */
 @RestController // REST 컨트롤러
 @RequiredArgsConstructor // 생성자 주입
@@ -40,7 +45,7 @@ public class PlayerSkipController { // 스킵 메타
 	/**
 	 * 스킵 사용/자동스킵 로깅(비로그인 허용)
 	 */
-    @Operation(summary = "스킵 트래킹", description = "스킵 버튼 사용/자동 스킵 시점을 기록합니다. 비로그인 허용.")
+    @Operation(summary = "스킵 트래핑", description = "스킵 버튼 사용/자동 스킵 시점을 기록합니다. 비로그인 허용.")
     @ApiResponse(responseCode = "202", description = "기록 접수")
     @PostMapping("/api/episodes/{id}/skips/track") // 스킵 사용 수집
 	public ResponseEntity<Void> track(@PathVariable Long id, @Valid @RequestBody SkipUsageRequestDto body, HttpSession session) { // 요청 바디 검증

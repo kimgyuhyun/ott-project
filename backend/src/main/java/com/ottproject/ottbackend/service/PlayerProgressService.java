@@ -10,9 +10,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 시청 진행률 저장/조회 서비스
- * - upsert 멱등 저장
- * - 단건/벌크 조회 제공
+ * PlayerProgressService
+ *
+ * 큰 흐름
+ * - 시청 진행률의 멱등 저장(upsert)과 단건/벌크 조회를 제공한다.
+ *
+ * 메서드 개요
+ * - upsert: 진행률 멱등 저장
+ * - find: 단건 조회
+ * - findBulk: 벌크 조회(에피소드 집합)
  */
 @Service
 @RequiredArgsConstructor

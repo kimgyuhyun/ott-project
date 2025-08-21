@@ -5,9 +5,11 @@ import java.time.LocalDateTime;
 /**
  * 환불 응답 DTO
  *
- * 역할:
- * - 결제 완료 건에 대한 전액/부분 환불 결과를 단건으로 반환
- * - 고객센터/관리자 UI/사용자 마이페이지 노출에 사용
+ * 큰 흐름
+ * - 전액/부분 환불 결과 단건을 표현한다.
+ *
+ * 필드 개요
+ * - paymentId/providerRefundId/refundedAmount/refundedAt/message
  */
 public class PaymentRefundResponseDto { // 환불 응답 DTO 클래스 시작
 	public Long paymentId; // 내부 결제 레코드 ID

@@ -17,14 +17,16 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * OAuth2 소셜 로그인 관련 컨트롤러
- * 실제 서비스에서 필요한 소셜 로그인 기능 제공
+ * SocialAuthController
  *
- * 주요 기능:
- * 1. 소셜 로그인 상태 확인
- * 2. 소셜 로그인 URL 제공
- * 3. 현재 로그인된 사용자 정보 조회
- * 4. 소셜 로그인 로그아웃
+ * 큰 흐름
+ * - OAuth2 소셜 로그인 상태/로그인 URL/사용자 정보/로그아웃을 제공한다.
+ *
+ * 엔드포인트 개요
+ * - GET /api/oauth2/status: 인증 상태 + 로그인 URL 안내
+ * - GET /api/oauth2/login-urls: 로그인 URL 목록
+ * - GET /api/oauth2/user-info: 현재 사용자 정보
+ * - POST /api/oauth2/logout: 로그아웃(컨텍스트 초기화)
  */
 @Slf4j // Lombok 로깅 어노테이션
 @RestController // REST API 컨트롤러

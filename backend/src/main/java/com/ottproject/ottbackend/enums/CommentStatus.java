@@ -1,23 +1,27 @@
 package com.ottproject.ottbackend.enums;
 
-// ========== 댓글 상태 enum ==========
-
 /**
- * 댓글 상태
+ * 댓글 상태 열거형
+ *
+ * 큰 흐름
+ * - 댓글의 현재 상태를 표현한다.
+ *
+ * 상수 개요
+ * - ACTIVE/DELETED/REPORTED
  */
-public enum CommentStatus {
-    ACTIVE("활성"),      // 정상 상태
-    DELETED("삭제됨"),   // 삭제된 상태
-    REPORTED("신고됨");  // 신고된 상태
+public enum CommentStatus { // 댓글 상태
+    ACTIVE("활성"),      // 정상
+    DELETED("삭제됨"),   // 삭제됨
+    REPORTED("신고됨");  // 신고됨
 
-    private final String displayName; // 화면에 표시할 이름
+    private final String displayName; // 표시 이름
 
-    CommentStatus(String displayName) {
-        this.displayName = displayName;
+    CommentStatus(String displayName) { // 생성자
+        this.displayName = displayName; // 설정
     }
 
-    public String getDisplayName() {
-        return displayName;
+    public String getDisplayName() { // 표시 이름 조회
+        return displayName; // 값 반환
     }
 }
 

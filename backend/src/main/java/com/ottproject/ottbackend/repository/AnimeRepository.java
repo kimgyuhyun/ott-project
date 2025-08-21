@@ -9,6 +9,17 @@ import org.springframework.lang.NonNull;
 
 import java.util.Optional;
 
+/**
+ * AnimeRepository
+ *
+ * 큰 흐름
+ * - 통합 Anime 엔티티의 기본 CUD를 제공하는 JPA 리포지토리.
+ * - 동시 수정 충돌 방지를 위해 단건 조회(findById)에 비관적 락을 적용한다.
+ *
+ * 메서드 개요
+ * - findById: 비관적 쓰기 락으로 단건 조회
+ * - existsByTitle: 제목 중복 여부 조회
+ */
 @Repository // 스프링 컴포넌트 스캔 + 예외 변환
 public interface AnimeRepository extends JpaRepository<Anime, Long> { // 통합 Anime JPA 리포지토리
 

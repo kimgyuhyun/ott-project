@@ -6,9 +6,11 @@ import com.ottproject.ottbackend.enums.PaymentStatus;
 /**
  * 결제 결과 단건 응답 DTO
  *
- * 역할:
- * - 결제 성공/실패/취소/환불 중 하나의 최종 결과를 단건으로 반환
- * - 리다이렉트 콜백 이후 결과 페이지 또는 단건 조회 API에 사용
+ * 큰 흐름
+ * - 결제 최종 결과 단건을 표현한다(성공/실패/취소/환불).
+ *
+ * 필드 개요
+ * - paymentId/status/providerPaymentId/receiptUrl/reasonCode/message/occurredAt
  */
 public class PaymentResultResponseDto { // 결제 결과 단건 응답 DTO 클래스 시작
 	public Long paymentId; // 내부 결제 레코드 ID

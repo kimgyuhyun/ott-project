@@ -11,8 +11,14 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 /**
- * Spring Security UserDetailsService 구현체
- * - 이메일로 사용자 조회하여 UserDetails 반환
+ * LocalUserDetailsService
+ *
+ * 큰 흐름
+ * - 이메일을 기준으로 사용자를 조회하여 Spring Security `UserDetails`로 변환한다.
+ * - 소셜 로그인 사용자는 비밀번호 검증을 우회하도록 구성한다.
+ *
+ * 메서드 개요
+ * - loadUserByUsername: 이메일로 사용자 조회 후 `UserDetails` 생성
  */
 @Service // spring Bean 으로 등록
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성

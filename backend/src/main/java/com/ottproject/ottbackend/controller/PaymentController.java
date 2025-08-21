@@ -26,12 +26,19 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 결제 API 컨트롤러
+ * PaymentController
  *
- * 큰 흐름(Javadoc):
- * - 결제 체크아웃 생성, 웹훅 수신 처리, 결제 이력 조회를 제공합니다.
- * - 결제수단 등록/목록/기본 지정/수정/삭제를 제공하여 정기결제 시 기본→보조 폴백이 가능하도록 합니다.
- * - 각 API는 세션 기반 사용자 식별을 수행합니다.
+ * 큰 흐름(Javadoc)
+ * - 결제 체크아웃 생성, 웹훅 수신 처리, 결제 이력 조회를 제공한다.
+ * - 결제수단 등록/목록/기본 지정/수정/삭제로 정기결제 시 기본→보조 폴백을 지원한다.
+ * - 모든 API에서 세션 기반 사용자 식별을 수행한다.
+ *
+ * 엔드포인트 개요
+ * - POST /api/payments/checkout: 체크아웃 생성
+ * - POST /api/payments/{paymentId}/webhook, POST /api/payments/webhook: 웹훅 수신
+ * - GET /api/payments/history: 결제/환불 이력 조회
+ * - POST/GET/PUT/DELETE/PATCH /api/payment-methods: 결제수단 CRUD/기본 지정
+ * - POST /api/payments/{paymentId}/refund: 환불 요청
  */
 @RestController // REST 컨트롤러 선언
 @RequiredArgsConstructor // 생성자 주입

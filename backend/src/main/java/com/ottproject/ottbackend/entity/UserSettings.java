@@ -9,7 +9,15 @@ import java.time.LocalDateTime;
 
 /**
  * 사용자 재생 설정 엔티티
- * - 자동 스킵/기본 화질/자동 다음 화 설정
+ *
+ * 큰 흐름
+ * - 자동 스킵/기본 화질/자동 다음 화 설정을 1:1 로 보관한다.
+ * - 마지막 수정 시각으로 동기화 시점을 관리한다.
+ *
+ * 필드 개요
+ * - id/user: 식별/소유자(1:1)
+ * - autoSkipIntro/autoSkipEnding/defaultQuality/autoNextEpisode: 재생 설정
+ * - updatedAt: 최근 갱신 시각
  */
 @Entity // 재생 설정 엔티티
 @Table(name = "user_settings", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id"})) // 유니크

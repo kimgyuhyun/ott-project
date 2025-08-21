@@ -8,9 +8,14 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 멤버십 조회용 MyBatis 매퍼
- * - 플랜 목록 간단 조회
- * - 내 멤버십 상태 조회
+ * MembershipQueryMapper
+ *
+ * 큰 흐름
+ * - 멤버십 플랜/내 구독 상태 조회를 담당하는 MyBatis 매퍼.
+ *
+ * 메서드 개요
+ * - listPlans: 플랜 목록
+ * - findMyMembership: 사용자 현재 구독 상태
  */
 @Mapper
 public interface MembershipQueryMapper { // MyBatis 매퍼

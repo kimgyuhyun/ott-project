@@ -10,9 +10,17 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 이메일 발송/인증 서비스
- * - 인증 코드 발송/검증, 비밀번호 재설정 메일 지원
- * - 실제 운영은 Redis 등 외부 저장소 사용 권장
+ * VerificationEmailService
+ *
+ * 큰 흐름
+ * - 인증 코드 메일 발송/검증과 비밀번호 재설정 메일 발송을 제공한다.
+ * - 실제 운영에서는 Redis 등 외부 저장소/레이트리밋을 권장한다.
+ *
+ * 메서드 개요
+ * - sendVerificationEmail: 인증 코드 발송
+ * - verifyCode: 인증 코드 검증
+ * - isEmailVerified: 인증 여부 확인
+ * - sendPasswordResetEmail: 비밀번호 재설정 메일 발송
  */
 @Service // Bean 으로 등록
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성

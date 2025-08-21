@@ -25,10 +25,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 /**
- * 플레이어 관련 API 컨트롤러
- * - 스트림 URL 발급(secure_link 서명)
- * - 시청 진행률 저장/조회(단건/벌크)
- * - 다음 화 조회(자동재생)
+ * PlayerController
+ *
+ * 큰 흐름
+ * - 스트림 URL 발급(secure_link)과 시청 진행률 저장/조회, 다음 화 조회를 제공한다.
+ *
+ * 엔드포인트 개요
+ * - GET /api/episodes/{id}/stream-url: 서명된 스트림 URL 발급
+ * - POST /api/episodes/{id}/progress: 진행률 저장(upsert)
+ * - GET /api/episodes/{id}/progress: 진행률 단건 조회
+ * - POST /api/episodes/progress: 진행률 벌크 조회
+ * - GET /api/episodes/{id}/next: 다음 화 ID 조회
  */
 @RestController // REST 컨트롤러 등록
 @RequiredArgsConstructor // 생성자 주입 자동 생성

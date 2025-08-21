@@ -9,14 +9,19 @@ import java.util.List;
 
 /**
  * 상세 화면(상단 히어로 + 탭) 전용 DTO
- * - 헤더: 제목/포스터/평점/연령/상태/배지
- * - 개요: 요약/전체 시놉시스(더보기)
- * - 제작/원작/언어/국가
- * - 방영 정보: 요일/시간/시즌/연도/타입/러닝타임
- * - 집계: 총/현재 에피소드 수
- * - 연관: 장르/제작사/에피소드 목록
  *
- * (헤더 + 더보기 팝업 + 에피소드 탭까지 한 번에 제공)
+ * 큰 흐름
+ * - 상세 헤더/개요/방영/집계/연관 데이터를 한 번에 전달한다.
+ * - 장르/제작사/에피소드 목록 포함으로 한 번의 호출로 탭 데이터를 커버한다.
+ *
+ * 필드 개요
+ * - aniId/detailId/title/posterUrl: 식별/제목/포스터
+ * - rating/ratingCount/ageRating/animeStatus: 평점/등급/상태
+ * - 특성 플래그들: isCompleted/isExclusive/isPopular/isNew/isSubtitle/isDub/isSimulcast/isActive
+ * - fullSynopsis/tags/voiceActors: 설명/태그/출연
+ * - 방영: releaseDate/endDate/broadcastDay/broadcastTime/season/year/type/duration/releaseQuarter/source/country/language/director
+ * - 집계/연관: totalEpisodes/currentEpisodes/genres/studios/episodes
+ * - 타임스탬프/찜여부: createdAt/updatedAt/isFavorited
  */
 @Getter
 @Setter

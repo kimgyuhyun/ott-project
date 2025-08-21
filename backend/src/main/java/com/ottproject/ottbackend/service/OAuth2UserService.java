@@ -19,14 +19,16 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * OAuth2 사용자 정보를 처리하는 커스텀 서비스
- * 소셜 로그인 제공자로부터 받은 사용자 정보를 처리하고
- * 애플리케이션에서 사용할 수 있는 형태로 변환
+ * OAuth2UserService
  *
- * 주요 기능:
- * 1. 소셜 로그인 제공자별 사용자 정보 처리
- * 2. 기존 사용자 조회 또는 신규 사용자 생성
- * 3. OAuth2User 객체 생성 및 반환
+ * 큰 흐름
+ * - OAuth2 제공자에서 받은 사용자 정보를 표준 사용자로 변환/연동한다.
+ *
+ * 메서드 개요
+ * - loadUser: 사용자 정보 로드 및 처리(연동/생성)
+ * - extractEmail/extractName/extractProviderId: 제공자별 속성 파싱
+ * - processOAuth2User: 사용자 연동/생성 처리
+ * - createOAuth2User: Spring Security 호환 OAuth2User 생성
  */
 @Slf4j // Lombok 로깅 어노테이션 - log 객체 자동 생성
 @Service // Spring Bean으로 등록

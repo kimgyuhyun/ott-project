@@ -11,8 +11,18 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * 애니메이션 제작사 정보를 제장하는 엔티티
- * 라프텔의 제작사 정보 기준
+ * 제작사(Studio) 엔티티
+ *
+ * 큰 흐름
+ * - 작품 제작사 마스터를 관리한다.
+ * - Anime 과 다대다 연관을 맺는다.
+ *
+ * 필드 개요
+ * - id/name/nameEn/nameJp: 식별/다국어 명칭
+ * - description/logoUrl/websiteUrl: 소개/브랜드/링크
+ * - country/isActive: 운영 메타
+ * - createdAt/updatedAt: 생성/수정 시각
+ * - animes: 역방향 연관(다대다)
  */
 @Entity
 @Table(name = "studios")

@@ -11,7 +11,13 @@ import lombok.*;
 
 /**
  * 리뷰 생성 요청 DTO
- * - 대상 애니 ID(필수), 내용/평점(선택) 입력
+ *
+ * 큰 흐름
+ * - 대상 애니 ID는 필수, 내용과 평점은 선택이다.
+ * - 커스텀 제약(ContentOrRatingRequired, HalfStep)을 통해 정책을 강제한다.
+ *
+ * 필드 개요
+ * - aniId/content/rating: 식별/본문/평점
  */
 @Getter
 @Setter

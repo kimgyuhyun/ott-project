@@ -9,8 +9,16 @@ import java.time.LocalDateTime;
 
 /**
  * 시청 진행률 엔티티
- * - 사용자 × 에피소드 유니크
- * - 마지막 수정 시각을 갱신하여 최근 시점을 노출
+ *
+ * 큰 흐름
+ * - 사용자×에피소드의 현재 시청 위치/길이를 저장한다.
+ * - 유니크 제약으로 1 사용자당 1 에피소드 1 레코드만 보장한다.
+ * - 마지막 수정 시각으로 최신 시청 시점을 노출한다.
+ *
+ * 필드 개요
+ * - id/user/episode: 식별/소유자/대상 회차
+ * - positionSec/durationSec: 현재 위치/총 길이(초)
+ * - updatedAt: 최근 갱신 시각
  */
 @Entity // 진행률 저장 엔티티
 @Table(name = "episode_progress", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id","episode_id"})) // 유니크

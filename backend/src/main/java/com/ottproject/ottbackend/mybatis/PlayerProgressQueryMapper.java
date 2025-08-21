@@ -6,9 +6,13 @@ import org.apache.ibatis.annotations.Param;
 import java.time.LocalDateTime;
 
 /**
- * 에피소드 시청 진행률 조회용 MyBatis 매퍼
- * - 1~3화는 무료이므로 제외, 4화 이상만 집계
- * - 결제시각 이후 누적 시청 초 합계를 반환
+ * PlayerProgressQueryMapper
+ *
+ * 큰 흐름
+ * - 플레이어 진행률 관련 읽기 전용 쿼리를 수행하는 MyBatis 매퍼.
+ *
+ * 메서드 개요
+ * - sumWatchedSecondsSincePaidEpisodes: 결제 시각 이후 4화 이상 누적 시청 초 합계
  */
 @Mapper
 public interface PlayerProgressQueryMapper {

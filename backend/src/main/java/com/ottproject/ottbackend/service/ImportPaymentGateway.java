@@ -18,12 +18,15 @@ import java.nio.charset.StandardCharsets;
 /**
  * ImportPaymentGateway
  *
- * 실제 연동 로직(요약):
- * - 액세스 토큰 발급: POST /users/getToken
- * - 체크아웃 준비: POST /payments/prepare (merchant_uid, amount 등록)
- * - 저장 결제수단 청구: POST /subscribe/payments/again (customer_uid, merchant_uid, amount)
- * - 환불: POST /payments/cancel (imp_uid 또는 merchant_uid, amount)
- * - 웹훅 서명 검증: X-Iamport-Signature 헤더(HMAC-SHA256) 검증
+ * 큰 흐름
+ * - 아임포트 REST API와 연동하여 체크아웃 준비, 저장수단 재결제, 환불, 웹훅 서명검증을 수행한다.
+ *
+ * 메서드 개요
+ * - createCheckoutSession: 결제 준비 등록 후 세션ID/리다이렉트URL 반환
+ * - issueRefund: 환불 수행
+ * - chargeWithSavedMethod: 저장 결제수단 재청구
+ * - verifyWebhookSignature: X-Iamport-Signature 검증(HMAC-SHA256)
+ * - getAccessToken: 토큰 발급
  */
 @Component // 스프링 컴포넌트 등록
 public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 시작

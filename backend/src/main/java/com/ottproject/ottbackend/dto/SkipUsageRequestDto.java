@@ -10,7 +10,13 @@ import lombok.Setter;
 
 /**
  * 스킵 사용 로깅 요청 DTO
- * - 사용 타입과 시점을 전달
+ *
+ * 큰 흐름
+ * - 스킵 사용 타입/시점을 로깅한다.
+ * - Bean Validation 으로 필수/범위를 검증한다.
+ *
+ * 필드 개요
+ * - type/atSec
  */
 @Getter
 @Setter

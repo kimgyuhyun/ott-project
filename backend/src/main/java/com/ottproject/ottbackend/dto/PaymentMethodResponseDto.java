@@ -7,8 +7,14 @@ import com.ottproject.ottbackend.enums.PaymentProvider;
 /**
  * 결제수단 응답 DTO
  *
- * 역할:
- * - 결제수단 목록/상세 응답 시 민감정보 없이 마스킹 정보 제공
+ * 큰 흐름
+ * - 결제수단 목록/상세 조회 시 민감정보를 제외한 표시 정보만 제공한다.
+ *
+ * 필드 개요
+ * - id/provider/type: 식별/게이트웨이/유형
+ * - brand/last4/expiryMonth/expiryYear: 카드 마스킹/만료
+ * - isDefault/priority/label: 기본 여부/우선순위/별칭
+ * - createdAt/updatedAt: 생성/수정 시각
  */
 public class PaymentMethodResponseDto { // 결제수단 응답 DTO 클래스 시작
 	public Long id; // 결제수단 ID

@@ -4,7 +4,12 @@ import lombok.*;
 
 /**
  * 스킵 메타 응답 DTO
- * - 인트로/엔딩 구간(초)
+ *
+ * 큰 흐름
+ * - 인트로/엔딩 구간을 초 단위로 전달한다.
+ *
+ * 필드 개요
+ * - introStart/introEnd/outroStart/outroEnd
  */
 @Getter
 @Setter

@@ -9,8 +9,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 /**
- * 구독 기반 멤버십 판별 서비스 구현
- * - ACTIVE 상태이며 기간 유효한 구독 존재 시 멤버십 인정
+ * MembershipSubscriptionMembershipService
+ *
+ * 큰 흐름
+ * - 구독 테이블 기준으로 사용자 멤버십 여부와 허용 최대 화질을 판별한다.
+ *
+ * 메서드 개요
+ * - isMember: ACTIVE 상태의 유효 구독 존재 여부로 멤버십 여부 판단
+ * - allowedMaxQuality: 멤버십 여부에 따라 최대 화질(1080p/720p) 반환
  */
 @Service
 @RequiredArgsConstructor

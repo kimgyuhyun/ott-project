@@ -2,10 +2,13 @@ package com.ottproject.ottbackend.dto;
 /**
  * 체크아웃(결제창) 생성 요청 DTO
  *
- * 역할:
- * - 사용자가 특정 멤버십 플랜 결제 진행을 위해 결제창 생성을 요청할 때 사용
- * - 성공/취소 리다이렉트 URL은 선택이며 서버 기본값이 있을 수 있음
- * - 멱등키 전달 시 중복 체크아웃 생성을 방지
+ * 큰 흐름
+ * - 사용자가 특정 멤버십 플랜 결제를 위해 결제창 생성을 요청한다.
+ * - 성공/취소 리다이렉트 URL은 선택이며 서버 기본값이 있을 수 있다.
+ * - idempotencyKey 로 중복 생성을 방지한다.
+ *
+ * 필드 개요
+ * - planCode/successUrl/cancelUrl/idempotencyKey
  */
 public class PaymentCheckoutCreateRequestDto { // 체크아웃 생성 요청 DTO 클래스 시작
 	public String planCode; // 결제 대상 멤버십 플랜 코드

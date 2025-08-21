@@ -6,12 +6,13 @@ import com.ottproject.ottbackend.enums.PaymentStatus;
 /**
  * 결제 Webhook 이벤트 수신 DTO
  *
- * 역할:
- * - IMPORT(아임포트)에서 전달하는 이벤트를 내부 공통 포맷으로 수신
- * - 시그니처 검증은 컨트롤러/서비스에서 헤더/원문 기준으로 수행
+ * 큰 흐름
+ * - 게이트웨이에서 전달하는 결과 이벤트를 내부 공통 포맷으로 수신한다.
+ * - 시그니처/재검증은 상위 계층(컨트롤러/서비스)에서 처리한다.
  *
- * 비고:
- * - 게이트웨이 원문을 이 DTO로 매핑하는 어댑터를 별도 구성(이벤트 ID/금액/통화/링크 등)
+ * 필드 개요
+ * - eventId/providerPaymentId/providerSessionId: 이벤트/외부 식별자
+ * - status/amount/currency/receiptUrl/occurredAt: 상태/금액/통화/영수증/발생시각
  */
 public class PaymentWebhookEventDto { // 웹훅 이벤트 수신 DTO 클래스 시작
 	public String eventId; // 게이트웨이 이벤트 고유 ID(멱등 처리용)

@@ -16,9 +16,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.util.List;
 
 /**
- * 애니 목록/상세 조회 컨트롤러
- * - 목록: 필터/정렬/페이지네이션
- * - 상세: 에피소드/장르/제작사 포함 단건 정보
+ * AnimeController
+ *
+ * 큰 흐름
+ * - 애니 목록/상세를 조회한다. 목록은 필터/정렬/페이지네이션을 지원한다.
+ *
+ * 엔드포인트 개요
+ * - GET /api/anime: 목록 조회(필터/정렬/페이지)
+ * - GET /api/anime/{aniId}: 상세 조회(로그인 시 isFavorited 포함)
  */
 @RequiredArgsConstructor // final 필드 기반 생성자 자동 생성(의존성 주입)
 @RestController // JSON 기반 REST 컨트롤러로 등록

@@ -19,6 +19,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * ReviewsService
+ *
+ * 큰 흐름
+ * - 리뷰 목록/상세 읽기(MyBatis)와 생성/수정/삭제/신고/좋아요 CUD(JPA)를 담당한다.
+ *
+ * 메서드 개요
+ * - list/getOne: 목록/단건 조회
+ * - create/update/deleteSoft/report: 리뷰 생성/수정/소프트 삭제/신고
+ * - toggleLike: 좋아요 토글(멱등 수렴)
+ * - updateStatus/deleteHardByAniList: 상태 갱신/작품 기준 하드 삭제
+ */
 @RequiredArgsConstructor // final 필드 주입용 생성자 자동 생성
 @Service
 @Transactional // 쓰기 메서드 트랜잭션 관리

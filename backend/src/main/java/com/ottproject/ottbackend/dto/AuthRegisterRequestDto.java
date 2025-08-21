@@ -5,7 +5,13 @@ import lombok.Setter;
 
 /**
  * 회원가입 요청 DTO
- * - email/password/name 전달
+ *
+ * 큰 흐름
+ * - 이메일/비밀번호/이름으로 로컬 회원가입을 수행한다.
+ * - Bean Validation 으로 필수/길이/형식을 검증한다.
+ *
+ * 필드 개요
+ * - email/password/name: 가입 정보
  */
 @Getter
 @Setter

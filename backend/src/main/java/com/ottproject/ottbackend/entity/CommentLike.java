@@ -8,8 +8,15 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 댓글 좋아요를 저장하는 엔티티
- * 사용자와 댓글 간의 좋아요 관계를 관리하며, 중복 좋아요를 방지합니다.
+ * 댓글 좋아요 엔티티
+ *
+ * 큰 흐름
+ * - 사용자와 댓글 간의 좋아요 관계를 보관한다.
+ * - (user, comment) 복합 유니크로 중복 좋아요를 방지한다.
+ *
+ * 필드 개요
+ * - id/createdAt: 식별/생성 시각
+ * - user/comment: 소유자/대상 댓글
  */
 @Entity
 @Table( // 테이블 매핑

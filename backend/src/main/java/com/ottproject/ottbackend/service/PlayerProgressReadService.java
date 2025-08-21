@@ -8,8 +8,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 /**
- * 플레이어 진행률 읽기 서비스
- * - MyBatis 매퍼를 통해 복잡 조회 수행
+ * PlayerProgressReadService
+ *
+ * 큰 흐름
+ * - 진행률 관련 읽기 전용 집계를 MyBatis 매퍼로 수행한다.
+ *
+ * 메서드 개요
+ * - sumWatchedSecondsSincePaidEpisodes: 결제시각 이후 4화 이상 누적 시청 초 합
  */
 @Service
 @RequiredArgsConstructor

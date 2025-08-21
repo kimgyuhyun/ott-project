@@ -5,9 +5,16 @@ import jakarta.validation.Payload;    // 페이로드(그룹/메타정보) 지�
 import java.lang.annotation.*;        // 표준 애노테이션 메타
 
 /**
- * 리뷰 요청에서 content 또는 rating 둘 중 하나는 반드시 채워지도록 강제하는 클래스 레벨 검증
- * content 가 공백/빈문자열이면 '비어있음'으로 간주
- * rating 이 null 이면 '비어있음'으로 간주
+ * ContentOrRatingRequired
+ *
+ * 큰 흐름
+ * - 리뷰 생성/수정 요청에서 content 또는 rating 둘 중 하나는 반드시 채워지도록 강제하는 클래스 레벨 제약이다.
+ * - content 가 공백/빈문자열이면 미입력으로, rating 이 null 이면 미입력으로 간주한다.
+ *
+ * 요소 개요
+ * - message: 기본 에러 메시지
+ * - groups: Bean Validation 그룹
+ * - payload: 메타정보 페이로드
  */
 @Documented // javadoc 에 포함
 @Target(ElementType.TYPE) // 클래스 레벨에만 적용

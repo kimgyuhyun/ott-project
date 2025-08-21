@@ -9,8 +9,18 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 애니메이션 에피소드 정보를 저장하는 엔티티
- * 라픝레의 에피소드 구조 기본 설계
+ * 에피소드 엔티티
+ *
+ * 큰 흐름
+ * - 작품의 회차 정보를 저장한다(제목/썸네일/영상/공개/활성 등).
+ * - Anime 과 다대일 연관을 맺고 Auditing 으로 시각을 관리한다.
+ *
+ * 필드 개요
+ * - id/episodeNumber/title: 식별/회차/제목
+ * - thumbnailUrl/videoUrl: 미디어 리소스 URL
+ * - isActive/isReleased: 운영/공개 플래그
+ * - anime: 소속 작품
+ * - createdAt/updatedAt: 생성/수정 시각
  */
 @Entity
 @Getter

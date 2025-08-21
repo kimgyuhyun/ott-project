@@ -1,41 +1,41 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.ottproject.ottbackend.mybatis.PaymentQueryMapper">
+<?xml version="1.0" encoding="UTF-8"?> <!-- XML 선언: UTF-8 인코딩 지정 -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- MyBatis 매퍼 DTD 선언 -->
+<mapper namespace="com.ottproject.ottbackend.mybatis.PaymentQueryMapper"> <!-- 매퍼 네임스페이스: PaymentQueryMapper 인터페이스와 매핑 -->
 
-    <!-- 결제 이력 목록 조회 -->
-    <select id="listHistory" resultType="com.ottproject.ottbackend.dto.PaymentHistoryItemDto">
-        select
-            p.id as paymentId,
-            mp.code as planCode,
-            mp.name as planName,
-            p.amount as amount,
-            p.currency as currency,
-            p.status as status,
-            p.receipt_url as receiptUrl,
-            p.paid_at as paidAt,
-            p.refunded_at as refundedAt
-        from payments p
-        join plans mp on mp.id = p.plan_id
-        where p.user_id = #{userId}
-          <if test="start != null">
-            and p.created_at &gt;= #{start}
+    <!-- 결제 이력 목록 조회 --> <!-- 사용자 결제/환불 내역 페이지 목록 -->
+    <select id="listHistory" resultType="com.ottproject.ottbackend.dto.PaymentHistoryItemDto"> <!-- 결과를 DTO로 매핑 -->
+        select <!-- 선택 컬럼 시작 -->
+            p.id as paymentId, <!-- 결제 PK -->
+            mp.code as planCode, <!-- 플랜 코드 -->
+            mp.name as planName, <!-- 플랜 명칭 -->
+            p.amount as amount, <!-- 금액(최소 화폐단위) -->
+            p.currency as currency, <!-- 통화 코드 -->
+            p.status as status, <!-- 결제 상태 -->
+            p.receipt_url as receiptUrl, <!-- 영수증 URL -->
+            p.paid_at as paidAt, <!-- 결제 완료 시각 -->
+            p.refunded_at as refundedAt <!-- 환불 완료 시각 -->
+        from payments p <!-- 결제 테이블 별칭 p -->
+        join plans mp on mp.id = p.plan_id <!-- 플랜 테이블 조인(플랜 정보 병합) -->
+        where p.user_id = #{userId} <!-- 대상 사용자 필터 -->
+          <if test="start != null"> <!-- 시작시각 필터(옵션) -->
+            and p.created_at &gt;= #{start} <!-- 생성 시각 >= start -->
           </if>
-          <if test="end != null">
-            and p.created_at &lt;= #{end}
+          <if test="end != null"> <!-- 종료시각 필터(옵션) -->
+            and p.created_at &lt;= #{end} <!-- 생성 시각 <= end -->
           </if>
-        order by p.created_at desc
-    </select>
+        order by p.created_at desc <!-- 최신 생성순 정렬 -->
+    </select> <!-- listHistory 끝 -->
 
-    <!-- 결제시각 이후 & 4화 이상 누적 시청 초 합 -->
-    <select id="sumWatchedSecondsSincePaidEpisodes" resultType="int">
-        select coalesce(sum(ep.position_sec), 0)
-        from episode_progress ep
-        join episode e on e.id = ep.episode_id
-        where ep.user_id = #{userId}
-          and ep.updated_at &gt;= #{since}
-          and e.episode_number &gt;= 4
-    </select>
+    <!-- 결제시각 이후 & 4화 이상 누적 시청 초 합 --> <!-- 환불 정책을 위한 유상 시청 시간 합산 -->
+    <select id="sumWatchedSecondsSincePaidEpisodes" resultType="int"> <!-- 합계 결과 int 반환 -->
+        select coalesce(sum(ep.position_sec), 0) <!-- 진행 위치(초) 합, null 방지 -->
+        from episode_progress ep <!-- 진행률 테이블 -->
+        join episode e on e.id = ep.episode_id <!-- 화수 조건 사용 위해 에피소드 조인 -->
+        where ep.user_id = #{userId} <!-- 대상 사용자 -->
+          and ep.updated_at &gt;= #{since} <!-- 결제 시각 이후 업데이트 된 기록만 -->
+          and e.episode_number &gt;= 4 <!-- 4화 이상(1~3 무료 제외)만 합산 -->
+    </select> <!-- sumWatchedSecondsSincePaidEpisodes 끝 -->
 
-</mapper>
+</mapper> <!-- 매퍼 끝 -->
 
 

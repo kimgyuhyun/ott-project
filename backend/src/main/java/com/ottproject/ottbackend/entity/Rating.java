@@ -9,7 +9,16 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 사용자의 애니메이션 평점을 저장하는 엔티티
+ * 평점 엔티티
+ *
+ * 큰 흐름
+ * - 사용자→작품 평점 점수를 보관한다.
+ * - 리뷰와 분리하여 단독 평점만 남길 수 있도록 한다.
+ *
+ * 필드 개요
+ * - id/score: 식별/점수
+ * - user/anime: 작성자/대상 작품
+ * - createdAt/updatedAt: 생성/수정 시각
  */
 @Entity
 @Table(name = "ratings")

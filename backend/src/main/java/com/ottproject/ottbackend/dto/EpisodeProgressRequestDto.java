@@ -9,7 +9,13 @@ import lombok.Setter;
 
 /**
  * 진행률 저장 요청 DTO
- * - 현재 위치와 총 길이를 전달
+ *
+ * 큰 흐름
+ * - 현재 위치/총 길이를 전달해 진행률을 저장한다.
+ * - Bean Validation 으로 0 이상 정수를 강제한다.
+ *
+ * 필드 개요
+ * - positionSec/durationSec: 현재 위치/총 길이(초)
  */
 @Getter // 게터 생성
 @Setter // 세터 생성

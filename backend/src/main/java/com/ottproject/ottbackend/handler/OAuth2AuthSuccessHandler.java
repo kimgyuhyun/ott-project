@@ -15,13 +15,15 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * OAuth2 소셜 로그인 실패 시 처리하는 핸들러
- * 소셜 로그인 실패 시 에러 정보를 JSON 형태로 반환
+ * OAuth2AuthSuccessHandler (실제 동작은 실패 핸들러)
  *
- * 주요 기능:
- * 1. 소셜 로그인 실패 시 에러 로그 기록
- * 2. JSON 형태의 에러 응답 전송
- * 3. 적절한 HTTP 상태 코드 설정
+ * 큰 흐름
+ * - OAuth2 로그인 실패 시 에러를 JSON 응답 또는 리다이렉트로 처리한다.
+ *   (클래스 파일명이 목적과 달라 보이지만, 현재 구현은 실패 핸들러 역할을 수행한다.)
+ *
+ * 메서드 개요
+ * - onAuthenticationFailure: 실패 시 JSON 응답 또는 실패 전용 URL로 리다이렉트
+ * - sendErrorResponse: 실패 정보를 JSON으로 응답
  */
 @Slf4j // 로깅 어노테이션 - log 객체 자동 생성
 @Component // Spring Bean으로 등록

@@ -11,8 +11,16 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * 애니메이션 장르 정보를 저장하는 엔티티
- * 라프텔의 장르 분류 기준
+ * 장르 엔티티
+ *
+ * 큰 흐름
+ * - 작품이 소속되는 장르 마스터를 관리한다.
+ * - Anime 와 다대다 연관을 맺는다.
+ *
+ * 필드 개요
+ * - id/name/description/color/isActive: 마스터 속성
+ * - createdAt/updatedAt: 생성/수정 시각
+ * - animes: 역방향 연관(다대다)
  */
 
 @Entity

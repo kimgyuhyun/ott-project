@@ -6,7 +6,13 @@ import java.time.LocalDateTime;
 
 /**
  * 내 멤버십 상태 DTO
- * - 현재 플랜/만료일/자동갱신/상태
+ *
+ * 큰 흐름
+ * - 현재 구독 플랜/만료일/자동갱신/상태를 뷰에 전달한다.
+ *
+ * 필드 개요
+ * - planCode/planName: 플랜 코드/명칭
+ * - endAt/autoRenew/status: 만료일/자동갱신/상태
  */
 public class UserMembershipDto {
     public String planCode; // 플랜 코드

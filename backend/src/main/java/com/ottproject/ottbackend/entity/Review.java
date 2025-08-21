@@ -6,8 +6,15 @@ import lombok.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 /**
- * 사용자의 애니메이션 리뷰를 저장하는 엔티티
- * 리뷰 내용과 평점을 함꼐 관리하며, 댓글과 대댓글 구조 지원
+ * 리뷰 엔티티
+ *
+ * 큰 흐름
+ * - 작품에 대한 사용자 리뷰(본문/평점/상태)를 저장한다.
+ * - 댓글/대댓글/좋아요와 연관되어 커뮤니티 기능의 중심이 된다.
+ *
+ * 필드 개요
+ * - id/content/rating/status: 식별/본문/평점/상태
+ * - user/anime: 작성자/대상 작품
  */
 @Entity
 @Table(name = "reviews")

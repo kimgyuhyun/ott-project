@@ -11,8 +11,14 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
- * 구독 리포지토리
- * - 사용자 활성 구독(기간 유효) 조회
+ * MembershipSubscriptionRepository
+ *
+ * 큰 흐름
+ * - 구독 엔티티의 CUD 및 상태/기간 기준 조회를 제공하는 JPA 리포지토리.
+ *
+ * 메서드 개요
+ * - findActiveEffectiveByUser: 주어진 시점(now)에 유효한 사용자 구독(ACTIVE) 조회
+ * - findTopByUser_IdOrderByStartAtDesc: 사용자 최근 구독(상태 무관) 조회
  */
 @Repository
 public interface MembershipSubscriptionRepository extends JpaRepository<MembershipSubscription, Long> {

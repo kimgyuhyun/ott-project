@@ -9,11 +9,15 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 /**
- * 멤버십 알림 메일 서비스
+ * MembershipNotificationService
  *
- * 큰 흐름(Javadoc):
- * - 구독 해지 예약(말일) 안내, 결제실패 누적에 따른 구독 해지 안내 메일을 발송합니다.
- * - 템플릿은 간단한 텍스트 메일로 구성하며, 운영 시 HTML 템플릿/다국어 적용을 권장합니다.
+ * 큰 흐름
+ * - 구독 말일 해지 예약 및 재시도 실패로 인한 해지 등 주요 이벤트를 이메일로 안내한다.
+ * - 운영에서는 HTML 템플릿/다국어/발송 모듈 분리를 권장한다.
+ *
+ * 메서드 개요
+ * - sendCancelAtPeriodEnd: 말일 해지 예약 안내 메일 발송
+ * - sendCanceledDueToDunning: 결제 실패 누적으로 인한 해지 안내 메일 발송
  */
 @Service
 @RequiredArgsConstructor
@@ -21,7 +25,7 @@ public class MembershipNotificationService { // 알림 메일 서비스
 
     private final JavaMailSender mailSender; // 메일 발송기
 
-    @Value("${spring.mail.username:")
+    @Value("${spring.mail.username:no-reply@example.com}")
     private String fromEmail; // 발신 이메일(설정 값)
 
     public void sendCancelAtPeriodEnd(User user, MembershipSubscription sub) { // 말일 해지 예약 안내

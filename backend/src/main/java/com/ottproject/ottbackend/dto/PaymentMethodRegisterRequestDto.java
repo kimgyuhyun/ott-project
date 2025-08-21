@@ -6,9 +6,14 @@ import com.ottproject.ottbackend.enums.PaymentProvider;
 /**
  * 결제수단 등록 요청 DTO
  *
- * 역할:
- * - 사용자가 카드/계좌 등 결제수단을 등록할 때 사용
- * - 현재 게이트웨이는 IMPORT 기준이나, 확장성을 위해 provider 필드 유지
+ * 큰 흐름
+ * - 카드/계좌 등 결제수단을 저장 등록할 때 사용한다.
+ * - 게이트웨이 확장성을 위해 provider/type/외부 식별자를 받는다.
+ *
+ * 필드 개요
+ * - provider/type/providerMethodId: 게이트웨이/유형/외부 식별자
+ * - brand/last4/expiryMonth/expiryYear: 카드 마스킹/만료
+ * - isDefault/priority/label: 기본 여부/우선순위/별칭
  */
 public class PaymentMethodRegisterRequestDto { // 결제수단 등록 요청 DTO 클래스 시작
 	public PaymentProvider provider; // 결제 제공자(IMPORT 고정 권장)
