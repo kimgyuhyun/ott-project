@@ -7,10 +7,15 @@ import org.mapstruct.*;                                  // MapStruct 애노테�
 import java.util.List;                                   // 리스트 매핑용
 
 /**
- * User 매핑 규칙
- * - 출력: 엔티티 -> 응답 DTO(UserResponseDto)
- * - 입력: 가입 요청 DTO(AuthRegisterRequestDto) -> 엔티티(User)
- * - 민감/내부 필드(password, providerId 등)는 요청에서만 사용하거나 서비스에서 설정
+ * UserMapper
+ *
+ * 큰 흐름
+ * - User 엔티티와 DTO 간 매핑 규칙을 정의한다. 출력 매핑(User→UserResponseDto)과 입력 매핑(RegisterDTO→User)을 제공한다.
+ *
+ * 메서드 개요
+ * - toUserResponseDto: 엔티티→응답 DTO
+ * - toUserResponseDtoList: 엔티티 리스트→응답 DTO 리스트
+ * - fromRegister: 가입 요청 DTO→엔티티(민감/내부 필드 정책 포함)
  */
 @Mapper(
         componentModel = "spring",                         // 스프링 빈으로 등록

@@ -8,8 +8,16 @@ import org.apache.ibatis.annotations.Param;  // MyBatis 파라미터 바인딩
 import java.util.List;
 
 /**
- * 읽기 전용(MyBatis) 매퍼
- * 목록/상세.연관(에피소드, 장르, 제작사) 조회
+ * AnimeQueryMapper
+ *
+ * 큰 흐름
+ * - 목록/상세 및 연관(에피소드/장르/제작사/태그) 조회를 담당하는 읽기 전용 MyBatis 매퍼.
+ *
+ * 메서드 개요
+ * - findAniList/countAniList: 목록/총 개수(필터/정렬/페이지)
+ * - findTagsByAniId: 상세 태그 목록
+ * - findAniDetailByAniId/findAniDetailByAniIdWithUser: 상세(사용자 찜 여부 포함 가능)
+ * - findEpisodesByAniId/findGenresByAniId/findStudiosByAniId: 상세 연관 목록
  */
 @Mapper
 public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의

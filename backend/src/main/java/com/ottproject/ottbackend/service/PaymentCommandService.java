@@ -26,9 +26,16 @@ import java.time.LocalDateTime;
 /**
  * PaymentCommandService
  *
- * 역할:
- * - 체크아웃 생성 및 웹훅 이벤트 반영(CUD) 처리
- * - 게이트웨이 어댑터를 통해 실제 결제창 URL을 받아서 반환
+ * 큰 흐름
+ * - 결제 쓰기 흐름(체크아웃 생성, 웹훅 반영, 환불)을 처리한다.
+ * - 게이트웨이 어댑터와 멱등키, 재검증 로직을 통해 안정성을 보장한다.
+ *
+ * 메서드 개요
+ * - verifyWebhook: 웹훅 서명 검증
+ * - parseWebhookPayload: 웹훅 페이로드 파싱
+ * - checkout: 체크아웃 세션 생성(멱등키 저장 포함 가능)
+ * - applyWebhookEvent: SUCCEEDED/FAILED/CANCELED/REFUNDED 상태 전이 및 구독 반영
+ * - refundIfEligible: 24시간·시청<300초 정책 검증 후 환불 실행
  */
 @Service // 스프링 빈 등록
 @RequiredArgsConstructor // 생성자 주입

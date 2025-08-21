@@ -15,8 +15,15 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 /**
- * 찜 컨트롤러
- * - 작품 찜 토글, 마이페이지 찜 목록, 상세+찜 여부 조회
+ * FavoriteAnimeController
+ *
+ * 큰 흐름
+ * - 작품 찜 토글과 마이페이지 찜 목록, 상세(찜 여부 포함) 조회를 제공한다.
+ *
+ * 엔드포인트 개요
+ * - POST /api/anime/{aniId}/favorite: 찜 토글
+ * - GET /api/mypage/favorites/anime: 찜 목록(페이지)
+ * - GET /api/anime/{aniId}/detail: 상세 + isFavorited
  */
 @RestController // REST 컨트롤러
 @RequiredArgsConstructor // 생성자 주입

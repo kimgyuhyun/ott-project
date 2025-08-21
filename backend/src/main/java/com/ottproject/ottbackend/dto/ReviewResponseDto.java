@@ -5,7 +5,13 @@ import lombok.*;
 
 /**
  * 리뷰 응답 DTO
- * - 뷰에 필요한 정보 위주
+ *
+ * 큰 흐름
+ * - 리뷰 목록/상세에서 필요한 표시 정보를 담는다.
+ *
+ * 필드 개요
+ * - id/aniId/userId/userName/content/rating/status
+ * - likeCount/isLikedByCurrentUser
  */
 @Getter
 @Setter

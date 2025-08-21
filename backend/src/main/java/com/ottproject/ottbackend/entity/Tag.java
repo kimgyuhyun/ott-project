@@ -7,8 +7,14 @@ import java.util.HashSet;
 
 /**
  * 태그 마스터 엔티티
- * - 정규화된 태그 스키마(tags)와 매핑
- * - 현재는 읽기 중심(필요 시 관리자 CRUD로 확장 가능)
+ *
+ * 큰 흐름
+ * - 작품에 부여되는 태그 마스터를 관리한다.
+ * - Anime 과 다대다 연관을 맺으며, 소유자는 Anime 쪽이다.
+ *
+ * 필드 개요
+ * - id/name/color: 식별/명칭/색상
+ * - animes: 역방향 연관(다대다)
  */
 @Entity
 @Table(name = "tags")

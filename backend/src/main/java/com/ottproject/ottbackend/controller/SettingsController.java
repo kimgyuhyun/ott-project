@@ -14,8 +14,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 /**
- * 사용자 재생 환경 설정 API
- * - 현재 사용자 설정 조회/갱신
+ * SettingsController
+ *
+ * 큰 흐름
+ * - 사용자 재생 환경 설정의 조회/갱신을 제공한다.
+ *
+ * 엔드포인트 개요
+ * - GET /api/users/me/settings: 내 설정 조회
+ * - PUT /api/users/me/settings: 내 설정 갱신(부분 갱신)
  */
 @RestController // REST 컨트롤러
 @RequiredArgsConstructor // 생성자 주입

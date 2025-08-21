@@ -10,9 +10,18 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
-/*
-사용자 관련 비즈니스 로직을 처리하는 서비스
-spring 의 @Service 로 싱글턴 패턴 적용
+/**
+ * UserService
+ *
+ * 큰 흐름
+ * - 사용자 조회/중복확인/저장/업데이트 및 소셜 구분 조회를 담당한다.
+ *
+ * 메서드 개요
+ * - findByEmail: 이메일로 사용자 조회
+ * - existsByEmail: 이메일 중복 확인
+ * - saveUser: 사용자 저장(자체 로그인 시 비밀번호 암호화)
+ * - updateUser: 사용자 정보 업데이트
+ * - findByEmailAndAuthProvider: 이메일+제공자로 조회(소셜 구분)
  */
 @Service // spring bean 으로 등록, 싱글턴 패턴
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성

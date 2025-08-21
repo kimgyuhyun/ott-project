@@ -19,9 +19,21 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 
 /**
- * 인증/계정 컨트롤러
- * - 회원가입/중복확인/로그인/로그아웃/비밀번호변경/탈퇴
- * - 이메일 인증 코드 발송/검증
+ * EmailAuthController
+ *
+ * 큰 흐름
+ * - 이메일 기반 회원가입/중복확인/로그인/로그아웃/비밀번호 변경/탈퇴와 이메일 인증(코드 발송/검증)을 제공한다.
+ *
+ * 엔드포인트 개요
+ * - POST /api/auth/register: 회원가입
+ * - GET /api/auth/check-email: 이메일 중복 확인
+ * - GET /api/auth/health: 헬스체크
+ * - POST /api/auth/login: 로그인(세션)
+ * - POST /api/auth/logout: 로그아웃(세션 무효화)
+ * - POST /api/auth/send-verification-code: 인증 코드 발송
+ * - POST /api/auth/verify-code: 인증 코드 검증
+ * - DELETE /api/auth/withdraw: 회원탈퇴(세션 사용자)
+ * - PUT /api/auth/change-password: 비밀번호 변경(세션 사용자)
  */
 @RestController // REST API 컨트롤러로 지정, @ResponseBody 를 모든 메서드에 자동 적용
 @RequestMapping("/api/auth") // 모든 엔드포인트의 기본 경로를 /api/auth 로 설정

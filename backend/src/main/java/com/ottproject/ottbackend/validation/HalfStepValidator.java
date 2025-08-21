@@ -5,9 +5,13 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 /**
- * HalfStep 제약 검증기
- * - null 은 통과
- * - 값*2 가 정수면 0.5 단위로 간주하여 통과
+ * HalfStepValidator
+ *
+ * 큰 흐름
+ * - HalfStep 제약의 실제 검증 로직을 수행한다.
+ *
+ * 메서드 개요
+ * - isValid: null 통과, 값*2가 정수인지 검사하여 0.5 단위 여부 판별
  */
 public class HalfStepValidator // HalfStep 어노테이션 검증기
         implements ConstraintValidator<HalfStep, Double> {

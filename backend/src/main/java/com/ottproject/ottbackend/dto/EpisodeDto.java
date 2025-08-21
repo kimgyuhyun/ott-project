@@ -6,6 +6,13 @@ import java.time.LocalDateTime;
 
 /**
  * 에피소드 읽기용 DTO
+ *
+ * 큰 흐름
+ * - 회차 카드/상세에서 필요한 필드만 노출한다.
+ *
+ * 필드 개요
+ * - id/episodeNumber/title/thumbnailUrl/videoUrl: 식별/제목/미디어
+ * - isActive/isReleased/createdAt/updatedAt: 운영/시각
  */
 @Getter
 @Setter

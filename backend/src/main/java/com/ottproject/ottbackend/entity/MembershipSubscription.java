@@ -7,8 +7,18 @@ import java.time.LocalDateTime;
 
 /**
  * 사용자 구독 엔티티
- * - 구독 플랜/상태/기간 관리
- * - 자동갱신/말일해지/해지확정시각/다음결제 anchor
+ *
+ * 큰 흐름
+ * - 사용자의 플랜/상태/기간/갱신 정책을 관리한다.
+ * - 자동갱신/말일해지/해지확정/다음결제 기준 시점을 추적한다.
+ * - 결제 재시도(dunning) 현황을 보관한다.
+ *
+ * 필드 개요
+ * - id/user/membershipPlan: 식별/소유자/플랜
+ * - status: 구독 상태(ACTIVE/PAST_DUE/CANCELED 등)
+ * - startAt/endAt: 기간
+ * - autoRenew/cancelAtPeriodEnd/canceledAt/nextBillingAt: 정책/일정
+ * - retryCount/maxRetry/lastRetryAt/lastError*: dunning 상태
  */
 @Entity
 @Table(name = "subscriptions", indexes = {

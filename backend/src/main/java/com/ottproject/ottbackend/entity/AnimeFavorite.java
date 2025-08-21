@@ -7,6 +7,19 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
+/**
+ * 애니 찜(즐겨찾기) 엔티티
+ *
+ * 큰 흐름
+ * - 사용자와 애니 간의 즐겨찾기 관계를 보관한다.
+ * - 동일 사용자-작품 한 건만 허용(복합 유니크)으로 중복 찜을 방지한다.
+ *
+ * 필드 개요
+ * - id: PK
+ * - user/anime: 소유 사용자/대상 애니
+ * - createdAt: 찜 시각(Auditing)
+ */
+
 @Entity // JPA 엔티티
 @Table( // 테이블 매핑
         name = "ani_favorites", // 테이블명

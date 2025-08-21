@@ -8,19 +8,22 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
-/*
-사용자 데이터베이스 접근을 위한 Repository
-JpaRepository 를 상속받아 기본 CRUD 기능 제공
+/**
+ * UserRepository
+ *
+ * 큰 흐름
+ * - 사용자 CRUD 및 조회용 파생 메서드를 제공하는 JPA 리포지토리.
+ *
+ * 메서드 개요
+ * - findByEmail: 이메일로 사용자 단건 조회
+ * - existsByEmail: 이메일 중복 여부
+ * - findByEmailAndAuthProvider: 이메일+제공자 기준 조회(소셜 계정 구분)
+ * - findByEmailVerified: 이메일 인증 여부로 목록 조회
  */
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail (String email); // 이메일로 사용자 조회
-    // 로그인할 때 사용자 정보 조회 ex) 사용자가 로그인 시도 -> 이메일로 사용자 찾기
-    boolean existsByEmail (String email); // 이메일 존재 여부 확인
-    // 회원가입할 때 이메일 중복 확인 ex) -> 새 사용자가 회원가입 -> 이미 가입된 이메일인지 확인
-    Optional<User> findByEmailAndAuthProvider(String email, AuthProvider authProvider); // 이메일과 인증 제공자로 사용자 조회 (소셜 로그인용)
-    // 소셜 로그인할 때 사용 ex) 구글로 로그인한 사용자가 네이버로도 같은 이메일로 가입하려고 할 때 구분
-    List<User> findByEmailVerified(boolean emailVerified); // 이메일 인증 여부로 사용자 조회
-    // 관리자 기능 또는 이메일 인증 관리 ex) 관리자가 인증되지 않은 사용자 목록 조회
-    // 이메일 인증이 필요한 사용자들에게 알림 발송, 인증 완료된 사용자만 특정 기능 허용
+    Optional<User> findByEmail(String email); // 이메일로 사용자 조회
+    boolean existsByEmail(String email); // 이메일 존재 여부
+    Optional<User> findByEmailAndAuthProvider(String email, AuthProvider authProvider); // 이메일+제공자 조회
+    List<User> findByEmailVerified(boolean emailVerified); // 이메일 인증 여부로 목록
 }

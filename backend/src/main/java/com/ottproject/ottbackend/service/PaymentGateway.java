@@ -6,19 +6,24 @@ import com.ottproject.ottbackend.entity.User;
 /**
  * PaymentGateway
  *
- * 역할:
- * - IMPORT/Stripe 등 외부 결제 게이트웨이 연동을 추상화합니다.
- * - 체크아웃 세션 생성, 환불, 저장 결제수단 청구 등 기능을 표준 인터페이스로 제공합니다.
+ * 큰 흐름
+ * - 외부 결제 게이트웨이(아임포트/Stripe 등) 연동을 표준화한다.
+ *
+ * 메서드 개요
+ * - createCheckoutSession: 체크아웃 세션 생성
+ * - issueRefund: 환불 처리
+ * - chargeWithSavedMethod: 저장수단 자동 청구
+ * - verifyWebhookSignature: 웹훅 서명 검증
  */
 public interface PaymentGateway { // 게이트웨이 추상화 시작
 
 	/**
- 	 * 체크아웃 세션 생성
- 	 *
- 	 * 반환:
- 	 * - sessionId: 게이트웨이 세션 식별자
- 	 * - redirectUrl: 결제창으로 이동할 URL
- 	 */
+	 * 체크아웃 세션 생성
+	 *
+	 * 반환:
+	 * - sessionId: 게이트웨이 세션 식별자
+	 * - redirectUrl: 결제창으로 이동할 URL
+	 */
 	CheckoutSession createCheckoutSession(User user, MembershipPlan plan, String successUrl, String cancelUrl); // 세션 생성 시그니처
 
 	final class CheckoutSession { // 반환 DTO 내장형

@@ -16,16 +16,15 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 
 /**
- * 멤버십 쓰기 서비스
+ * MembershipCommandService
  *
- * 설계 요약:
- * - 읽기(Read): 목록/요약 등은 MyBatis(대량 조회/정렬 최적화) 사용
- * - 쓰기(Write): 트랜잭션/엔티티 상태머신이 중요한 변경은 JPA 사용
- * - 코드 조회(findByCode)는 단건이므로 JPA로 충분(트랜잭션 경계 내 일관성)
+ * 큰 흐름
+ * - 구독 쓰기 흐름(신청/연장/해지)을 처리한다.
+ * - 멱등키로 중복 요청을 방지하고, 말일 해지 정책을 적용한다.
  *
- * 기능:
- * - subscribe(userId, req): 최근 구독의 잔여기간이 있으면 그 종료 직후부터, 없으면 now부터 시작해 기간만큼 활성 구독 생성/연장
- * - cancel(userId): 유효 구독을 찾아 autoRenew=false로 전환하고, 말일 해지 처리
+ * 메서드 개요
+ * - subscribe: 최근 구독 잔여기간 고려하여 시작점을 산정 후 활성 구독 생성/연장
+ * - cancel: 자동갱신 off + 말일 해지 예약(멱등 지원)
  */
 @Service
 @RequiredArgsConstructor

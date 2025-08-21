@@ -7,8 +7,14 @@ import java.time.Instant;
 import java.util.Base64;
 
 /**
- * Nginx secure_link 서명 유틸리티
- * - MD5 기반 서명(st)과 만료 시각(e) 계산
+ * HlsSignedUrlUtil
+ *
+ * 큰 흐름
+ * - Nginx secure_link용 서명값(st)과 만료 시각(e)을 생성한다.
+ *
+ * 메서드 개요
+ * - generateSignature: MD5(expires + uriPath + " " + secret) → Base64
+ * - defaultExpiryFromNowSeconds: 현재 시각 기준 TTL초 뒤 만료 epoch 반환
  */
 public final class HlsSignedUrlUtil { // Nginx secure_link 서명 유틸리티
     private HlsSignedUrlUtil() {} // 인스턴스화 방지

@@ -7,8 +7,13 @@ import lombok.Setter;
 
 /**
  * 비밀번호 변경 요청 DTO
- * - currentPassword: 현재 비밀번호(필수)
- * - newPassword: 새 비밀번호(최소 길이 검증)
+ *
+ * 큰 흐름
+ * - 현재 비밀번호와 새 비밀번호를 받아 변경한다.
+ * - Bean Validation 으로 필수/길이를 검증한다.
+ *
+ * 필드 개요
+ * - currentPassword/newPassword: 비밀번호 쌍
  */
 @Getter
 @Setter

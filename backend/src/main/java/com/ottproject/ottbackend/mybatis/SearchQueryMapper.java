@@ -8,9 +8,14 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 검색 전용 MyBatis 매퍼
- * 자동완성(제목만)
- * 통합 검색(키워드 + 장르 AND + 태그 OR + 정렬 + 페이지)
+ * SearchQueryMapper
+ *
+ * 큰 흐름
+ * - 자동완성/본검색을 위한 읽기 전용 쿼리를 담당하는 MyBatis 매퍼.
+ *
+ * 메서드 개요
+ * - suggestTitles: 자동완성(제목만)
+ * - searchAnimes/countSearchAnimes: 본검색 목록/총 개수
  */
 @Mapper
 public interface SearchQueryMapper {

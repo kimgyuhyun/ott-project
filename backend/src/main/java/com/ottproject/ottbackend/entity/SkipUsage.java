@@ -14,7 +14,15 @@ import java.time.LocalDateTime;
 
 /**
  * 스킵 사용 로그 엔티티
- * - 비로그인 사용도 기록 가능(user null)
+ *
+ * 큰 흐름
+ * - 인트로/엔딩 스킵 사용 이력을 보관한다.
+ * - 비로그인도 기록할 수 있도록 user nullable.
+ *
+ * 필드 개요
+ * - id/user/episode: 식별/사용자/대상 회차
+ * - type/atSec: 스킵 유형/사용 시점(초)
+ * - createdAt: 생성 시각
  */
 @Entity
 @Table(name = "skip_usage")

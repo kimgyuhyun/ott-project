@@ -7,7 +7,15 @@ import java.time.LocalDateTime;
 
 /**
  * 마이페이지 찜 목록 항목 DTO
- * - 작품 기본 정보 + 찜한 시각
+ *
+ * 큰 흐름
+ * - 찜 목록화면 카드에 필요한 최소 정보를 담는다.
+ *
+ * 필드 개요
+ * - aniId/title/posterUrl: 식별/제목/썸네일
+ * - rating/ratingCount: 평점/투표수
+ * - isDub/isSubtitle/isExclusive/isNew/isPopular/isCompleted/animeStatus/year/type: 배지/메타
+ * - favoritedAt: 찜한 시각
  */
 @Getter
 @Setter

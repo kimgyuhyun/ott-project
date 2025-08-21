@@ -6,10 +6,15 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
-/*
-사용자 정보 응답을 위한 DTO
-서버에서 클라이언트로 전송하는 사용자 정보
-비밀번호는 보안상 제외
+/**
+ * 사용자 정보 응답 DTO
+ *
+ * 큰 흐름
+ * - 사용자 식별/권한/상태/타임스탬프를 노출한다(민감정보 제외).
+ *
+ * 필드 개요
+ * - id/email/name/role/authProvider
+ * - emailVerified/enabled/createdAt/updatedAt
  */
 @Getter
 @Setter

@@ -7,10 +7,22 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 /**
- * 애니메이션 기본 + 상세 정보를 통합 저장하는 엔티티
- * - 기존 AnimeList(목록) + AnimeDetail(상세) 필드를 한 곳에서 관리
- * - 상세 페이지에서 에피소드 목록을 보여주기 위해 Episode 와의 연관 포함
- * - 화면에서는 AnimeListDto / AnimeDetailDto 로 필요한 데이터만 노출
+ * 애니 엔티티(목록+상세 통합)
+ *
+ * 큰 흐름
+ * - 목록/상세에서 필요한 메타를 단일 테이블에 저장한다.
+ * - 장르/태그/제작사와 다대다, 에피소드와 일대다 연관을 가진다.
+ * - Auditing 으로 생성/수정 시각을 관리한다.
+ *
+ * 필드 개요
+ * - id/title/titleEn/titleJp: 식별/다국어 제목
+ * - synopsis/fullSynopsis: 요약/상세 줄거리
+ * - status/releaseDate/endDate/year/season: 방영 상태/기간/시즌/연도
+ * - rating/ratingCount: 평점/투표수
+ * - isExclusive/isNew/isPopular/isCompleted/isSubtitle/isDub/isSimulcast: 특성 플래그
+ * - broadcastDay/broadCastTime/type/duration/source/country/language: 방송 메타
+ * - voiceActors/director/releaseQuarter/currentEpisodes: 상세 메타
+ * - isActive/createdAt/updatedAt: 운영/감사 정보
  */
 @Entity
 @Table(name = "anime") // NEW: dev 단계에서는 신규 통합 테이블로 생성

@@ -17,11 +17,16 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 멤버십 API 컨트롤러
- * - 플랜 목록 조회
- * - 내 멤버십 상태 조회
- * - 구독 신청(정기)
- * - 구독 해지(말일 해지, 멱등키 지원)
+ * MembershipController
+ *
+ * 큰 흐름
+ * - 멤버십 플랜 조회, 내 구독 상태 조회, 구독 신청/해지를 제공한다.
+ *
+ * 엔드포인트 개요
+ * - GET /api/memberships/plans: 플랜 목록
+ * - GET /api/users/me/membership: 내 멤버십 상태
+ * - POST /api/memberships/subscribe: 구독 신청
+ * - POST /api/memberships/cancel: 구독 해지(말일, 멱등)
  */
 @RestController
 @RequiredArgsConstructor

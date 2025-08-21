@@ -7,8 +7,13 @@ import lombok.NoArgsConstructor;
 
 /**
  * 태그 간단 표현 DTO
- * - 목록/상세 화면에서 태그 배지 노출용 최소 필드 집합
- * - id/name/color 만 포함하여 네트워크 페이로드를 최소화
+ *
+ * 큰 흐름
+ * - 목록/상세 화면에서 태그 배지 노출용 최소 필드를 전달한다.
+ * - id/name/color 로 페이로드를 최소화한다.
+ *
+ * 필드 개요
+ * - id/name/color: 식별/명칭/색상
  */
 @Data
 @Builder

@@ -11,8 +11,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * 전역 예외 핸들러
- * - 표준 에러 포맷으로 변환하여 응답
+ * GlobalExceptionHandler
+ *
+ * 큰 흐름
+ * - 컨트롤러 전역의 예외를 표준 오류 바디(ApiError)로 변환하여 응답한다.
+ *
+ * 메서드 개요
+ * - handleRse: ResponseStatusException → 상태/메시지 반영
+ * - handleValidation: 검증 실패 → 첫 필드 에러 메시지 반영(400)
+ * - handleAny: 기타 예외 → 500/Internal error 고정 응답
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {

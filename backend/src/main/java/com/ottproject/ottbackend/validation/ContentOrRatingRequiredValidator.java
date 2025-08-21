@@ -5,8 +5,13 @@ import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 
 /**
- * ContentOrRatingRequired 애노테이션의 실제 검증 로직
- * - create/update 두 DTO 모두 지원
+ * ContentOrRatingRequiredValidator
+ *
+ * 큰 흐름
+ * - ContentOrRatingRequired의 실제 검증기. 생성/수정 DTO 모두 지원한다.
+ *
+ * 메서드 개요
+ * - isValid: DTO 타입 분기 후 content/rating 둘 중 하나 존재 여부를 검사한다.
  */
 public class ContentOrRatingRequiredValidator implements ConstraintValidator<ContentOrRatingRequired, Object> {
     @Override

@@ -16,6 +16,17 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * FavoriteAnimeService
+ *
+ * 큰 흐름
+ * - 찜 토글과 목록/상태 조회를 제공한다. 읽기 전용 질의는 MyBatis, CUD는 JPA를 사용한다.
+ *
+ * 메서드 개요
+ * - toggle: 찜 토글(on/off 반환)
+ * - list: 내 찜 목록 페이지 조회
+ * - isFavorited: 개별 찜 여부 조회
+ */
 @Service // 서비스 컴포넌트
 @RequiredArgsConstructor // 생성자 주입
 @Transactional // 쓰기 트랜잭션

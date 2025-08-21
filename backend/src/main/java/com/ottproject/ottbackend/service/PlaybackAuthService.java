@@ -9,10 +9,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 재생 권한 검사 및 스트림 URL 생성 서비스
- * - 1~3화 무료 규칙 적용
- * - 멤버십 여부로 720p/1080p 분기
- * - Nginx secure_link 기반 만료/서명 URL 생성
+ * PlaybackAuthService
+ *
+ * 큰 흐름
+ * - 재생 권한 검사와 Nginx secure_link 기반 서명 URL 생성을 제공한다.
+ * - 1~3화 무료, 4화 이상 멤버십 필요 규칙을 적용한다.
+ *
+ * 메서드 개요
+ * - canStream: 에피소드 재생 권한 여부 판단
+ * - buildSignedStreamUrl: 품질 제한 적용 후 서명 URL 생성
+ * - nextEpisodeId: 현재 화 기준 다음 화 ID 조회
  */
 @Service
 @RequiredArgsConstructor

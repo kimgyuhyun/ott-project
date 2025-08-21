@@ -4,7 +4,12 @@ import lombok.*;
 
 /**
  * 사용자 재생 설정 DTO
- * - 자동 스킵/기본 화질/자동 다음 화
+ *
+ * 큰 흐름
+ * - 자동 스킵/기본 화질/자동 다음 화 설정을 노출한다.
+ *
+ * 필드 개요
+ * - autoSkipIntro/autoSkipEnding/defaultQuality/autoNextEpisode
  */
 @Getter
 @Setter

@@ -9,8 +9,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 사용자 재생 설정 서비스
- * - 기본값 제공, 선택적 필드 업데이트
+ * SettingsService
+ *
+ * 큰 흐름
+ * - 사용자 재생 환경 설정을 조회/업데이트한다.
+ *
+ * 메서드 개요
+ * - get: 사용자 설정 조회(없으면 기본값)
+ * - update: 부분 갱신(널이 아닌 필드만 반영)
  */
 @Service
 @RequiredArgsConstructor

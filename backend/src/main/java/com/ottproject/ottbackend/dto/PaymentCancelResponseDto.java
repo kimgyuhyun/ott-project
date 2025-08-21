@@ -5,9 +5,11 @@ import java.time.LocalDateTime;
 /**
  * 결제 취소 응답 DTO
  *
- * 역할:
- * - 사용자/시스템에 의해 결제가 취소된 결과를 단건으로 반환
- * - 즉시 취소 UX나 콜백 처리 후 화면 표시용
+ * 큰 흐름
+ * - 취소 결과 단건을 표현한다(취소 시각/사유 포함).
+ *
+ * 필드 개요
+ * - paymentId/providerPaymentId/canceledAt/reasonCode/message
  */
 public class PaymentCancelResponseDto { // 결제 취소 응답 DTO 클래스 시작
 	public Long paymentId; // 내부 결제 레코드 ID

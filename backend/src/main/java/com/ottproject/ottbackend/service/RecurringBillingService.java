@@ -20,11 +20,13 @@ import java.util.List;
 /**
  * RecurringBillingService
  *
- * 역할:
- * - ACTIVE 상태이고 자동갱신이 켜져 있으며 말일해지(Cancel at period end)가 아닌 구독에 대해,
- *   nextBillingAt 시각이 도래하면 저장된 결제수단으로 자동 청구를 시도합니다.
- * - 청구 성공 시 구독 기간을 연장하고 nextBillingAt을 갱신합니다.
- * - 청구 실패 시 PAST_DUE로 전환하고 임시 재시도 시각을 설정합니다.
+ * 큰 흐름
+ * - 자동갱신 구독에 대해 nextBillingAt 도래 시 저장 결제수단으로 자동 청구를 시도한다(기본→보조 폴백).
+ * - 성공 시 구독 기간/nextBillingAt 갱신, 실패 시 PAST_DUE 전환 및 재시도/해지 처리 정책을 수행한다.
+ * - 최대 재시도 횟수 소진 시 자동 해지 및 알림 메일을 발송한다.
+ *
+ * 메서드 개요
+ * - runRecurringBilling: 정기결제 배치(스케줄)
  */
 @Service // 서비스 빈 등록
 @RequiredArgsConstructor // 생성자 주입

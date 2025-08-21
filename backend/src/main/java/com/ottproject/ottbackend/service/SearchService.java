@@ -14,9 +14,14 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
- * 검색 서비스
- * - 자동완성(제목만)
- * - 통합 검색(키워드 + 장르 AND + 태그 OR + 정렬 + 페이지)
+ * SearchService
+ *
+ * 큰 흐름
+ * - 자동완성/본검색을 위한 읽기 전용 서비스를 제공한다(MyBatis 연동).
+ *
+ * 메서드 개요
+ * - suggest: 자동완성(제목만)
+ * - search: 본검색(키워드 + 장르 AND + 태그 OR + 정렬 + 페이지)
  */
 @Slf4j
 @Service // 스프링 서비스 컴포넌트

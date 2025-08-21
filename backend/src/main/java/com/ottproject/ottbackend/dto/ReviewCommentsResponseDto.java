@@ -4,8 +4,14 @@ import lombok.*;
 
 /**
  * 댓글 응답 DTO
- * - 플랫 렌더링을 고려해 parentId 포함
- * - repliesCount/likeCount/isLiked 포함
+ *
+ * 큰 흐름
+ * - 리뷰 댓글을 플랫하게 렌더링하기 위한 표시 정보를 담는다.
+ *
+ * 필드 개요
+ * - id/reviewId/parentId: 식별/대상/부모
+ * - userId/userName/content/commentStatus: 작성자/본문/상태
+ * - replacesCount/likeCount/isLikedByCurrentUser: 수/좋아요/현재 사용자 좋아요 여부
  */
 @Getter
 @Setter

@@ -9,9 +9,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * 인증/세션 유틸리티
- * - 세션의 이메일로 현재 사용자 식별(ID 반환)
- * - 선택 로그인 시 사용자 ID 혹은 null 반환
+ * SecurityUtil
+ *
+ * 큰 흐름
+ * - 세션의 이메일 정보를 기준으로 현재 사용자 식별을 도와준다.
+ *
+ * 메서드 개요
+ * - requireCurrentUserId: 로그인 필수, 사용자 ID 반환(미로그인/무효 401)
+ * - getCurrentUserIdOrNull: 로그인 선택, 사용자 ID 또는 null 반환
  */
 @Component // 스프링 빈 등록
 @RequiredArgsConstructor // 생성자 주입

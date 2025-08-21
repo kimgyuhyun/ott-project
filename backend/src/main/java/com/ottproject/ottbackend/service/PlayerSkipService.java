@@ -12,7 +12,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 스킵 메타 조회 및 사용 로깅 서비스
+ * PlayerSkipService
+ *
+ * 큰 흐름
+ * - 스킵 메타 조회와 스킵 사용 로깅을 제공한다.
+ *
+ * 메서드 개요
+ * - get: 에피소드별 스킵 메타 조회
+ * - trackUsage: 스킵 사용 로그 적재(열거/문자열 오버로드)
  */
 @Service
 @RequiredArgsConstructor

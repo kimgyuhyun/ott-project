@@ -13,9 +13,14 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 검색 컨트롤러
- * - 자동완성 GET /api/search/suggest?q=
- * - 통합 검색 GET /api/search?query=&genreIds=&tagIds=&sort=&page=&size=
+ * SearchController
+ *
+ * 큰 흐름
+ * - 자동완성과 통합 검색을 제공한다.
+ *
+ * 엔드포인트 개요
+ * - GET /api/search/suggest: 자동완성
+ * - GET /api/search: 통합 검색(키워드/장르AND/태그OR/정렬/페이지)
  */
 @RestController // REST 컨트롤러 선언
 @RequiredArgsConstructor // final 필드에 대한 생성자 주입

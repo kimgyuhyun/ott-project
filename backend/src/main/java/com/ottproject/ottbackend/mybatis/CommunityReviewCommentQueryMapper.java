@@ -8,7 +8,16 @@ import org.apache.ibatis.annotations.Param;
 import java.util.List;
 
 /**
- * 리뷰/댓글 읽기 전용(Mybatis) 매퍼
+ * CommunityReviewCommentQueryMapper
+ *
+ * 큰 흐름
+ * - 리뷰/댓글 조회 전용 쿼리를 담당하는 MyBatis 매퍼.
+ *
+ * 메서드 개요
+ * - findReviewsByAniId/countReviewsByAniId: 작품별 리뷰 목록/총 개수
+ * - findReviewById: 리뷰 단건(현재 사용자 좋아요 여부 포함 가능)
+ * - findCommentsByReviewId/countCommentsByReviewId: 리뷰별 댓글 목록/총 개수
+ * - findRepliesByParentId: 부모 댓글 기준 대댓글 목록
  */
 @Mapper
 public interface CommunityReviewCommentQueryMapper {

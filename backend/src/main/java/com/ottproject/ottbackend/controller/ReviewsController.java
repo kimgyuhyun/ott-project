@@ -16,8 +16,19 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 /**
- * 리뷰 컨트롤러
- * - 목록/작성/수정/삭제/신고/좋아요, 관리용 일괄 삭제
+ * ReviewsController
+ *
+ * 큰 흐름
+ * - 작품 리뷰에 대한 목록/작성/수정/삭제/신고/좋아요와 관리용 일괄 삭제를 제공한다.
+ *
+ * 엔드포인트 개요
+ * - GET /api/anime/{aniId}/reviews: 리뷰 목록(페이지)
+ * - POST /api/anime/{aniId}/reviews: 리뷰 작성
+ * - DELETE /api/anime/{aniId}/reviews: 작품 리뷰 일괄 삭제(관리용)
+ * - PUT /api/reviews/{reviewId}: 리뷰 수정
+ * - DELETE /api/reviews/{reviewId}: 리뷰 소프트 삭제
+ * - POST /api/reviews/{reviewId}/report: 리뷰 신고
+ * - POST /api/reviews/{reviewId}/like: 리뷰 좋아요 토글
  */
 @RequiredArgsConstructor // final 필드 기반 생성자 자동 생성(의존성 주입)
 @RestController // REST 컨트롤러로 등록(메서드 반환값을 JSON 으로 직렬화)

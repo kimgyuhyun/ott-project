@@ -9,8 +9,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 리뷰에 대한 댓글을 저장하는 엔티티
- * 대댓글 구조를 지원하며, 플랫 구조로 렌더링
+ * 댓글 엔티티
+ *
+ * 큰 흐름
+ * - 리뷰에 달리는 댓글/대댓글을 저장한다.
+ * - parent 필드로 1레벨 대댓글을 구성하고, 플랫 렌더링을 지원한다.
+ *
+ * 필드 개요
+ * - id/content/status: 식별/본문/상태
+ * - user/review: 작성자/대상 리뷰
+ * - parent/replies: 대댓글 구조
  */
 @Entity
 @Table(name = "comments")

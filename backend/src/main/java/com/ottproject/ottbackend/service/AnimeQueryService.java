@@ -12,8 +12,15 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 /**
- * 애니 조회 서비스(MyBatis)
- * - 목록(필터/정렬/페이지) 및 상세(에피소드/장르/제작사) 조회
+ * AnimeQueryService
+ *
+ * 큰 흐름
+ * - 목록/상세/연관 데이터를 읽기 전용으로 조회하는 서비스(MyBatis 연동).
+ *
+ * 메서드 개요
+ * - list: 필터/정렬/페이지를 적용한 목록 조회(AND/OR 필터 정제 포함)
+ * - detail(aniId): 상세(에피소드/장르/제작사)
+ * - detail(aniId, currentUserId): 로그인 사용자의 찜 여부 포함 상세
  */
 @RequiredArgsConstructor // 생성자 주입을 자동 생성(final 필드 대상)
 @Service // 스프링 서비스 컴포넌트로 등록

@@ -10,8 +10,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 인증 서비스
- * - 회원가입/로그인/중복확인/탈퇴/비밀번호 변경
+ * EmailAuthService
+ *
+ * 큰 흐름
+ * - 이메일 기반 회원가입/로그인/중복확인/탈퇴/비밀번호 변경을 처리한다.
+ *
+ * 메서드 개요
+ * - register: 회원가입 처리
+ * - login: 로그인 검증 후 사용자 반환
+ * - checkEmailDuplicate: 이메일 중복 확인
+ * - withdraw: 계정 비활성화(탈퇴)
+ * - changePassword: 비밀번호 변경
  */
 @Service // spring bean 으로 등록, 싱글턴 패턴
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성

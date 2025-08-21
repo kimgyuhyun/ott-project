@@ -8,11 +8,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 결제 조회용 MyBatis 매퍼
+ * PaymentQueryMapper
  *
- * 역할:
- * - 결제/환불 이력 목록 조회를 담당합니다.
- * - JOIN/정렬/페이징 등 읽기 전용 복잡 쿼리를 MyBatis로 수행합니다.
+ * 큰 흐름
+ * - 결제/환불 이력 등 읽기 전용 복잡 쿼리를 담당하는 MyBatis 매퍼.
+ *
+ * 메서드 개요
+ * - listHistory: 사용자 결제 이력 목록(기간 필터 선택)
+ * - sumWatchedSecondsSincePaidEpisodes: 결제시각 이후 4화 이상 누적 시청 초 합
  */
 @Mapper // MyBatis 매퍼로 등록
 public interface PaymentQueryMapper { // 결제 조회 매퍼 인터페이스 시작

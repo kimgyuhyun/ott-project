@@ -8,8 +8,16 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 에피소드 스킵 구간 메타 엔티티
- * - 인트로/엔딩 구간(초) 저장
+ * 스킵 구간 메타 엔티티
+ *
+ * 큰 흐름
+ * - 인트로/엔딩 구간을 초 단위로 저장한다(회차별 1:1).
+ * - 플레이어에서 자동/수동 스킵 버튼 렌더링에 사용한다.
+ *
+ * 필드 개요
+ * - id/episode: 식별/대상 회차(1:1)
+ * - introStart/introEnd/outroStart/outroEnd: 스킵 경계(초)
+ * - updatedAt: 최근 갱신 시각
  */
 @Entity // 스킵 구간 메타
 @Table(name = "episode_skip_meta", uniqueConstraints = @UniqueConstraint(columnNames = {"episode_id"})) // 1:1

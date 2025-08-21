@@ -19,9 +19,22 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.util.List;
 
 /**
- * 댓글 컨트롤러
- * - 리뷰 하위 댓글 컬렉션: 생성/목록/상태변경/일괄삭제
- * - 개별 댓글: 수정/삭제/신고/좋아요/대댓글
+ * ReviewCommentsController
+ *
+ * 큰 흐름
+ * - 리뷰 하위 댓글 컬렉션에 대한 생성/목록/상태변경과 개별 댓글의 수정/삭제/신고/좋아요/대댓글을 제공한다.
+ *
+ * 엔드포인트 개요
+ * - POST /api/reviews/{reviewId}/comments: 댓글 생성
+ * - GET /api/reviews/{reviewId}/comments: 댓글 목록(페이지)
+ * - PATCH /api/reviews/{reviewId}/comments/{commentId}/status: 댓글 상태 변경
+ * - DELETE /api/reviews/{reviewId}/comments: 리뷰의 모든 댓글 삭제(관리용)
+ * - PUT /api/comments/{commentId}: 댓글 수정
+ * - DELETE /api/comments/{commentId}: 댓글 소프트 삭제
+ * - POST /api/comments/{commentId}/report: 댓글 신고
+ * - POST /api/comments/{commentId}/like: 댓글 좋아요 토글
+ * - GET /api/comments/{commentId}/replies: 대댓글 목록
+ * - POST /api/comments/{commentId}/replies: 대댓글 생성
  */
 @RequiredArgsConstructor // final 필드 기반 생성자 자동 생성
 @RestController

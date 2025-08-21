@@ -9,7 +9,12 @@ import lombok.Setter;
 
 /**
  * 진행률 응답 DTO
- * - 진행 위치/총 길이/갱신 시각
+ *
+ * 큰 흐름
+ * - 진행 위치/총 길이/갱신 시각을 클라이언트에 반환한다.
+ *
+ * 필드 개요
+ * - positionSec/durationSec/updatedAt: 위치/길이/시각
  */
 @Getter
 @Setter

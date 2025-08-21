@@ -5,8 +5,15 @@ import jakarta.validation.Payload;
 import java.lang.annotation.*;
 
 /**
- * 0.5 단위인지 확인하는 제약 애노테이션
- * - Double 필드에 적용, null 은 허용(다른 제약으로 제한 가능)
+ * HalfStep
+ *
+ * 큰 흐름
+ * - 값이 0.5 단위인지 확인하는 제약 애노테이션이다. Double 필드/파라미터에 적용하며 null 은 허용한다.
+ *
+ * 요소 개요
+ * - message: 기본 실패 메시지
+ * - groups: 그룹
+ * - payload: 페이로드
  */
 @Documented // javadoc 포함
 @Constraint(validatedBy = HalfStepValidator.class) // 이 어노테이션의 검증기 연결

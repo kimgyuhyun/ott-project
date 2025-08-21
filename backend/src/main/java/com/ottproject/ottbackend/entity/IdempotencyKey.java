@@ -5,8 +5,14 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 /**
- * 아이드엠포턴시 키 저장 엔티티
- * - 결제/해지/환불/웹훅 등 멱등 처리 보장
+ * 아이드엠포턴시 키 엔티티
+ *
+ * 큰 흐름
+ * - 결제/해지/환불/웹훅 등 민감 작업의 멱등 처리를 보장한다.
+ * - 키 값은 고유 인덱스로 중복을 차단한다.
+ *
+ * 필드 개요
+ * - id/keyValue/purpose/createdAt: 식별/토큰/용도/생성 시각
  */
 @Entity
 @Table(name = "idempotency_keys", indexes = {

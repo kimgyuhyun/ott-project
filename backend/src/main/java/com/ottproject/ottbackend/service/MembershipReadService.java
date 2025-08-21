@@ -14,9 +14,14 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 멤버십 읽기 서비스
- * - 플랜 목록(MyBatis)
- * - 내 멤버십 상태(JPA)
+ * MembershipReadService
+ *
+ * 큰 흐름
+ * - 멤버십 플랜/내 구독 상태를 조회하는 읽기 전용 서비스(MyBatis).
+ *
+ * 메서드 개요
+ * - listPlans: 플랜 목록
+ * - getMyMembership: 사용자 현재 구독 상태(없으면 EXPIRED 기본값)
  */
 @Service
 @RequiredArgsConstructor
