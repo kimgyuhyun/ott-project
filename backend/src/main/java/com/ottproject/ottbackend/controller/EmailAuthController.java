@@ -38,7 +38,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 @RestController // REST API 컨트롤러로 지정, @ResponseBody 를 모든 메서드에 자동 적용
 @RequestMapping("/api/auth") // 모든 엔드포인트의 기본 경로를 /api/auth 로 설정
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성
-@CrossOrigin(origins = "*") // CORS 설정 (개발용) - 모든 도메인에서의 요청 허용
 public class EmailAuthController {
     private final EmailAuthService emailAuthService; // 인증 서비스 주입 (회원가입, 로그인 등 비즈니스 로직 처리
     private final VerificationEmailService verificationEmailService; // 이메일 서비스 주입 (이메일 발송 처리)

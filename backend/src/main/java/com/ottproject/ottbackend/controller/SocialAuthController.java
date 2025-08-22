@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,7 +31,6 @@ import java.util.Map;
 @RestController // REST API 컨트롤러
 @RequestMapping("/api/oauth2") // 기본 경로 설정
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성
-@CrossOrigin(origins = "*") // CORS 설정 (개발용)
 public class SocialAuthController {
 
     /**

@@ -77,8 +77,9 @@ public class ReviewsController { // 리뷰 목록/작성/일괄삭제 담당 컨
 
     @Operation(summary = "리뷰 수정", description = "본인 리뷰의 내용/평점을 수정합니다.")
     @ApiResponse(responseCode = "204", description = "수정 완료")
-    @PutMapping("/api/reviews/{reviewId}") // 절대 경로: PUT
+    @PutMapping("/{reviewId}") // 클래스 레벨 경로 기준 상대 경로
     public ResponseEntity<Void> update( // 본인 리뷰 수정
+            @Parameter(description = "애니 ID") @PathVariable Long aniId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
             @Valid @RequestBody UpdateReviewRequestDto dto, // 요청 바디: 수정 필드(content/rating)
             HttpSession session // 세션에서 사용자 확인
@@ -90,8 +91,9 @@ public class ReviewsController { // 리뷰 목록/작성/일괄삭제 담당 컨
 
     @Operation(summary = "리뷰 삭제", description = "본인 리뷰를 소프트 삭제합니다.")
     @ApiResponse(responseCode = "204", description = "삭제 완료")
-    @DeleteMapping("/api/reviews/{reviewId}") // 절대 경로: DELETE
+    @DeleteMapping("/{reviewId}") // 클래스 레벨 경로 기준 상대 경로
     public ResponseEntity<Void> delete( // 본인 리뷰 소프트 삭제(상태 전환)
+            @Parameter(description = "애니 ID") @PathVariable Long aniId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
@@ -102,8 +104,9 @@ public class ReviewsController { // 리뷰 목록/작성/일괄삭제 담당 컨
 
     @Operation(summary = "리뷰 신고", description = "리뷰를 신고합니다.")
     @ApiResponse(responseCode = "204", description = "신고 접수")
-    @PostMapping("/api/reviews/{reviewId}/report") // 절대 경로 Post
+    @PostMapping("/{reviewId}/report") // 클래스 레벨 경로 기준 상대 경로
     public ResponseEntity<Void> report( // 리뷰 신고
+            @Parameter(description = "애니 ID") @PathVariable Long aniId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
@@ -114,8 +117,9 @@ public class ReviewsController { // 리뷰 목록/작성/일괄삭제 담당 컨
 
     @Operation(summary = "리뷰 좋아요 토글", description = "좋아요 on/off를 토글합니다.")
     @ApiResponse(responseCode = "200", description = "토글 결과 반환")
-    @PostMapping("/api/reviews/{reviewId}/like") // 절대 경로: POST
+    @PostMapping("/{reviewId}/like") // 클래스 레벨 경로 기준 상대 경로
     public ResponseEntity<Boolean> toggleLike( // 좋아요 토글(true=on, false=off)
+            @Parameter(description = "애니 ID") @PathVariable Long aniId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
