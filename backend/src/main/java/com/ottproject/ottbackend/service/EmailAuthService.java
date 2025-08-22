@@ -5,6 +5,8 @@ import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,7 +36,7 @@ public class EmailAuthService {
 	// 회원가입 처리
 	public UserResponseDto register(AuthRegisterRequestDto requestDto) { // 회원가입 요청 처리
 		if (userService.existsByEmail(requestDto.getEmail())) { // 이미 가입된 이메일인지 확인
-			throw new RuntimeException("이미 가입된 이메일입니다."); // 중복 시 예외 발생
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."); // 중복 시 409 반환
 		}
 		User user = User.builder() // 사용자 생성
 				.email(requestDto.getEmail())
