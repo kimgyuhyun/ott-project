@@ -20,7 +20,7 @@ import java.util.List;
 @Mapper
 public interface SearchQueryMapper {
     List<SearchSuggestTitleDto> suggestTitles( // 자동완성: 제목만 반환
-            @Param("q") String q, // 키워드(부분일치, ILIKE)
+            @Param("query") String q, // 키워드(부분일치, ILIKE)
             @Param("limit") int limit // 최대 건수(기본 10)
     );
 
