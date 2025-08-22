@@ -25,7 +25,7 @@
         FROM subscriptions s
         JOIN plans p ON p.id = s.plan_id
         WHERE s.user_id = #{userId}
-          AND s.start_at <= #{now}
+          AND s.start_at &lt;= #{now}
           AND (s.end_at IS NULL OR s.end_at >= #{now})
         ORDER BY s.start_at DESC
         LIMIT 1

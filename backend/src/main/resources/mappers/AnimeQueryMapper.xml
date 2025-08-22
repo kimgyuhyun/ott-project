@@ -14,25 +14,25 @@
         FROM anime a <!-- FROM: 통합 애니 테이블 a 에서 시작 -->
         <if test="genreCount != null and genreCount &gt; 0"> <!-- genreIds 가 1개 이상일 때만 장르 AND 필터 적용 -->
             JOIN ( <!-- 장르 AND 매칭된 작품들만 추출하는 서브쿼리 -->
-                SELECT ag.ani_list_id <!-- 작품 ID -->
-                FROM ani_list_genres ag <!-- 작품 장르 매핑 테이블 -->
+                SELECT ag.anime_id <!-- 작품 ID -->
+                FROM anime_genres ag <!-- 작품 장르 매핑 테이블 -->
                 WHERE ag.genre_id IN <!-- 선택된 장르 집합에 속하는 행만 -->
                 <foreach collection="genreIds" item="gid" open="(" close=")" separator=","> <!-- IN 절 값 바인딩 -->
                     #{gid} <!-- 단일 장르 ID 바인딩 -->
                 </foreach>
-                GROUP BY ag.ani_list_id <!-- 작품별로 집계 -->
+                GROUP BY ag.anime_id <!-- 작품별로 집계 -->
                 HAVING COUNT(DISTINCT ag.genre_id) = #{genreCount} <!-- 모든 선택 장르를 모두 포함한 작품만 남김(AND) -->
-            ) gf ON gf.ani_list_id = a.id <!-- 서브 쿼리 결과와 메인 테이블 조인 -->
+            ) gf ON gf.anime_id = a.id <!-- 서브 쿼리 결과와 메인 테이블 조인 -->
         </if>
         <if test="tagIds != null and tagIds.size() &gt; 0"> <!-- 태그 OR 필터: 하나라도 포함하면 통과 -->
             JOIN (
-                SELECT DISTINCT alt.ani_list_id
-                FROM ani_list_tags alt
+                SELECT DISTINCT alt.anime_id
+                FROM anime_tags alt
                 WHERE alt.tag_id IN
                 <foreach collection="tagIds" item="tid" open="(" close=")" separator=",">
                     #{tid}
                 </foreach>
-            ) tf ON tf.ani_list_id = a.id
+            ) tf ON tf.anime_id = a.id
         </if>
     </sql>
 
@@ -75,7 +75,7 @@
         a.status AS animeStatus, <!-- DTO.animeStatus(enum) -->
         a.year AS year, <!-- DTO.year -->
         a.type AS type <!-- DTO.type -->
-        <include refid="base_list_from"/> <!-- FROM ani_list a (+ 장르 AND / 태그 OR 서브쿼리 조인) -->
+        <include refid="base_list_from"/> <!-- FROM anime a (+ 장르 AND / 태그 OR 서브쿼리 조인) -->
         <include refid="base_list_where"/> <!-- WHERE 활성 + 전달된 필터 조건들 결합 -->
         ORDER BY
         <choose> <!-- 정렬 분기: sort 파라미터가 rating/year/popular 인지에 따라 주요 키 선택, 보조키는 최신순(id DESC) -->
@@ -168,8 +168,8 @@
     <!--
       상세: 에피소드 리스트 (aniId 기준)
       - SELECT: 에피소드 표시 컬럼
-      - FROM episode e JOIN ani_detail d
-      - WHERE d.ani_list_id = #{aniId}
+      - FROM episodes e
+      - WHERE e.anime_id = #{aniId}
       - ORDER BY 화수 오름차순
     -->
     <select id="findEpisodesByAniId" resultType="com.ottproject.ottbackend.dto.EpisodeDto"> <!-- 리스트 DTO -->
@@ -183,7 +183,7 @@
         e.is_released AS isReleased, <!-- EpisodeDto.isReleased -->
         e.created_at AS createdAt, <!-- EpisodeDto.createdAt-->
         e.updated_at AS updatedAt <!-- EpisodeDto.updatedAt-->
-        FROM episode e <!-- 에피소드 테이블 -->
+        FROM episodes e <!-- 에피소드 테이블 -->
         WHERE e.anime_id = #{aniId} <!-- aniId 기준 조회 -->
         ORDER BY e.episode_number ASC <!-- 회수 오름차순-->
     </select>
@@ -191,8 +191,8 @@
     <!--
       상세: 장르 리스트 (aniId 기준)
       - SELECT: 장르 표시 컬럼
-      - FROM genres g JOIN ani_list_genres ag
-      - WHERE ag.ani_list_id = #{aniId}
+      - FROM genres g JOIN anime_genres ag
+      - WHERE ag.anime_id = #{aniId}
     -->
     <select id="findGenresByAniId" resultType="com.ottproject.ottbackend.dto.GenreSimpleDto"> <!-- 제작사 간단 DTO -->
         SELECT
@@ -208,8 +208,8 @@
     <!--
       상세: 제작사 리스트 (aniId 기준)
       - SELECT: 제작사 표시 컬럼
-      - FROM studios s JOIN ani_list_studios asg
-      - WHERE asg.ani_list_id = #{aniId}
+      - FROM studios s JOIN anime_studios asg
+      - WHERE asg.anime_id = #{aniId}
     -->
     <select id="findStudiosByAniId" resultType="com.ottproject.ottbackend.dto.StudioSimpleDto"> <!-- 제작사 간단 DTO -->
         SELECT

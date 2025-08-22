@@ -16,7 +16,7 @@
           ===== -->
     <sql id="review_select_columns">
     r.id AS id, <!-- ReviewResponseDto.id -->
-    r.ani_list_id AS aniId, <!-- ReviewResponseDto.aniId -->
+    r.ani_id AS aniId, <!-- ReviewResponseDto.aniId -->
     u.id AS userId, <!-- ReviewResponseDto.userId -->
     u.name AS userName, <!-- ReviewResponseDto.userName -->
     r.content AS content, <!-- ReviewResponseDto.content -->
@@ -82,7 +82,7 @@
         <include refid="review_select_columns"/> <!-- include: 공통 SELECT 컬럼(작성자/좋아요/현재 사용자 좋아요 여부 포함) 삽입 -->
             FROM reviews r <!-- 리뷰 테이블 -->
             JOIN users u ON u.id = r.user_id <!-- 작성자 조인 -->
-            WHERE r.ani_list_id = #{aniId} <!-- 대상 작품 -->
+            WHERE r.ani_id = #{aniId} <!-- 대상 작품 -->
             AND r.status = 'ACTIVE' <!-- 활성 리뷰만 노출 -->
             <choose> <!-- 정렬 분기 -->
                 <when test="sort == 'likes'">
@@ -105,7 +105,7 @@
     <select id="countReviewsByAniId" resultType="long">
         SELECT COUNT(1) <!-- 총 개수 -->
         FROM reviews r
-        WHERE r.ani_list_id = #{aniId} <!-- 대상 작품 -->
+        WHERE r.ani_id = #{aniId} <!-- 대상 작품 -->
         AND r.status = 'ACTIVE' <!-- 활성만 카운트 -->
     </select>
 
