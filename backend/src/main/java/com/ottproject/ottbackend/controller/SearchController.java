@@ -30,10 +30,12 @@ public class SearchController {
 
     @GetMapping("/suggest") // 자동완성 엔드포인트
     public List<SearchSuggestTitleDto> suggest( // 제목만 응답
-            @RequestParam("q") String q, // 키워드(최소 1자)
+            @RequestParam(value = "q", required = false) String q, // 키워드 별칭 1
+            @RequestParam(value = "query", required = false) String query, // 키워드 별칭 2
             @RequestParam(value = "limit", defaultValue = "10") int limit // 최대 건수(기본 10)
     ) {
-        return searchService.suggest(q, limit); // 서비스 호출
+        String keyword = (q != null && !q.isBlank()) ? q : query; // q 우선, 없으면 query 사용
+        return searchService.suggest(keyword, limit); // 서비스 호출
     }
 
     @GetMapping // 통합 검색 엔드포인트

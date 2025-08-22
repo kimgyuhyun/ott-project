@@ -42,6 +42,7 @@ import java.util.List;
  */
 @RestController // REST 컨트롤러 선언
 @RequiredArgsConstructor // 생성자 주입
+@RequestMapping("/api")
 public class PaymentController { // 결제 컨트롤러 시작
 	private final PaymentCommandService paymentCommandService; // 쓰기 서비스 주입
 	private final PaymentReadService paymentReadService; // 읽기 서비스 주입
@@ -50,7 +51,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
 	@Operation(summary = "체크아웃 생성", description = "플랜 코드로 결제창 세션을 생성하고 redirectUrl을 반환합니다.") // Swagger 요약/설명
 	@ApiResponse(responseCode = "200", description = "생성 성공") // Swagger 응답 코드 문서화
-	@PostMapping("/api/payments/checkout") // HTTP POST 매핑: 체크아웃 생성
+	@PostMapping("/payments/checkout") // HTTP POST 매핑: 체크아웃 생성
 	public ResponseEntity<PaymentCheckoutCreateSuccessResponseDto> checkout(@RequestBody PaymentCheckoutCreateRequestDto dto, HttpSession session) { // 요청 바디/세션 수신
 		Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인(미인증 시 401)
 		PaymentCheckoutCreateSuccessResponseDto res = paymentCommandService.checkout(userId, dto); // 서비스 위임으로 체크아웃 처리
@@ -59,7 +60,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
     @Operation(summary = "결제수단 등록", description = "정기결제를 위한 저장 결제수단을 등록합니다.")
     @ApiResponse(responseCode = "200", description = "Registered")
-    @PostMapping("/api/payment-methods")
+    @PostMapping("/payment-methods")
     public ResponseEntity<Void> registerPaymentMethod(@RequestBody PaymentMethodRegisterRequestDto dto, HttpSession session) { // 결제수단 등록 엔드포인트
         Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인
         paymentMethodService.register(userId, dto); // 서비스에 등록 위임
@@ -68,7 +69,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
     @Operation(summary = "결제수단 목록", description = "사용자의 저장 결제수단을 기본 우선으로 조회합니다.")
     @ApiResponse(responseCode = "200", description = "OK")
-    @GetMapping("/api/payment-methods")
+    @GetMapping("/payment-methods")
     public ResponseEntity<List<PaymentMethodResponseDto>> listPaymentMethods(HttpSession session) { // 결제수단 목록 엔드포인트
         Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인
         return ResponseEntity.ok(paymentMethodService.list(userId)); // 삭제 제외 DTO 목록 반환
@@ -76,7 +77,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
     @Operation(summary = "결제수단 기본 지정", description = "특정 결제수단을 기본으로 지정합니다.")
     @ApiResponse(responseCode = "200", description = "OK")
-    @PutMapping("/api/payment-methods/{id}/default")
+    @PutMapping("/payment-methods/{id}/default")
     public ResponseEntity<Void> setDefaultPaymentMethod(@PathVariable("id") Long id, HttpSession session) { // 기본 지정 엔드포인트
         Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인
         paymentMethodService.setDefault(userId, id); // 서비스에 기본 지정 위임
@@ -85,7 +86,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
     @Operation(summary = "결제수단 삭제", description = "결제수단을 소프트 삭제합니다.")
     @ApiResponse(responseCode = "200", description = "Deleted")
-    @DeleteMapping("/api/payment-methods/{id}")
+    @DeleteMapping("/payment-methods/{id}")
     public ResponseEntity<Void> deletePaymentMethod(@PathVariable("id") Long id, HttpSession session) { // 삭제 엔드포인트
         Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인
         paymentMethodService.delete(userId, id); // 서비스에 소프트 삭제 위임
@@ -94,7 +95,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
     @Operation(summary = "결제수단 수정", description = "결제수단의 일부 정보를 수정합니다.")
     @ApiResponse(responseCode = "200", description = "Updated")
-    @PatchMapping("/api/payment-methods/{id}")
+    @PatchMapping("/payment-methods/{id}")
     public ResponseEntity<Void> updatePaymentMethod(@PathVariable("id") Long id, // 수정 엔드포인트
                                                     @RequestBody PaymentMethodUpdateRequestDto patch, // 부분 수정 페이로드
                                                     HttpSession session) {
@@ -105,7 +106,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
 	@Operation(summary = "웹훅 수신(경로변수)", description = "게이트웨이가 결제 결과를 통지합니다. paymentId를 경로로 전달합니다.") // Swagger 문서화
 	@ApiResponse(responseCode = "200", description = "반영 완료") // 200 문서화
-	@PostMapping("/api/payments/{paymentId}/webhook") // HTTP POST 매핑: 경로변수로 paymentId 수신
+	@PostMapping("/payments/{paymentId}/webhook") // HTTP POST 매핑: 경로변수로 paymentId 수신
 	public ResponseEntity<Void> webhookWithPath(@PathVariable Long paymentId, @RequestBody String rawBody, @RequestHeader HttpHeaders headers) { // 원문/헤더 수신
 		if (!paymentCommandService.verifyWebhook(headers, rawBody)) { // 서명 검증 실패 시
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid webhook signature"); // 401 Unauthorized
@@ -117,7 +118,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
 	@Operation(summary = "웹훅 수신(쿼리파라미터)", description = "게이트웨이가 결제 결과를 통지합니다. paymentId를 쿼리로 전달합니다.") // Swagger 문서화
 	@ApiResponse(responseCode = "200", description = "반영 완료") // 200 문서화
-	@PostMapping("/api/payments/webhook") // HTTP POST 매핑: 쿼리파라미터로 paymentId 수신
+	@PostMapping("/payments/webhook") // HTTP POST 매핑: 쿼리파라미터로 paymentId 수신
 	public ResponseEntity<Void> webhookWithQuery(@RequestParam("paymentId") Long paymentId, @RequestBody String rawBody, @RequestHeader HttpHeaders headers) { // 원문/헤더 수신
 		if (!paymentCommandService.verifyWebhook(headers, rawBody)) { // 서명 검증 실패 시
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid webhook signature"); // 401
@@ -129,7 +130,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
 	@Operation(summary = "결제 이력 조회", description = "사용자의 결제/환불 이력을 최신순으로 반환합니다.") // Swagger 문서화
 	@ApiResponse(responseCode = "200", description = "조회 성공") // 200 문서화
-	@GetMapping("/api/payments/history") // HTTP GET 매핑: 이력 조회
+	@GetMapping("/payments/history") // HTTP GET 매핑: 이력 조회
 	public ResponseEntity<List<PaymentHistoryItemDto>> history(
 			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "start", required = false) LocalDateTime start, // 시작시각(선택)
 			@DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) @RequestParam(value = "end", required = false) LocalDateTime end, // 종료시각(선택)
@@ -142,7 +143,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 
 	@Operation(summary = "환불 요청", description = "결제 후 24시간 이내이며 누적 시청 5분 미만일 때만 환불합니다.") // Swagger 문서화
 	@ApiResponse(responseCode = "200", description = "환불 완료") // 200 문서화
-	@PostMapping("/api/payments/{paymentId}/refund") // HTTP POST 매핑: 환불 요청
+	@PostMapping("/payments/{paymentId}/refund") // HTTP POST 매핑: 환불 요청
 	public ResponseEntity<Void> refund(@PathVariable Long paymentId, HttpSession session) { // 환불 API
 		Long userId = securityUtil.requireCurrentUserId(session); // 로그인 사용자 확인
 		paymentCommandService.refundIfEligible(userId, paymentId); // 정책 검증 후 환불 실행

@@ -6,7 +6,7 @@
 	<select id="sumWatchedSecondsSincePaidEpisodes" resultType="int"> <!-- 쿼리 ID/반환 타입 정의(int 합계) -->
 		select coalesce(sum(ep.position_sec), 0) <!-- 진행 위치(초)의 합계를 구하고 null이면 0 반환 -->
 		from episode_progress ep <!-- 시청 진행률 테이블 별칭 ep -->
-		join episode e on e.id = ep.episode_id <!-- 에피소드 메타와 조인하여 화수 조건 사용 -->
+		join episodes e on e.id = ep.episode_id <!-- 에피소드 메타와 조인하여 화수 조건 사용 -->
 		where ep.user_id = #{userId} <!-- 대상 사용자 필터 -->
 		  and ep.updated_at &gt;= #{since} <!-- 기준 시각(결제 시각) 이후 업데이트된 진행만 합산 -->
 		  and e.episode_number &gt;= 4 <!-- 4화 이상(1~3 무료 제외)만 유상 시청으로 간주 -->

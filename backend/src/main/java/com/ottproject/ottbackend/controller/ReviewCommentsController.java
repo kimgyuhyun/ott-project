@@ -97,8 +97,9 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
 
     @Operation(summary = "댓글 수정", description = "본인 댓글 내용을 수정합니다.")
     @ApiResponse(responseCode = "204", description = "수정 완료")
-    @PutMapping("/api/comments/{commentId}") // 절대 경로: PUT
+    @PutMapping("/{commentId}") // 클래스 레벨 경로 기준
     public ResponseEntity<Void> update( // 본인 댓글 수정
+                                        @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
                                         @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
                                         @Valid @RequestBody UpdateReviewCommentsRequestDto dto, // 요청바디: 수정 내용
                                         HttpSession session // 세션에서 사용자 확인
@@ -110,8 +111,9 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
 
     @Operation(summary = "댓글 삭제", description = "본인 댓글을 소프트 삭제합니다.")
     @ApiResponse(responseCode = "204", description = "삭제 완료")
-    @DeleteMapping("/api/comments/{commentId}") // 절대 경로: DELETE
+    @DeleteMapping("/{commentId}") // 클래스 레벨 경로 기준
     public ResponseEntity<Void> delete( // 본인 댓글 소프트 삭제
+            @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
@@ -122,8 +124,9 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
 
     @Operation(summary = "댓글 신고", description = "본인 외 댓글을 신고합니다.")
     @ApiResponse(responseCode = "204", description = "신고 접수")
-    @PostMapping("/api/comments/{commentId}/report") // 절대 경로: POST
+    @PostMapping("/{commentId}/report") // 클래스 레벨 경로 기준
     public ResponseEntity<Void> report( // 댓글 신고
+            @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             HttpSession session // 세션에서 사용자 확인
     ) {
@@ -134,8 +137,9 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
 
     @Operation(summary = "댓글 좋아요 토글", description = "좋아요 on/off를 토글합니다.")
     @ApiResponse(responseCode = "200", description = "토글 결과 반환")
-    @PostMapping("/api/comments/{commentId}/like") // 절대 경로 POST
+    @PostMapping("/{commentId}/like") // 클래스 레벨 경로 기준
     public ResponseEntity<Boolean> toggleLike( // 좋아요 토글(true=on, false=off)
+            @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 Id
             HttpSession session // 세션에서 사용자 확인
     ) {
@@ -145,8 +149,9 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
 
     @Operation(summary = "대댓글 목록", description = "특정 댓글의 대댓글을 조회합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping("/api/comments/{commentId}/replies") // 절대 경로: GET
+    @GetMapping("/{commentId}/replies") // 클래스 레벨 경로 기준
     public ResponseEntity<List<ReviewCommentsResponseDto>> replies( // 대댓글 목록(플랫)
+                                                                    @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
                                                                     @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모댓글 ID
                                                                     HttpSession session // 세션(선택 로그인)
     ) {
@@ -156,8 +161,9 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
 
 	@Operation(summary = "대댓글 생성", description = "특정 댓글의 자식 댓글을 생성합니다.")
 	@ApiResponse(responseCode = "200", description = "생성 성공: 댓글 ID 반환")
-	@PostMapping("/api/comments/{commentId}/replies") // 절대 경로: POST
+	@PostMapping("/{commentId}/replies") // 클래스 레벨 경로 기준
     public ResponseEntity<Long> createReply( // 대댓글 생성
+                                             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
                                              @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모 댓글 ID
                                              @Valid @RequestBody CreateReviewCommentsRequestDto dto, // 요청 바디(JSON)
                                              HttpSession session // 세션에서 사용자 확인

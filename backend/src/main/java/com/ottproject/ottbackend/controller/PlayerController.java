@@ -39,6 +39,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
  */
 @RestController // REST 컨트롤러 등록
 @RequiredArgsConstructor // 생성자 주입 자동 생성
+@org.springframework.web.bind.annotation.RequestMapping("/api/episodes")
 @Validated // 요청 검증 활성화
 public class PlayerController { // 스트리밍/진행률
     private final PlaybackAuthService auth; // 스트림 권한 검사 및 서명 URL 생성 서비스
@@ -59,7 +60,7 @@ public class PlayerController { // 스트리밍/진행률
             @ApiResponse(responseCode = "401", description = "미인증"),
             @ApiResponse(responseCode = "403", description = "권한 없음")
     })
-    @GetMapping("/api/episodes/{id}/stream-url") // 서명 URL 발급 엔드포인트
+    @GetMapping("/{id}/stream-url") // 서명 URL 발급 엔드포인트
     public ResponseEntity<PlayerStreamUrlResponseDto> streamUrl(
             @Parameter(description = "에피소드 ID", required = true) @PathVariable Long id,
             HttpSession session) { // 경로 변수/세션 입력
@@ -74,7 +75,7 @@ public class PlayerController { // 스트리밍/진행률
      */
     @Operation(summary = "진행률 저장", description = "에피소드의 현재 시청 위치와 총 길이를 저장합니다. 멱등 upsert.")
     @ApiResponse(responseCode = "200", description = "저장 완료: 최신 진행률 반환")
-    @PostMapping("/api/episodes/{id}/progress") // 진행률 저장 엔드포인트
+    @PostMapping("/{id}/progress") // 진행률 저장 엔드포인트
     public ResponseEntity<EpisodeProgressResponseDto> saveProgress(
             @Parameter(description = "에피소드 ID", required = true) @PathVariable Long id,
             @Valid @RequestBody EpisodeProgressRequestDto body, HttpSession session) { // 검증 적용
@@ -88,7 +89,7 @@ public class PlayerController { // 스트리밍/진행률
      */
     @Operation(summary = "진행률 단건 조회", description = "특정 에피소드에 대한 시청 진행률을 조회합니다. 없으면 null 반환.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping("/api/episodes/{id}/progress") // 진행률 단건 조회
+    @GetMapping("/{id}/progress") // 진행률 단건 조회
     public ResponseEntity<?> getProgress(
             @Parameter(description = "에피소드 ID", required = true) @PathVariable Long id,
             HttpSession session) { // 에피소드 ID 입력
@@ -102,7 +103,7 @@ public class PlayerController { // 스트리밍/진행률
      */
     @Operation(summary = "진행률 벌크 조회", description = "요청한 에피소드 ID 목록 중 존재하는 진행률만 key-value로 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @PostMapping("/api/episodes/progress") // 벌크 조회 엔드포인트
+    @PostMapping("/progress") // 벌크 조회 엔드포인트
     public ResponseEntity<java.util.Map<Long, Object>> getProgressBulk(
             @Valid @RequestBody BulkProgressRequestDto body, HttpSession session) { // ID 목록 입력
         Long userId = securityUtil.requireCurrentUserId(session); // 사용자 확인
@@ -118,7 +119,7 @@ public class PlayerController { // 스트리밍/진행률
             @ApiResponse(responseCode = "200", description = "다음 화 존재"),
             @ApiResponse(responseCode = "204", description = "다음 화 없음")
     })
-    @GetMapping("/api/episodes/{id}/next") // 다음 화 조회
+    @GetMapping("/{id}/next") // 다음 화 조회
     public ResponseEntity<Long> nextEpisode(
             @Parameter(description = "현재 에피소드 ID", required = true) @PathVariable Long id) { // 현재 화 ID 입력
         Long nextId = auth.nextEpisodeId(id); // 다음 화 탐색

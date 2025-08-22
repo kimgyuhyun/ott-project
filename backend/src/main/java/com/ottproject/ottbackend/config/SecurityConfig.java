@@ -12,6 +12,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import com.ottproject.ottbackend.security.SessionAuthenticationFilter;
 
 /**
  * Spring Security 설정 클래스
@@ -34,6 +37,7 @@ public class SecurityConfig {
     private final OAuth2UserService OAuth2UserService; // OAuth2 소셜 로그인용 사용자 서비스 주입
     private final OAuth2AuthFailureHandler oAuth2AuthFailureHandler; // OAuth2 성공 핸들러 주입
     private final OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler; // OAuth2 실패 핸들러 주입
+    private final SessionAuthenticationFilter sessionAuthenticationFilter; // 세션 인증 필터 주입
 
     @Bean // PasswordEncoder Bean 등록
     public PasswordEncoder passwordEncoder() { // 비밀번호 암호화를 위한 BCrypt 인코더
@@ -73,10 +77,18 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable()) // 기본 로그인 폼 비활성화 (REST API용)
                 .httpBasic(basic -> basic.disable()) // HTTP Basic 인증 비활성화
 
+                // REST API: 인증 필요 시 HTML 리다이렉트 대신 401 JSON 반환
+                .requestCache(cache -> cache.disable())
+                .exceptionHandling(e -> e.authenticationEntryPoint((request, response, ex) -> {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json;charset=UTF-8");
+                    response.getWriter().write("{\"code\":\"UNAUTHORIZED\",\"message\":\"Authentication required\"}");
+                }))
+
                 // OAuth2 소셜 로그인 설정
                 .oauth2Login(oauth2 -> oauth2
-                        .successHandler(oAuth2AuthFailureHandler) // OAuth2 로그인 성공 시 처리할 핸들러
-                        .failureHandler(oAuth2AuthSuccessHandler) // OAuth2 로그인 실패 시 처리할 핸들러
+                        .successHandler(oAuth2AuthFailureHandler) // OAuth2 로그인 성공 시 처리할 핸들러 (SuccessHandler 구현체)
+                        .failureHandler(oAuth2AuthSuccessHandler) // OAuth2 로그인 실패 시 처리할 핸들러 (FailureHandler 구현체)
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(OAuth2UserService) // OAuth2 사용자 정보 처리 서비스 (OAuth2UserService 사용)
                         )
@@ -85,7 +97,8 @@ public class SecurityConfig {
                         .maximumSessions(1) // 동시 세션 수 제한(1개)
                         .maxSessionsPreventsLogin(false) // 기본 세션 무효화
                 )
-                .userDetailsService(localUserDetailsService); // 기존 이메일 로그인용 customUserDetailService 등록
+                .userDetailsService(localUserDetailsService) // 기존 이메일 로그인용 customUserDetailService 등록
+                .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build(); // 설정된 securityFilterChain 반환
     }
