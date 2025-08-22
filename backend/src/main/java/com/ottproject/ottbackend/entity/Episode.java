@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
  * - createdAt/updatedAt: 생성/수정 시각
  */
 @Entity
+@Table(name = "episodes")
 @Getter
 @Setter
 @Builder

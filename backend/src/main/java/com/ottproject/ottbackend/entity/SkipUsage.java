@@ -49,10 +49,10 @@ public class SkipUsage { // 스킵 사용 로그
     private Episode episode; // 대상
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "skip_type", nullable = false)
     private com.ottproject.ottbackend.enums.SkipType type; // INTRO/OUTRO
 
-    @Column(nullable = false)
+    @Column(name = "position_sec", nullable = false)
     private Integer atSec; // 시점(초)
 
     @CreatedDate
