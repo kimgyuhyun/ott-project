@@ -1,12 +1,30 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Modal from "@/components/ui/Modal";
 import PosterWall from "@/components/auth/PosterWall";
 import SocialButton from "@/components/auth/SocialButton";
-import { oauthUrl } from "@/lib/auth";
 
 export default function LoginPage() {
   const [open, setOpen] = useState(true);
+  const [oauthUrls, setOauthUrls] = useState({
+    kakao: "",
+    google: "",
+    naver: ""
+  });
+
+  useEffect(() => {
+    // 클라이언트에서만 URL 생성 (hydration 에러 방지)
+    const base = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || "";
+    const redirectParam = encodeURIComponent(
+      window.location.origin + "/auth/callback"
+    );
+    
+    setOauthUrls({
+      kakao: base ? `${base}/api/oauth2/authorization/kakao?redirect_uri=${redirectParam}` : `/api/oauth2/authorization/kakao?redirect_uri=${redirectParam}`,
+      google: base ? `${base}/api/oauth2/authorization/google?redirect_uri=${redirectParam}` : `/api/oauth2/authorization/google?redirect_uri=${redirectParam}`,
+      naver: base ? `${base}/api/oauth2/authorization/naver?redirect_uri=${redirectParam}` : `/api/oauth2/authorization/naver?redirect_uri=${redirectParam}`
+    });
+  }, []);
 
   return (
     <main className="relative min-h-dvh bg-black text-white">
@@ -26,13 +44,13 @@ export default function LoginPage() {
           <div className="text-xs text-white/60">또는</div>
 
           <div className="flex w-full items-center justify-center gap-4">
-            <a href={oauthUrl("kakao")} aria-label="kakao" className="rounded-full bg-[#fee500] p-3">
+            <a href={oauthUrls.kakao} aria-label="kakao" className="rounded-full bg-[#fee500] p-3">
               <img alt="kakao" src="/icons/kakao.svg" width={24} height={24} />
             </a>
-            <a href={oauthUrl("google")} aria-label="google" className="rounded-full bg-white p-3">
+            <a href={oauthUrls.google} aria-label="google" className="rounded-full bg-white p-3">
               <img alt="google" src="/icons/google.svg" width={24} height={24} />
             </a>
-            <a href={oauthUrl("naver")} aria-label="naver" className="rounded-full bg-[#03c75a] p-3">
+            <a href={oauthUrls.naver} aria-label="naver" className="rounded-full bg-[#03c75a] p-3">
               <img alt="naver" src="/icons/naver.svg" width={24} height={24} />
             </a>
           </div>
