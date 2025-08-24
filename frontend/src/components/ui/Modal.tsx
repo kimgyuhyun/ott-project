@@ -4,7 +4,7 @@ import { ReactNode, useEffect } from "react";
 type ModalProps = {
   open: boolean;
   onClose: () => void;
-  children: ReactNode;
+  children?: ReactNode; // children을 선택적으로 변경
 };
 
 export default function Modal({ open, onClose, children }: ModalProps) {
