@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OTT Project Frontend
 
-## Getting Started
+## 환경변수 설정
 
-First, run the development server:
+프로젝트 루트에 `.env.local` 파일을 생성하고 다음 내용을 추가하세요:
+
+```bash
+# 백엔드 API 기본 URL
+NEXT_PUBLIC_BACKEND_ORIGIN=http://localhost:8090
+
+# 프론트엔드 기본 URL  
+NEXT_PUBLIC_FRONTEND_ORIGIN=http://localhost:3000
+```
+
+## 주요 기능
+
+### 🔐 인증 시스템
+- **소셜 로그인**: Google, Kakao, Naver OAuth2 지원
+- **이메일 로그인**: 기존 계정으로 로그인
+- **단계별 회원가입**: 이메일 인증을 통한 안전한 회원가입
+  - 1단계: 이메일 입력 + 인증코드 발송
+  - 2단계: 인증코드 입력 + 검증
+  - 3단계: 비밀번호 + 닉네임 입력 + 회원가입
+
+### 📱 UI 컴포넌트
+- `EmailAuthForm`: 기본 로그인/회원가입 폼
+- `StepByStepRegisterForm`: 단계별 회원가입 폼
+- `SocialButton`: 소셜 로그인 버튼
+- `Modal`: 모달 컴포넌트
+
+## 개발 서버 실행
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 빌드
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+```
