@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import AnimeCard from "@/components/home/AnimeCard";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
+import { getWeeklyAnime } from "@/lib/api/anime";
 
 /**
  * 요일별 신작 페이지
@@ -12,55 +13,72 @@ export default function WeeklyPage() {
   const [activeDay, setActiveDay] = useState<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>('friday');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAnime, setSelectedAnime] = useState<any>(null);
+  const [weeklyAnimes, setWeeklyAnimes] = useState<Record<string, any[]>>({
+    monday: [],
+    tuesday: [],
+    wednesday: [],
+    thursday: [],
+    friday: [],
+    saturday: [],
+    sunday: []
+  });
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const days = [
-    { id: 'monday', label: '월요일' },
-    { id: 'tuesday', label: '화요일' },
-    { id: 'wednesday', label: '수요일' },
-    { id: 'thursday', label: '목요일' },
-    { id: 'friday', label: '금요일' },
-    { id: 'saturday', label: '토요일' },
-    { id: 'sunday', label: '일요일' }
+    { id: 'monday' as const, label: '월요일' },
+    { id: 'tuesday' as const, label: '화요일' },
+    { id: 'wednesday' as const, label: '수요일' },
+    { id: 'thursday' as const, label: '목요일' },
+    { id: 'friday' as const, label: '금요일' },
+    { id: 'saturday' as const, label: '토요일' },
+    { id: 'sunday' as const, label: '일요일' }
   ];
 
-  // 각 요일별 애니 작품 데이터 (이미지에 있는 것들)
-  const weeklyAnimes = {
-    monday: [
-      { id: 1, title: "허니와 클로버", posterUrl: "https://via.placeholder.com/200x280/ff69b4/ffffff?text=허니와+클로버", badges: ["ONLY"], rating: 4.7 },
-      { id: 2, title: "지박소년 하나코 군 2기 part 2", posterUrl: "https://via.placeholder.com/200x280/4a5568/ffffff?text=지박소년+하나코+군+2기", badges: ["선독점"], rating: 4.8 },
-      { id: 3, title: "이세계 묵시록 마이노그라~ 파멸의 문명에서 시작하는 ...", posterUrl: "https://via.placeholder.com/200x280/38a169/ffffff?text=이세계+묵시록", badges: [], rating: 4.6 }
-    ],
-    tuesday: [
-      { id: 4, title: "서머 포켓츠", posterUrl: "https://via.placeholder.com/200x280/805ad5/ffffff?text=서머+포켓츠", badges: ["선독점"], rating: 4.5 },
-      { id: 5, title: "내가 연인이 될 수 있을 리 없잖아, 무리무리! (※무리가...", posterUrl: "https://via.placeholder.com/200x280/e53e3e/ffffff?text=내가+연인이+될+수+있을+리+없잖아", badges: [], rating: 4.4 },
-      { id: 6, title: "루리의 보석", posterUrl: "https://via.placeholder.com/200x280/ed8936/ffffff?text=루리의+보석", badges: [], rating: 4.3 }
-    ],
-    wednesday: [
-      { id: 7, title: "여친, 빌리겠습니다 4기", posterUrl: "https://via.placeholder.com/200x280/3182ce/ffffff?text=여친+빌리겠습니다+4기", badges: [], rating: 4.2 },
-      { id: 8, title: "환생했는데 제7왕자라 내맘대로 마술을 연마합니다 2기", posterUrl: "https://via.placeholder.com/200x280/ff69b4/ffffff?text=환생했는데+제7왕자라", badges: [], rating: 4.1 },
-      { id: 9, title: "배드 걸", posterUrl: "https://via.placeholder.com/200x280/4a5568/ffffff?text=배드+걸", badges: [], rating: 4.0 }
-    ],
-    thursday: [
-      { id: 10, title: "핑퐁 - 판권 부활", posterUrl: "https://via.placeholder.com/200x280/38a169/ffffff?text=핑퐁+판권+부활", badges: ["ONLY"], rating: 4.8 },
-      { id: 11, title: "가치아쿠타", posterUrl: "https://via.placeholder.com/200x280/805ad5/ffffff?text=가치아쿠타", badges: [], rating: 4.7 },
-      { id: 12, title: "작안의 샤나 II", posterUrl: "https://via.placeholder.com/200x280/e53e3e/ffffff?text=작안의+샤나+II", badges: ["ONLY"], rating: 4.6 }
-    ],
-    friday: [
-      { id: 13, title: "타코피의 원죄", posterUrl: "https://via.placeholder.com/200x280/ff69b4/ffffff?text=타코피의+원죄", badges: ["UP", "ONLY"], rating: 4.7 },
-      { id: 14, title: "하나Doll", posterUrl: "https://via.placeholder.com/200x280/4a5568/ffffff?text=하나Doll", badges: ["UP", "선독점"], rating: 4.6 },
-      { id: 15, title: "단다단 2기", posterUrl: "https://via.placeholder.com/200x280/38a169/ffffff?text=단다단+2기", badges: ["UP"], rating: 4.5 }
-    ],
-    saturday: [
-      { id: 16, title: "철야의 노래 시즌 2", posterUrl: "https://via.placeholder.com/200x280/805ad5/ffffff?text=철야의+노래+시즌2", badges: ["ONLY"], rating: 4.8 },
-      { id: 17, title: "사일런트 위치 침묵의 마녀의 비밀", posterUrl: "https://via.placeholder.com/200x280/e53e3e/ffffff?text=사일런트+위치", badges: ["선독점"], rating: 4.7 },
-      { id: 18, title: "수속성의 마법사", posterUrl: "https://via.placeholder.com/200x280/ed8936/ffffff?text=수속성의+마법사", badges: ["선독점"], rating: 4.6 }
-    ],
-    sunday: [
-      { id: 19, title: "괴수 8호 2기", posterUrl: "https://via.placeholder.com/200x280/3182ce/ffffff?text=괴수+8호+2기", badges: [], rating: 4.9 },
-      { id: 20, title: "그 비스크 돌은 사랑을 한다 시즌 2", posterUrl: "https://via.placeholder.com/200x280/ff69b4/ffffff?text=그+비스크+돌은+사랑을+한다+시즌2", badges: [], rating: 4.8 },
-      { id: 21, title: "위치 워치", posterUrl: "https://via.placeholder.com/200x280/4a5568/ffffff?text=위치+워치", badges: [], rating: 4.7 }
-    ]
-  };
+  // 요일별 애니메이션 데이터 로드
+  useEffect(() => {
+    const loadWeeklyAnime = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // 모든 요일의 애니메이션 데이터를 병렬로 로드
+        const dayPromises = days.map(async (day) => {
+          try {
+            const data = await getWeeklyAnime(day.id);
+            return { day: day.id, data: (data as any) || [] };
+          } catch (err) {
+            console.error(`${day.label} 애니메이션 로드 실패:`, err);
+            return { day: day.id, data: [] };
+          }
+        });
+        
+        const results = await Promise.all(dayPromises);
+        const animeData: Record<string, any[]> = {
+          monday: [],
+          tuesday: [],
+          wednesday: [],
+          thursday: [],
+          friday: [],
+          saturday: [],
+          sunday: []
+        };
+        
+        results.forEach(({ day, data }) => {
+          animeData[day] = data;
+        });
+        
+        setWeeklyAnimes(animeData);
+      } catch (err) {
+        console.error('요일별 애니메이션 데이터 로드 실패:', err);
+        setError('요일별 애니메이션 데이터를 불러오는데 실패했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadWeeklyAnime();
+  }, []);
 
   // 현재 선택된 요일의 작품들
   const currentAnimes = weeklyAnimes[activeDay] || [];
@@ -70,6 +88,22 @@ export default function WeeklyPage() {
     setSelectedAnime(anime);
     setIsModalOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-red-600">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -103,66 +137,56 @@ export default function WeeklyPage() {
             </div>
           </div>
 
-          {/* 요일별 탭 메뉴 */}
-          <div className="border-b border-gray-300 mb-8">
-            <div className="flex space-x-1">
-              {days.map((day) => (
-                <button
-                  key={day.id}
-                  onClick={() => setActiveDay(day.id)}
-                  className={`px-6 py-3 rounded-t-lg transition-colors ${
-                    activeDay === day.id
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-200 text-gray-600 hover:text-gray-800 hover:bg-gray-300'
-                  }`}
-                >
-                  {day.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 애니 작품 그리드 */}
-          <div className="grid grid-cols-5 gap-4">
-            {currentAnimes.map((anime) => (
-              <div 
-                key={anime.id} 
-                className="cursor-pointer transform hover:scale-105 transition-transform"
-                onClick={() => handleAnimeClick(anime)}
+          {/* 요일별 탭 */}
+          <div className="flex flex-wrap gap-2 mb-8">
+            {days.map((day) => (
+              <button
+                key={day.id}
+                onClick={() => setActiveDay(day.id)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  activeDay === day.id
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
               >
-                <AnimeCard
-                  aniId={anime.id}
-                  title={anime.title}
-                  posterUrl={anime.posterUrl}
-                  rating={anime.rating}
-                  badge={anime.badges[0]}
-                />
-              </div>
+                {day.label}
+              </button>
             ))}
           </div>
 
-          {/* 빈 상태 (작품이 없는 경우) */}
-          {currentAnimes.length === 0 && (
-            <div className="text-center py-16">
-              <div className="w-32 h-32 mx-auto mb-6 bg-gray-200 rounded-full flex items-center justify-center">
-                <span className="text-gray-400 text-6xl">📅</span>
+          {/* 선택된 요일의 애니메이션 그리드 */}
+          {currentAnimes.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {currentAnimes.map((anime: any) => (
+                <AnimeCard
+                  key={anime.id}
+                  aniId={anime.id}
+                  title={anime.title}
+                  posterUrl={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
+                  rating={anime.rating}
+                  badge={anime.badges?.[0]}
+                  episode={anime.episode}
+                  onClick={() => handleAnimeClick(anime)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="text-gray-500 text-lg mb-2">
+                {days.find(d => d.id === activeDay)?.label} 신작이 없습니다
               </div>
-              <p className="text-gray-500 text-lg">
-                {days.find(d => d.id === activeDay)?.label} 신작이 아직 없어요.
-              </p>
+              <p className="text-gray-400">다른 요일을 선택해보세요</p>
             </div>
           )}
         </div>
       </main>
 
-      {/* 애니 상세 모달 */}
-      {selectedAnime && (
-        <AnimeDetailModal 
-          isOpen={isModalOpen} 
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedAnime(null);
-          }} 
+      {/* 애니메이션 상세 모달 */}
+      {isModalOpen && selectedAnime && (
+        <AnimeDetailModal
+          anime={selectedAnime}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
         />
       )}
     </div>

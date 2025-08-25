@@ -16,9 +16,7 @@ import org.springframework.context.annotation.Configuration; // 스프링 설정
                 contact = @Contact(name = "Team OTT", email = "support@example.com"), // 문의 연락처
                 license = @License(name = "Apache-2.0", url = "https://www.apache.org/licenses/LICENSE-2.0") // 라이선스
         ),
-        servers = {
-                @Server(url = "http://localhost:8090", description = "Local Dev") // 로컬 서버
-        }
+        servers = {}
 )
 public class OpenApiConfig { // 전역 OpenAPI 설정 클래스(빈 생성 불필요, 어노테이션만으로 동작)
 }

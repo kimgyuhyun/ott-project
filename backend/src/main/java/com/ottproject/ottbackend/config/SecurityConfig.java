@@ -15,6 +15,12 @@ import org.springframework.security.web.SecurityFilterChain;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.ottproject.ottbackend.security.SessionAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Spring Security 설정 클래스
@@ -45,6 +51,26 @@ public class SecurityConfig {
     }
 
     /**
+     * CORS 설정 Bean
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost",
+                "http://localhost:3000"
+        ));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+        configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
+        
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", configuration);
+        return source;
+    }
+
+    /**
      * Spring Security 필터 체인 설정
      * 웹 애플리케이션의 모든 보안 설정을 담당
      *
@@ -55,10 +81,12 @@ public class SecurityConfig {
     @Bean // securityFilterChain Bean 등록
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
+                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정 적용
                 .csrf(csrf -> csrf.disable()) // CSRF 보호 비활성화 (개발용)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll() // 모든 인증 관련 경로 허용
                         .requestMatchers("/oauth2/**").permitAll() // OAuth2 관련 경로 허용 (소셜 로그인)
+                        .requestMatchers("/login/oauth2/authorization/**").permitAll() // OAuth2 인가 요청 허용
                         .requestMatchers("/login/oauth2/code/**").permitAll() // OAuth2 콜백 URL 허용
                         .requestMatchers("/api/oauth2/**").permitAll() // OAuth2 API 엔드포인트 허용
                         .requestMatchers("/oauth2/success").permitAll() // OAuth2 성공 페이지 허용
@@ -66,6 +94,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/episodes/*/skips").permitAll() // 스킵 메타 조회 공개
                         .requestMatchers("/api/episodes/*/skips/track").permitAll() // 스킵 사용 로깅 공개
                         .requestMatchers("/api/admin/public/**").permitAll() // Admin 공개 컨텐츠
+                        .requestMatchers("/api/anime/**").permitAll() // 애니메이션 조회 공개 (인증 없이 접근 가능)
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll() // OpenAPI
                         .requestMatchers("/").permitAll() // 루트 경로 허용 (헬스체크용)
                         .requestMatchers("/health").permitAll() // 헬스체크 경로 허용
@@ -87,10 +116,11 @@ public class SecurityConfig {
 
                 // OAuth2 소셜 로그인 설정
                 .oauth2Login(oauth2 -> oauth2
-                        .successHandler(oAuth2AuthFailureHandler) // OAuth2 로그인 성공 시 처리할 핸들러 (SuccessHandler 구현체)
-                        .failureHandler(oAuth2AuthSuccessHandler) // OAuth2 로그인 실패 시 처리할 핸들러 (FailureHandler 구현체)
+                        .authorizationEndpoint(a -> a.baseUri("/login/oauth2/authorization")) // 인가 엔드포인트 baseUri 일치
+                        .successHandler(oAuth2AuthSuccessHandler) // OAuth2 로그인 성공 시 처리할 핸들러
+                        .failureHandler(oAuth2AuthFailureHandler) // OAuth2 로그인 실패 시 처리할 핸들러
                         .userInfoEndpoint(userInfo -> userInfo
-                                .userService(OAuth2UserService) // OAuth2 사용자 정보 처리 서비스 (OAuth2UserService 사용)
+                                .userService(OAuth2UserService) // OAuth2 사용자 정보 처리 서비스
                         )
                 )
                 .sessionManagement(session -> session

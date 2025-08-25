@@ -7,6 +7,10 @@ import com.ottproject.ottbackend.dto.EpisodeProgressResponseDto;
 import com.ottproject.ottbackend.service.PlaybackAuthService;
 import com.ottproject.ottbackend.service.PlayerProgressService;
 import com.ottproject.ottbackend.util.SecurityUtil;
+import com.ottproject.ottbackend.repository.EpisodeProgressRepository;
+import com.ottproject.ottbackend.entity.EpisodeProgress;
+import com.ottproject.ottbackend.entity.Episode;
+import com.ottproject.ottbackend.entity.Anime;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,6 +19,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.validation.annotation.Validated;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,6 +28,11 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * PlayerController
@@ -45,6 +55,7 @@ public class PlayerController { // 스트리밍/진행률
     private final PlaybackAuthService auth; // 스트림 권한 검사 및 서명 URL 생성 서비스
     private final PlayerProgressService progress; // 시청 진행률 저장/조회 서비스
     private final SecurityUtil securityUtil; // 세션에서 사용자 ID 확인 유틸
+    private final EpisodeProgressRepository episodeProgressRepository; // 시청 기록 조회용
 
     /**
      * 에피소드 재생용 서명된 스트림 URL 발급
@@ -124,5 +135,55 @@ public class PlayerController { // 스트리밍/진행률
             @Parameter(description = "현재 에피소드 ID", required = true) @PathVariable Long id) { // 현재 화 ID 입력
         Long nextId = auth.nextEpisodeId(id); // 다음 화 탐색
         return (nextId != null) ? ResponseEntity.ok(nextId) : ResponseEntity.noContent().build(); // 없으면 204
+    }
+
+    /**
+     * 마이페이지용 시청 기록 목록 조회
+     */
+    @Operation(summary = "시청 기록 목록", description = "마이페이지에서 사용자의 시청 기록을 페이지네이션으로 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/mypage/watch-history") // 마이페이지 시청 기록
+    public ResponseEntity<Map<String, Object>> getWatchHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            HttpSession session) {
+        Long userId = securityUtil.requireCurrentUserId(session); // 사용자 확인
+        
+        // 사용자의 시청 기록 조회 (최근 시청 순으로 정렬)
+        List<EpisodeProgress> progressList = episodeProgressRepository.findByUser_IdOrderByUpdatedAtDesc(userId);
+        
+        // 페이지네이션 처리
+        int totalElements = progressList.size();
+        int totalPages = (int) Math.ceil((double) totalElements / size);
+        int startIndex = page * size;
+        int endIndex = Math.min(startIndex + size, totalElements);
+        
+        List<EpisodeProgress> pagedList = progressList.subList(startIndex, endIndex);
+        
+        // 응답 데이터 구성
+        List<Map<String, Object>> content = pagedList.stream()
+                .map(progress -> {
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("episodeId", progress.getEpisode().getId());
+                    item.put("animeId", progress.getEpisode().getAnime().getId());
+                    item.put("animeTitle", progress.getEpisode().getAnime().getTitle());
+                    item.put("episodeTitle", progress.getEpisode().getTitle());
+                    item.put("episodeNumber", progress.getEpisode().getEpisodeNumber());
+                    item.put("positionSec", progress.getPositionSec());
+                    item.put("durationSec", progress.getDurationSec());
+                    item.put("lastWatchedAt", progress.getUpdatedAt());
+                    item.put("completed", progress.getPositionSec() >= progress.getDurationSec() * 0.9); // 90% 이상 시청 시 완료로 간주
+                    return item;
+                })
+                .collect(Collectors.toList());
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("content", content);
+        response.put("totalElements", totalElements);
+        response.put("totalPages", totalPages);
+        response.put("currentPage", page);
+        response.put("size", size);
+        
+        return ResponseEntity.ok(response);
     }
 }

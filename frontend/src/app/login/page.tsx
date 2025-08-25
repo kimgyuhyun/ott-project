@@ -4,7 +4,6 @@ import Modal from "@/components/ui/Modal";
 import PosterWall from "@/components/auth/PosterWall";
 import SocialButton from "@/components/auth/SocialButton";
 import EmailAuthForm from "@/components/auth/EmailAuthForm";
-import { config } from "@/lib/config";
 
 export default function LoginPage() {
   const [open, setOpen] = useState(true);
@@ -16,12 +15,30 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    // 클라이언트에서만 URL 생성 (hydration 에러 방지)
-    setOauthUrls({
-      kakao: `${config.backendOrigin}/oauth2/authorization/kakao`,
-      google: `${config.backendOrigin}/oauth2/authorization/google`,
-      naver: `${config.backendOrigin}/oauth2/authorization/naver`
-    });
+    // 백엔드 컨트롤러에서 로그인 URL을 받아와 사용 (도커/프록시 환경 일관성 확보)
+    const loadLoginUrls = async () => {
+      try {
+        const res = await fetch('/api/oauth2/login-urls', { credentials: 'include' });
+        if (!res.ok) throw new Error('failed');
+        const data = await res.json();
+        if (data && data.loginUrls) {
+          setOauthUrls({
+            kakao: data.loginUrls.kakao || `/login/oauth2/authorization/kakao`,
+            google: data.loginUrls.google || `/login/oauth2/authorization/google`,
+            naver: data.loginUrls.naver || `/login/oauth2/authorization/naver`
+          });
+          return;
+        }
+      } catch (_) {
+        // 실패 시 기본값으로 폴백
+      }
+      setOauthUrls({
+        kakao: `/login/oauth2/authorization/kakao`,
+        google: `/login/oauth2/authorization/google`,
+        naver: `/login/oauth2/authorization/naver`
+      });
+    };
+    loadLoginUrls();
   }, []);
 
   const handleEmailClick = () => {

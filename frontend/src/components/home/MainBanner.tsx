@@ -15,7 +15,7 @@ export default function MainBanner() {
       title: "귀멸의 칼날",
       subtitle: "무한성편",
       description: "8월 22일, 전국 극장 대개봉",
-      backgroundImage: "https://via.placeholder.com/1200x600/1a1a1a/ffffff?text=귀멸의+칼날",
+      backgroundImage: "https://placehold.co/1200x600/1a1a1a/ffffff?text=귀멸의+칼날",
       badge: "극장판"
     },
     {
@@ -23,7 +23,7 @@ export default function MainBanner() {
       title: "원피스",
       subtitle: "와노쿠니편",
       description: "새로운 에피소드 공개",
-      backgroundImage: "https://via.placeholder.com/1200x600/2a2a2a/ffffff?text=원피스",
+      backgroundImage: "https://placehold.co/1200x600/2a2a2a/ffffff?text=원피스",
       badge: "신작"
     }
   ];

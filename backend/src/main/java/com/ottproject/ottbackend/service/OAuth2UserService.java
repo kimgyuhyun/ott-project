@@ -13,6 +13,7 @@ import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +38,8 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
 
     private final UserRepository userRepository; // 사용자 Repository 주입 (final 로 선언하여 생성자 주입)
     private final SocialAccountRepository socialAccountRepository; // 소셜 연동 리포지토리
+    // 요청 처리 중 신규 사용자 생성 여부를 전달하기 위한 ThreadLocal 플래그
+    private final ThreadLocal<Boolean> isNewUserFlag = new ThreadLocal<>();
 
     /**
      * OAuth2 사용자 정보를 로드하고 처리하는 메서드
@@ -48,6 +51,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
      * @throws OAuth2AuthenticationException OAuth2 인증 예외
      */
     @Override
+    @Transactional
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException { // OAuth2 인증 예외를 던질 수 있음
         try {
             log.info("OAuth2 사용자 정보 로드 시작 - Provider: {}", userRequest.getClientRegistration().getRegistrationId()); // 로그 출력 - 요청 시작을 알림
@@ -71,6 +75,8 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
 
             // 사용자 정보 처리 (기존 사용자 조회 또는 신규 사용자 생성)
             // 같은 이메일이라도 다른 소셜 로그인으로 가입한 경우를 구분하기 위해 인증 제공자도 함께 확인
+            // 기본값
+            isNewUserFlag.set(Boolean.FALSE);
             User user = processOAuth2User(email, name, providerId, authProvider); // 사용자 정보 처리 메서드 호출
 
             // OAuth2User 객체 생성 및 반환 (Spring Security에서 사용할 수 있는 형태로 반환)
@@ -80,6 +86,9 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             log.error("OAuth2 사용자 정보 로드 중 오류 발생 - Provider: {}, Error: {}",
                     userRequest.getClientRegistration().getRegistrationId(), e.getMessage(), e); // 에러 로그 출력
             throw e; // 예외를 다시 던져서 OAuth2FailureHandler에서 처리하도록 함
+        } finally {
+            // ThreadLocal 누수 방지
+            isNewUserFlag.remove();
         }
     }
 
@@ -246,16 +255,21 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
      * @param authProvider 인증 제공자 (GOOGLE, KAKAO, NAVER)
      * @return 처리된 사용자 정보 (기존 사용자 또는 신규 생성된 사용자)
      */
-    private User processOAuth2User(String email, String name, String providerId, AuthProvider authProvider) {
+    @Transactional
+    public User processOAuth2User(String email, String name, String providerId, AuthProvider authProvider) {
         // 1) (provider, providerId)로 연동 우선 조회
         Optional<SocialAccount> linked =
                 socialAccountRepository.findByProviderAndProviderId(authProvider, providerId);
         if (linked.isPresent()) { // 이미 연동된 계정 → 해당 사용자 반환
-            User user = linked.get().getUser();
-            // 사용자 정보 최소 업데이트(이름 등)
-            user.setName(name);
-            user.setEmailVerified(true);
-            return userRepository.save(user);
+            Long userId = linked.get().getUser().getId();
+            User managed = userRepository.findById(userId).orElseThrow();
+            // 사용자 정보 최소 업데이트(이름은 사용자 지정값 우선, 덮어쓰지 않음)
+            if (managed.getName() == null || managed.getName().isBlank()) {
+                managed.setName(name);
+            }
+            managed.setEmailVerified(true);
+            isNewUserFlag.set(Boolean.FALSE);
+            return userRepository.save(managed);
         }
 
         // 2) 이메일 기준 기존 사용자 존재 → 자동 연동(정책에 따라 동의 플로우로 변경 가능)
@@ -272,9 +286,12 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
                         .build();
                 socialAccountRepository.save(account);
             }
-            // 사용자 프로필 최소 업데이트
-            user.setName(name);
+            // 사용자 프로필 최소 업데이트(닉네임은 사용자 지정값 우선, 덮어쓰지 않음)
+            if (user.getName() == null || user.getName().isBlank()) {
+                user.setName(name);
+            }
             user.setEmailVerified(true);
+            isNewUserFlag.set(Boolean.FALSE);
             return userRepository.save(user);
         }
 
@@ -296,6 +313,9 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
                 .emailVerified(true)
                 .build();
         socialAccountRepository.save(firstLink);
+        
+        log.info("신규 소셜 사용자 생성됨 - ID: {}, 이메일: {}", saved.getId(), saved.getEmail());
+        isNewUserFlag.set(Boolean.TRUE);
         return saved;
     }
 
@@ -318,6 +338,10 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
         attributes.put("userRole", user.getRole().name()); // 사용자 권한 추가 (USER, ADMIN 등)
         attributes.put("authProvider", user.getAuthProvider().name()); // 인증 제공자 정보 추가
 
+        // 신뢰 가능한 신규 사용자 플래그 설정(ThreadLocal)
+        boolean isNew = Boolean.TRUE.equals(isNewUserFlag.get());
+        attributes.put("isNewUser", isNew); // 신규 사용자 여부 추가
+
         // 새로운 OAuth2User 객체 생성 및 반환
         // Spring Security에서 사용할 수 있는 DefaultOAuth2User 객체 생성
         return new org.springframework.security.oauth2.core.user.DefaultOAuth2User(
@@ -325,5 +349,17 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
                 attributes, // 사용자 속성 정보 (소셜 로그인 정보 + 애플리케이션 정보)
                 "userEmail" // nameAttributeKey - Spring Security 에서 사용자 식별에 사용할 키 (이메일 사용)
         );
+    }
+
+    /**
+     * 신규 생성된 사용자인지 확인
+     * 사용자가 방금 생성되었는지 여부를 판단 (생성 시간 기준)
+     *
+     * @param user 확인할 사용자 객체
+     * @return 신규 사용자 여부 (true: 신규, false: 기존)
+     */
+    private boolean isNewlyCreatedUser(User user) {
+        // 더 이상 시간 기반 판별을 사용하지 않음. 하위 호환을 위해 false 반환.
+        return false;
     }
 }

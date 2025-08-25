@@ -1,203 +1,364 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
+import { getUserSettings, updateUserSettings, changePassword, changeEmail } from "@/lib/api/user";
 
 /**
  * 설정 페이지
- * 계정 정보, 알림 설정, 테마 선택 포함
+ * 사용자 설정, 비밀번호 변경, 이메일 변경 등
  */
 export default function SettingsPage() {
-  // 알림 설정 상태
-  const [notifications, setNotifications] = useState({
-    updates: false,
-    community: false,
-    events: false,
-    emailEvents: true
+  const [userSettings, setUserSettings] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // 폼 상태
+  const [settingsForm, setSettingsForm] = useState({
+    language: 'ko',
+    subtitleLanguage: 'ko',
+    autoPlay: true,
+    autoPlayNext: true,
+    quality: 'HD',
+    notifications: true
+  });
+  
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  
+  const [emailForm, setEmailForm] = useState({
+    currentEmail: '',
+    newEmail: '',
+    password: ''
   });
 
-  // 테마 설정 상태
-  const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark' | 'auto'>('light');
+  // 사용자 설정 로드
+  useEffect(() => {
+    const loadUserSettings = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        const settingsData = await getUserSettings();
+        const settings = (settingsData as any) || {};
+        
+        setUserSettings(settings);
+        setSettingsForm({
+          language: settings.language || 'ko',
+          subtitleLanguage: settings.subtitleLanguage || 'ko',
+          autoPlay: settings.autoPlay !== false,
+          autoPlayNext: settings.autoPlayNext !== false,
+          quality: settings.quality || 'HD',
+          notifications: settings.notifications !== false
+        });
+        
+      } catch (err) {
+        console.error('사용자 설정 로드 실패:', err);
+        setError('사용자 설정을 불러오는데 실패했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  // 알림 설정 변경 핸들러
-  const handleNotificationChange = (key: keyof typeof notifications) => {
-    setNotifications(prev => ({
-      ...prev,
-      [key]: !prev[key]
-    }));
+    loadUserSettings();
+  }, []);
+
+  // 설정 저장
+  const handleSaveSettings = async () => {
+    try {
+      setIsSaving(true);
+      await updateUserSettings(settingsForm);
+      alert('설정이 저장되었습니다.');
+    } catch (err) {
+      console.error('설정 저장 실패:', err);
+      alert('설정 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  // 테마 변경 핸들러
-  const handleThemeChange = (theme: 'light' | 'dark' | 'auto') => {
-    setSelectedTheme(theme);
-    // TODO: 실제 테마 변경 로직 구현
-    console.log('테마 변경:', theme);
+  // 비밀번호 변경
+  const handleChangePassword = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      alert('새 비밀번호가 일치하지 않습니다.');
+      return;
+    }
+    
+    try {
+      setIsSaving(true);
+      await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword
+      });
+      
+      alert('비밀번호가 변경되었습니다.');
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (err) {
+      console.error('비밀번호 변경 실패:', err);
+      alert('비밀번호 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  // 이메일 변경
+  const handleChangeEmail = async () => {
+    try {
+      setIsSaving(true);
+      await changeEmail({
+        currentEmail: emailForm.currentEmail,
+        newEmail: emailForm.newEmail,
+        password: emailForm.password
+      });
+      
+      alert('이메일 변경 요청이 전송되었습니다. 새 이메일을 확인해주세요.');
+      setEmailForm({
+        currentEmail: '',
+        newEmail: '',
+        password: ''
+      });
+    } catch (err) {
+      console.error('이메일 변경 실패:', err);
+      alert('이메일 변경에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-red-600">{error}</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-50">
       <Header />
       
       <main className="pt-16">
         <div className="max-w-4xl mx-auto px-6 py-8">
           {/* 페이지 제목 */}
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">설정</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-8">설정</h1>
 
-          {/* 계정 섹션 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">계정</h2>
+          {/* 재생 설정 */}
+          <div className="bg-white rounded-lg p-6 mb-8 shadow-sm border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6">재생 설정</h2>
             
             <div className="space-y-6">
-              {/* 이메일 */}
-              <div className="flex items-center justify-between py-4 border-b border-gray-100">
+              {/* 언어 설정 */}
+              <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    이메일
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    오디오 언어
                   </label>
-                  <p className="text-gray-900">kgh9806@naver.com</p>
+                  <select
+                    value={settingsForm.language}
+                    onChange={(e) => setSettingsForm({...settingsForm, language: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="ko">한국어</option>
+                    <option value="ja">일본어</option>
+                    <option value="en">영어</option>
+                  </select>
                 </div>
-                <button className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm">
-                  이메일 변경
-                </button>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    자막 언어
+                  </label>
+                  <select
+                    value={settingsForm.subtitleLanguage}
+                    onChange={(e) => setSettingsForm({...settingsForm, subtitleLanguage: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="ko">한국어</option>
+                    <option value="ja">일본어</option>
+                    <option value="en">영어</option>
+                  </select>
+                </div>
               </div>
 
-              {/* 비밀번호 */}
-              <div className="flex items-center justify-between py-4 border-b border-gray-100">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    비밀번호
-                  </label>
-                  <p className="text-gray-900">*********</p>
-                </div>
-                <button className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors text-sm">
-                  비밀번호 변경
-                </button>
+              {/* 화질 설정 */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  기본 화질
+                </label>
+                <select
+                  value={settingsForm.quality}
+                  onChange={(e) => setSettingsForm({...settingsForm, quality: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="SD">SD (480p)</option>
+                  <option value="HD">HD (720p)</option>
+                  <option value="FHD">FHD (1080p)</option>
+                </select>
               </div>
 
-              {/* 로그아웃 */}
-              <div className="flex items-center justify-between py-4">
-                <div>
-                  <p className="text-gray-700">모든 기기에서 로그아웃</p>
-                </div>
-                <button className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm">
-                  로그아웃
-                </button>
+              {/* 체크박스 설정들 */}
+              <div className="space-y-4">
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settingsForm.autoPlay}
+                    onChange={(e) => setSettingsForm({...settingsForm, autoPlay: e.target.checked})}
+                    className="w-4 h-4 text-purple-600 bg-white border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <span className="text-gray-700">자동 재생</span>
+                </label>
+                
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settingsForm.autoPlayNext}
+                    onChange={(e) => setSettingsForm({...settingsForm, autoPlayNext: e.target.checked})}
+                    className="w-4 h-4 text-purple-600 bg-white border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <span className="text-gray-700">다음 에피소드 자동 재생</span>
+                </label>
+                
+                <label className="flex items-center space-x-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settingsForm.notifications}
+                    onChange={(e) => setSettingsForm({...settingsForm, notifications: e.target.checked})}
+                    className="w-4 h-4 text-purple-600 bg-white border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <span className="text-gray-700">알림 받기</span>
+                </label>
               </div>
+
+              {/* 저장 버튼 */}
+              <button
+                onClick={handleSaveSettings}
+                disabled={isSaving}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors disabled:bg-gray-400"
+              >
+                {isSaving ? '저장 중...' : '설정 저장'}
+              </button>
             </div>
           </div>
 
-          {/* 알림 섹션 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">알림</h2>
+          {/* 비밀번호 변경 */}
+          <div className="bg-white rounded-lg p-6 mb-8 shadow-sm border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6">비밀번호 변경</h2>
             
-            <div className="space-y-6">
-              {/* 알림 수신 */}
+            <div className="space-y-4">
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">알림 수신</h3>
-                <div className="space-y-4">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={notifications.updates}
-                      onChange={() => handleNotificationChange('updates')}
-                      className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
-                    />
-                    <span className="text-gray-700">관심있는 작품의 업데이트 소식</span>
-                  </label>
-                  
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={notifications.community}
-                      onChange={() => handleNotificationChange('community')}
-                      className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
-                    />
-                    <span className="text-gray-700">커뮤니티 활동 소식</span>
-                  </label>
-                  
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={notifications.events}
-                      onChange={() => handleNotificationChange('events')}
-                      className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
-                    />
-                    <span className="text-gray-700">이벤트 및 혜택 정보 소식</span>
-                  </label>
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  현재 비밀번호
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(e) => setPasswordForm({...passwordForm, currentPassword: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="현재 비밀번호를 입력하세요"
+                />
               </div>
-
-              {/* 이메일 알림 */}
+              
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">이메일 알림</h3>
-                <div className="space-y-4">
-                  <label className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={notifications.emailEvents}
-                      onChange={() => handleNotificationChange('emailEvents')}
-                      className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
-                    />
-                    <span className="text-gray-700">이벤트 및 혜택 정보 소식</span>
-                  </label>
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  새 비밀번호
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(e) => setPasswordForm({...passwordForm, newPassword: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="새 비밀번호를 입력하세요"
+                />
               </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  새 비밀번호 확인
+                </label>
+                <input
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) => setPasswordForm({...passwordForm, confirmPassword: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="새 비밀번호를 다시 입력하세요"
+                />
+              </div>
+              
+              <button
+                onClick={handleChangePassword}
+                disabled={isSaving}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-colors disabled:bg-gray-400"
+              >
+                {isSaving ? '변경 중...' : '비밀번호 변경'}
+              </button>
             </div>
           </div>
 
-          {/* 테마 섹션 */}
-          <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">테마</h2>
+          {/* 이메일 변경 */}
+          <div className="bg-white rounded-lg p-6 mb-8 shadow-sm border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-6">이메일 변경</h2>
             
-            <div className="flex space-x-4">
-              {/* 밝은 테마 */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  현재 이메일
+                </label>
+                <input
+                  type="email"
+                  value={emailForm.currentEmail}
+                  onChange={(e) => setEmailForm({...emailForm, currentEmail: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="현재 이메일을 입력하세요"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  새 이메일
+                </label>
+                <input
+                  type="email"
+                  value={emailForm.newEmail}
+                  onChange={(e) => setEmailForm({...emailForm, newEmail: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="새 이메일을 입력하세요"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  비밀번호 확인
+                </label>
+                <input
+                  type="password"
+                  value={emailForm.password}
+                  onChange={(e) => setEmailForm({...emailForm, password: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="비밀번호를 입력하세요"
+                />
+              </div>
+              
               <button
-                onClick={() => handleThemeChange('light')}
-                className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 transition-all ${
-                  selectedTheme === 'light'
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                }`}
+                onClick={handleChangeEmail}
+                disabled={isSaving}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors disabled:bg-gray-400"
               >
-                <div className="w-12 h-12 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span className="text-sm font-medium text-gray-700">밝은</span>
-              </button>
-
-              {/* 어두운 테마 */}
-              <button
-                onClick={() => handleThemeChange('dark')}
-                className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 transition-all ${
-                  selectedTheme === 'dark'
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                }`}
-              >
-                <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
-                  </svg>
-                </div>
-                <span className="text-sm font-medium text-gray-700">어두운</span>
-              </button>
-
-              {/* 자동 테마 */}
-              <button
-                onClick={() => handleThemeChange('auto')}
-                className={`flex flex-col items-center space-y-2 p-4 rounded-lg border-2 transition-all ${
-                  selectedTheme === 'auto'
-                    ? 'border-purple-500 bg-purple-50'
-                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
-                }`}
-              >
-                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                  <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <span className="text-sm font-medium text-gray-700">자동</span>
+                {isSaving ? '변경 중...' : '이메일 변경'}
               </button>
             </div>
           </div>

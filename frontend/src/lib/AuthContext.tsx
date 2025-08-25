@@ -31,6 +31,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('user');
       }
     }
+    // 서버 프로필로 사용자명 동기화(소셜 닉네임 오염 방지)
+    (async () => {
+      try {
+        const res = await fetch('/api/users/me/profile', { credentials: 'include' });
+        if (res.ok) {
+          const prof = await res.json();
+          const serverUser = {
+            id: String(prof.id ?? ''),
+            username: prof.username ?? prof.name ?? '',
+            email: prof.email ?? '',
+            profileImage: undefined as string | undefined,
+          };
+          if (serverUser.username) {
+            setUser(serverUser);
+            localStorage.setItem('user', JSON.stringify(serverUser));
+          }
+        }
+      } catch (_) {
+        // ignore
+      }
+    })();
   }, []);
 
   const login = (userData: User) => {
@@ -38,11 +59,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('user', JSON.stringify(userData));
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('user');
-    // 로그아웃 후 홈페이지로 리다이렉트
-    window.location.href = '/';
+  const logout = async () => {
+    try {
+      // 소셜 로그아웃과 이메일 로그아웃 모두 호출(동일 세션 기반)
+      await fetch('/api/oauth2/logout', { method: 'POST', credentials: 'include' });
+      await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+    } catch (e) {
+      // 네트워크 오류는 무시하고 클라이언트 상태는 정리
+      console.warn('로그아웃 요청 중 오류:', e);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
   };
 
   const value = {

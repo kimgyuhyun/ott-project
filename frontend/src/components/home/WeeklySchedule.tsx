@@ -30,40 +30,40 @@ export default function WeeklySchedule() {
       {
         aniId: 1,
         title: "타코피의 원죄",
-        posterUrl: "https://via.placeholder.com/200x280/ff69b4/ffffff?text=타코피의+원죄",
+        posterUrl: "https://placehold.co/200x280/ff69b4/ffffff?text=타코피의+원죄",
         rating: 4.7,
         badge: "UP"
       },
       {
         aniId: 2,
         title: "하나Doll",
-        posterUrl: "https://via.placeholder.com/200x280/4a5568/ffffff?text=하나Doll",
+        posterUrl: "https://placehold.co/200x280/4a5568/ffffff?text=하나Doll",
         rating: 4.6,
         badge: "UP"
       },
       {
         aniId: 3,
         title: "단다단 2기",
-        posterUrl: "https://via.placeholder.com/200x280/38a169/ffffff?text=단다단+2기",
+        posterUrl: "https://placehold.co/200x280/38a169/ffffff?text=단다단+2기",
         rating: 4.5,
         badge: "UP"
       },
       {
         aniId: 4,
         title: "철야의 노래 시즌 2",
-        posterUrl: "https://via.placeholder.com/200x280/805ad5/ffffff?text=철야의+노래+시즌2",
+        posterUrl: "https://placehold.co/200x280/805ad5/ffffff?text=철야의+노래+시즌2",
         rating: 4.8
       },
       {
         aniId: 5,
         title: "사일런트 위치 침묵의 마녀의 비밀",
-        posterUrl: "https://via.placeholder.com/200x280/e53e3e/ffffff?text=사일런트+위치",
+        posterUrl: "https://placehold.co/200x280/e53e3e/ffffff?text=사일런트+위치",
         rating: 4.7
       },
       {
         aniId: 6,
         title: "수속성의 마법사",
-        posterUrl: "https://via.placeholder.com/200x280/ed8936/ffffff?text=수속성의+마법사",
+        posterUrl: "https://placehold.co/200x280/ed8936/ffffff?text=수속성의+마법사",
         rating: 4.6
       }
     ],

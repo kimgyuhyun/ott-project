@@ -3,6 +3,7 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
  * - allowedMaxQuality: 멤버십 여부에 따라 최대 화질(1080p/720p) 반환
  */
 @Service
+@Lazy
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class MembershipSubscriptionMembershipService implements MembershipService { // 실제 멤버십 연동 기본 구현
