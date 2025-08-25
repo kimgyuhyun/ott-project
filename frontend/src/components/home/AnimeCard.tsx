@@ -7,6 +7,7 @@ type AnimeCardProps = {
   rating?: number | null;
   badge?: string;
   episode?: string;
+  onClick?: () => void;
 };
 
 /**
@@ -19,10 +20,14 @@ export default function AnimeCard({
   posterUrl, 
   rating, 
   badge, 
-  episode 
+  episode,
+  onClick
 }: AnimeCardProps) {
   return (
-    <div className="group cursor-pointer transition-transform hover:scale-105">
+    <div 
+      className="group cursor-pointer transition-transform hover:scale-105"
+      onClick={onClick}
+    >
       {/* 포스터 이미지 */}
       <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-gray-800">
         <img

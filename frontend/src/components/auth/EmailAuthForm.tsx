@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 import { login, register, checkEmailDuplicate, sendVerificationCode, verifyCode } from "@/lib/api/auth";
 
 type AuthMode = 'login' | 'register';
@@ -12,6 +13,7 @@ interface EmailAuthFormProps {
 }
 
 export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }: EmailAuthFormProps) {
+  const { login: setAuthUser } = useAuth();
   const [mode, setMode] = useState<AuthMode>(isRegister ? 'register' : 'login');
   const [registerStep, setRegisterStep] = useState<RegisterStep>('email');
   const [email, setEmail] = useState('');
@@ -31,7 +33,16 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
 
     try {
       if (mode === 'login') {
-        await login(email, password);
+        const user = await login(email, password);
+        // 백엔드가 반환하는 사용자 정보를 컨텍스트에 저장
+        if (user) {
+          setAuthUser({
+            id: String((user as any).id ?? ''),
+            username: (user as any).username ?? (user as any).name ?? email,
+            email: (user as any).email ?? email,
+            profileImage: (user as any).profileImage ?? undefined,
+          });
+        }
         onSuccess();
       } else {
         if (registerStep === 'email') {
@@ -162,7 +173,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
                 placeholder="이메일을 입력하세요"
                 required
               />
@@ -200,7 +211,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
                 id="verificationCode"
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
                 placeholder="이메일로 받은 인증코드를 입력하세요"
                 required
               />
@@ -217,7 +228,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
                 placeholder="닉네임을 입력하세요"
                 required
               />
@@ -234,7 +245,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
                 placeholder="비밀번호를 입력하세요"
                 required
               />

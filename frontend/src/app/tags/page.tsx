@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import AnimeCard from "@/components/home/AnimeCard";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
+import { getAnimeByGenre, getAnimeByTag, searchAnime } from "@/lib/api/anime";
 
 /**
  * 태그별 검색 페이지
@@ -11,6 +12,9 @@ import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 export default function TagsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAnime, setSelectedAnime] = useState<any>(null);
+  const [animes, setAnimes] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   // 필터 상태
   const [filters, setFilters] = useState({
@@ -20,6 +24,7 @@ export default function TagsPage() {
 
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 장르 목록
   const genres = [
@@ -33,158 +38,76 @@ export default function TagsPage() {
     '교사', '구름', '군대', '귀여움', '기계', '기사', '길', '꿈', '나무', '남자아이'
   ];
 
-  // 애니 작품 데이터
-  const animes = [
-    {
-      id: 1,
-      title: "꿈빛 파티시엘 리마스터",
-      posterUrl: "https://via.placeholder.com/200x280/ff69b4/ffffff?text=꿈빛+파티시엘",
-      badges: ["더빙", "ONLY"],
-      rating: 4.8
-    },
-    {
-      id: 2,
-      title: "귀멸의 칼날 : 환락의 거리편",
-      posterUrl: "https://via.placeholder.com/200x280/4a5568/ffffff?text=귀멸의+칼날",
-      badges: ["자막"],
-      rating: 4.9
-    },
-    {
-      id: 3,
-      title: "하이큐!! 1기",
-      posterUrl: "https://via.placeholder.com/200x280/38a169/ffffff?text=하이큐+1기",
-      badges: [],
-      rating: 4.7
-    },
-    {
-      id: 4,
-      title: "데스노트 리마스터",
-      posterUrl: "https://via.placeholder.com/200x280/2d3748/ffffff?text=데스노트",
-      badges: ["자막", "ONLY"],
-      rating: 4.9
-    },
-    {
-      id: 5,
-      title: "하이큐!! 2기",
-      posterUrl: "https://via.placeholder.com/200x280/38a169/ffffff?text=하이큐+2기",
-      badges: ["자막"],
-      rating: 4.8
-    },
-    {
-      id: 6,
-      title: "진격의 거인 1기",
-      posterUrl: "https://via.placeholder.com/200x280/2d3748/ffffff?text=진격의+거인",
-      badges: [],
-      rating: 4.9
-    },
-    {
-      id: 7,
-      title: "장송의 프리렌",
-      posterUrl: "https://via.placeholder.com/200x280/805ad5/ffffff?text=장송의+프리렌",
-      badges: ["자막"],
-      rating: 4.6
-    },
-    {
-      id: 8,
-      title: "SPY×FAMILY part 1",
-      posterUrl: "https://via.placeholder.com/200x280/e53e3e/ffffff?text=SPY+FAMILY",
-      badges: ["자막"],
-      rating: 4.8
-    },
-    {
-      id: 9,
-      title: "호리미야",
-      posterUrl: "https://via.placeholder.com/200x280/ed8936/ffffff?text=호리미야",
-      badges: [],
-      rating: 4.7
-    },
-    {
-      id: 10,
-      title: "전생했더니 슬라임이었던 건에 대하여 2기 2부",
-      posterUrl: "https://via.placeholder.com/200x280/3182ce/ffffff?text=슬라임+2기+2부",
-      badges: [],
-      rating: 4.5
-    },
-    {
-      id: 11,
-      title: "가정교사 히트맨 리본!",
-      posterUrl: "https://via.placeholder.com/200x280/ff69b4/ffffff?text=가정교사",
-      badges: ["더빙", "ONLY"],
-      rating: 4.6
-    },
-    {
-      id: 12,
-      title: "전생했더니 슬라임이었던 건에 대하여 2기 1부",
-      posterUrl: "https://via.placeholder.com/200x280/3182ce/ffffff?text=슬라임+2기+1부",
-      badges: [],
-      rating: 4.4
-    },
-    {
-      id: 13,
-      title: "귀멸의 칼날 : 도공 마을편",
-      posterUrl: "https://via.placeholder.com/200x280/4a5568/ffffff?text=귀멸의+도공",
-      badges: ["자막"],
-      rating: 4.8
-    },
-    {
-      id: 14,
-      title: "진격의 거인 The FINAL part 1",
-      posterUrl: "https://via.placeholder.com/200x280/2d3748/ffffff?text=진격의+FINAL",
-      badges: [],
-      rating: 4.9
-    },
-    {
-      id: 15,
-      title: "그 비스크 돌은 사랑을 한다",
-      posterUrl: "https://via.placeholder.com/200x280/ed8936/ffffff?text=비스크+돌",
-      badges: [],
-      rating: 4.3
-    },
-    {
-      id: 16,
-      title: "나의 히어로 아카데미아 2기",
-      posterUrl: "https://via.placeholder.com/200x280/805ad5/ffffff?text=히어로+2기",
-      badges: ["자막"],
-      rating: 4.7
-    },
-    {
-      id: 17,
-      title: "주술회전 2기 : 시부야 사변",
-      posterUrl: "https://via.placeholder.com/200x280/38a169/ffffff?text=주술회전+2기",
-      badges: [],
-      rating: 4.8
-    },
-    {
-      id: 18,
-      title: "하이큐!! TO THE TOP part 1",
-      posterUrl: "https://via.placeholder.com/200x280/38a169/ffffff?text=하이큐+TOP",
-      badges: [],
-      rating: 4.6
-    },
-    {
-      id: 19,
-      title: "터무니없는 스킬로 이세계 방랑 밥",
-      posterUrl: "https://via.placeholder.com/200x280/3182ce/ffffff?text=이세계+방랑",
-      badges: [],
-      rating: 4.4
-    },
-    {
-      id: 20,
-      title: "나의 히어로 아카데미아 5기",
-      posterUrl: "https://via.placeholder.com/200x280/805ad5/ffffff?text=히어로+5기",
-      badges: ["자막"],
-      rating: 4.7
+  // 애니메이션 검색 실행
+  const executeSearch = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      let searchResults: any[] = [];
+      
+      if (searchQuery.trim()) {
+        // 검색어가 있는 경우
+        const searchData = await searchAnime(searchQuery);
+        searchResults = (searchData as any).content || searchData || [];
+      } else if (selectedGenres.length > 0) {
+        // 장르가 선택된 경우
+        const genrePromises = selectedGenres.map(genre => getAnimeByGenre(genre));
+        const genreResults = await Promise.all(genrePromises);
+        searchResults = genreResults.flatMap((result: any) => (result as any).content || result || []);
+      } else if (selectedTags.length > 0) {
+        // 태그가 선택된 경우
+        const tagPromises = selectedTags.map(tag => getAnimeByTag(tag));
+        const tagResults = await Promise.all(tagPromises);
+        searchResults = tagResults.flatMap((result: any) => (result as any).content || result || []);
+      }
+      
+      // 중복 제거 및 필터링
+      const uniqueResults = searchResults.filter((anime, index, self) => 
+        index === self.findIndex(a => a.id === anime.id)
+      );
+      
+      setAnimes(uniqueResults);
+    } catch (err) {
+      console.error('애니메이션 검색 실패:', err);
+      setError('애니메이션 검색에 실패했습니다.');
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
+
+  // 장르 선택/해제
+  const toggleGenre = (genre: string) => {
+    setSelectedGenres(prev => 
+      prev.includes(genre) 
+        ? prev.filter(g => g !== genre)
+        : [...prev, genre]
+    );
+  };
+
+  // 태그 선택/해제
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) 
+        ? prev.filter(t => t !== tag)
+        : [...prev, tag]
+    );
+  };
+
+  // 검색 실행
+  const handleSearch = () => {
+    executeSearch();
+  };
 
   // 필터 초기화
   const resetFilters = () => {
-    setFilters({ watchable: true, membership: false });
     setSelectedGenres([]);
     setSelectedTags([]);
+    setSearchQuery('');
+    setAnimes([]);
   };
 
-  // 애니 카드 클릭 시 모달 열기
+  // 애니메이션 클릭 핸들러
   const handleAnimeClick = (anime: any) => {
     setSelectedAnime(anime);
     setIsModalOpen(true);
@@ -195,141 +118,125 @@ export default function TagsPage() {
       <Header />
       
       <main className="pt-16">
-        {/* 페이지 제목 */}
-        <div className="px-6 py-8">
-          <h1 className="text-3xl font-bold text-gray-800">태그검색</h1>
-        </div>
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          {/* 페이지 제목 */}
+          <h1 className="text-3xl font-bold text-gray-800 mb-6">태그별 검색</h1>
 
-        <div className="flex gap-8 px-6 pb-8">
-          {/* 왼쪽 사이드바 - 필터 */}
-          <div className="w-80 flex-shrink-0">
-            {/* 필터 섹션 */}
-            <div className="bg-gray-100 rounded-lg p-6 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">필터</h2>
-                <button
-                  onClick={resetFilters}
-                  className="text-sm text-purple-600 hover:text-purple-700 transition-colors"
-                >
-                  전체 초기화
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.watchable}
-                    onChange={(e) => setFilters({...filters, watchable: e.target.checked})}
-                    className="w-4 h-4 text-purple-600 bg-white border-gray-300 rounded focus:ring-purple-500"
-                  />
-                  <span className="text-gray-700">감상 가능한 작품만 보기</span>
-                </label>
-                
-                <label className="flex items-center space-x-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={filters.membership}
-                    onChange={(e) => setFilters({...filters, membership: e.target.checked})}
-                    className="w-4 h-4 text-purple-600 bg-white border-gray-300 rounded focus:ring-purple-500"
-                  />
-                  <span className="text-gray-700">멤버십 포함된 작품만 보기</span>
-                </label>
-              </div>
+          {/* 검색 바 */}
+          <div className="mb-8">
+            <div className="flex gap-4 mb-4">
+              <input
+                type="text"
+                placeholder="애니메이션 제목을 검색하세요..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <button
+                onClick={handleSearch}
+                disabled={isLoading}
+                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 transition-colors"
+              >
+                {isLoading ? '검색 중...' : '검색'}
+              </button>
+              <button
+                onClick={resetFilters}
+                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+              >
+                초기화
+              </button>
             </div>
+          </div>
 
-            {/* 장르 섹션 */}
-            <div className="bg-gray-100 rounded-lg p-6 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">장르</h2>
-                <button className="text-sm text-purple-600 hover:text-purple-700 transition-colors">
-                  더 보기 &gt;
-                </button>
-              </div>
-              
-              <div className="space-y-2">
+          {/* 필터 옵션들 */}
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            {/* 장르 선택 */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">장르</h3>
+              <div className="flex flex-wrap gap-2">
                 {genres.map((genre) => (
-                  <label key={genre} className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedGenres.includes(genre)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedGenres([...selectedGenres, genre]);
-                        } else {
-                          setSelectedGenres(selectedGenres.filter(g => g !== genre));
-                        }
-                      }}
-                      className="w-4 h-4 text-purple-600 bg-white border-gray-300 rounded focus:ring-purple-500"
-                    />
-                    <span className="text-gray-700 text-sm">{genre}</span>
-                  </label>
+                  <button
+                    key={genre}
+                    onClick={() => toggleGenre(genre)}
+                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                      selectedGenres.includes(genre)
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {genre}
+                  </button>
                 ))}
               </div>
             </div>
 
-            {/* 태그 섹션 */}
-            <div className="bg-gray-100 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-800">태그</h2>
-                <button className="text-sm text-purple-600 hover:text-purple-700 transition-colors">
-                  더 보기 &gt;
-                </button>
-              </div>
-              
-              <div className="space-y-2">
-                {tags.slice(0, 20).map((tag) => (
-                  <label key={tag} className="flex items-center space-x-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedTags.includes(tag)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedTags([...selectedTags, tag]);
-                        } else {
-                          setSelectedTags(selectedTags.filter(t => t !== tag));
-                        }
-                      }}
-                      className="w-4 h-4 text-purple-600 bg-white border-gray-300 rounded focus:ring-purple-500"
-                    />
-                    <span className="text-gray-700 text-sm">{tag}</span>
-                  </label>
+            {/* 태그 선택 */}
+            <div>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">태그</h3>
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                      selectedTags.includes(tag)
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {tag}
+                  </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* 오른쪽 - 애니 작품 그리드 */}
-          <div className="flex-1">
-            <div className="grid grid-cols-5 gap-4">
-              {animes.map((anime) => (
-                <div 
-                  key={anime.id} 
-                  className="cursor-pointer transform hover:scale-105 transition-transform"
-                  onClick={() => handleAnimeClick(anime)}
-                >
+          {/* 검색 결과 */}
+          {error && (
+            <div className="text-center py-8">
+              <div className="text-red-600 text-lg">{error}</div>
+            </div>
+          )}
+
+          {animes.length > 0 ? (
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-semibold text-gray-800">
+                  검색 결과 ({animes.length}개)
+                </h2>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                {animes.map((anime: any) => (
                   <AnimeCard
+                    key={anime.id}
                     aniId={anime.id}
                     title={anime.title}
-                    posterUrl={anime.posterUrl}
+                    posterUrl={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
                     rating={anime.rating}
-                    badge={anime.badges[0]}
+                    badge={anime.badges?.[0]}
+                    episode={anime.episode}
                   />
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
+          ) : !isLoading && !error && (
+            <div className="text-center py-12">
+              <div className="text-gray-500 text-lg mb-2">
+                검색 조건을 선택하거나 검색어를 입력해주세요
+              </div>
+              <p className="text-gray-400">장르, 태그, 또는 제목으로 검색할 수 있습니다</p>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* 애니 상세 모달 */}
-      {selectedAnime && (
-        <AnimeDetailModal 
-          isOpen={isModalOpen} 
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedAnime(null);
-          }} 
+      {/* 애니메이션 상세 모달 */}
+      {isModalOpen && selectedAnime && (
+        <AnimeDetailModal
+          anime={selectedAnime}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
         />
       )}
     </div>

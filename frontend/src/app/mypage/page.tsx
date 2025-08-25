@@ -1,7 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
+import { getUserProfile, getUserWatchHistory, getUserFavorites, getUserStats } from "@/lib/api/user";
 
 type TabType = 'recent' | 'want' | 'purchased' | 'binge';
 
@@ -13,6 +14,12 @@ export default function MyPage() {
   const [activeTab, setActiveTab] = useState<TabType>('recent');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAnime, setSelectedAnime] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [watchHistory, setWatchHistory] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [userStats, setUserStats] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const tabs = [
     { id: 'recent' as TabType, label: '최근 본', count: 0 },
@@ -21,13 +28,64 @@ export default function MyPage() {
     { id: 'binge' as TabType, label: '정주행', count: 0 }
   ];
 
-  // 애니 작품 데이터 (예시)
-  const recentAnimes = []; // 빈 배열 (최근 본 작품 없음)
+  // 사용자 데이터 로드
+  useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // 병렬로 여러 API 호출
+        const [profileData, historyData, favoritesData, statsData] = await Promise.all([
+          getUserProfile(),
+          getUserWatchHistory(),
+          getUserFavorites(),
+          getUserStats()
+        ]);
+        
+        setUserProfile(profileData);
+        setWatchHistory((historyData as any).content || historyData || []);
+        setFavorites((favoritesData as any).content || favoritesData || []);
+        setUserStats(statsData);
+        
+        // 탭별 카운트 업데이트
+        tabs[0].count = (historyData as any).content?.length || 0;
+        tabs[1].count = (favoritesData as any).content?.length || 0;
+        tabs[2].count = 0; // 구매한 작품은 별도 API 필요
+        tabs[3].count = 0; // 정주행은 별도 API 필요
+        
+      } catch (err) {
+        console.error('사용자 데이터 로드 실패:', err);
+        setError('사용자 데이터를 불러오는데 실패했습니다.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
+    loadUserData();
+  }, []);
+
+  // 애니메이션 클릭 핸들러
   const handleAnimeClick = (anime: any) => {
     setSelectedAnime(anime);
     setIsModalOpen(true);
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-gray-600">로딩 중...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-red-600">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -44,12 +102,20 @@ export default function MyPage() {
               {/* 프로필 이미지 및 기본 정보 */}
               <div className="text-center mb-6">
                 <div className="w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden bg-purple-500 flex items-center justify-center">
-                  {/* 귀여운 악마 캐릭터 이미지 (플레이스홀더) */}
-                  <div className="w-full h-full bg-purple-500 flex items-center justify-center">
+                  {/* 프로필 이미지 */}
+                  {userProfile?.profileImage ? (
+                    <img 
+                      src={userProfile.profileImage} 
+                      alt="프로필 이미지"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
                     <span className="text-white text-2xl">😈</span>
-                  </div>
+                  )}
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-1">김규현</h3>
+                <h3 className="text-xl font-bold text-gray-800 mb-1">
+                  {userProfile?.username || '사용자'}
+                </h3>
                 <p className="text-green-500 font-medium">Lv.0 베이비</p>
               </div>
 
@@ -61,15 +127,21 @@ export default function MyPage() {
               {/* 활동 통계 - 가로 일렬 배치로 변경 */}
               <div className="flex justify-between items-center mb-6">
                 <div className="text-center">
-                  <div className="text-gray-800 font-semibold text-lg">0</div>
+                  <div className="text-gray-800 font-semibold text-lg">
+                    {userStats?.ratingCount || 0}
+                  </div>
                   <div className="text-gray-600 text-xs">별점</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-gray-800 font-semibold text-lg">0</div>
+                  <div className="text-gray-800 font-semibold text-lg">
+                    {userStats?.reviewCount || 0}
+                  </div>
                   <div className="text-gray-600 text-xs">리뷰</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-gray-800 font-semibold text-lg">0</div>
+                  <div className="text-gray-800 font-semibold text-lg">
+                    {userStats?.commentCount || 0}
+                  </div>
                   <div className="text-gray-600 text-xs">댓글</div>
                 </div>
               </div>
@@ -99,85 +171,88 @@ export default function MyPage() {
 
           {/* 오른쪽 메인 콘텐츠 - 보관함 */}
           <div className="flex-1">
-            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-              {/* 보관함 헤더 */}
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">보관함</h2>
-                <button className="flex items-center space-x-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm transition-colors">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  <span>삭제</span>
-                </button>
+            {/* 탭 메뉴 */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
+              <div className="flex border-b border-gray-200">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
+                      activeTab === tab.id
+                        ? 'text-purple-600 border-b-2 border-purple-600'
+                        : 'text-gray-500 hover:text-gray-700'
+                    }`}
+                  >
+                    {tab.label}
+                    {tab.count > 0 && (
+                      <span className="ml-2 bg-gray-200 text-gray-600 px-2 py-1 rounded-full text-xs">
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
 
-              {/* 탭 메뉴 */}
-              <div className="border-b border-gray-200 mb-4">
-                <div className="flex space-x-8">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center space-x-2 py-3 px-1 border-b-2 transition-colors ${
-                        activeTab === tab.id
-                          ? 'border-purple-500 text-gray-800 font-semibold'
-                          : 'border-transparent text-gray-500 hover:text-gray-700'
-                      }`}
-                    >
-                      <span className="text-sm">{tab.label}</span>
-                      <span className="text-sm text-gray-500">({tab.count})</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 작품 수 표시 */}
-              <div className="text-gray-600 text-sm mb-6">작품 (0)</div>
-
-              {/* 탭 콘텐츠 */}
-              <div className="min-h-[400px]">
+              {/* 탭별 콘텐츠 */}
+              <div className="p-6">
                 {activeTab === 'recent' && (
-                  <div className="text-center py-16">
-                    {/* 빈 상태 이미지 */}
-                    <div className="w-32 h-32 mx-auto mb-6 bg-gray-200 rounded-full flex items-center justify-center">
-                      <span className="text-gray-400 text-6xl">😴</span>
-                    </div>
-                    <p className="text-gray-500 text-lg">
-                      최근 본 작품이 아직 없어요.
-                    </p>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">최근 본 작품</h3>
+                    {watchHistory.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {watchHistory.map((anime: any) => (
+                          <div 
+                            key={anime.id} 
+                            className="cursor-pointer hover:scale-105 transition-transform"
+                            onClick={() => handleAnimeClick(anime)}
+                          >
+                            <div className="w-full aspect-[3/4] bg-gray-200 rounded-lg mb-2"></div>
+                            <p className="text-sm text-gray-800 truncate">{anime.title}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        최근 본 작품이 없습니다
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {activeTab === 'want' && (
-                  <div className="text-center py-16">
-                    <div className="w-32 h-32 mx-auto mb-6 bg-gray-200 rounded-full flex items-center justify-center">
-                      <span className="text-gray-400 text-6xl">💭</span>
-                    </div>
-                    <p className="text-gray-500 text-lg">
-                      보고싶은 작품이 아직 없어요.
-                    </p>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">보고싶은 작품</h3>
+                    {favorites.length > 0 ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {favorites.map((anime: any) => (
+                          <div 
+                            key={anime.id} 
+                            className="cursor-pointer hover:scale-105 transition-transform"
+                            onClick={() => handleAnimeClick(anime)}
+                          >
+                            <div className="w-full aspect-[3/4] bg-gray-200 rounded-lg mb-2"></div>
+                            <p className="text-sm text-gray-800 truncate">{anime.title}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500">
+                        보고싶은 작품이 없습니다
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {activeTab === 'purchased' && (
-                  <div className="text-center py-16">
-                    <div className="w-32 h-32 mx-auto mb-6 bg-gray-200 rounded-full flex items-center justify-center">
-                      <span className="text-gray-400 text-6xl">🛒</span>
-                    </div>
-                    <p className="text-gray-500 text-lg">
-                      구매한 작품이 아직 없어요.
-                    </p>
+                  <div className="text-center py-8 text-gray-500">
+                    구매한 작품이 없습니다
                   </div>
                 )}
 
                 {activeTab === 'binge' && (
-                  <div className="text-center py-16">
-                    <div className="w-32 h-32 mx-auto mb-6 bg-gray-200 rounded-full flex items-center justify-center">
-                      <span className="text-gray-400 text-6xl">📺</span>
-                    </div>
-                    <p className="text-gray-500 text-lg">
-                      정주행 중인 작품이 아직 없어요.
-                    </p>
+                  <div className="text-center py-8 text-gray-500">
+                    정주행 중인 작품이 없습니다
                   </div>
                 )}
               </div>
@@ -186,14 +261,12 @@ export default function MyPage() {
         </div>
       </main>
 
-      {/* 애니 상세 모달 */}
-      {selectedAnime && (
-        <AnimeDetailModal 
-          isOpen={isModalOpen} 
-          onClose={() => {
-            setIsModalOpen(false);
-            setSelectedAnime(null);
-          }} 
+      {/* 애니메이션 상세 모달 */}
+      {isModalOpen && selectedAnime && (
+        <AnimeDetailModal
+          anime={selectedAnime}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
         />
       )}
     </div>
