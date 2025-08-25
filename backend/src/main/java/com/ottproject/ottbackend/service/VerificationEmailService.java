@@ -85,8 +85,13 @@ public class VerificationEmailService {
         message.setFrom(fromEmail);
         message.setTo(to); // 수신자 이메일 주소 설정
         message.setSubject("OTT 프로젝트 비밀번호 재설정"); // 메일 제목 설정
+        String origin = System.getenv("FRONTEND_ORIGIN");
+        if (origin == null || origin.isBlank()) {
+            origin = System.getenv("BACKEND_PUBLIC_ORIGIN"); // 백엔드 공개 오리진이 있으면 사용
+        }
+        String resetBase = (origin != null && !origin.isBlank()) ? origin : ("http://" + "localhost:8090");
         message.setText("비밀번호를 재설정하려면 다음 링크를 클릭하세요:\n\n"
-                + "http://localhost:8090/api/auth/reset-password?token=" + resetToken + "\n\n"
+                + resetBase.replaceAll("/+$", "") + "/api/auth/reset-password?token=" + resetToken + "\n\n"
                 + "이 링크는 1시간 동안 유효합니다."); // 메일 본문 내용 설정 (비밀번호 재설정 링크 포함)
 
         mailSender.send(message); // SMTP 서버를 통해 이메일 발송

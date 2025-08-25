@@ -23,4 +23,7 @@ import java.util.Optional;
 public interface EpisodeProgressRepository extends JpaRepository<EpisodeProgress, Long> { // 진행률
 	Optional<EpisodeProgress> findByUser_IdAndEpisode_Id(Long userId, Long episodeId); // 단건
 	List<EpisodeProgress> findByUser_IdAndEpisode_IdIn(Long userId, Collection<Long> episodeIds); // 벌크
+	
+	// 마이페이지용 시청 기록 목록 조회 (최근 시청 순)
+	List<EpisodeProgress> findByUser_IdOrderByUpdatedAtDesc(Long userId);
 }

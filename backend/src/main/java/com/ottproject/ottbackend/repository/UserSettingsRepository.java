@@ -18,4 +18,6 @@ import java.util.Optional;
 @Repository // 스프링 빈 등록
 public interface UserSettingsRepository extends JpaRepository<UserSettings, Long> { // 설정 리포지토리
 	Optional<UserSettings> findByUserId(Long userId); // user.id 경로 탐색
+	
+	Optional<UserSettings> findByUser_Id(Long userId); // user.id 경로 탐색 (별칭)
 }

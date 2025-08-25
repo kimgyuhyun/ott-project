@@ -6,6 +6,7 @@ import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.util.HlsSignedUrlUtil;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 /**
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
  * - nextEpisodeId: 현재 화 기준 다음 화 ID 조회
  */
 @Service
+@Lazy
 @RequiredArgsConstructor
 public class PlaybackAuthService { // 재생 권한/URL 발급
 	private final UserRepository userRepository; // 권한 확인(멤버십 여부 판단용)

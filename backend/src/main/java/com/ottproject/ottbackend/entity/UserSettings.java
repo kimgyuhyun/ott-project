@@ -47,6 +47,18 @@ public class UserSettings { // 사용자 재생 설정
     @Column(nullable = false) @Builder.Default // 다음 화 자동재생
     private Boolean autoNextEpisode = true; // 자동 다음 화
 
+    @Column(nullable = false) @Builder.Default // 테마 설정
+    private String theme = "light"; // light|dark
+
+    @Column(nullable = false) @Builder.Default // 언어 설정
+    private String language = "ko"; // ko|en|ja
+
+    @Column(nullable = false) @Builder.Default // 알림 설정
+    private Boolean notifications = true; // 알림 활성화
+
+    @Column(nullable = false) @Builder.Default // 자동 재생 설정
+    private Boolean autoPlay = false; // 자동 재생
+
     @LastModifiedDate
     @Column(nullable = false) @Builder.Default // 갱신 시각
     private LocalDateTime updatedAt = LocalDateTime.now(); // 갱신
