@@ -18,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.HashMap;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 /**
  * Admin 공개 컨텐츠(FAQ/혜택/CTA) 정적 제공 1단계 컨트롤러
@@ -67,6 +69,20 @@ public class AdminPublicController { // 공개 컨트롤러 시작
                 .findFirst() // 첫 항목 선택
                 .orElse(all.isEmpty() ? Map.of() : all.get(0)); // 없으면 기본 반환
         return ResponseEntity.ok(first); // 응답 반환
+    }
+
+    /**
+     * 공개 헬스체크 엔드포인트
+     */
+    @Operation(summary = "헬스체크", description = "서버 상태 확인")
+    @ApiResponse(responseCode = "200", description = "서버 정상 동작")
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, Object>> health() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "UP");
+        response.put("timestamp", System.currentTimeMillis());
+        response.put("message", "OTT Backend Server is running!");
+        return ResponseEntity.ok(response);
     }
 
     private List<Map<String, Object>> readListJson(String path) { // 리소스 JSON 읽기 유틸

@@ -76,4 +76,26 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
         Long userId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
         return queryService.detail(aniId, userId); // isFavorited 포함 상세 반환
     }
+
+    /**
+     * 추천 애니메이션 조회
+     */
+    @Operation(summary = "추천 애니메이션 조회", description = "사용자 맞춤 추천 애니메이션 목록을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/recommended") // GET /api/anime/recommended -> 추천 애니메이션 조회
+    public List<AnimeListDto> getRecommended() {
+        // 임시로 최신 애니메이션 10개 반환 (실제로는 추천 알고리즘 구현 필요)
+        return queryService.list(null, null, null, null, null, null, null, null, null, null, "id", 0, 10, null).getItems();
+    }
+
+    /**
+     * 인기 애니메이션 조회
+     */
+    @Operation(summary = "인기 애니메이션 조회", description = "평점과 조회수를 기준으로 인기 애니메이션 목록을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/popular") // GET /api/anime/popular -> 인기 애니메이션 조회
+    public List<AnimeListDto> getPopular() {
+        // 평점 기준으로 정렬하여 상위 10개 반환
+        return queryService.list(null, null, null, null, null, null, null, null, null, null, "rating", 0, 10, null).getItems();
+    }
 }
