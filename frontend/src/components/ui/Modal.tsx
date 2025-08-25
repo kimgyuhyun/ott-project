@@ -2,17 +2,20 @@
 import { ReactNode, useEffect } from "react";
 
 type ModalProps = {
-  open: boolean;
+  open?: boolean; // 기본 prop
+  isOpen?: boolean; // 호환 prop
   onClose: () => void;
-  children?: ReactNode; // children을 선택적으로 변경
+  title?: string; // 호환용(사용하지 않음)
+  children?: ReactNode;
 };
 
-export default function Modal({ open, onClose, children }: ModalProps) {
+export default function Modal({ open, isOpen, onClose, children }: ModalProps) {
+  const visible = typeof open === 'boolean' ? open : !!isOpen;
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
-    if (open) {
+    if (visible) {
       document.addEventListener("keydown", onKey);
       document.body.style.overflow = "hidden";
     }
@@ -20,9 +23,9 @@ export default function Modal({ open, onClose, children }: ModalProps) {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = "";
     };
-  }, [open, onClose]);
+  }, [visible, onClose]);
 
-  if (!open) return null;
+  if (!visible) return null;
 
   return (
     <div
