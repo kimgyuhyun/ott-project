@@ -1,3 +1,4 @@
+// 이 파일은 더 이상 사용되지 않습니다. frontend/src/lib/api/index.ts를 사용하세요.
 export async function api<T>(input: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(input, {
 		credentials: "include",

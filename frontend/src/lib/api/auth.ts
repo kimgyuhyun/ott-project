@@ -1,14 +1,13 @@
-import { api } from './index';
-import { config } from '../config';
+// 동일 오리진 경유
 
 // 로그인 관련 API 함수들
 
-// API 기본 설정 - config 파일에서 가져옴
-const API_BASE = config.backendOrigin;
+// API 기본 설정: 항상 동일 오리진 프록시 사용
+const API_BASE = '';
 
 // 공통 fetch 함수
 async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE}${endpoint}`;
+  const url = `${API_BASE}${endpoint}`; // '' + '/api/...' => '/api/...'
   
   const response = await fetch(url, {
     ...options,
