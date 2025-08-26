@@ -24,6 +24,7 @@ public class ReviewResponseDto {
     private Long aniId; // 대상 애니(목록) ID
     private Long userId; // 작성자 ID
     private String userName; // 작성자 이름/닉네임
+    private String userProfileImage; // 작성자 프로필 이미지 URL
     private String content; // 리뷰 내용
     private Double rating; // 평점
     private ReviewStatus status; // 리뷰 상태

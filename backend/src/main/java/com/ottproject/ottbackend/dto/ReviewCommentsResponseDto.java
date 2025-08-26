@@ -26,6 +26,7 @@ public class ReviewCommentsResponseDto {
 
 	private Long userId; // 작성자 ID
 	private String userName; // 작성자 이름/닉네임
+	private String userProfileImage; // 작성자 프로필 이미지 URL
 
 	private String content; // 댓글 내용
 	private com.ottproject.ottbackend.enums.CommentStatus commentStatus; // 댓글 상태

@@ -19,8 +19,13 @@
     r.ani_id AS aniId, <!-- ReviewResponseDto.aniId -->
     u.id AS userId, <!-- ReviewResponseDto.userId -->
     u.name AS userName, <!-- ReviewResponseDto.userName -->
+    u.profile_image AS userProfileImage, <!-- ReviewResponseDto.userProfileImage -->
     r.content AS content, <!-- ReviewResponseDto.content -->
-    r.rating AS rating, <!-- ReviewResponseDto.rating -->
+    (
+      SELECT rt.score FROM ratings rt
+      WHERE rt.user_id = r.user_id AND rt.ani_id = r.ani_id
+      LIMIT 1
+    ) AS rating, <!-- ReviewResponseDto.rating: 사용자별 별도 ratings에서 가져오기 -->
     r.status AS status, <!-- ReviewResponseDto.status(enum) -->
     (
     SELECT COUNT(1) <!-- 좋아요 개수 산출 서브쿼리 -->
@@ -48,6 +53,7 @@
         c.parent_id AS parentId, <!-- ReviewCommentsResponseDto.parentId -->
         u.id AS userId, <!-- ReviewCommentsResponseDto.userId -->
         u.name AS userName, <!-- ReviewCommentsResponseDto.userName -->
+        u.profile_image AS userProfileImage, <!-- ReviewCommentsResponseDto.userProfileImage -->
         c.content AS content, <!-- ReviewCommentsResponseDto.content -->
         c.status AS commentStatus, <!-- ReviewCommentsResponseDto.commentStatus(enum) -->
         (
@@ -89,7 +95,7 @@
                     ORDER BY likeCount DESC, r.id DESC <!-- 좋아요순, 같으면 최신순 -->
                 </when>
                 <when test="sort == 'rating'">
-                    ORDER BY r.rating DESC NULLS LAST, r.id DESC <!-- 평점순, null 뒤로, 최신순 보조 -->
+                    ORDER BY rating DESC NULLS LAST, r.id DESC <!-- 평점순(별도 ratings), 최신순 보조 -->
                 </when>
                 <otherwise>
                     ORDER BY r.id DESC <!-- 기본 최신순 -->

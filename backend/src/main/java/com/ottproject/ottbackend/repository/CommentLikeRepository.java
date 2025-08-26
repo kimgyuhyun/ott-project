@@ -14,5 +14,5 @@ import org.springframework.stereotype.Repository;
  */
 @Repository // 빈 등록
 public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> { // CUD 전용
-    int deleteByUserIdAndCommentId(Long userId, Long commentId); // 토글 off 용 삭제(CUD)
+    int deleteByUser_IdAndComment_Id(Long userId, Long commentId); // 토글 off 용 삭제(CUD)
 }
