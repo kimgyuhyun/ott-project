@@ -1,7 +1,6 @@
 package com.ottproject.ottbackend.dto;
 
 import com.ottproject.ottbackend.validation.ContentOrRatingRequired;
-import com.ottproject.ottbackend.validation.HalfStep;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -17,7 +16,7 @@ import lombok.*;
  * - 커스텀 제약(ContentOrRatingRequired, HalfStep)을 통해 정책을 강제한다.
  *
  * 필드 개요
- * - aniId/content/rating: 식별/본문/평점
+ * - aniId/content: 식별/본문
  */
 @Getter
 @Setter
@@ -34,8 +33,5 @@ public class CreateReviewRequestDto {
     @Size(max = 1000, message = "내용은 최대 1000자입니다.") // 길이 제한
     private String content; // 리뷰 내용 (선택)
 
-    @DecimalMin(value = "0.5", message = "평점은 0.5 이상이어야 합니다.") // 최소
-    @DecimalMax(value = "5.0", message = "평점은 5.0 이하여야 합니다.") // 최대
-    @HalfStep
-    private Double rating; // 평점(선택)
+    // 평점은 분리된 Rating 엔티티로 이동
 }
