@@ -61,7 +61,7 @@ public class ReviewsController { // 리뷰 목록/작성/일괄삭제 담당 컨
             HttpSession session // 세션에서 사용자 확인
     ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        Long id = reviewsService.create(userId, aniId, dto.getContent(), dto.getRating()); // 서비스 호출
+        Long id = reviewsService.create(userId, aniId, dto.getContent(), null); // 서비스 호출(평점 분리)
         return ResponseEntity.ok(id); // 200 OK + 리뷰 ID
     }
 
@@ -85,7 +85,7 @@ public class ReviewsController { // 리뷰 목록/작성/일괄삭제 담당 컨
             HttpSession session // 세션에서 사용자 확인
     ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        reviewsService.update(reviewId, userId, dto.getContent(), dto.getRating()); // 서비스 위임
+        reviewsService.update(reviewId, userId, dto.getContent(), null); // 서비스 위임(평점 분리)
         return ResponseEntity.noContent().build(); // 204 No Content
     }
 

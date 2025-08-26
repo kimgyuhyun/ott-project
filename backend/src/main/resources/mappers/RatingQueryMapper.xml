@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ottproject.ottbackend.mybatis.RatingQueryMapper">
+
+    <select id="findUserRatingByAnimeId" resultType="java.lang.Double">
+        SELECT score
+        FROM ratings
+        WHERE user_id = #{userId}
+          AND ani_id = #{aniId}
+        LIMIT 1
+    </select>
+
+    <select id="findRatingDistributionByAnimeId" resultType="map">
+        SELECT CAST(ROUND(score * 2) / 2 AS DECIMAL(2,1)) AS rating,
+               CAST(COUNT(1) AS INTEGER)                   AS count
+        FROM ratings
+        WHERE ani_id = #{aniId}
+        GROUP BY CAST(ROUND(score * 2) / 2 AS DECIMAL(2,1))
+        ORDER BY rating
+    </select>
+
+    <select id="findAverageRatingByAnimeId" resultType="java.lang.Double">
+        SELECT COALESCE(AVG(score), 0.0)
+        FROM ratings
+        WHERE ani_id = #{aniId}
+    </select>
+
+    <select id="countRatingsByAnimeId" resultType="java.lang.Long">
+        SELECT COUNT(1)
+        FROM ratings
+        WHERE ani_id = #{aniId}
+    </select>
+
+</mapper>
+
+

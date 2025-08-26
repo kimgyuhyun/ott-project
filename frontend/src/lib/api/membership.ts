@@ -28,17 +28,17 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 // 멤버십 플랜 목록 조회
 export async function getMembershipPlans() {
-  return apiCall('/api/membership/plans');
+  return apiCall('/api/memberships/plans');
 }
 
 // 사용자 멤버십 구독 상태 조회
 export async function getUserMembership() {
-  return apiCall('/api/membership/user');
+  return apiCall('/api/users/me/membership');
 }
 
 // 멤버십 구독 시작
 export async function subscribeMembership(planId: number, paymentMethodId: number) {
-  return apiCall('/api/membership/subscribe', {
+  return apiCall('/api/memberships/subscribe', {
     method: 'POST',
     body: JSON.stringify({ planId, paymentMethodId }),
   });
@@ -46,7 +46,7 @@ export async function subscribeMembership(planId: number, paymentMethodId: numbe
 
 // 멤버십 구독 취소
 export async function cancelMembership() {
-  return apiCall('/api/membership/cancel', {
+  return apiCall('/api/memberships/cancel', {
     method: 'POST',
   });
 }

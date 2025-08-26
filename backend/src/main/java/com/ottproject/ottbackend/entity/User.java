@@ -69,6 +69,9 @@ public class User { // 엔티티 시작
     @Builder.Default
     private boolean enabled = true; // 계정 활성화 여부 (기본값: true)
 
+    @Column(name = "profile_image")
+    private String profileImage; // 프로필 이미지 URL(옵션)
+
     @CreatedDate
     @Column(nullable = false)
     @Builder.Default

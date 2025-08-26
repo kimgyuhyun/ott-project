@@ -68,7 +68,6 @@ public class ReviewsService {
                 .user(user) // 연관: 작성자
                 .anime(animeList) // NEW 연관: 대상 애니
                 .content(content) // 내용(선택)
-                .rating(rating) // 평점(선택)
                 .status(ReviewStatus.ACTIVE) // 기본 상태: ACTIVE
                 .build();
 
@@ -80,7 +79,6 @@ public class ReviewsService {
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId)); // 락 조회
         if (!review.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
         if (content != null) review.setContent(content); // 내용 갱신
-        if (rating != null) review.setRating(rating); // 평점 갱신
         reviewRepository.save(review); // 저장
     }
 

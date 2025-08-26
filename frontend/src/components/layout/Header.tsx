@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
+import SearchBar from "@/components/search/SearchBar";
 
 /**
  * 라프텔 스타일 헤더 네비게이션
@@ -11,6 +12,11 @@ export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, isAuthenticated, logout } = useAuth();
+
+  const handleSearch = (query: string) => {
+    // 검색 페이지로 이동
+    window.location.href = `/tags?search=${encodeURIComponent(query)}`;
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-sm">
@@ -142,11 +148,10 @@ export default function Header() {
       {isSearchOpen && (
         <div className="border-t border-white/10 bg-black/95 p-4">
           <div className="max-w-2xl mx-auto">
-            <input
-              type="text"
+            <SearchBar
+              onSearch={handleSearch}
               placeholder="작품 제목을 검색해 보세요"
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white/50"
-              autoFocus
+              className="[&>form>input]:bg-white/10 [&>form>input]:border-white/20 [&>form>input]:text-white [&>form>input]:placeholder-white/50 [&>form>input]:focus:border-white/50 [&>form>input]:focus:ring-white/50"
             />
           </div>
         </div>

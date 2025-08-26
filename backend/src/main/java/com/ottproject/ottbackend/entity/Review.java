@@ -9,11 +9,11 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
  * 리뷰 엔티티
  *
  * 큰 흐름
- * - 작품에 대한 사용자 리뷰(본문/평점/상태)를 저장한다.
+ * - 작품에 대한 사용자 리뷰(본문/상태)를 저장한다.
  * - 댓글/대댓글/좋아요와 연관되어 커뮤니티 기능의 중심이 된다.
  *
  * 필드 개요
- * - id/content/rating/status: 식별/본문/평점/상태
+ * - id/content/status: 식별/본문/상태
  * - user/anime: 작성자/대상 작품
  */
 @Entity
@@ -31,10 +31,7 @@ public class Review {
     private Long id; // 리뷰 고유 ID
 
     @Column(columnDefinition = "TEXT") // 긴 텍스트 저장용
-    private String content; // 리뷰 내용 (null 가능 - 평점만 달 수도 있음)
-
-    @Column(columnDefinition = "NUMERIC(2,1)") // Postgres: 0.5~5.0 한 자리 소수
-    private Double rating; // 평점(1~5, null 가능 - 댓글만 달 수도 있음
+    private String content; // 리뷰 내용
 
     @Enumerated(EnumType.STRING)
     private ReviewStatus status; // 리뷰 상태 (활성, 삭제됨, 신고됨)

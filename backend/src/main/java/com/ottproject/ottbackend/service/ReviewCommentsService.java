@@ -121,7 +121,12 @@ public class ReviewCommentsService {
         commentRepository.save(comment);
     }
 
-    public boolean toggleLike(Long commentId, Long userId) { // 좋아요 토글(C/D 만 사용, insert-first 전략)
+    public boolean toggleLike(Long commentId, Long userId) { // 좋아요 토글(delete-first 전략)
+        int deleted = commentLikeRepository.deleteByUser_IdAndComment_Id(userId, commentId); // 먼저 off 시도
+        if (deleted > 0) {
+            return false; // off
+        }
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
         Comment comment = commentRepository.findById(commentId)
@@ -129,9 +134,8 @@ public class ReviewCommentsService {
         try {
             commentLikeRepository.save(CommentLike.builder().user(user).comment(comment).build()); // on 시도
             return true; // on
-        } catch (DataIntegrityViolationException e) {
-            // 이미 on → off
-            commentLikeRepository.deleteByUserIdAndCommentId(userId, commentId); // off
+        } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
+            commentLikeRepository.deleteByUser_IdAndComment_Id(userId, commentId);
             return false; // off
         }
     }
