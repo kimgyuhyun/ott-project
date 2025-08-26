@@ -1,15 +1,19 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Header from "@/components/layout/Header";
 import AnimeCard from "@/components/home/AnimeCard";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
-import { getAnimeByGenre, getAnimeByTag, searchAnime } from "@/lib/api/anime";
+import SearchBar from "@/components/search/SearchBar";
+import { searchContent } from "@/lib/api/search";
+import { getAnimeByGenre, getAnimeByTag } from "@/lib/api/anime";
 
 /**
  * 태그별 검색 페이지
  * 필터링 옵션과 애니 작품 그리드 레이아웃
  */
 export default function TagsPage() {
+  const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAnime, setSelectedAnime] = useState<any>(null);
   const [animes, setAnimes] = useState<any[]>([]);
@@ -25,6 +29,18 @@ export default function TagsPage() {
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // URL 검색 파라미터 처리
+  useEffect(() => {
+    const urlSearch = searchParams.get('search');
+    if (urlSearch) {
+      setSearchQuery(urlSearch);
+      // URL 검색어가 있으면 자동으로 검색 실행
+      setTimeout(() => {
+        handleSearch(urlSearch);
+      }, 100);
+    }
+  }, [searchParams]);
 
   // 장르 목록
   const genres = [
@@ -43,36 +59,66 @@ export default function TagsPage() {
     try {
       setIsLoading(true);
       setError(null);
-      
-      let searchResults: any[] = [];
-      
+
+      const normalizeToArray = (data: any): any[] => {
+        const isArr = Array.isArray(data);
+        const hasContent = data && Array.isArray((data as any).content);
+        const hasItems = data && Array.isArray((data as any).items);
+        console.log('[검색응답] typeof=', typeof data, 'isArray=', isArr, 'keys=', data ? Object.keys(data) : null);
+        if (isArr) return data as any[];
+        if (hasContent) return (data as any).content as any[];
+        if (hasItems) return (data as any).items as any[];
+        console.warn('[검색응답] 예상치 못한 구조, 빈 배열로 처리:', data);
+        return [];
+      };
+
+      let collected: any[] = [];
+
       if (searchQuery.trim()) {
-        // 검색어가 있는 경우
-        const searchData = await searchAnime(searchQuery);
-        searchResults = (searchData as any).content || searchData || [];
+        // 검색어가 있는 경우 - 통합 검색 API 사용
+        const raw = await searchContent(searchQuery);
+        collected = normalizeToArray(raw);
       } else if (selectedGenres.length > 0) {
         // 장르가 선택된 경우
         const genrePromises = selectedGenres.map(genre => getAnimeByGenre(genre));
         const genreResults = await Promise.all(genrePromises);
-        searchResults = genreResults.flatMap((result: any) => (result as any).content || result || []);
+        collected = genreResults.flatMap(normalizeToArray);
       } else if (selectedTags.length > 0) {
         // 태그가 선택된 경우
         const tagPromises = selectedTags.map(tag => getAnimeByTag(tag));
         const tagResults = await Promise.all(tagPromises);
-        searchResults = tagResults.flatMap((result: any) => (result as any).content || result || []);
+        collected = tagResults.flatMap(normalizeToArray);
       }
-      
-      // 중복 제거 및 필터링
-      const uniqueResults = searchResults.filter((anime, index, self) => 
-        index === self.findIndex(a => a.id === anime.id)
-      );
-      
+
+      let uniqueResults: any[] = [];
+      if (Array.isArray(collected)) {
+        uniqueResults = collected.filter((anime, index, self) => 
+          index === self.findIndex(a => a && anime && a.id === anime.id)
+        );
+      } else {
+        console.warn('[검색응답] 배열이 아님. 빈 배열로 처리:', collected);
+        uniqueResults = [];
+      }
+
       setAnimes(uniqueResults);
+      if ((searchQuery.trim() || selectedGenres.length || selectedTags.length) && uniqueResults.length === 0) {
+        console.log('[검색] 결과 없음', { searchQuery, selectedGenres, selectedTags });
+      }
     } catch (err) {
       console.error('애니메이션 검색 실패:', err);
-      setError('애니메이션 검색에 실패했습니다.');
+      setError('검색에 실패했습니다. 다시 시도해주세요.');
+      setAnimes([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // 검색어 변경 핸들러
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    // 검색어가 변경되면 자동으로 검색 실행
+    if (query.trim()) {
+      executeSearch();
     }
   };
 
@@ -94,8 +140,8 @@ export default function TagsPage() {
     );
   };
 
-  // 검색 실행
-  const handleSearch = () => {
+  // 필터 적용
+  const applyFilters = () => {
     executeSearch();
   };
 
@@ -124,20 +170,18 @@ export default function TagsPage() {
 
           {/* 검색 바 */}
           <div className="mb-8">
-            <div className="flex gap-4 mb-4">
-              <input
-                type="text"
-                placeholder="애니메이션 제목을 검색하세요..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
+            <SearchBar 
+              onSearch={handleSearch}
+              placeholder="애니메이션 제목을 검색하세요..."
+              className="mb-4"
+            />
+            <div className="flex gap-4">
               <button
-                onClick={handleSearch}
+                onClick={applyFilters}
                 disabled={isLoading}
                 className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 transition-colors"
               >
-                {isLoading ? '검색 중...' : '검색'}
+                {isLoading ? '검색 중...' : '필터 적용'}
               </button>
               <button
                 onClick={resetFilters}
@@ -194,7 +238,8 @@ export default function TagsPage() {
           {/* 검색 결과 */}
           {error && (
             <div className="text-center py-8">
-              <div className="text-red-600 text-lg">{error}</div>
+              <div className="text-red-600 text-lg mb-3">{error}</div>
+              <button onClick={executeSearch} className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">재시도</button>
             </div>
           )}
 
@@ -222,10 +267,17 @@ export default function TagsPage() {
             </div>
           ) : !isLoading && !error && (
             <div className="text-center py-12">
-              <div className="text-gray-500 text-lg mb-2">
-                검색 조건을 선택하거나 검색어를 입력해주세요
-              </div>
-              <p className="text-gray-400">장르, 태그, 또는 제목으로 검색할 수 있습니다</p>
+              {searchQuery.trim() || selectedGenres.length > 0 || selectedTags.length > 0 ? (
+                <>
+                  <div className="text-gray-500 text-lg mb-2">검색 결과가 없습니다.</div>
+                  <p className="text-gray-400">다른 키워드로 검색해보세요.</p>
+                </>
+              ) : (
+                <>
+                  <div className="text-gray-500 text-lg mb-2">검색 조건을 선택하거나 검색어를 입력해주세요</div>
+                  <p className="text-gray-400">장르, 태그, 또는 제목으로 검색할 수 있습니다</p>
+                </>
+              )}
             </div>
           )}
         </div>

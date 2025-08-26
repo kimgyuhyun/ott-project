@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import ReviewList from "@/components/reviews/ReviewList";
 
 interface AnimeDetailModalProps {
   anime: any;
@@ -14,11 +15,16 @@ interface AnimeDetailModalProps {
 export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'episodes' | 'reviews' | 'shop' | 'similar'>('episodes');
 
+  // 디버깅: anime 객체 확인
+  console.log('🔍 AnimeDetailModal - anime 객체:', anime);
+  console.log('🔍 AnimeDetailModal - anime.aniId:', anime?.aniId);
+  console.log('🔍 AnimeDetailModal - anime 타입:', typeof anime);
+
   if (!isOpen) return null;
 
   const tabs: { id: 'episodes' | 'reviews' | 'shop' | 'similar'; label: string; count: number | null }[] = [
     { id: 'episodes', label: '에피소드', count: null },
-    { id: 'reviews', label: '사용자 평', count: 697 },
+    { id: 'reviews', label: '사용자 평', count: null },
     { id: 'shop', label: '상점', count: null },
     { id: 'similar', label: '비슷한 작품', count: null }
   ];
@@ -125,7 +131,13 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
             {/* 액션 버튼들 */}
             <div className="flex flex-wrap gap-3 mb-6">
-              <button className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors flex items-center space-x-2">
+              <button 
+                                 onClick={() => {
+                   // 플레이어 페이지로 이동
+                   window.open(`/player?episodeId=1&animeId=${anime?.aniId}`, '_blank');
+                 }}
+                className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors flex items-center space-x-2"
+              >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -206,7 +218,13 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                         {episode.description}
                       </p>
                     </div>
-                    <button className="flex-shrink-0 px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors">
+                    <button 
+                      onClick={() => {
+                        // 플레이어 페이지로 이동
+                        window.open(`/player?episodeId=${episode.id}&animeId=${anime?.id}`, '_blank');
+                      }}
+                      className="flex-shrink-0 px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
+                    >
                       재생
                     </button>
                   </div>
@@ -215,11 +233,19 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             </div>
           )}
 
-          {activeTab === 'reviews' && (
-            <div className="text-center py-12 text-gray-500">
-              사용자 평 기능은 준비 중입니다
-            </div>
-          )}
+          {/* 리뷰 탭: ReviewList 항상 마운트되도록 렌더링, 탭 아닐 때는 hidden 처리 */}
+          <div className={activeTab === 'reviews' ? '' : 'hidden'}>
+            {anime?.aniId ? (
+              <ReviewList key={anime.aniId} animeId={anime.aniId} />
+            ) : (
+              <div className="text-center py-12 text-red-500">
+                <p>⚠️ 애니메이션 ID를 찾을 수 없습니다.</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  anime 객체: {JSON.stringify(anime, null, 2)}
+                </p>
+              </div>
+            )}
+          </div>
 
           {activeTab === 'shop' && (
             <div className="text-center py-12 text-gray-500">

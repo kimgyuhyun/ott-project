@@ -65,3 +65,8 @@ export * from './auth';
 export * from './anime';
 export * from './membership';
 export * from './user';
+export * from './search';
+export * from './reviews';
+export * from './comments';
+export * from './player';
+export * from './skip';
