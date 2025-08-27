@@ -101,6 +101,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/search/**").permitAll() // 검색(자동완성/본검색) 익명 허용
                         .requestMatchers("/api/payments/webhook", "/api/payments/*/webhook").permitAll() // 결제 웹훅은 인증 없이 수신
                         .requestMatchers("/api/admin/contents/**").hasRole("ADMIN") // Admin DB 관리 전용
+                        .requestMatchers("/api/anime/*/reviews").permitAll() // 리뷰 조회는 누구나 접근 가능
                         .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
                 )
                 .formLogin(form -> form.disable()) // 기본 로그인 폼 비활성화 (REST API용)

@@ -42,6 +42,7 @@
         <if test="status != null"> AND a.status = #{status} </if> <!-- 상태 필터: ONGOING/COMPLETED/UPCOMING/HIATUS 중 선택 -->
         <if test="minRating != null"> AND a.rating &gt;= #{minRating}</if>  <!-- 평점 하한: #{minRating} 이상 -->
         <if test="year != null"> AND a.year = #{year}</if> <!-- 방영 연도: 정확히 일치 -->
+        <if test="type != null and type.trim().length() &gt; 0"> AND a.type = #{type}</if> <!-- 출시 타입: TV/MOVIE/OVA 등 -->
         <if test="isDub != null"> AND a.is_dub = #{isDub}</if> <!-- 더빙 제공 여부: true/false 매칭 -->
         <if test="isSubtitle != null"> AND a.is_subtitle = #{isSubtitle}</if> <!-- 자막 제공 여부: true/false 매칭 -->
         <if test="isExclusive != null"> AND a.is_exclusive = #{isExclusive}</if> <!-- 독점 여부: true/false 매칭 -->
@@ -85,6 +86,30 @@
             <otherwise> a.id DESC </otherwise> <!-- 기본: 최신 등록순 -->
         </choose>
         LIMIT #{limit} OFFSET #{offset} <!-- 페이지네이션 -->
+    </select>
+
+    <!-- 요일별 신작 조회: broadcast_day = #{day} -->
+    <select id="findWeeklyByDay" resultType="com.ottproject.ottbackend.dto.AnimeListDto">
+        SELECT
+        a.id AS aniId,
+        a.title AS title,
+        a.poster_url AS posterUrl,
+        a.rating AS rating,
+        a.rating_count AS ratingCount,
+        a.is_dub AS isDub,
+        a.is_subtitle AS isSubtitle,
+        a.is_exclusive AS isExclusive,
+        a.is_new AS isNew,
+        a.is_popular AS isPopular,
+        a.is_completed AS isCompleted,
+        a.status AS animeStatus,
+        a.year AS year,
+        a.type AS type
+        FROM anime a
+        WHERE a.is_active = TRUE
+          AND a.broadcast_day = #{day}
+        ORDER BY a.rating DESC, a.id DESC
+        LIMIT #{limit}
     </select>
 
     <!--
@@ -203,6 +228,27 @@
         JOIN anime_genres ag ON ag.genre_id = g.id <!-- 중간 테이블 -->
         WHERE ag.anime_id = #{aniId} <!-- aniId -->
         ORDER BY g.name ASC <!-- 이름 정렬 -->
+    </select>
+
+    <!-- 마스터: 전체 장르 목록 -->
+    <select id="findAllGenres" resultType="com.ottproject.ottbackend.dto.GenreSimpleDto">
+        SELECT
+        g.id AS id,
+        g.name AS name,
+        g.color AS color
+        FROM genres g
+        WHERE g.is_active = TRUE
+        ORDER BY g.name ASC
+    </select>
+
+    <!-- 마스터: 전체 태그 목록 -->
+    <select id="findAllTags" resultType="com.ottproject.ottbackend.dto.TagSimpleDto">
+        SELECT
+        t.id AS id,
+        t.name AS name,
+        t.color AS color
+        FROM tags t
+        ORDER BY t.name ASC
     </select>
 
     <!--

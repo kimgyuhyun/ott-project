@@ -42,8 +42,47 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 // 애니메이션 목록 조회 (홈페이지 메인)
-export async function getAnimeList(page: number = 0, size: number = 20) {
-  return apiCall(`/api/anime?page=${page}&size=${size}`);
+export async function getAnimeList(page: number = 0, size: number = 20, sort: string = 'id') {
+  return apiCall(`/api/anime?page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`);
+}
+
+// 범용 목록 조회(필터/정렬/페이지) - 필터링 기능 유지, 응답 처리만 getAnimeList와 동일
+export async function listAnime(params: {
+  status?: string | null;
+  genreIds?: number[] | null;
+  tagIds?: number[] | null;
+  minRating?: number | null;
+  year?: number | null;
+  type?: string | null;
+  isDub?: boolean | null;
+  isSubtitle?: boolean | null;
+  isExclusive?: boolean | null;
+  isCompleted?: boolean | null;
+  isNew?: boolean | null;
+  isPopular?: boolean | null;
+  sort?: string;
+  page?: number;
+  size?: number;
+} = {}) {
+  const qp = new URLSearchParams();
+  if (params.status) qp.append('status', params.status);
+  if (params.genreIds && params.genreIds.length) params.genreIds.forEach(id => qp.append('genreIds', String(id)));
+  if (params.tagIds && params.tagIds.length) params.tagIds.forEach(id => qp.append('tagIds', String(id)));
+  if (params.minRating != null) qp.append('minRating', String(params.minRating));
+  if (params.year != null) qp.append('year', String(params.year));
+  if (params.type) qp.append('type', params.type);
+  if (params.isDub != null) qp.append('isDub', String(params.isDub));
+  if (params.isSubtitle != null) qp.append('isSubtitle', String(params.isSubtitle));
+  if (params.isExclusive != null) qp.append('isExclusive', String(params.isExclusive));
+  if (params.isCompleted != null) qp.append('isCompleted', String(params.isCompleted));
+  if (params.isNew != null) qp.append('isNew', String(params.isNew));
+  if (params.isPopular != null) qp.append('isPopular', String(params.isPopular));
+  qp.append('sort', params.sort ?? 'id');
+  qp.append('page', String(params.page ?? 0));
+  qp.append('size', String(params.size ?? 20));
+  
+  // getAnimeList와 동일한 응답 처리: 단순히 apiCall만 반환
+  return apiCall(`/api/anime?${qp.toString()}`);
 }
 
 // 애니메이션 상세 정보 조회
@@ -84,4 +123,13 @@ export async function getPopularAnime() {
 // 최신 애니메이션 조회
 export async function getLatestAnime() {
   return apiCall('/api/anime/latest');
+}
+
+// 마스터: 장르/태그 목록
+export async function getGenres() {
+  return apiCall('/api/anime/genres');
+}
+
+export async function getTags() {
+  return apiCall('/api/anime/tags');
 }

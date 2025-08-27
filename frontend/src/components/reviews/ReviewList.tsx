@@ -42,9 +42,13 @@ export default function ReviewList({ animeId }: ReviewListProps) {
 
   useEffect(() => {
     loadReviews();
-    loadCurrentUser();
     loadRatings();
   }, [animeId, sortBy]);
+
+  // 사용자 정보는 리뷰 작성 시에만 필요하므로 별도로 로드
+  useEffect(() => {
+    loadCurrentUser();
+  }, []);
   // animeId 변경 시 별점 통계 항상 로드
   useEffect(() => {
     console.log('🔄 loadRatings triggered by animeId change:', animeId);
@@ -109,7 +113,8 @@ export default function ReviewList({ animeId }: ReviewListProps) {
       const user = await getCurrentUser();
       setCurrentUser(user);
     } catch (error) {
-      console.log('사용자 정보 로드 실패:', error);
+      console.log('사용자 정보 로드 실패 (리뷰 조회에는 영향 없음):', error);
+      // 사용자 정보 로드 실패해도 리뷰 조회는 계속 진행
     }
   };
 

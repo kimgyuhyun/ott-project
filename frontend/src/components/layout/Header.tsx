@@ -29,7 +29,7 @@ export default function Header() {
         {/* 네비게이션 메뉴 */}
         <nav className="hidden md:flex items-center space-x-8 ml-8">
           <Link href="/tags" className="text-white/80 hover:text-white transition-colors">
-            태그별
+            태그검색
           </Link>
           <Link href="/weekly" className="text-white/80 hover:text-white transition-colors">
             요일별 신작
