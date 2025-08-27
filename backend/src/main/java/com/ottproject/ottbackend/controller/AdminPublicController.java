@@ -3,6 +3,8 @@ package com.ottproject.ottbackend.controller;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
@@ -19,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.HashMap;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
 
 /**
  * Admin 공개 컨텐츠(FAQ/혜택/CTA) 정적 제공 1단계 컨트롤러
@@ -40,9 +41,12 @@ public class AdminPublicController { // 공개 컨트롤러 시작
 
     private final ObjectMapper objectMapper = new ObjectMapper(); // JSON 직렬화/역직렬화 도구
 
-    @Operation(summary = "FAQ (정적)") // FAQ 엔드포인트 설명
+    @Operation(summary = "FAQ (정적)", description = "정적 JSON 파일에서 FAQ 컨텐츠를 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping(value = "/faq", produces = MediaType.APPLICATION_JSON_VALUE) // GET /faq JSON 반환
-    public ResponseEntity<List<Map<String, Object>>> getFaq(@RequestParam(defaultValue = "ko") String locale) { // locale 기본 ko
+    public ResponseEntity<List<Map<String, Object>>> getFaq(
+            @Parameter(description = "언어 코드 (ko, en, 기본값: ko)", required = false) 
+            @RequestParam(defaultValue = "ko") String locale) { // locale 기본 ko
         List<Map<String, Object>> all = readListJson("admin/faq.json"); // 전체 JSON 로드
         List<Map<String, Object>> filtered = all.stream() // 스트림 변환
                 .filter(it -> locale.equalsIgnoreCase(String.valueOf(it.getOrDefault("locale", "ko")))) // locale 일치 필터
@@ -50,9 +54,12 @@ public class AdminPublicController { // 공개 컨트롤러 시작
         return ResponseEntity.ok(filtered.isEmpty() ? all : filtered); // 필터 결과 없으면 전체 반환
     }
 
-    @Operation(summary = "혜택 비교 (정적)") // 혜택 비교 설명
+    @Operation(summary = "혜택 비교 (정적)", description = "정적 JSON 파일에서 멤버십 혜택 비교 정보를 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping(value = "/benefits", produces = MediaType.APPLICATION_JSON_VALUE) // GET /benefits JSON
-    public ResponseEntity<List<Map<String, Object>>> getBenefits(@RequestParam(defaultValue = "ko") String locale) { // locale 파라미터
+    public ResponseEntity<List<Map<String, Object>>> getBenefits(
+            @Parameter(description = "언어 코드 (ko, en, 기본값: ko)", required = false) 
+            @RequestParam(defaultValue = "ko") String locale) { // locale 파라미터
         List<Map<String, Object>> all = readListJson("admin/benefits.json"); // JSON 로드
         List<Map<String, Object>> filtered = all.stream() // 스트림 변환
                 .filter(it -> locale.equalsIgnoreCase(String.valueOf(it.getOrDefault("locale", "ko")))) // locale 필터
@@ -60,9 +67,12 @@ public class AdminPublicController { // 공개 컨트롤러 시작
         return ResponseEntity.ok(filtered.isEmpty() ? all : filtered); // 결과 반환
     }
 
-    @Operation(summary = "CTA (정적)") // CTA 설명
+    @Operation(summary = "CTA (정적)", description = "정적 JSON 파일에서 CTA(Call-to-Action) 컨텐츠를 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping(value = "/cta", produces = MediaType.APPLICATION_JSON_VALUE) // GET /cta JSON
-    public ResponseEntity<Map<String, Object>> getCta(@RequestParam(defaultValue = "ko") String locale) { // locale 파라미터
+    public ResponseEntity<Map<String, Object>> getCta(
+            @Parameter(description = "언어 코드 (ko, en, 기본값: ko)", required = false) 
+            @RequestParam(defaultValue = "ko") String locale) { // locale 파라미터
         List<Map<String, Object>> all = readListJson("admin/cta.json"); // JSON 로드
         Map<String, Object> first = all.stream() // 스트림 변환
                 .filter(it -> locale.equalsIgnoreCase(String.valueOf(it.getOrDefault("locale", "ko")))) // locale 필터
