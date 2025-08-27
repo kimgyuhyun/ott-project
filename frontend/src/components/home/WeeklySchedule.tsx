@@ -15,7 +15,11 @@ type AnimeItem = {
  * 요일별 애니메이션 스케줄 컴포넌트
  * 요일별 탭과 해당 요일의 애니메이션 목록 표시
  */
-export default function WeeklySchedule() {
+type WeeklyScheduleProps = {
+  onAnimeClick?: (anime: AnimeItem) => void;
+};
+
+export default function WeeklySchedule({ onAnimeClick }: WeeklyScheduleProps) {
   const [selectedDay, setSelectedDay] = useState(4); // 기본값: 금요일 (인덱스 4)
   
   const days = ["월", "화", "수", "목", "금", "토", "일"];
@@ -115,6 +119,7 @@ export default function WeeklySchedule() {
                 rating={anime.rating}
                 badge={anime.badge}
                 episode={anime.episode}
+                onClick={() => onAnimeClick?.(anime)}
               />
             ))}
           </div>

@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReviewList from "@/components/reviews/ReviewList";
+import { getAnimeDetail } from "@/lib/api/anime";
 
 interface AnimeDetailModalProps {
   anime: any;
@@ -14,11 +15,27 @@ interface AnimeDetailModalProps {
  */
 export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'episodes' | 'reviews' | 'shop' | 'similar'>('episodes');
+  const [detail, setDetail] = useState<any>(anime);
+
+  useEffect(() => {
+    setDetail(anime);
+  }, [anime]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const id = anime?.aniId ?? anime?.id;
+    const needsFetch = !Array.isArray(anime?.genres) || anime.genres.length === 0 || !Array.isArray(anime?.episodes);
+    if (id && needsFetch) {
+      getAnimeDetail(Number(id))
+        .then((d) => setDetail((prev: any) => ({ ...prev, ...d })))
+        .catch(() => {});
+    }
+  }, [isOpen, anime]);
 
   // 디버깅: anime 객체 확인
-  console.log('🔍 AnimeDetailModal - anime 객체:', anime);
-  console.log('🔍 AnimeDetailModal - anime.aniId:', anime?.aniId);
-  console.log('🔍 AnimeDetailModal - anime 타입:', typeof anime);
+  console.log('🔍 AnimeDetailModal - anime 객체:', detail);
+  console.log('🔍 AnimeDetailModal - anime.aniId:', detail?.aniId);
+  console.log('🔍 AnimeDetailModal - anime 타입:', typeof detail);
 
   if (!isOpen) return null;
 
@@ -29,26 +46,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     { id: 'similar', label: '비슷한 작품', count: null }
   ];
 
-  const episodes = [
-    {
-      id: 1,
-      title: "1화 2016년의 너에게",
-      duration: "37분",
-      date: "2025.07.18",
-      thumbnail: "https://placehold.co/120x80/ff69b4/ffffff?text=Episode+1",
-      description: "이건 깜짝 파티에도 쓰는 도구인데피....",
-      fullDescription: "행복을 전파하기 위해 지구에 내려온 해피성인의 타코피는 인간 여자아이인 시즈카와 만났다. 위기인 가운데 시즈카가 자신을 구해주자, 타코피는 그녀의 미소를 되찾기 위해 수수께끼의 힘을 가진 해피 도구를 사용해 분주히 움직였다...."
-    },
-    {
-      id: 2,
-      title: "2화 타코피의 구제",
-      duration: "21분",
-      date: "2025.07.25",
-      thumbnail: "https://placehold.co/120x80/ff69b4/ffffff?text=Episode+2",
-      description: "타코피의 구제를 위한 새로운 모험이 시작된다.",
-      fullDescription: "타코피의 구제를 위한 새로운 모험이 시작된다."
-    }
-  ];
+  const episodes = Array.isArray(detail?.episodes) ? detail.episodes : [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -89,8 +87,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
           <div className="absolute top-1/2 right-6 transform -translate-y-1/2 z-10">
             <div className="w-24 h-32 bg-white rounded-lg overflow-hidden shadow-lg border-2 border-purple-200">
               <img 
-                src={anime?.posterUrl || "https://placehold.co/96x128/ff69b4/ffffff?text=LAFTEL+ONLY"} 
-                alt={`${anime?.title || '애니메이션'} 포스터`}
+                src={detail?.posterUrl || "https://placehold.co/96x128/ff69b4/ffffff?text=LAFTEL+ONLY"} 
+                alt={`${detail?.title || '애니메이션'} 포스터`}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -103,29 +101,32 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               <div className="flex items-center space-x-1">
                 <span className="text-yellow-500 text-lg">★</span>
                 <span className="font-semibold text-lg text-gray-800">
-                  {anime?.rating?.toFixed(1) || '4.7'}
+                  {typeof detail?.rating === 'number' ? detail.rating.toFixed(1) : 'N/A'}
                 </span>
               </div>
               <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
-                {anime?.badges?.[0] || 'ONLY'}
+                {detail?.badges?.[0] || 'ONLY'}
               </span>
             </div>
 
             {/* 애니메이션 제목 */}
             <h1 className="text-3xl font-bold text-gray-800 mb-4">
-              {anime?.title || '타코피의 원죄'}
+              {detail?.title || '제목 없음'}
             </h1>
 
             {/* 장르 및 정보 */}
             <div className="flex flex-wrap items-center gap-3 mb-6">
-              <span className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm">
-                {anime?.genres?.[0] || '개그'}
-              </span>
-              <span className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm">
-                {anime?.genres?.[1] || '판타지'}
-              </span>
+              {Array.isArray(detail?.genres) && detail.genres.length > 0 ? (
+                detail.genres.slice(0, 6).map((g: any, idx: number) => (
+                  <span key={idx} className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm">
+                    {g?.name || g}
+                  </span>
+                ))
+              ) : (
+                <span className="px-3 py-1 bg-gray-200 text-gray-700 rounded-full text-sm">장르 정보 없음</span>
+              )}
               <span className="text-gray-600 text-sm">
-                {anime?.episodeCount || '12'}화 완결
+                {(detail?.totalEpisodes ?? detail?.episodeCount ?? '정보 없음')}화
               </span>
             </div>
 
@@ -134,7 +135,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               <button 
                                  onClick={() => {
                    // 플레이어 페이지로 이동
-                   window.open(`/player?episodeId=1&animeId=${anime?.aniId}`, '_blank');
+                   window.open(`/player?episodeId=1&animeId=${detail?.aniId}`, '_blank');
                  }}
                 className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors flex items-center space-x-2"
               >
@@ -161,7 +162,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-3">시놉시스</h3>
               <p className="text-gray-600 leading-relaxed">
-                {anime?.synopsis || "행복을 전파하기 위해 지구에 내려온 해피성인의 타코피는 인간 여자아이인 시즈카와 만났다. 위기인 가운데 시즈카가 자신을 구해주자, 타코피는 그녀의 미소를 되찾기 위해 수수께끼의 힘을 가진 해피 도구를 사용해 분주히 움직였다..."}
+                {detail?.synopsis || detail?.fullSynopsis || "시놉시스 정보가 없습니다."}
               </p>
             </div>
           </div>
@@ -195,11 +196,12 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             <div>
               <h3 className="text-lg font-semibold text-gray-800 mb-4">에피소드 목록</h3>
               <div className="space-y-4">
-                {episodes.map((episode) => (
+                {episodes.length > 0 ? (
+                  episodes.map((episode: any) => (
                   <div key={episode.id} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
                     <div className="flex-shrink-0">
                       <img 
-                        src={episode.thumbnail} 
+                        src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
                         alt={episode.title}
                         className="w-20 h-14 object-cover rounded"
                       />
@@ -210,38 +212,41 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                           {episode.title}
                         </h4>
                         <div className="flex items-center space-x-3 text-xs text-gray-500">
-                          <span>{episode.duration}</span>
-                          <span>{episode.date}</span>
+                          <span>{episode.duration ? `${episode.duration}분` : ''}</span>
+                          <span>{episode.createdAt ? String(episode.createdAt).slice(0,10) : ''}</span>
                         </div>
                       </div>
                       <p className="text-sm text-gray-600 line-clamp-2">
-                        {episode.description}
+                        {episode.description || ''}
                       </p>
                     </div>
                     <button 
                       onClick={() => {
                         // 플레이어 페이지로 이동
-                        window.open(`/player?episodeId=${episode.id}&animeId=${anime?.id}`, '_blank');
+                        window.open(`/player?episodeId=${episode.id}&animeId=${detail?.aniId ?? detail?.id}`, '_blank');
                       }}
                       className="flex-shrink-0 px-3 py-1 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 transition-colors"
                     >
                       재생
                     </button>
                   </div>
-                ))}
+                ))
+                ) : (
+                  <div className="text-center text-gray-500 py-6">에피소드 정보가 없습니다.</div>
+                )}
               </div>
             </div>
           )}
 
           {/* 리뷰 탭: ReviewList 항상 마운트되도록 렌더링, 탭 아닐 때는 hidden 처리 */}
           <div className={activeTab === 'reviews' ? '' : 'hidden'}>
-            {anime?.aniId ? (
-              <ReviewList key={anime.aniId} animeId={anime.aniId} />
+            {detail?.aniId ? (
+              <ReviewList key={detail?.aniId ?? detail?.id} animeId={(detail?.aniId ?? detail?.id) as number} />
             ) : (
               <div className="text-center py-12 text-red-500">
                 <p>⚠️ 애니메이션 ID를 찾을 수 없습니다.</p>
                 <p className="text-sm text-gray-500 mt-2">
-                  anime 객체: {JSON.stringify(anime, null, 2)}
+                  anime 객체: {JSON.stringify(detail, null, 2)}
                 </p>
               </div>
             )}
