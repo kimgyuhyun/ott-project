@@ -30,6 +30,7 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
             @Param("tagIds") List<Long> tagIds, // 태그 OR 필터
             @Param("minRating") Double minRating, // 최소 평점
             @Param("year") Integer year, // 방영 연도
+            @Param("type") String type, // 출시 타입(TV/MOVIE/OVA/SPECIAL/WEB 등)
             @Param("isDub") Boolean isDub, // 더빙 여부
             @Param("isSubtitle") Boolean isSubtitle, // 자막 여부
             @Param("isExclusive") Boolean isExclusive, // 독점 여부
@@ -48,12 +49,19 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
             @Param("tagIds") List<Long> tagIds, // 태그 OR 필터
             @Param("minRating") Double minRating,
             @Param("year") Integer year,
+            @Param("type") String type,
             @Param("isDub") Boolean isDub,
             @Param("isSubtitle") Boolean isSubtitle,
             @Param("isExclusive") Boolean isExclusive,
             @Param("isCompleted") Boolean isCompleted,
             @Param("isNew") Boolean isNew,
             @Param("isPopular") Boolean isPopular
+    );
+
+    // 주간 요일별 조회
+    List<AnimeListDto> findWeeklyByDay(
+            @Param("day") String day,
+            @Param("limit") int limit
     );
 
     // 상세: 태그 목록 조회(선택)
@@ -68,6 +76,10 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
     List<EpisodeDto> findEpisodesByAniId(@Param("aniId") Long aniId); // 상세: 에피소드 리스트 (anime 기준)
     List<GenreSimpleDto> findGenresByAniId(@Param("aniId") Long aniId); // 상세: 장르 리스트 (anime 기준)
     List<StudioSimpleDto> findStudiosByAniId(@Param("aniId") Long aniId); // 상세: 제작사 리스트 (anime 기준)
+
+    // 마스터: 전체 장르/태그 목록
+    List<GenreSimpleDto> findAllGenres();
+    List<TagSimpleDto> findAllTags();
 }
 
 
