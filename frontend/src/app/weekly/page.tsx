@@ -157,18 +157,22 @@ export default function WeeklyPage() {
           {/* 선택된 요일의 애니메이션 그리드 */}
           {currentAnimes.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {currentAnimes.map((anime: any) => (
-                <AnimeCard
-                  key={anime.id}
-                  aniId={anime.id}
-                  title={anime.title}
-                  posterUrl={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
-                  rating={anime.rating}
-                  badge={anime.badges?.[0]}
-                  episode={anime.episode}
-                  onClick={() => handleAnimeClick(anime)}
-                />
-              ))}
+              {currentAnimes.map((anime: any, index: number) => {
+                const itemId = anime.id ?? anime.aniId ?? index;
+                const key = `${itemId}-${anime.title ?? 'item'}`;
+                return (
+                  <AnimeCard
+                    key={key}
+                    aniId={Number(itemId)}
+                    title={anime.title}
+                    posterUrl={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
+                    rating={anime.rating}
+                    badge={anime.badges?.[0]}
+                    episode={anime.episode}
+                    onClick={() => handleAnimeClick(anime)}
+                  />
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12">

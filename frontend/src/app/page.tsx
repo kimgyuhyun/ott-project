@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import WeeklySchedule from "@/components/home/WeeklySchedule";
+import { getAnimeDetail } from "@/lib/api/anime";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import { useAuth } from "@/lib/AuthContext";
 import { getAnimeList, getRecommendedAnime, getPopularAnime } from "@/lib/api/anime";
@@ -118,9 +119,23 @@ export default function Home() {
   // 테스트용 임시 로그인 제거
 
   // 애니메이션 클릭 핸들러
-  const handleAnimeClick = (anime: any) => {
-    setSelectedAnime(anime);
-    setIsModalOpen(true);
+  const handleAnimeClick = async (anime: any) => {
+    try {
+      // 목록 DTO에는 필드가 적으므로 상세 조회로 모달 데이터 보강
+      const id = anime?.aniId ?? anime?.id;
+      if (id) {
+        const detail = await getAnimeDetail(id);
+        setSelectedAnime(detail);
+      } else {
+        // id가 없으면 목록 객체라도 표시
+        setSelectedAnime(anime);
+      }
+    } catch (e) {
+      console.warn('상세 조회 실패, 목록 데이터로 대체합니다.', e);
+      setSelectedAnime(anime);
+    } finally {
+      setIsModalOpen(true);
+    }
   };
 
   if (isLoading) {
@@ -212,7 +227,7 @@ export default function Home() {
         <div className="bg-white">
           {/* 요일별 스케줄 */}
           <div className="max-w-7xl mx-auto px-6 py-12">
-            <WeeklySchedule />
+            <WeeklySchedule onAnimeClick={handleAnimeClick} />
           </div>
           
           {/* 추천 애니메이션 */}
