@@ -36,7 +36,41 @@ export default function Home() {
   
   const { user, isAuthenticated, login, logout } = useAuth();
 
+  // 메인 페이지 테마 설정 (사용자 설정 연동)
+  useEffect(() => {
+    const setTheme = async () => {
+      if (isAuthenticated && user) {
+        // 로그인된 사용자: 설정에서 테마 가져오기
+        try {
+          const response = await fetch('/api/users/me/settings', {
+            credentials: 'include'
+          });
+          if (response.ok) {
+            const settings = await response.json();
+            // 사용자가 테마를 설정했는지 확인
+            if (settings.theme && (settings.theme === 'light' || settings.theme === 'dark')) {
+              // 사용자 설정 테마 사용
+              document.documentElement.setAttribute('data-theme', settings.theme);
+            } else {
+              // 테마 설정 안함: 메인 페이지 기본값 light
+              document.documentElement.setAttribute('data-theme', 'light');
+            }
+          } else {
+            // 설정 로드 실패시 메인 페이지 기본값
+            document.documentElement.setAttribute('data-theme', 'light');
+          }
+        } catch (error) {
+          console.error('테마 설정 로드 실패:', error);
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } else {
+        // 비로그인: 메인 페이지 기본값 light
+        document.documentElement.setAttribute('data-theme', 'light');
+      }
+    };
 
+    setTheme();
+  }, [isAuthenticated, user]);
 
   // 소셜 로그인 후 사용자 상태 확인 (간소화)
   useEffect(() => {
