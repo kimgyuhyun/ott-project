@@ -18,13 +18,17 @@ import com.ottproject.ottbackend.entity.User;
 public interface PaymentGateway { // 게이트웨이 추상화 시작
 
 	/**
-	 * 체크아웃 세션 생성
+	 * 체크아웃 세션 생성 (prepare-only)
+	 *
+	 * 동작:
+	 * - 게이트웨이에 /payments/prepare 등록만 수행하여 merchant_uid(세션)와 금액을 고정한다.
+	 * - 실제 결제창 호출은 프론트엔드 JS SDK가 수행한다.
 	 *
 	 * 반환:
-	 * - sessionId: 게이트웨이 세션 식별자
-	 * - redirectUrl: 결제창으로 이동할 URL
+	 * - sessionId: 게이트웨이 세션 식별자(merchant_uid)
+	 * - redirectUrl: (prepare-only에서는 사용 안 함, null 권장)
 	 */
-	CheckoutSession createCheckoutSession(User user, MembershipPlan plan, String successUrl, String cancelUrl); // 세션 생성 시그니처
+	CheckoutSession createCheckoutSession(User user, MembershipPlan plan, String successUrl, String cancelUrl, String paymentService, long amount); // 세션 생성 시그니처
 
 	final class CheckoutSession { // 반환 DTO 내장형
 		public String sessionId; // 게이트웨이 세션 ID

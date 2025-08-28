@@ -33,11 +33,11 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	@Value("${iamport.api.base:https://api.iamport.kr}")
 	private String apiBase; // API Base
 
-	@Value("${iamport.api.key:}")
-	private String apiKey; // REST API Key
+	@Value("${iamport.rest.api-key:}")
+	private String apiKey; // REST API Key (application-*.yml: iamport.rest.api-key)
 
-	@Value("${iamport.api.secret:}")
-	private String apiSecret; // REST API Secret
+	@Value("${iamport.rest.api-secret:}")
+	private String apiSecret; // REST API Secret (application-*.yml: iamport.rest.api-secret)
 
 	@Value("${iamport.webhook.secret:}")
 	private String webhookSecret; // 웹훅 서명 비밀키(선택)
@@ -45,17 +45,20 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	private final RestTemplate rest = new RestTemplate(); // REST 클라이언트
 
 	@Override // 인터페이스 구현
-	public CheckoutSession createCheckoutSession(User user, MembershipPlan plan, String successUrl, String cancelUrl) { // 세션 생성
+	public CheckoutSession createCheckoutSession(User user, MembershipPlan plan, String successUrl, String cancelUrl, String paymentService, long amount) { // 세션 생성(prepare-only)
 		String token = getAccessToken(); // 토큰 발급
 		String merchantUid = "order_" + System.currentTimeMillis(); // 고유 주문번호
 		HttpHeaders h = bearer(token); // 인증 헤더
 		h.setContentType(MediaType.APPLICATION_JSON); // JSON 바디
-		String prepareBody = String.format("{\"merchant_uid\":\"%s\",\"amount\":%d}", merchantUid, plan.getPrice().getAmount()); // 준비 바디
+		// NOTE: prepare-only: 서버는 /payments/prepare로 금액을 고정만 합니다. 실제 결제창 호출은 프론트 JS SDK가 수행합니다.
+		// dev 환경에서 payments.test-amount가 설정되면 PaymentCommandService에서 전달된 amount(예: 1원)로 prepare합니다.
+		String prepareBody = String.format("{\"merchant_uid\":\"%s\",\"amount\":%d}", merchantUid, amount); // 준비 바디
 		rest.exchange(apiBase + "/payments/prepare", HttpMethod.POST, new HttpEntity<>(prepareBody, h), String.class); // 결제 준비 등록
 
 		CheckoutSession session = new CheckoutSession(); // 반환 객체 생성
 		session.sessionId = merchantUid; // 세션 ID
-		session.redirectUrl = successUrl != null && !successUrl.isBlank() ? successUrl + "?merchantUid=" + merchantUid : (cancelUrl != null ? cancelUrl : ""); // 리다이렉트 URL 구성
+		// prepare-only 전환: 백엔드는 결제창 URL을 조립하지 않습니다. 프론트가 JS SDK로 호출합니다.
+		session.redirectUrl = null; // 사용하지 않음
 		return session; // 반환
 	}
 

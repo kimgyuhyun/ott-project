@@ -17,6 +17,7 @@ import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -48,6 +49,10 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final PaymentGateway paymentGateway; // 게이트웨이 어댑터(IMPORT 구현 주입)
 	private final PlayerProgressReadService playerProgressReadService; // 플레이어 진행률 읽기 서비스(누적 시청 검증)
 	private final MembershipSubscriptionRepository subscriptionRepository; // 구독 리포지토리(웹훅 전이 반영)
+
+	// 테스트 결제 금액(원). 0이면 실제 플랜 금액으로 결제
+	@Value("${payments.test-amount:0}")
+	private long testAmount;
 
 	/**
 	 * 웹훅 서명 검증
@@ -87,20 +92,24 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		MembershipPlan plan = membershipPlanRepository.findByCode(req.planCode) // 플랜 조회
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "플랜이 존재하지 않습니다.")); // 400
 
+		long chargeAmount = (testAmount > 0 ? testAmount : plan.getPrice().getAmount()); // 테스트금액 우선
+
 		Payment payment = Payment.builder() // 결제 엔티티 생성
 				.user(User.builder().id(userId).build()) // 사용자 FK
 				.membershipPlan(plan) // 플랜 FK
 				.provider(com.ottproject.ottbackend.enums.PaymentProvider.IMPORT) // IMPORT 사용
-				.price(new com.ottproject.ottbackend.entity.Money(plan.getPrice().getAmount(), plan.getPrice().getCurrency())) // 금액/통화 VO
+				.price(new com.ottproject.ottbackend.entity.Money(chargeAmount, plan.getPrice().getCurrency())) // 금액/통화 VO
 				.status(PaymentStatus.PENDING) // 초기 상태
 				.build(); // 빌드
 		paymentRepository.save(payment); // 저장
 
-		PaymentGateway.CheckoutSession session = paymentGateway.createCheckoutSession( // 게이트웨이 세션 생성
+		PaymentGateway.CheckoutSession session = paymentGateway.createCheckoutSession( // 게이트웨이 세션 생성 (prepare-only)
 				payment.getUser(), // 사용자 정보
 				plan, // 플랜 정보
-				req.successUrl, // 성공 URL
-				req.cancelUrl // 취소 URL
+				req.successUrl, // 성공 URL (웹훅/회계용 전달)
+				req.cancelUrl, // 취소 URL (웹훅/회계용 전달)
+				req.paymentService, // 선택 결제 서비스(프론트 SDK 매핑 용도만)
+				chargeAmount // 실제 prepare 금액(테스트 시 1원 등)
 		); // 세션 반환
 
 		payment.setProviderSessionId(session.sessionId); // 세션 ID 저장
@@ -115,7 +124,9 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		}
 
 		PaymentCheckoutCreateSuccessResponseDto res = new PaymentCheckoutCreateSuccessResponseDto(); // 응답 DTO
-		res.redirectUrl = session.redirectUrl; // 게이트웨이에서 받은 결제창 URL
+		res.redirectUrl = session.redirectUrl; // prepare-only 전환 이후 null (프론트 SDK가 결제창 호출)
+		res.providerSessionId = session.sessionId; // merchant_uid(세션)
+		res.amount = chargeAmount; // 결제 금액(검증용)
 		res.paymentId = payment.getId(); // 내부 결제 ID
 		return res; // 반환
 	}
