@@ -42,7 +42,7 @@ public class SettingsController { // 사용자 설정 관리
 	 */
     @Operation(summary = "내 설정 조회", description = "현재 로그인 사용자의 재생 환경 설정을 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping
+    @GetMapping("/settings")
 	public ResponseEntity<UserSettingsDto> get(HttpSession session) { // 세션 입력
 		Long userId = securityUtil.requireCurrentUserId(session); // 사용자 확인(401 가능)
 		return ResponseEntity.ok(service.get(userId)); // 설정 반환

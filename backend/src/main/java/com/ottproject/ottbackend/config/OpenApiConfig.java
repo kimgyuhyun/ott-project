@@ -18,7 +18,7 @@ import org.springframework.context.annotation.Configuration; // 스프링 설정
         ),
         servers = {}
 )
-public class OpenApiConfig { // 전역 OpenAPI 설정 클래스(빈 생성 불필요, 어노테이션만으로 동작)
+public class    OpenApiConfig { // 전역 OpenAPI 설정 클래스(빈 생성 불필요, 어노테이션만으로 동작)
 }
 
 

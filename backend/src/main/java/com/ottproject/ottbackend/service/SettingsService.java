@@ -35,10 +35,11 @@ public class SettingsService { // 사용자 재생 설정
 						.autoSkipEnding(u.getAutoSkipEnding())
 						.defaultQuality(u.getDefaultQuality())
 						.autoNextEpisode(u.getAutoNextEpisode())
+						.theme(u.getTheme())
 						.build())
 				.orElse(UserSettingsDto.builder()
-						.autoSkipIntro(true).autoSkipEnding(true).defaultQuality("auto").autoNextEpisode(true)
-						.build()); // 기본값
+						.autoSkipIntro(true).autoSkipEnding(true).defaultQuality("auto").autoNextEpisode(true).theme(null)
+						.build()); // 기본값 (theme=null은 설정 안함 의미)
 	}
 	/**
 	 * 사용자 설정 업데이트(부분 갱신)
@@ -50,6 +51,7 @@ public class SettingsService { // 사용자 재생 설정
 		if (dto.getAutoSkipEnding()!=null) entity.setAutoSkipEnding(dto.getAutoSkipEnding()); // 엔딩
 		if (dto.getDefaultQuality()!=null) entity.setDefaultQuality(dto.getDefaultQuality()); // 화질
 		if (dto.getAutoNextEpisode()!=null) entity.setAutoNextEpisode(dto.getAutoNextEpisode()); // 자동 다음화
+		if (dto.getTheme()!=null) entity.setTheme(dto.getTheme()); // 테마
 		repo.save(entity); // 저장
 	}
 }

@@ -95,6 +95,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/episodes/*/skips/track").permitAll() // 스킵 사용 로깅 공개
                         .requestMatchers("/api/admin/public/**").permitAll() // Admin 공개 컨텐츠
                         .requestMatchers("/api/anime/**").permitAll() // 애니메이션 조회 공개 (인증 없이 접근 가능)
+                        .requestMatchers("/api/memberships/plans").permitAll() // 멤버십 플랜 조회 공개 (인증 없이 접근 가능)
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll() // OpenAPI
                         .requestMatchers("/").permitAll() // 루트 경로 허용 (헬스체크용)
                         .requestMatchers("/health").permitAll() // 헬스체크 경로 허용

@@ -34,16 +34,21 @@ export default function MembershipModal({ isOpen, onClose }: MembershipModalProp
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* 배경 오버레이 */}
       <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 backdrop-blur-sm"
+        style={{ backgroundColor: 'var(--background-dim-1, rgba(0,0,0,0.7))' }}
         onClick={onClose}
       />
       
       {/* 모달 컨테이너 */}
-      <div className="relative bg-gray-800 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+      <div className="relative rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl" style={{ 
+        backgroundColor: 'var(--background-1, #121212)',
+        border: '1px solid var(--border-1, #323232)'
+      }}>
         {/* 닫기 버튼 */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-white/70 hover:text-white transition-colors"
+          className="absolute top-4 right-4 transition-colors"
+          style={{ color: 'var(--foreground-3, #ABABAB)' }}
           aria-label="닫기"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -53,10 +58,10 @@ export default function MembershipModal({ isOpen, onClose }: MembershipModalProp
 
         {/* 헤더 */}
         <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-200 mb-2">
+          <h2 className="text-2xl font-bold mb-2" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>
             멤버십 선택
           </h2>
-          <p className="text-gray-400 text-sm">
+          <p className="text-sm" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
             언제든 해지가 가능해요!
           </p>
         </div>
@@ -65,37 +70,45 @@ export default function MembershipModal({ isOpen, onClose }: MembershipModalProp
         <div className="space-y-4 mb-8">
           {/* Basic 플랜 */}
           <div
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              selectedPlan === 'basic' 
-                ? 'border-purple-500 bg-purple-500/10' 
-                : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
-            }`}
+            className={`p-4 rounded-lg border-2 cursor-pointer transition-all`}
+            style={{
+              backgroundColor: selectedPlan === 'basic' 
+                ? 'var(--background-highlight, rgba(129, 107, 255, 0.1))' 
+                : 'var(--background-2, #000000)',
+              borderColor: selectedPlan === 'basic' 
+                ? 'var(--foreground-slight, #816BFF)' 
+                : 'var(--border-1, #323232)'
+            }}
             onClick={() => setSelectedPlan('basic')}
           >
             <div className="flex justify-between items-center">
-              <span className="text-white font-medium">{plans.basic.name}</span>
-              <span className="text-white/80 text-sm">{plans.basic.features}</span>
+              <span className="font-medium" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>{plans.basic.name}</span>
+              <span className="text-sm" style={{ color: 'var(--foreground-3, #ABABAB)' }}>{plans.basic.features}</span>
             </div>
             <div className="mt-2">
-              <span className="text-white font-semibold">{plans.basic.price}</span>
+              <span className="font-semibold" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>{plans.basic.price}</span>
             </div>
           </div>
 
           {/* Premium 플랜 */}
           <div
-            className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-              selectedPlan === 'premium' 
-                ? 'border-purple-500 bg-purple-500/10' 
-                : 'border-gray-600 bg-gray-700/50 hover:border-gray-500'
-            }`}
+            className={`p-4 rounded-lg border-2 cursor-pointer transition-all`}
+            style={{
+              backgroundColor: selectedPlan === 'premium' 
+                ? 'var(--background-highlight, rgba(129, 107, 255, 0.1))' 
+                : 'var(--background-2, #000000)',
+              borderColor: selectedPlan === 'premium' 
+                ? 'var(--foreground-slight, #816BFF)' 
+                : 'var(--border-1, #323232)'
+            }}
             onClick={() => setSelectedPlan('premium')}
           >
             <div className="flex justify-between items-center">
-              <span className="text-white font-medium">{plans.premium.name}</span>
-              <span className="text-white/80 text-sm">{plans.premium.features}</span>
+              <span className="font-medium" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>{plans.premium.name}</span>
+              <span className="text-sm" style={{ color: 'var(--foreground-3, #ABABAB)' }}>{plans.premium.features}</span>
             </div>
             <div className="mt-2">
-              <span className="text-white font-semibold">{plans.premium.price}</span>
+              <span className="font-semibold" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>{plans.premium.price}</span>
             </div>
           </div>
         </div>
@@ -107,7 +120,8 @@ export default function MembershipModal({ isOpen, onClose }: MembershipModalProp
             console.log(`${selectedPlan} 멤버십 시작`);
             onClose();
           }}
-          className="w-full py-4 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-colors duration-200 transform hover:scale-105"
+          className="w-full py-4 font-semibold rounded-lg transition-colors duration-200 transform hover:scale-105"
+          style={{ backgroundColor: 'var(--foreground-slight, #816BFF)', color: 'var(--foreground-1, #F7F7F7)' }}
         >
           {plans[selectedPlan].name} 멤버십 시작하기
         </button>

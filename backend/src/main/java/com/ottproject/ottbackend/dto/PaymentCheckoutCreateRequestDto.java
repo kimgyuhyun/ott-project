@@ -15,6 +15,7 @@ public class PaymentCheckoutCreateRequestDto { // 체크아웃 생성 요청 DTO
 	public String successUrl; // 결제 성공 시 리다이렉트 URL(선택)
 	public String cancelUrl; // 결제 취소 시 리다이렉트 URL(선택)
 	public String idempotencyKey; // 멱등키(선택, 중복 요청 방지)
+    public String paymentService; // 결제 서비스 선택(kakao|toss|nice)
 }
 
 

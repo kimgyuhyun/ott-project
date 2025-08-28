@@ -28,43 +28,127 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 // 멤버십 플랜 목록 조회
 export async function getMembershipPlans() {
-  return apiCall('/api/memberships/plans');
+  return apiCall<MembershipPlan[]>('/api/memberships/plans');
 }
 
 // 사용자 멤버십 구독 상태 조회
 export async function getUserMembership() {
-  return apiCall('/api/users/me/membership');
+  return apiCall<UserMembership>('/api/users/me/membership');
 }
 
 // 멤버십 구독 시작
-export async function subscribeMembership(planId: number, paymentMethodId: number) {
-  return apiCall('/api/memberships/subscribe', {
+export async function subscribeMembership(planCode: string) {
+  return apiCall<UserMembership>('/api/memberships/subscribe', {
     method: 'POST',
-    body: JSON.stringify({ planId, paymentMethodId }),
+    body: JSON.stringify({ planCode }),
   });
 }
 
 // 멤버십 구독 취소
-export async function cancelMembership() {
-  return apiCall('/api/memberships/cancel', {
+export async function cancelMembership(idempotencyKey?: string) {
+  return apiCall<UserMembership>('/api/memberships/cancel', {
     method: 'POST',
+    body: JSON.stringify({ idempotencyKey }),
   });
 }
 
-// 결제 수단 등록
-export async function registerPaymentMethod(paymentMethod: any) {
-  return apiCall('/api/payment/methods', {
+// 결제수단 등록
+export async function registerPaymentMethod(paymentMethod: PaymentMethodRegisterRequest) {
+  return apiCall<void>('/api/payment-methods', {
     method: 'POST',
     body: JSON.stringify(paymentMethod),
   });
 }
 
-// 결제 수단 목록 조회
+// 결제수단 목록 조회
 export async function getPaymentMethods() {
-  return apiCall('/api/payment/methods');
+  return apiCall<PaymentMethodResponse[]>('/api/payment-methods');
+}
+
+// 결제수단 기본 지정
+export async function setDefaultPaymentMethod(id: number) {
+  return apiCall<void>(`/api/payment-methods/${id}/default`, {
+    method: 'PUT',
+  });
+}
+
+// 결제수단 삭제
+export async function deletePaymentMethod(id: number) {
+  return apiCall<void>(`/api/payment-methods/${id}`, {
+    method: 'DELETE',
+  });
 }
 
 // 결제 내역 조회
-export async function getPaymentHistory(page: number = 0, size: number = 20) {
-  return apiCall(`/api/payment/history?page=${page}&size=${size}`);
+export async function getPaymentHistory(start?: string, end?: string) {
+  const params = new URLSearchParams();
+  if (start) params.append('start', start);
+  if (end) params.append('end', end);
+  
+  return apiCall<PaymentHistoryItem[]>(`/api/payments/history?${params.toString()}`);
+}
+
+// 체크아웃 생성 (결제창 이동용)
+export async function createCheckout(planCode: string, successUrl?: string, cancelUrl?: string, idempotencyKey?: string, paymentService?: string) {
+  return apiCall<PaymentCheckoutCreateSuccess>(`/api/payments/checkout`, {
+    method: 'POST',
+    body: JSON.stringify({ planCode, successUrl, cancelUrl, idempotencyKey, paymentService }),
+  });
+}
+
+// 타입 정의
+export interface MembershipPlan {
+  id: number;
+  code: string;
+  name: string;
+  monthlyPrice: number;
+  duration: number;
+  maxConcurrentStreams: number;
+  quality: string;
+}
+
+export interface UserMembership {
+  id: number;
+  planCode: string;
+  planName: string;
+  startDate: string;
+  endDate: string;
+  autoRenew: boolean;
+  status: string;
+}
+
+export interface PaymentMethodResponse {
+  id: number;
+  type: string;
+  last4?: string;
+  brand?: string;
+  expiryMonth?: number;
+  expiryYear?: number;
+  isDefault: boolean;
+  createdAt: string;
+}
+
+export interface PaymentMethodRegisterRequest {
+  type: string;
+  cardNumber?: string;
+  expiryMonth?: number;
+  expiryYear?: number;
+  birthDate?: string;
+  password?: string;
+}
+
+export interface PaymentHistoryItem {
+  id: number;
+  amount: number;
+  currency: string;
+  status: string;
+  createdAt: string;
+  description: string;
+}
+
+export interface PaymentCheckoutCreateSuccess {
+  redirectUrl: string | null; // prepare-only 전환으로 null 가능
+  paymentId: number;
+  providerSessionId: string; // merchant_uid
+  amount: number; // 결제 금액(dev에서는 1원)
 }
