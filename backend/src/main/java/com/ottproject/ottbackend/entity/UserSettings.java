@@ -47,8 +47,8 @@ public class UserSettings { // 사용자 재생 설정
     @Column(nullable = false) @Builder.Default // 다음 화 자동재생
     private Boolean autoNextEpisode = true; // 자동 다음 화
 
-    @Column(nullable = false) @Builder.Default // 테마 설정
-    private String theme = "light"; // light|dark
+    @Column(nullable = true) @Builder.Default // 테마 설정 (null=설정안함)
+    private String theme = null; // light|dark|null
 
     @Column(nullable = false) @Builder.Default // 언어 설정
     private String language = "ko"; // ko|en|ja
