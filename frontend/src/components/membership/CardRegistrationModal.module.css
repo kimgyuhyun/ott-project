@@ -1,0 +1,207 @@
+/* 카드 등록 모달 오버레이 */
+.cardRegistrationOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* 카드 등록 모달 컨테이너 */
+.cardRegistrationContainer {
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  max-width: 28rem;
+  width: 100%;
+  border: 1px solid #323232;
+  max-height: 90vh;
+  overflow-y: auto;
+  background-color: #121212;
+}
+
+/* 모달 헤더 */
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.backButton {
+  font-size: 1.25rem;
+  color: #F7F7F7;
+  transition: opacity 0.2s ease;
+}
+
+.backButton:hover {
+  opacity: 0.8;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #F7F7F7;
+}
+
+.closeButton {
+  font-size: 1.25rem;
+  color: #F7F7F7;
+  transition: opacity 0.2s ease;
+}
+
+.closeButton:hover {
+  opacity: 0.8;
+}
+
+/* 카드 정보 입력 */
+.cardInfoSection {
+  line-height: 1.5;
+}
+
+.cardInfoTitle {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #F7F7F7;
+}
+
+/* 카드 번호 */
+.cardNumberSection {
+  margin-bottom: 1rem;
+}
+
+.cardNumberLabel {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: #F7F7F7;
+}
+
+.cardNumberInputs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.cardNumberInput {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  outline: none;
+  background-color: #000000;
+  border-bottom: 2px solid #323232;
+  color: #F7F7F7;
+}
+
+.cardNumberSeparator {
+  color: #F7F7F7;
+}
+
+/* 유효기간 */
+.expirySection {
+  margin-bottom: 1rem;
+}
+
+.expiryLabel {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: #F7F7F7;
+}
+
+.expiryInput {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  outline: none;
+  background-color: #000000;
+  border-bottom: 2px solid #323232;
+  color: #F7F7F7;
+}
+
+/* 생년월일 */
+.birthSection {
+  margin-bottom: 1rem;
+}
+
+.birthLabel {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: #F7F7F7;
+}
+
+.birthInput {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  outline: none;
+  background-color: #000000;
+  border-bottom: 2px solid #323232;
+  color: #F7F7F7;
+}
+
+/* 카드 비밀번호 */
+.passwordSection {
+  margin-bottom: 1rem;
+}
+
+.passwordLabel {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  color: #F7F7F7;
+}
+
+.passwordHint {
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+  color: #ABABAB;
+}
+
+.passwordInput {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  outline: none;
+  background-color: #000000;
+  border-bottom: 2px solid #323232;
+  color: #F7F7F7;
+}
+
+/* 동의 체크박스 */
+.agreementSection {
+  margin-bottom: 1.5rem;
+}
+
+.agreementLabel {
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.agreementCheckbox {
+  margin-right: 0.75rem;
+  margin-top: 0.25rem;
+  accent-color: #816BFF;
+}
+
+.agreementText {
+  font-size: 0.875rem;
+  color: #F7F7F7;
+}
+
+/* 등록하기 버튼 */
+.registerButton {
+  width: 100%;
+  padding: 1rem 0;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  transition: colors 0.2s ease;
+  background-color: #323232;
+}
+
+.registerButtonText {
+  color: #F7F7F7;
+}

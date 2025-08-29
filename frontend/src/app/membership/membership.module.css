@@ -1,0 +1,329 @@
+/* 멤버십 페이지 메인 컨테이너 */
+.membershipContainer {
+  min-height: 100vh;
+  background-color: #121212;
+}
+
+/* 히어로 섹션 */
+.heroSection {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.5rem;
+  background-color: #121212;
+}
+
+/* 텍스트 콘텐츠 */
+.textContent {
+  text-align: center;
+}
+
+/* 메인 제목 */
+.mainTitle {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #F7F7F7;
+}
+
+/* 서브 제목 */
+.subTitle {
+  font-size: 1.875rem;
+  font-weight: 500;
+  margin-bottom: 2rem;
+  color: #ABABAB;
+}
+
+/* 멤버십 시작 버튼 */
+.startButton {
+  font-size: 1.25rem;
+  font-weight: 700;
+  padding: 1rem 3rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  transform: scale(1);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  background-color: #816BFF;
+}
+
+.startButton:hover {
+  transform: scale(1.05);
+}
+
+.startButtonText {
+  color: #F7F7F7;
+}
+
+/* 멤버십 설명 구간 */
+.descriptionSection {
+  padding: 5rem 1.5rem;
+  background-color: #121212;
+}
+
+.descriptionContainer {
+  max-width: 72rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.descriptionTitle {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #F7F7F7;
+}
+
+.descriptionText {
+  font-size: 1.25rem;
+  margin-bottom: 4rem;
+  color: #ABABAB;
+}
+
+/* 멤버십 플랜 카드 그리드 */
+.plansGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+  max-width: 64rem;
+  margin: 0 auto;
+}
+
+/* 플랜 카드 */
+.planCard {
+  border-radius: 0.5rem;
+  padding: 2rem;
+  border: 2px solid #323232;
+  background-color: #000000;
+}
+
+/* 플랜 제목 */
+.planTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #F7F7F7;
+}
+
+/* 플랜 가격 */
+.planPrice {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #816BFF;
+}
+
+/* 플랜 기능 리스트 */
+.planFeatures {
+  text-align: left;
+  space-y: 0.75rem;
+}
+
+.planFeature {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+  color: #ABABAB;
+}
+
+.featureCheck {
+  margin-right: 0.75rem;
+  color: #816BFF;
+}
+
+/* 멤버십 유의사항 */
+.noticeSection {
+  margin-top: 4rem;
+}
+
+.noticeTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: #F7F7F7;
+}
+
+/* 안내 박스 */
+.noticeBox {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+  text-align: left;
+  background-color: #000000;
+  border: 1px solid #323232;
+}
+
+.noticeBoxTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #F7F7F7;
+}
+
+.noticeBoxContent {
+  font-size: 0.875rem;
+  line-height: 1.625;
+  color: #ABABAB;
+}
+
+.noticeBoxContent p {
+  margin-bottom: 0.75rem;
+}
+
+/* 로딩 상태 */
+.loadingContainer {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loadingSpinner {
+  width: 8rem;
+  height: 8rem;
+  border-radius: 50%;
+  border-bottom: 2px solid #816BFF;
+  margin: 0 auto 1rem;
+  animation: spin 1s linear infinite;
+}
+
+.loadingText {
+  font-size: 1.25rem;
+  color: #F7F7F7;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 에러 상태 */
+.errorContainer {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.errorText {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: #F7F7F7;
+}
+
+.retryButton {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  background-color: #816BFF;
+  color: #F7F7F7;
+}
+
+/* 멤버십 선택 모달 */
+.membershipSelectionModal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.membershipSelectionContainer {
+  border-radius: 0.5rem;
+  padding: 2rem;
+  max-width: 28rem;
+  width: 100%;
+  border: 1px solid #323232;
+  background-color: #121212;
+  position: relative;
+}
+
+.modalCloseButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  font-size: 1.5rem;
+  color: #ABABAB;
+  transition: opacity 0.2s ease;
+}
+
+.modalCloseButton:hover {
+  opacity: 0.8;
+}
+
+.modalTitle {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.modalTitleText {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #F7F7F7;
+}
+
+.modalSubtitle {
+  color: #ABABAB;
+}
+
+/* 플랜 선택 카드 */
+.planSelectionCard {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 2px solid #323232;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 1rem;
+}
+
+.planSelectionCard:hover {
+  background-color: #000000;
+  border-color: #505050;
+}
+
+.planSelectionCardSelected {
+  border-color: #816BFF;
+  box-shadow: 0 0 20px rgba(129, 107, 255, 0.2);
+}
+
+.planSelectionCardContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.planSelectionInfo h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: #F7F7F7;
+}
+
+.planSelectionInfo p {
+  font-size: 0.875rem;
+  color: #ABABAB;
+}
+
+.planSelectionPrice {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #F7F7F7;
+}
+
+/* 구독 시작 버튼 */
+.subscriptionStartButton {
+  width: 100%;
+  padding: 1rem 0;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  transition: background-color 0.2s ease;
+  background-color: #816BFF;
+  color: #F7F7F7;
+}
+
+.subscriptionStartButton:hover {
+  background-color: rgba(129, 107, 255, 0.1);
+}

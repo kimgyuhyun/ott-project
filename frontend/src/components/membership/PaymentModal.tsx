@@ -1,6 +1,7 @@
 "use client";
 import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import { useState } from "react";
+import styles from "./PaymentModal.module.css";
 
 interface PlanInfo {
   name: string;
@@ -35,84 +36,66 @@ export default function PaymentModal({
   const [agreed, setAgreed] = useState(false);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}>
-      <div className="max-w-lg w-full p-8 max-h-[90vh] overflow-y-auto rounded-xl" style={{ 
-        backgroundColor: 'var(--background-1, #121212)',
-        border: '1px solid var(--border-1, #323232)'
-      }}>
+    <div className={styles.paymentModalOverlay}>
+      <div className={styles.paymentModalContainer}>
         {/* 모달 헤더 */}
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>결제</h3>
+        <div className={styles.modalHeader}>
+          <h3 className={styles.modalTitle}>결제</h3>
           <button
             onClick={onClose}
-            className="text-2xl hover:opacity-80 transition-opacity"
-            style={{ color: 'var(--foreground-1, #F7F7F7)' }}
+            className={styles.closeButton}
           >
             ×
           </button>
         </div>
 
         {/* 멤버십 정보 */}
-        <div className="mb-8 p-4 rounded-lg" style={{ 
-          backgroundColor: 'var(--background-2, #000000)',
-          border: '1px solid var(--border-1, #323232)'
-        }}>
-          <h4 className="text-lg font-bold mb-2" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>{planInfo.name}</h4>
-          <ul className="text-sm space-y-1">
+        <div className={styles.membershipInfo}>
+          <h4 className={styles.membershipInfoTitle}>{planInfo.name}</h4>
+          <ul className={styles.membershipInfoList}>
             {planInfo.features.map((feature, index) => (
-              <li key={index} style={{ color: 'var(--foreground-3, #ABABAB)' }}>{feature}</li>
+              <li key={index} className={styles.membershipInfoItem}>{feature}</li>
             ))}
           </ul>
         </div>
 
         {/* 결제 금액 정보 */}
-        <div className="space-y-3 mb-8">
-          <div className="flex justify-between items-center">
-            <span style={{ color: 'var(--foreground-2, #E2E2E2)' }}>정기 결제 (매월)</span>
-            <span style={{ color: 'var(--foreground-2, #E2E2E2)' }}>월 {planInfo.price}원</span>
+        <div className={styles.paymentAmountInfo}>
+          <div className={styles.paymentAmountRow}>
+            <span className={styles.paymentAmountLabel}>정기 결제 (매월)</span>
+            <span className={styles.paymentAmountValue}>월 {planInfo.price}원</span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="font-bold text-lg" style={{ color: 'var(--foreground-slight, #816BFF)' }}>{planInfo.price}원</span>
+          <div className={styles.paymentTotalRow}>
+            <span className={styles.paymentTotalValue}>{planInfo.price}원</span>
           </div>
         </div>
 
         {/* 결제 수단 선택 */}
-        <div className="mb-8">
-          <h4 className="text-lg font-semibold mb-4" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>결제 수단</h4>
+        <div className={styles.paymentMethodSection}>
+          <h4 className={styles.paymentMethodTitle}>결제 수단</h4>
 
           {/* 간편 결제 */}
-          <div className="mb-6">
-            <label className="flex items-center cursor-pointer">
+          <div className={styles.paymentMethodOption}>
+            <label className={styles.paymentMethodLabel}>
               <input
                 type="radio"
                 name="paymentMethod"
                 value="simple"
                 checked={paymentMethod === 'simple'}
                 onChange={() => onChangePaymentMethod('simple')}
-                className="mr-3"
-                style={{ accentColor: 'var(--foreground-slight, #816BFF)' }}
+                className={styles.paymentMethodRadio}
               />
-              <span style={{ color: 'var(--foreground-1, #F7F7F7)' }}>간편 결제</span>
+              <span className={styles.paymentMethodText}>간편 결제</span>
             </label>
             {paymentMethod === 'simple' && (
-              <div className="mt-3">
+              <div className={styles.simplePaymentAdd}>
                 <div 
-                  className="p-4 cursor-pointer transition-colors rounded-lg"
-                  style={{ 
-                    backgroundColor: 'var(--background-2, #000000)',
-                    border: '1px solid var(--border-1, #323232)'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-2, #505050)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-1, #323232)';
-                  }}
+                  className={styles.simplePaymentButton}
                   onClick={onOpenCardRegistration}
                 >
-                  <div className="flex items-center justify-center">
-                    <span className="text-3xl mr-3" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>+</span>
-                    <span style={{ color: 'var(--foreground-1, #F7F7F7)' }}>간편 결제 추가</span>
+                  <div className={styles.simplePaymentContent}>
+                    <span className={styles.simplePaymentIcon}>+</span>
+                    <span className={styles.simplePaymentText}>간편 결제 추가</span>
                   </div>
                 </div>
               </div>
@@ -120,56 +103,97 @@ export default function PaymentModal({
           </div>
 
           {/* 다른 결제 수단 */}
-          <div className="mb-6">
-            <label className="flex items-center cursor-pointer">
+          <div className={styles.paymentMethodOption}>
+            <label className={styles.paymentMethodLabel}>
               <input
                 type="radio"
                 name="paymentMethod"
                 value="other"
                 checked={paymentMethod === 'other'}
                 onChange={() => onChangePaymentMethod('other')}
-                className="mr-3"
-                style={{ accentColor: 'var(--foreground-slight, #816BFF)' }}
+                className={styles.paymentMethodRadio}
               />
-              <span style={{ color: 'var(--foreground-1, #F7F7F7)' }}>다른 결제 수단</span>
+              <span className={styles.paymentMethodText}>다른 결제 수단</span>
             </label>
 
             {paymentMethod === 'other' && (
-              <div className="mt-3 grid grid-cols-1 gap-4">
-                <PaymentMethodItem
-                  id="kakao"
-                  label="카카오페이"
-                  colorClass="bg-yellow-400"
-                  selected={selectedPaymentService === 'kakao'}
-                  onSelect={() => onSelectPaymentService('kakao')}
-                />
-                <PaymentMethodItem
-                  id="toss"
-                  label="토스페이"
-                  colorClass="bg-blue-500"
-                  selected={selectedPaymentService === 'toss'}
-                  onSelect={() => onSelectPaymentService('toss')}
-                />
-                <PaymentMethodItem
-                  id="nice"
-                  label="나이스페이먼츠"
-                  colorClass="bg-green-500"
-                  selected={selectedPaymentService === 'nice'}
-                  onSelect={() => onSelectPaymentService('nice')}
-                />
+              <div className={styles.otherPaymentGrid}>
+                <div 
+                  className={`${styles.paymentMethodCard} ${selectedPaymentService === 'kakao' ? styles.paymentMethodCardSelected : ''}`}
+                  onClick={() => onSelectPaymentService('kakao')}
+                >
+                  <div className={styles.paymentMethodIcon} style={{ backgroundColor: '#FEE500' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect width="24" height="24" rx="4" fill="#FEE500"/>
+                      <path d="M12 7c-3.59 0-6.5 1.94-6.5 4.33 0 1.58 1.15 2.95 2.9 3.74l-.46 2.76 3.05-2.07h1.01c3.59 0 6.5-1.94 6.5-4.33S15.59 7 12 7z" fill="#000000"/>
+                    </svg>
+                  </div>
+                  <div className={styles.paymentMethodLabel}>카카오페이</div>
+                </div>
+                
+                <div 
+                  className={`${styles.paymentMethodCard} ${selectedPaymentService === 'toss' ? styles.paymentMethodCardSelected : ''}`}
+                  onClick={() => onSelectPaymentService('toss')}
+                >
+                  <div className={styles.paymentMethodIcon} style={{ backgroundColor: '#FFFFFF' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect width="24" height="24" rx="4" fill="#FFFFFF"/>
+                      <path d="M12 5c4.418 0 8 3.134 8 7-5.2-.1-8 3.8-12 0 0-3.866 3.134-7 8-7z" fill="#0064FF"/>
+                      <circle cx="10.4" cy="9.2" r="1.6" fill="#FFFFFF"/>
+                    </svg>
+                  </div>
+                  <div className={styles.paymentMethodLabel}>토스페이</div>
+                </div>
+                
+                <div 
+                  className={`${styles.paymentMethodCard} ${selectedPaymentService === 'nice' ? styles.paymentMethodCardSelected : ''}`}
+                  onClick={() => onSelectPaymentService('nice')}
+                >
+                  <div className={styles.paymentMethodIcon} style={{ backgroundColor: '#0A68F5' }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <rect width="24" height="24" rx="4" fill="#0A68F5"/>
+                      <text x="12" y="15" textAnchor="middle" fontSize="11" fill="#FFFFFF" fontWeight="bold">NP</text>
+                    </svg>
+                  </div>
+                  <div className={styles.paymentMethodLabel}>나이스페이먼츠</div>
+                </div>
               </div>
             )}
           </div>
         </div>
 
+        {/* 약관 동의 */}
+        <div className={styles.agreementSection}>
+          <label className={styles.agreementLabel}>
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => setAgreed(e.target.checked)}
+              className={styles.agreementCheckbox}
+            />
+            <span className={styles.agreementText}>
+              가격 및 유의사항을 확인하였으며, 매월 정기결제에 동의합니다.
+            </span>
+          </label>
+        </div>
+
+        {/* 결제 버튼 */}
+        <button
+          onClick={() => {
+            if (!agreed) return;
+            onPay();
+          }}
+          disabled={!agreed}
+          className={`${styles.paymentButton} ${agreed ? styles.paymentButtonEnabled : styles.paymentButtonDisabled}`}
+        >
+          <span>{planInfo.price}원 결제하기</span>
+        </button>
+
         {/* 멤버십 안내 섹션 */}
-        <div className="mb-8 space-y-6">
-          <div className="p-4 rounded-lg" style={{ 
-            backgroundColor: 'var(--background-2, #000000)',
-            border: '1px solid var(--border-1, #323232)'
-          }}>
-            <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>멤버십 구독 및 결제 안내</h4>
-            <div className="text-sm space-y-2" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
+        <div className={styles.membershipNoticeSection}>
+          <div className={styles.noticeBox}>
+            <h4 className={styles.noticeBoxTitle}>멤버십 구독 및 결제 안내</h4>
+            <div className={styles.noticeBoxContent}>
               <p>• 결제 금액은 부가가치세(VAT)가 포함된 가격입니다.</p>
               <p>• 멤버십은 월정액 유료 이용권으로, 결제 즉시 적용되며 이용이 시작됩니다.</p>
               <p>• 매월 정기 결제일에 등록한 결제 수단을 통해 자동으로 결제됩니다.</p>
@@ -183,12 +207,9 @@ export default function PaymentModal({
             </div>
           </div>
 
-          <div className="p-4 rounded-lg" style={{ 
-            backgroundColor: 'var(--background-2, #000000)',
-            border: '1px solid var(--border-1, #323232)'
-          }}>
-            <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>콘텐츠 이용 안내</h4>
-            <div className="text-sm space-y-2" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
+          <div className={styles.noticeBox}>
+            <h4 className={styles.noticeBoxTitle}>콘텐츠 이용 안내</h4>
+            <div className={styles.noticeBoxContent}>
               <p>• 라프텔에서 제공되는 모든 콘텐츠는 대한민국 내에서만 이용 가능합니다.</p>
               <p>• 일부 콘텐츠는 별도 사전 고지 없이 서비스가 중단될 수 있습니다.</p>
               <p>• 콘텐츠별 영상 화질, 음성 및 음향 방식, 언어 제공 등은 상이합니다.</p>
@@ -199,12 +220,9 @@ export default function PaymentModal({
             </div>
           </div>
 
-          <div className="p-4 rounded-lg" style={{ 
-            backgroundColor: 'var(--background-2, #000000)',
-            border: '1px solid var(--border-1, #323232)'
-          }}>
-            <h4 className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>재생 및 이용 환경 안내</h4>
-            <div className="text-sm space-y-2" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
+          <div className={styles.noticeBox}>
+            <h4 className={styles.noticeBoxTitle}>재생 및 이용 환경 안내</h4>
+            <div className={styles.noticeBoxContent}>
               <p>• 지원 기기 및 플랫폼은 [이곳]에서 확인하실 수 있습니다.</p>
               <p>• 해외 직구 등으로 국내 정식 출시되지 않은 기기에서는 호환성 문제가 있을 수 있습니다.</p>
               <p>• 지원하는 기기에서는 라프텔 공식 앱을 설치 후 이용 가능합니다.</p>
@@ -219,59 +237,13 @@ export default function PaymentModal({
             </div>
           </div>
 
-          <div className="p-4 rounded-lg" style={{ 
-            backgroundColor: 'var(--background-2, #000000)',
-            border: '1px solid var(--border-1, #323232)'
-          }}>
-            <div className="text-sm font-semibold mb-3" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>기타 안내</div>
-            <div className="text-sm space-y-2" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
+          <div className={styles.noticeBox}>
+            <div className={styles.noticeBoxTitle}>기타 안내</div>
+            <div className={styles.noticeBoxContent}>
               <p>• 기타 궁금하신 점은 고객센터를 통해 1:1 문의해 주시기 바랍니다.</p>
             </div>
           </div>
         </div>
-
-        {/* 약관 동의 */}
-        <div className="mb-8">
-          <label className="flex items-start cursor-pointer">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => setAgreed(e.target.checked)}
-              className="mr-3 mt-1"
-              style={{ accentColor: 'var(--foreground-slight, #816BFF)' }}
-            />
-            <span className="text-sm" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>
-              가격 및 유의사항을 확인하였으며, 매월 정기결제에 동의합니다.
-            </span>
-          </label>
-        </div>
-
-        {/* 결제 버튼 */}
-        <button
-          onClick={() => {
-            if (!agreed) return;
-            onPay();
-          }}
-          disabled={!agreed}
-          className="w-full py-4 rounded-lg font-bold transition-colors"
-          style={{
-            backgroundColor: agreed ? 'var(--foreground-slight, #816BFF)' : 'var(--button-disable, #323232)',
-            color: agreed ? 'var(--foreground-1, #F7F7F7)' : 'var(--foreground-disable, #636363)',
-            cursor: agreed ? 'pointer' : 'not-allowed'
-          }}
-          onMouseEnter={(e) => {
-            if (agreed) {
-              e.currentTarget.style.backgroundColor = 'var(--background-highlight, rgba(129, 107, 255, 0.1))';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (agreed) {
-              e.currentTarget.style.backgroundColor = 'var(--foreground-slight, #816BFF)';
-            }
-          }}
-        >
-          <span>{planInfo.price}원 결제하기</span>
-        </button>
       </div>
     </div>
   );
