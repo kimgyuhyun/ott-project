@@ -1,0 +1,87 @@
+.weeklyContainer {
+  padding: 3rem 0;
+  background-color: white;
+}
+
+.weeklyInnerContainer {
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.weeklyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+}
+
+.weeklyTitle {
+  font-size: 0.82646vw;
+  font-weight: 700;
+  color: var(--foreground-1);
+  margin-bottom: 0.5rem;
+}
+
+.weeklyNoticeButton {
+  font-size: 0.875rem;
+  color: var(--foreground-slight);
+  background-color: var(--button-slight-1);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.weeklyNoticeButton:hover {
+  background-color: var(--button-slight-2);
+}
+
+.weeklyTabs {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.weeklyTab {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  border: none;
+  cursor: pointer;
+  background-color: var(--background-3);
+  color: var(--foreground-2);
+}
+
+.weeklyTab:hover {
+  background-color: var(--background-4);
+}
+
+.weeklyTab.active {
+  background-color: var(--foreground-slight);
+  color: white;
+}
+
+.weeklyTab.active:hover {
+  background-color: var(--foreground-slight);
+}
+
+.weeklyGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.weeklyEmpty {
+  text-align: center;
+  padding: 3rem 0;
+  color: var(--foreground-3);
+}

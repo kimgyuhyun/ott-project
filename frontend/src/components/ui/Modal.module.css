@@ -1,0 +1,28 @@
+/* 모달 오버레이 */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 모달 배경 (클릭 시 닫기) */
+.modalBackdrop {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* 모달 컨테이너 */
+.modalContainer {
+  position: relative;
+  width: 100%;
+  max-width: 28rem;
+  border-radius: 1rem;
+  background-color: #1a1a1a;
+  padding: 2rem;
+  color: white;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}

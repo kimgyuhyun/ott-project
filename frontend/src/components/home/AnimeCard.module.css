@@ -1,0 +1,50 @@
+.animeCardContainer {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.animeCardContainer:hover {
+  transform: scale(1.05);
+}
+
+.animeCardPoster {
+  position: relative;
+  aspect-ratio: 3/4;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: #e5e7eb;
+}
+
+.animeCardPoster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.animeCardInfo {
+  margin-top: 0.75rem;
+}
+
+.animeCardTitle {
+  color: var(--foreground-1);
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.animeCardBadge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background-color: var(--foreground-slight);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
