@@ -1,5 +1,6 @@
 "use client";
 import Image from "next/image";
+import styles from "./SocialButton.module.css";
 
 type Provider = "google" | "naver" | "kakao" | "email";
 
@@ -20,11 +21,11 @@ const COLORS: Record<Provider, string> = {
 export default function SocialButton({ provider, label, href, onClick }: Props) {
   const content = (
     <div
-      className="flex h-12 w-full items-center justify-center gap-3 rounded-xl px-4 font-medium"
+      className={styles.socialButtonContainer}
       style={{ backgroundColor: provider === "google" ? "#ffffff" : COLORS[provider] }}
     >
       {provider === "email" ? (
-        <span className="inline-block h-5 w-5 rounded bg-white/20" />
+        <span className={styles.emailIcon} />
       ) : (
         <Image
           alt={`${provider} icon`}
@@ -33,7 +34,7 @@ export default function SocialButton({ provider, label, href, onClick }: Props) 
           height={20}
         />
       )}
-      <span className={provider === "google" ? "text-black" : "text-black"}>
+      <span className={styles.buttonText}>
         {label}
       </span>
     </div>
@@ -41,13 +42,13 @@ export default function SocialButton({ provider, label, href, onClick }: Props) 
 
   if (href) {
     return (
-      <a href={href} onClick={onClick} className="block">
+      <a href={href} onClick={onClick} className={styles.buttonLink}>
         {content}
       </a>
     );
   }
   return (
-    <button type="button" onClick={onClick} className="block w-full">
+    <button type="button" onClick={onClick} className={styles.buttonElement}>
       {content}
     </button>
   );

@@ -1,0 +1,37 @@
+/* 소셜 버튼 컨테이너 */
+.socialButtonContainer {
+  display: flex;
+  height: 3rem;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  border-radius: 0.75rem;
+  padding: 0 1rem;
+  font-weight: 500;
+}
+
+/* 이메일 버튼 아이콘 */
+.emailIcon {
+  display: inline-block;
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* 버튼 텍스트 */
+.buttonText {
+  color: #000000;
+}
+
+/* 링크 스타일 */
+.buttonLink {
+  display: block;
+}
+
+/* 버튼 스타일 */
+.buttonElement {
+  display: block;
+  width: 100%;
+}
