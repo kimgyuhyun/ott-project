@@ -8,16 +8,16 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 /**
- * 애니 찜(즐겨찾기) 엔티티
+ * 애니 보고싶다 엔티티
  *
  * 큰 흐름
- * - 사용자와 애니 간의 즐겨찾기 관계를 보관한다.
- * - 동일 사용자-작품 한 건만 허용(복합 유니크)으로 중복 찜을 방지한다.
+ * - 사용자와 애니 간의 보고싶다(보관함) 관계를 보관한다.
+ * - 동일 사용자-작품 한 건만 허용(복합 유니크)으로 중복 추가를 방지한다.
  *
  * 필드 개요
  * - id: PK
  * - user/anime: 소유 사용자/대상 애니
- * - createdAt: 찜 시각(Auditing)
+ * - createdAt: 보고싶다 추가 시각(Auditing)
  */
 
 @Entity // JPA 엔티티
@@ -31,14 +31,14 @@ import java.time.LocalDateTime;
 @NoArgsConstructor // 기본 생성자
 @AllArgsConstructor // 전체 필드 생성자
 @EntityListeners(AuditingEntityListener.class) // 생성 시각 자동 기록
-public class AnimeFavorite { // 애니 찜 엔티티
+public class AnimeFavorite { // 애니 보고싶다 엔티티
     @Id // 기본키
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가
     private Long id; // PK
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false) // 다대일: 사용자
     @JoinColumn(name = "user_id", nullable = false) // FK: user_id
-    private User user; // 찜한 사용자
+    private User user; // 보고싶다 추가한 사용자
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false) // 다대일: 애니
     @JoinColumn(name = "ani_id", nullable = false) // FK: ani_id
@@ -46,5 +46,5 @@ public class AnimeFavorite { // 애니 찜 엔티티
 
     @CreatedDate // 생성 시각 자동
     @Column(name = "created_at", nullable = false, updatable = false) // 불변 컬럼
-    private LocalDateTime createdAt; // 찜한 시각
+    private LocalDateTime createdAt; // 보고싶다 추가한 시각
 }

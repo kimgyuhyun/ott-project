@@ -85,6 +85,20 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		if (req == null || req.planCode == null || req.planCode.isBlank()) { // 유효성 검사
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "플랜 코드가 필요합니다."); // 400
 		}
+		// 결제 서비스(pg) 매핑/검증: kakao|toss|nice 만 허용
+		String normalizedService = (req.paymentService == null ? null : req.paymentService.trim().toLowerCase());
+		String mappedPg = null;
+		if (normalizedService == null || normalizedService.isBlank()) {
+			mappedPg = "kakaopay.TC0ONETIME"; // 기본값: 카카오
+		} else if ("kakao".equals(normalizedService)) {
+			mappedPg = "kakaopay.TC0ONETIME";
+		} else if ("toss".equals(normalizedService)) {
+			mappedPg = "tosspayments";
+		} else if ("nice".equals(normalizedService)) {
+			mappedPg = "nice";
+		} else {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 paymentService 입니다.");
+		}
 		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank() // 멱등키 전달 시
 				&& idempotencyKeyRepository.findByKeyValue(req.idempotencyKey).isPresent()) { // 중복 확인
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다."); // 409
@@ -128,6 +142,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		res.providerSessionId = session.sessionId; // merchant_uid(세션)
 		res.amount = chargeAmount; // 결제 금액(검증용)
 		res.paymentId = payment.getId(); // 내부 결제 ID
+		res.pg = mappedPg; // 프론트 PG 코드 전달
 		return res; // 반환
 	}
 
