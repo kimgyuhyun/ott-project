@@ -1,5 +1,6 @@
 "use client";
 import AnimeCard from "@/components/home/AnimeCard";
+import styles from "./AnimeGrid.module.css";
 
 interface AnimeGridProps {
   animes: any[];
@@ -33,10 +34,10 @@ export default function AnimeGrid({
 
   if (isLoading) {
     return (
-      <div className="flex-1 p-6">
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">검색 중...</p>
+      <div className={styles.animeGridContainer}>
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingSpinner}></div>
+          <p className={styles.loadingText}>검색 중...</p>
         </div>
       </div>
     );
@@ -44,10 +45,10 @@ export default function AnimeGrid({
 
   if (error) {
     return (
-      <div className="flex-1 p-6">
-        <div className="text-center py-8">
-          <div className="text-red-600 text-lg mb-3">{error}</div>
-          <p className="text-gray-500">검색 중 오류가 발생했습니다.</p>
+      <div className={styles.animeGridContainer}>
+        <div className={styles.errorContainer}>
+          <div className={styles.errorMessage}>{error}</div>
+          <p className={styles.errorHelp}>검색 중 오류가 발생했습니다.</p>
         </div>
       </div>
     );
@@ -55,11 +56,11 @@ export default function AnimeGrid({
 
   if (!hasSearchCriteria) {
     return (
-      <div className="flex-1 p-6">
-        <div className="text-center py-12">
-          <div className="text-gray-500 text-lg mb-2">검색 조건을 선택하거나 검색어를 입력해주세요</div>
-          <p className="text-gray-400 mb-4">장르, 태그, 또는 제목으로 검색할 수 있습니다</p>
-          <div className="text-sm text-gray-400">
+      <div className={styles.animeGridContainer}>
+        <div className={styles.searchGuideContainer}>
+          <div className={styles.searchGuideTitle}>검색 조건을 선택하거나 검색어를 입력해주세요</div>
+          <p className={styles.searchGuideSubtitle}>장르, 태그, 또는 제목으로 검색할 수 있습니다</p>
+          <div className={styles.searchGuideTips}>
             <p>• 상단 검색바에 애니메이션 제목을 입력하세요</p>
             <p>• 좌측 사이드바에서 장르나 태그를 선택하세요</p>
             <p>• 고급 필터 옵션을 활용해보세요</p>
@@ -71,11 +72,11 @@ export default function AnimeGrid({
 
   if (animes.length === 0) {
     return (
-      <div className="flex-1 p-6">
-        <div className="text-center py-12">
-          <div className="text-gray-500 text-lg mb-2">검색 결과가 없습니다.</div>
-          <p className="text-gray-400 mb-4">다른 키워드로 검색해보세요.</p>
-          <div className="text-sm text-gray-400">
+      <div className={styles.animeGridContainer}>
+        <div className={styles.noResultsContainer}>
+          <div className={styles.noResultsTitle}>검색 결과가 없습니다.</div>
+          <p className={styles.noResultsSubtitle}>다른 키워드로 검색해보세요.</p>
+          <div className={styles.noResultsTips}>
             <p>• 검색어를 변경해보세요</p>
             <p>• 다른 장르나 태그를 선택해보세요</p>
             <p>• 필터 조건을 조정해보세요</p>
@@ -86,21 +87,21 @@ export default function AnimeGrid({
   }
 
   return (
-    <div className="flex-1 p-6">
+    <div className={styles.animeGridContainer}>
       {/* 검색 결과 헤더 */}
-      <div className="mb-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-gray-800">
+      <div className={styles.searchHeader}>
+        <div className={styles.searchHeaderTop}>
+          <h2 className={styles.searchTitle}>
             검색 결과 ({animes.length}개)
           </h2>
           
           {/* 정렬 옵션 */}
-          <div className="flex items-center space-x-4">
-            <span className="text-sm text-gray-600">정렬:</span>
+          <div className={styles.sortContainer}>
+            <span className={styles.sortLabel}>정렬:</span>
             <select 
               value={sortBy}
               onChange={(e) => onSortChange(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className={styles.sortSelect}
             >
               <option value="latest">최신순</option>
               <option value="popular">인기순</option>
@@ -111,19 +112,19 @@ export default function AnimeGrid({
         
         {/* 검색 조건 표시 */}
         {(searchQuery.trim() || selectedGenres.length > 0 || selectedTags.length > 0) && (
-          <div className="mt-3 flex flex-wrap gap-2">
+          <div className={styles.searchCriteria}>
             {searchQuery.trim() && (
-              <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
+              <span className={`${styles.searchCriteriaTag} ${styles.searchCriteriaTagSearch}`}>
                 검색어: {searchQuery}
               </span>
             )}
             {selectedGenres.map((genre) => (
-              <span key={genre} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+              <span key={genre} className={`${styles.searchCriteriaTag} ${styles.searchCriteriaTagGenre}`}>
                 장르: {genre}
               </span>
             ))}
             {selectedTags.map((tag) => (
-              <span key={tag} className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+              <span key={tag} className={`${styles.searchCriteriaTag} ${styles.searchCriteriaTagTag}`}>
                 태그: {tag}
               </span>
             ))}
@@ -132,7 +133,7 @@ export default function AnimeGrid({
       </div>
 
       {/* 애니메이션 그리드 */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-4 lg:gap-6">
+      <div className={styles.animeGrid}>
         {(() => {
           const seen = new Set<string | number>();
           const safeItems = (Array.isArray(animes) ? animes : [])
@@ -160,14 +161,18 @@ export default function AnimeGrid({
             const itemId = anime.aniId ?? anime.id ?? index;
             const key = `${itemId}-${anime.title}`;
             
-            console.log('[DEBUG] AnimeCard 렌더링:', { anime, title: anime.title });
+            console.log('[DEBUG] AnimeCard 렌더링:', { anime, title: anime.title, posterUrl: anime.posterUrl, imageUrl: anime.imageUrl });
+            
+            // 백엔드 데이터 구조에 맞게 이미지 URL 매핑
+            const posterUrl = anime.posterUrl || anime.imageUrl || anime.thumbnail || 
+                             `https://placehold.co/200x280/4a5568/ffffff?text=${encodeURIComponent(anime.title)}`;
             
             return (
               <AnimeCard
                 key={key}
                 aniId={Number(itemId)}
                 title={anime.title}
-                posterUrl={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
+                posterUrl={posterUrl}
                 rating={anime.rating}
                 badge={anime.badges?.[0]}
                 episode={anime.episode}

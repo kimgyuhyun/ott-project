@@ -1,0 +1,174 @@
+/* 필터 사이드바 컨테이너 */
+.filterSidebar {
+  width: 100%;
+  background-color: white;
+  border-right: 1px solid #e5e7eb;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+/* lg 브레이크포인트 이상에서만 우측 보더 표시 */
+@media (min-width: 1024px) {
+  .filterSidebar {
+    width: 20rem;
+  }
+}
+
+/* 필터 헤더 */
+.filterHeader {
+  margin-bottom: 1.5rem;
+}
+
+.filterTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.75rem;
+}
+
+.resetButton {
+  width: 100%;
+  padding: 0.5rem 1rem;
+  background-color: #f3f4f6;
+  color: #374151;
+  border-radius: 0.5rem;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
+}
+
+.resetButton:hover {
+  background-color: #e5e7eb;
+}
+
+.filterCount {
+  margin-left: 0.5rem;
+  font-size: 0.75rem;
+  background-color: #d1d5db;
+  color: #4b5563;
+  padding: 0.25rem 0.5rem;
+  border-radius: 9999px;
+}
+
+/* 장르/태그 필터 섹션 */
+.filterSection {
+  margin-bottom: 2rem;
+}
+
+.filterSectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.filterSectionTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.filterCount {
+  font-size: 0.875rem;
+  color: #7c3aed;
+  font-weight: 400;
+}
+
+.moreButton {
+  color: #7c3aed;
+  font-size: 0.875rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.moreButton:hover {
+  color: #6d28d9;
+}
+
+/* 체크박스 리스트 */
+.checkboxList {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.checkboxItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.checkboxItem:hover {
+  background-color: #f9fafb;
+}
+
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  color: #7c3aed;
+  background-color: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+.checkbox:focus {
+  outline: 2px solid #7c3aed;
+  outline-offset: 2px;
+}
+
+.checkboxLabel {
+  color: #374151;
+  font-size: 0.875rem;
+}
+
+/* 장르 체크박스 특별 스타일 */
+.genreCheckbox {
+  color: #7c3aed;
+}
+
+.genreCheckbox:focus {
+  outline-color: #7c3aed;
+}
+
+/* 태그 체크박스 특별 스타일 */
+.tagCheckbox {
+  color: #2563eb;
+}
+
+.tagCheckbox:focus {
+  outline-color: #2563eb;
+}
+
+/* 셀렉트 박스 */
+.selectContainer {
+  margin-bottom: 2rem;
+}
+
+.selectLabel {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+.select {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.select:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}

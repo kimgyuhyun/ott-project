@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { getSearchSuggestions } from "@/lib/api/search";
+import styles from "./SearchBar.module.css";
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -83,20 +84,17 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
   };
 
   return (
-    <div className={`relative ${className}`} ref={suggestionsRef}>
-      <form onSubmit={handleSubmit} className="relative">
+    <div className={`${styles.searchContainer} ${className}`} ref={suggestionsRef}>
+      <form className={styles.searchForm} onSubmit={handleSubmit}>
         <input
           type="text"
+          className={styles.searchInput}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder={placeholder}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent pr-12"
         />
-        <button
-          type="submit"
-          className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-gray-500 hover:text-purple-600 transition-colors"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button type="submit" className={styles.searchButton}>
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </button>
@@ -104,15 +102,16 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
 
       {/* 자동완성 드롭다운 */}
       {showSuggestions && (suggestions.length > 0 || isLoading || error) && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+        <div className={styles.searchSuggestions}>
           {isLoading ? (
-            <div className="p-4 text-center text-gray-500">
+            <div className={styles.searchLoading}>
               검색 중...
             </div>
           ) : error ? (
-            <div className="p-4 text-center text-red-600">
+            <div className={styles.searchError}>
               {error}
               <button
+                className={styles.searchRetryButton}
                 onClick={() => {
                   setError(null);
                   setIsLoading(true);
@@ -124,25 +123,24 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
                     .catch(() => setError('자동완성 로드에 실패했습니다.'))
                     .finally(() => setIsLoading(false));
                 }}
-                className="ml-3 px-2 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700"
               >
                 재시도
               </button>
             </div>
           ) : (
             suggestions.map((suggestion, index) => (
-              <button
+              <div
                 key={index}
+                className={styles.searchSuggestionItem}
                 onClick={() => handleSuggestionClick(suggestion)}
-                className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
               >
-                <div className="flex items-center space-x-3">
-                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className={styles.searchSuggestionContent}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                  <span className="text-gray-700">{suggestion}</span>
+                  <span>{suggestion}</span>
                 </div>
-              </button>
+              </div>
             ))
           )}
         </div>

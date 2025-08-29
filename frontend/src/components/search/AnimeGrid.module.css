@@ -1,0 +1,218 @@
+/* 애니메 그리드 컨테이너 */
+.animeGridContainer {
+  flex: 1;
+  padding: 1.5rem;
+}
+
+/* 로딩 상태 */
+.loadingContainer {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.loadingSpinner {
+  animation: spin 1s linear infinite;
+  border-radius: 9999px;
+  height: 3rem;
+  width: 3rem;
+  border-bottom: 2px solid #7c3aed;
+  margin: 0 auto 1rem;
+}
+
+.loadingText {
+  color: #6b7280;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 에러 상태 */
+.errorContainer {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.errorMessage {
+  color: #dc2626;
+  font-size: 1.125rem;
+  margin-bottom: 0.75rem;
+}
+
+.errorHelp {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.errorRetryButton {
+  padding: 0.5rem 1rem;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.errorRetryButton:hover {
+  background-color: #2563eb;
+}
+
+/* 검색 안내 */
+.searchGuideContainer {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.searchGuideTitle {
+  color: #6b7280;
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+}
+
+.searchGuideSubtitle {
+  color: #9ca3af;
+  margin-bottom: 1rem;
+}
+
+.searchGuideTips {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.searchGuideTips p {
+  margin-bottom: 0.5rem;
+}
+
+/* 검색 결과 헤더 */
+.searchHeader {
+  margin-bottom: 1.5rem;
+}
+
+.searchHeaderTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.searchTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* 정렬 옵션 */
+.sortContainer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.sortLabel {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.sortSelect {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.sortSelect:focus {
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+}
+
+/* 검색 조건 표시 */
+.searchCriteria {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.searchCriteriaTag {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.searchCriteriaTagSearch {
+  background-color: #f3e8ff;
+  color: #7c3aed;
+}
+
+.searchCriteriaTagGenre {
+  background-color: #dbeafe;
+  color: #2563eb;
+}
+
+.searchCriteriaTagTag {
+  background-color: #dcfce7;
+  color: #16a34a;
+}
+
+/* 애니메 그리드 */
+.animeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+/* 반응형 그리드 */
+@media (min-width: 640px) {
+  .animeGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .animeGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .animeGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .animeGrid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+/* 결과 없음 */
+.noResultsContainer {
+  text-align: center;
+  padding: 3rem 0;
+}
+
+.noResultsTitle {
+  color: #6b7280;
+  font-size: 1.125rem;
+  margin-bottom: 0.5rem;
+}
+
+.noResultsSubtitle {
+  color: #9ca3af;
+  margin-bottom: 1rem;
+}
+
+.noResultsTips {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+.noResultsTips p {
+  margin-bottom: 0.5rem;
+}

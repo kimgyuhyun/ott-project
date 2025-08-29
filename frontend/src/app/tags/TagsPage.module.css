@@ -1,0 +1,46 @@
+/* 태그 페이지 루트 컨테이너 */
+.root {
+  /* 페이지 전체 스코프 래퍼 */
+  min-height: 100vh;
+  background-color: var(--background-1);
+  color: var(--foreground-1);
+  overflow-x: hidden;
+}
+
+/* 메인 레이아웃 */
+.mainContainer {
+  padding-top: 4rem;
+}
+
+/* 2단 레이아웃 컨테이너 */
+.layoutContainer {
+  max-width: 80rem;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* lg 브레이크포인트 이상에서 가로 배치 */
+@media (min-width: 1024px) {
+  .layoutContainer {
+    flex-direction: row;
+  }
+}
+
+/* 스크롤바 커스터마이즈 */
+.root::-webkit-scrollbar {
+  width: 16px;
+}
+
+.root::-webkit-scrollbar-thumb {
+  height: 56px;
+  border-radius: 8px;
+  border: 4px solid transparent;
+  background-clip: content-box;
+  background-color: var(--background-5);
+}
+
+/* 필요 시 태그 페이지 전용 섹션/컴포넌트용 클래스 확장 예정 */
+
+
