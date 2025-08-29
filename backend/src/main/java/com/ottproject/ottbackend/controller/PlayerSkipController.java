@@ -2,7 +2,7 @@ package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.dto.SkipMetaResponseDto;
 import com.ottproject.ottbackend.dto.SkipUsageRequestDto;
-import com.ottproject.ottbackend.service.PlayerSkipService;
+import com.ottproject.ottbackend.service.PlayerService;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 @RequiredArgsConstructor // 생성자 주입
 @org.springframework.web.bind.annotation.RequestMapping("/api/episodes")
 public class PlayerSkipController { // 스킵 메타
-	private final PlayerSkipService service; // 스킵 메타 조회/사용 로깅 서비스
+	private final PlayerService playerService; // 통합 플레이어 서비스
 	private final SecurityUtil securityUtil; // 세션 사용자 식별 유틸
 
 	/**
@@ -40,7 +40,7 @@ public class PlayerSkipController { // 스킵 메타
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/{id}/skips")
 	public ResponseEntity<SkipMetaResponseDto> get(@PathVariable Long id) { // 에피소드 ID 입력
-		return ResponseEntity.ok(service.get(id)); // 메타 반환
+		return ResponseEntity.ok(playerService.getSkipMetaByEpisode(id)); // 메타 반환
 	}
 
 	/**
@@ -51,7 +51,7 @@ public class PlayerSkipController { // 스킵 메타
     @PostMapping("/{id}/skips/track") // 스킵 사용 수집
 	public ResponseEntity<Void> track(@PathVariable Long id, @Valid @RequestBody SkipUsageRequestDto body, HttpSession session) { // 요청 바디 검증
 		Long userId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
-		service.trackUsage(userId, id, body.getType(), body.getAtSec()); // DB 적재
+		playerService.trackUsage(userId, id, body.getType(), body.getAtSec()); // DB 적재
 		return ResponseEntity.accepted().build(); // 202 Accepted
 	}
 }

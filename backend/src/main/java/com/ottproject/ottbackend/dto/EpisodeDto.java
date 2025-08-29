@@ -28,6 +28,7 @@ public class EpisodeDto {
     private String videoUrl; // 영상 URL
     private Boolean isActive; // 활성 여부
     private Boolean isReleased; // 공개여부
+    private Long animeId; // 소속 애니메이션 ID
     private LocalDateTime createdAt; // 생성일시
     private LocalDateTime updatedAt; // 수정일시
 }
