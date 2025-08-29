@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  Mapper: EpisodeMapper
+  - 에피소드 조회 전용 MyBatis 매퍼
+  - PlaybackAuthService에서 사용하는 단건 조회 메서드 제공
+  - Snake_case 컬럼 → camelCase DTO 필드로 alias 매핑
+-->
+<mapper namespace="com.ottproject.ottbackend.mybatis.EpisodeMapper">
+
+    <!-- ID로 에피소드 조회 (비디오 스트림용) -->
+    <select id="findEpisodeById" resultType="com.ottproject.ottbackend.dto.EpisodeDto">
+        SELECT
+            e.id AS id,
+            e.episode_number AS episodeNumber,
+            e.title AS title,
+            e.thumbnail_url AS thumbnailUrl,
+            e.video_url AS videoUrl,
+            e.is_active AS isActive,
+            e.is_released AS isReleased,
+            e.anime_id AS animeId,
+            e.created_at AS createdAt,
+            e.updated_at AS updatedAt
+        FROM episodes e
+        WHERE e.id = #{id}
+    </select>
+
+    <!-- 다음 에피소드 조회 -->
+    <select id="findNextEpisode" resultType="com.ottproject.ottbackend.dto.EpisodeDto">
+        SELECT
+            e.id AS id,
+            e.episode_number AS episodeNumber,
+            e.title AS title,
+            e.thumbnail_url AS thumbnailUrl,
+            e.video_url AS videoUrl,
+            e.is_active AS isActive,
+            e.is_released AS isReleased,
+            e.anime_id AS animeId,
+            e.created_at AS createdAt,
+            e.updated_at AS updatedAt
+        FROM episodes e
+        WHERE e.anime_id = #{animeId}
+          AND e.episode_number > #{episodeNumber}
+          AND e.is_released = TRUE
+        ORDER BY e.episode_number ASC
+        LIMIT 1
+    </select>
+
+</mapper>

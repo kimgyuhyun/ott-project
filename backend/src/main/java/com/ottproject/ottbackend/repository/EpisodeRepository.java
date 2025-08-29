@@ -30,7 +30,4 @@ public interface EpisodeRepository extends JpaRepository<Episode, Long> { // 에
 
 	@Modifying(clearAutomatically = true, flushAutomatically = true) // DML + 동기화
 	int deleteByAnime_Id(Long aniId); // 파생 삭제 메서드로 대체
-
-	// 다음 화 조회(동일 Anime 기준, 공개된 것만)
-	Episode findFirstByAnimeIdAndEpisodeNumberGreaterThanAndIsReleasedTrueOrderByEpisodeNumberAsc(Long aniId, Integer episodeNumber); // NEW
 }

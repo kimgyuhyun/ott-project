@@ -1,4 +1,5 @@
 // import Image from "next/image"; // 임시로 주석 처리
+import styles from "./AnimeCard.module.css";
 
 type AnimeCardProps = {
   aniId: number;
@@ -30,22 +31,22 @@ export default function AnimeCard({
   };
 
   return (
-    <div 
-      className="group cursor-pointer transition-transform hover:scale-105"
-      onClick={handleClick}
-    >
+    <div className={styles.animeCardContainer} onClick={handleClick}>
       {/* 포스터 이미지 */}
-      <div className="relative aspect-[3/4] rounded-lg overflow-hidden bg-gray-200">
-        <div className="w-full h-full bg-gray-200 rounded-lg"></div>
+      <div className={styles.animeCardPoster}>
+        <img 
+          src={posterUrl || "https://placehold.co/300x400/ff69b4/ffffff?text=LAFTEL+ONLY"} 
+          alt={title}
+        />
       </div>
 
       {/* 제목 및 정보 */}
-      <div className="mt-3">
-                 <h3 className="text-gray-800 font-medium text-sm line-clamp-2 leading-tight">
-           {title}
-         </h3>
+      <div className={styles.animeCardInfo}>
+        <h3 className={styles.animeCardTitle}>
+          {title}
+        </h3>
         
-                 {/* 평점 표시 제거 - 제목만 깔끔하게 표시 */}
+        {/* 평점 표시 제거 - 제목만 깔끔하게 표시 */}
       </div>
     </div>
   );

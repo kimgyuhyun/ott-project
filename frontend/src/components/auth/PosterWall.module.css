@@ -1,0 +1,26 @@
+/* 포스터 월 컨테이너 */
+.posterWallContainer {
+  position: absolute;
+  inset: 0;
+  z-index: -10;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem;
+  padding: 1.5rem;
+  opacity: 0.3;
+  filter: blur(2px);
+}
+
+/* 포스터 아이템 */
+.posterItem {
+  height: 8rem;
+  border-radius: 0.5rem;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 포스터 월 오버레이 */
+.posterWallOverlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.4);
+}

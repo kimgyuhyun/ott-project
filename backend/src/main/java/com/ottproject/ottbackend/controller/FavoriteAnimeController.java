@@ -18,24 +18,24 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
  * FavoriteAnimeController
  *
  * 큰 흐름
- * - 작품 찜 토글과 마이페이지 찜 목록, 상세(찜 여부 포함) 조회를 제공한다.
+ * - 작품 보고싶다 토글과 마이페이지 보고싶다 목록, 상세(보고싶다 여부 포함) 조회를 제공한다.
  *
  * 엔드포인트 개요
- * - POST /api/anime/{aniId}/favorite: 찜 토글
- * - GET /api/mypage/favorites/anime: 찜 목록(페이지)
+ * - POST /api/anime/{aniId}/favorite: 보고싶다 토글
+ * - GET /api/mypage/favorites/anime: 보고싶다 목록(페이지)
  * - GET /api/anime/{aniId}/detail: 상세 + isFavorited
  */
 @RestController // REST 컨트롤러
 @RequiredArgsConstructor // 생성자 주입
 @org.springframework.web.bind.annotation.RequestMapping("/api")
-public class FavoriteAnimeController { // 찜 전용 컨트롤러
-    private final FavoriteAnimeService favoriteAnimeService; // 찜 서비스
-    private final AnimeQueryService animeQueryService; // 상세 조회(찜 여부 포함)
+public class FavoriteAnimeController { // 보고싶다 전용 컨트롤러
+    private final FavoriteAnimeService favoriteAnimeService; // 보고싶다 서비스
+    private final AnimeQueryService animeQueryService; // 상세 조회(보고싶다 여부 포함)
     private final SecurityUtil securityUtil; // 세션 → userId 해석 유틸
 
-    @Operation(summary = "찜 토글", description = "작품 찜 상태를 토글합니다.")
+    @Operation(summary = "보고싶다 토글", description = "작품 보고싶다 상태를 토글합니다.")
     @ApiResponse(responseCode = "200", description = "토글 결과 반환")
-    @PostMapping("/anime/{aniId}/favorite") // 찜 토글 엔드포인트
+    @PostMapping("/anime/{aniId}/favorite") // 보고싶다 토글 엔드포인트
     public ResponseEntity<Boolean> toggle( // true:on, false:off 응답
                                            @Parameter(description = "애니 ID") @PathVariable Long aniId, // 애니 ID
                                            HttpSession session // 세션에서 사용자 확인
@@ -45,9 +45,9 @@ public class FavoriteAnimeController { // 찜 전용 컨트롤러
         return ResponseEntity.ok(state); // 200 OK 반환
     }
 
-    @Operation(summary = "찜 목록", description = "마이페이지의 찜 목록을 페이지네이션으로 조회합니다.")
+    @Operation(summary = "보고싶다 목록", description = "마이페이지의 보고싶다 목록을 페이지네이션으로 조회합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping("/mypage/favorites/anime") // 마이페이지 내 찜 목록
+    @GetMapping("/mypage/favorites/anime") // 마이페이지 내 보고싶다 목록
     public ResponseEntity<PagedResponse<FavoriteAnimeDto>> list( // 페이지 응답
                                                                  @RequestParam(defaultValue = "0") int page, // 페이지 번호
                                                                  @RequestParam(defaultValue = "20") int size, // 페이지 크기
@@ -59,9 +59,9 @@ public class FavoriteAnimeController { // 찜 전용 컨트롤러
         return ResponseEntity.ok(body); // 200 OK
     }
 
-    @Operation(summary = "상세+찜 여부", description = "작품 상세 정보와 현재 사용자 찜 여부를 함께 반환합니다.")
+    @Operation(summary = "상세+보고싶다 여부", description = "작품 상세 정보와 현재 사용자 보고싶다 여부를 함께 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping("/anime/{aniId}/detail") // 상세(찜 여부 포함) 예시
+    @GetMapping("/anime/{aniId}/detail") // 상세(보고싶다 여부 포함) 예시
     public ResponseEntity<AnimeDetailDto> detailWithFavorite( // 상세 + isFavorited
                                                               @Parameter(description = "애니 ID") @PathVariable Long aniId, // 애니 ID
                                                               HttpSession session // 세션에서 사용자 확인(옵션)

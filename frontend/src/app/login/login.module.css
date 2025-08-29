@@ -1,0 +1,92 @@
+/* 로그인 페이지 메인 컨테이너 */
+.loginContainer {
+  position: relative;
+  min-height: 100dvh;
+  background-color: #000000;
+  color: #ffffff;
+}
+
+/* 로그인 모달 내부 컨테이너 */
+.loginModal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+/* LAFTEL 로고 */
+.loginLogo {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+/* 설명 텍스트 */
+.loginDescription {
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.5rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 구분선 */
+.loginDivider {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* 소셜 버튼들 컨테이너 */
+.socialButtonsContainer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+/* 소셜 버튼 기본 스타일 */
+.socialButton {
+  border-radius: 9999px;
+  padding: 0.75rem;
+  transition: background-color 0.2s ease;
+}
+
+/* 카카오 버튼 */
+.socialButtonKakao {
+  background-color: #fee500;
+}
+
+.socialButtonKakao:hover {
+  background-color: #fdd800;
+}
+
+/* 구글 버튼 */
+.socialButtonGoogle {
+  background-color: #ffffff;
+}
+
+.socialButtonGoogle:hover {
+  background-color: #f3f4f6;
+}
+
+/* 네이버 버튼 */
+.socialButtonNaver {
+  background-color: #03c75a;
+}
+
+.socialButtonNaver:hover {
+  background-color: #02b351;
+}
+
+/* 소셜 버튼 아이콘 */
+.socialButtonIcon {
+  width: 24px;
+  height: 24px;
+}
+
+/* 도움말 링크 */
+.helpLink {
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.5);
+  text-decoration: underline;
+}

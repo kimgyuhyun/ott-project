@@ -57,24 +57,24 @@ export async function getUserWatchHistory(page: number = 0, size: number = 20) {
   return apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}`);
 }
 
-// 사용자 찜한 작품 조회
-export async function getUserFavorites(page: number = 0, size: number = 20) {
+// 사용자 보고싶다 작품 조회
+export async function getUserWantList(page: number = 0, size: number = 20) {
   return apiCall(`/api/mypage/favorites/anime?page=${page}&size=${size}`);
 }
 
 // 사용자 활동 통계 조회
 export async function getUserStats() {
   try {
-    // 시청 기록과 즐겨찾기 데이터를 병렬로 조회
-    const [watchHistory, favorites] = await Promise.all([
+    // 시청 기록과 보고싶다 데이터를 병렬로 조회
+    const [watchHistory, wantList] = await Promise.all([
       getUserWatchHistory(0, 1000), // 충분히 큰 크기로 조회
-      getUserFavorites(0, 1000)
+      getUserWantList(0, 1000)
     ]);
     
     // 통계 계산
     const totalEpisodes = (watchHistory as any).content?.length || 0;
     const totalAnime = new Set((watchHistory as any).content?.map((item: any) => item.animeId) || []).size;
-    const favoriteCount = (favorites as any).content?.length || 0;
+          const wantCount = (wantList as any).content?.length || 0;
     const completedAnime = (watchHistory as any).content?.filter((item: any) => item.completed)?.length || 0;
     const watchingAnime = totalAnime - completedAnime;
     
@@ -87,7 +87,7 @@ export async function getUserStats() {
       totalWatchTime,
       totalEpisodes,
       totalAnime,
-      favoriteCount,
+      wantCount,
       completedAnime,
       watchingAnime
     };
@@ -98,7 +98,7 @@ export async function getUserStats() {
       totalWatchTime: 0,
       totalEpisodes: 0,
       totalAnime: 0,
-      favoriteCount: 0,
+      wantCount: 0,
       completedAnime: 0,
       watchingAnime: 0
     };

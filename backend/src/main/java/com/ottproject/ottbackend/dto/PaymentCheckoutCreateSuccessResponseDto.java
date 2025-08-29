@@ -14,6 +14,7 @@ public class PaymentCheckoutCreateSuccessResponseDto { // 체크아웃 생성 �
 	public Long paymentId; // 내부 결제 레코드 ID(상태 추적용)
     public String providerSessionId; // 게이트웨이 세션/merchant_uid
     public Long amount; // 결제 금액(검증용)
+    public String pg; // 프론트 SDK용 PortOne PG 코드(kakaopay.TC0ONETIME|tosspayments|nice)
 }
 
 

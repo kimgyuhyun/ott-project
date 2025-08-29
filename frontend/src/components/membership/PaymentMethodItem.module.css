@@ -1,0 +1,67 @@
+/* 결제 수단 아이템 버튼 */
+.paymentMethodButton {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 2px solid #323232;
+  text-align: left;
+  transition: all 0.2s ease;
+  background-color: #121212;
+}
+
+.paymentMethodButton:hover {
+  background-color: #000000;
+  border-color: #505050;
+}
+
+.paymentMethodButtonSelected {
+  background-color: rgba(129, 107, 255, 0.1);
+  border-color: #816BFF;
+  box-shadow: 0 0 20px rgba(129, 107, 255, 0.2);
+}
+
+/* 결제 수단 아이콘 */
+.paymentMethodIcon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.75rem;
+}
+
+.paymentMethodIconKakao {
+  background-color: #fbbf24;
+}
+
+.paymentMethodIconToss {
+  background-color: #3b82f6;
+}
+
+.paymentMethodIconNice {
+  background-color: #10b981;
+}
+
+/* 결제 수단 아이콘 텍스트 */
+.paymentMethodIconText {
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.paymentMethodIconTextKakao {
+  color: #000000;
+}
+
+.paymentMethodIconTextToss {
+  color: #ffffff;
+}
+
+.paymentMethodIconTextNice {
+  color: #ffffff;
+}
+
+/* 결제 수단 라벨 */
+.paymentMethodLabel {
+  color: #F7F7F7;
+}

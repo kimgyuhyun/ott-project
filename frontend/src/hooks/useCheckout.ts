@@ -48,7 +48,7 @@ export function useCheckout() {
 
     IMP.init(merchantCode);
 
-    const pg = PG_MAP[paymentService?.toLowerCase?.()] || undefined;
+    const pg = PG_MAP[paymentService?.toLowerCase?.()] || "kakaopay.TC0ONETIME"; // 기본값 설정
 
     await new Promise<void>((resolve, reject) => {
       IMP.request_pay(

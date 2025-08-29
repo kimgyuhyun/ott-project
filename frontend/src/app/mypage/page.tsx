@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
-import { getUserProfile, getUserWatchHistory, getUserFavorites, getUserStats } from "@/lib/api/user";
+import { getUserProfile, getUserWatchHistory, getUserWantList, getUserStats } from "@/lib/api/user";
 
 type TabType = 'recent' | 'want' | 'purchased' | 'binge';
 
@@ -16,7 +16,7 @@ export default function MyPage() {
   const [selectedAnime, setSelectedAnime] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [watchHistory, setWatchHistory] = useState<any[]>([]);
-  const [favorites, setFavorites] = useState<any[]>([]);
+  const [wantList, setWantList] = useState<any[]>([]);
   const [userStats, setUserStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,21 +36,21 @@ export default function MyPage() {
         setError(null);
         
         // 병렬로 여러 API 호출
-        const [profileData, historyData, favoritesData, statsData] = await Promise.all([
+        const [profileData, historyData, wantListData, statsData] = await Promise.all([
           getUserProfile(),
           getUserWatchHistory(),
-          getUserFavorites(),
+          getUserWantList(),
           getUserStats()
         ]);
         
         setUserProfile(profileData);
         setWatchHistory((historyData as any).content || historyData || []);
-        setFavorites((favoritesData as any).content || favoritesData || []);
+        setWantList((wantListData as any).content || wantListData || []);
         setUserStats(statsData);
         
         // 탭별 카운트 업데이트
         tabs[0].count = (historyData as any).content?.length || 0;
-        tabs[1].count = (favoritesData as any).content?.length || 0;
+        tabs[1].count = (wantListData as any).content?.length || 0;
         tabs[2].count = 0; // 구매한 작품은 별도 API 필요
         tabs[3].count = 0; // 정주행은 별도 API 필요
         

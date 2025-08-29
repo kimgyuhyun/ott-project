@@ -1,0 +1,334 @@
+/* 결제 모달 오버레이 */
+.paymentModalOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* 결제 모달 컨테이너 */
+.paymentModalContainer {
+  max-width: 32rem;
+  width: 100%;
+  padding: 2rem;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 0.75rem;
+  background-color: #121212;
+  border: 1px solid #323232;
+}
+
+/* 모달 헤더 */
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.modalTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #F7F7F7;
+}
+
+.closeButton {
+  font-size: 1.5rem;
+  color: #ABABAB;
+  transition: color 0.2s ease;
+}
+
+.closeButton:hover {
+  color: #F7F7F7;
+}
+
+/* 멤버십 정보 */
+.membershipInfo {
+  margin-bottom: 2rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: #000000;
+  border: 1px solid #323232;
+}
+
+.membershipInfoTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #F7F7F7;
+}
+
+.membershipInfoList {
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: #ABABAB;
+}
+
+.membershipInfoItem {
+  margin-bottom: 0.25rem;
+}
+
+/* 결제 금액 정보 */
+.paymentAmountInfo {
+  margin-bottom: 2rem;
+  line-height: 1.25;
+}
+
+.paymentAmountRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.paymentAmountLabel {
+  color: #E2E2E2;
+}
+
+.paymentAmountValue {
+  color: #E2E2E2;
+}
+
+.paymentTotalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.paymentTotalValue {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #816BFF;
+}
+
+/* 결제 수단 선택 */
+.paymentMethodSection {
+  margin-bottom: 2.5rem;
+}
+
+.paymentMethodTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #F7F7F7;
+}
+
+.paymentMethodOption {
+  margin-bottom: 2rem;
+}
+
+.paymentMethodLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.paymentMethodRadio {
+  margin-right: 0.75rem;
+  accent-color: #816BFF;
+}
+
+.paymentMethodText {
+  color: #F7F7F7;
+}
+
+/* 간편 결제 추가 */
+.simplePaymentAdd {
+  margin-top: 0.75rem;
+}
+
+.simplePaymentButton {
+  width: 100%;
+  padding: 2rem 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 0.75rem;
+  background-color: #000000;
+  border: 2px solid #323232;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 6rem;
+}
+
+.simplePaymentButton:hover {
+  border-color: #505050;
+  background-color: #0a0a0a;
+  transform: translateY(-2px);
+}
+
+.simplePaymentContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.simplePaymentIcon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 50%;
+  background-color: #323232;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
+  color: #F7F7F7;
+  border: 2px solid #505050;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+.simplePaymentButton:hover .simplePaymentIcon {
+  border-color: #816BFF;
+  background-color: #816BFF;
+  transform: scale(1.1);
+}
+
+.simplePaymentText {
+  color: #F7F7F7;
+  font-size: 0.875rem;
+}
+
+/* 다른 결제 수단 */
+.otherPaymentMethods {
+  margin-top: 0.75rem;
+}
+
+.otherPaymentGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.paymentMethodCard {
+  padding: 1.25rem 1rem;
+  border-radius: 0.75rem;
+  background-color: #000000;
+  border: 2px solid #323232;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+  position: relative;
+  min-height: 5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.paymentMethodCard:hover {
+  border-color: #505050;
+  background-color: #0a0a0a;
+  transform: translateY(-2px);
+}
+
+.paymentMethodCardSelected {
+  border-color: #816BFF;
+  box-shadow: 0 0 20px rgba(129, 107, 255, 0.4);
+  background-color: #0a0a0a;
+}
+
+.paymentMethodIcon {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 0.75rem;
+  margin: 0 auto 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.paymentMethodLabel {
+  font-size: 0.8rem;
+  color: #F7F7F7;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+/* 멤버십 안내 섹션 */
+.membershipNoticeSection {
+  margin-bottom: 2rem;
+  line-height: 1.25;
+}
+
+.noticeBox {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: #000000;
+  border: 1px solid #323232;
+}
+
+.noticeBoxTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: #F7F7F7;
+}
+
+.noticeBoxContent {
+  font-size: 0.875rem;
+  line-height: 1.25;
+  color: #ABABAB;
+}
+
+.noticeBoxContent p {
+  margin-bottom: 0.5rem;
+}
+
+/* 약관 동의 */
+.agreementSection {
+  margin-bottom: 2rem;
+}
+
+.agreementLabel {
+  display: flex;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.agreementCheckbox {
+  margin-right: 0.75rem;
+  margin-top: 0.25rem;
+  accent-color: #816BFF;
+}
+
+.agreementText {
+  font-size: 0.875rem;
+  color: #F7F7F7;
+}
+
+/* 결제 버튼 */
+.paymentButton {
+  width: 100%;
+  padding: 1rem 0;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  transition: background-color 0.2s ease;
+  cursor: pointer;
+}
+
+.paymentButtonEnabled {
+  background-color: #816BFF;
+  color: #F7F7F7;
+}
+
+.paymentButtonEnabled:hover {
+  background-color: rgba(129, 107, 255, 0.1);
+}
+
+.paymentButtonDisabled {
+  background-color: #323232;
+  color: #636363;
+  cursor: not-allowed;
+}

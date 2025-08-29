@@ -42,10 +42,10 @@ public class Episode {
     @Column(nullable = false)
     private String title; // 에피소드 제목
 
-    @Column(nullable = false)
+    @Column(name = "thumbnail_url", nullable = false)
     private String thumbnailUrl; // 에피소드 썸네일 이미지
 
-    @Column(nullable = false)
+    @Column(name = "video_url", nullable = false)
     private String videoUrl; // 에피소드 영상 URL
 
     @Column(nullable = false)

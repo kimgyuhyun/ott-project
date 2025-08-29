@@ -3,6 +3,7 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import com.ottproject.ottbackend.mybatis.EpisodeMapper;
 import com.ottproject.ottbackend.util.HlsSignedUrlUtil;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 	private final UserRepository userRepository; // 권한 확인(멤버십 여부 판단용)
 	private final MembershipService membershipService; // 멤버십 추상화
 	private final com.ottproject.ottbackend.repository.AnimeRepository animeListRepository; // 작품 소속 판단(에피소드 → ani)
-	private final EpisodeRepository episodeRepository; // 에피소드 조회(존재/소속)
+	private final EpisodeMapper episodeMapper; // 에피소드 조회용 MyBatis 매퍼
 
 	/**
 	 * 사용자의 특정 에피소드 재생 가능 여부 판단
@@ -37,7 +38,7 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 	public boolean canStream(Long userId, Long episodeId) { // 권한 검사
 		if (userId == null) return false; // 미로그인 차단
 
-		var episode = episodeRepository.findById(episodeId).orElse(null); // 에피소드 조회
+		var episode = episodeMapper.findEpisodeById(episodeId); // MyBatis로 에피소드 조회
 		if (episode == null || Boolean.FALSE.equals(episode.getIsActive()) || Boolean.FALSE.equals(episode.getIsReleased())) {
 			return false; // 비활성/미공개 차단
 		}
@@ -53,7 +54,11 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 	 */
 	@Transactional(readOnly = true)
 	public String buildSignedStreamUrl(Long userId, Long episodeId) { // 서명URL 생성
-		var episode = episodeRepository.findById(episodeId).orElseThrow(); // 에피소드 존재 보장
+		var episode = episodeMapper.findEpisodeById(episodeId); // MyBatis로 에피소드 조회
+		if (episode == null) {
+			throw new RuntimeException("Episode not found: " + episodeId);
+		}
+		
 		boolean isMember = membershipService.isMember(userId); // 멤버십 여부
 
 		String absolute = episode.getVideoUrl(); // 원본 절대 URL
@@ -74,14 +79,11 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 	 */
 	@Transactional(readOnly = true)
 	public Long nextEpisodeId(Long currentEpisodeId) { // 다음 화 조회
-		var current = episodeRepository.findById(currentEpisodeId).orElse(null); // 현재 화
-		if (current == null || current.getAnime() == null) {
+		var current = episodeMapper.findEpisodeById(currentEpisodeId); // MyBatis로 현재 화 조회
+		if (current == null || current.getAnimeId() == null) {
 			return null; // 없으면 null
 		}
-		var next = episodeRepository
-				.findFirstByAnimeIdAndEpisodeNumberGreaterThanAndIsReleasedTrueOrderByEpisodeNumberAsc(
-						current.getAnime().getId(), current.getEpisodeNumber()
-				); // NEW 다음 화 탐색
+		var next = episodeMapper.findNextEpisode(current.getAnimeId(), current.getEpisodeNumber()); // MyBatis로 다음 화 조회
 		return (next != null) ? next.getId() : null; // 다음 화 ID 또는 null
 	}
 }

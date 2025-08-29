@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import SearchBar from "@/components/search/SearchBar";
+import styles from "./Header.module.css";
 
 export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -31,68 +32,33 @@ export default function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 pointer-events-auto" style={{ 
-      backgroundColor: 'var(--background-1, #121212)',
-      borderBottom: '1px solid var(--border-1, #323232)',
-      position: 'fixed',
-      zIndex: 999
-    }}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center h-16">
+    <header className={styles.headerContainer}>
+      <div className={styles.headerWrapper}>
+        <div className={styles.headerContent}>
           {/* 로고와 네비게이션을 함께 배치 */}
-          <div className="flex items-center space-x-8">
+          <div className={styles.headerLogoNavGroup}>
             {/* 로고 */}
-            <Link href="/" className="flex items-center cursor-pointer" style={{ pointerEvents: 'auto' }}>
-              <span className="text-2xl font-bold" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>LAFTEL</span>
+            <Link href="/" className={styles.headerLogo}>
+              <span>LAFTEL</span>
             </Link>
 
             {/* 네비게이션 */}
-            <nav className="hidden md:flex space-x-8">
-              <Link 
+            <nav className={styles.headerNav}>
+              <Link
                 href="/tags"
-                className={`transition-colors duration-200 cursor-pointer ${
-                  isActiveLink('/tags') 
-                    ? 'font-semibold' 
-                    : 'hover:opacity-80'
-                }`}
-                style={{ 
-                  color: isActiveLink('/tags') 
-                    ? 'var(--foreground-slight, #816BFF)' 
-                    : 'var(--foreground-2, #E2E2E2)',
-                  pointerEvents: 'auto'
-                }}
+                className={`${styles.headerNavItem} ${isActiveLink('/tags') ? styles.active : ''}`}
               >
                 태그검색
               </Link>
-              <Link 
+              <Link
                 href="/weekly"
-                className={`transition-colors duration-200 cursor-pointer ${
-                  isActiveLink('/weekly') 
-                    ? 'font-semibold' 
-                    : 'hover:opacity-80'
-                }`}
-                style={{ 
-                  color: isActiveLink('/weekly') 
-                    ? 'var(--foreground-slight, #816BFF)' 
-                    : 'var(--foreground-2, #E2E2E2)',
-                  pointerEvents: 'auto'
-                }}
+                className={`${styles.headerNavItem} ${isActiveLink('/weekly') ? styles.active : ''}`}
               >
                 요일별 신작
               </Link>
-              <Link 
+              <Link
                 href="/membership"
-                className={`transition-colors duration-200 cursor-pointer ${
-                  isActiveLink('/membership') 
-                    ? 'font-semibold' 
-                    : 'hover:opacity-80'
-                }`}
-                style={{ 
-                  color: isActiveLink('/membership') 
-                    ? 'var(--foreground-slight, #816BFF)' 
-                    : 'var(--foreground-2, #E2E2E2)',
-                  pointerEvents: 'auto'
-                }}
+                className={`${styles.headerNavItem} ${isActiveLink('/membership') ? styles.active : ''}`}
               >
                 멤버십
               </Link>
@@ -100,21 +66,20 @@ export default function Header() {
           </div>
 
           {/* 우측 버튼들 */}
-          <div className="flex items-center space-x-4 ml-auto">
+          <div className={styles.headerActions}>
             {/* 검색 버튼 */}
             <button
+              className={styles.headerButton}
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="transition-colors duration-200"
-              style={{ color: 'var(--foreground-2, #E2E2E2)' }}
             >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </button>
 
             {/* 알림 버튼 */}
-            <button className="transition-colors duration-200" style={{ color: 'var(--foreground-2, #E2E2E2)' }}>
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <button className={styles.headerButton}>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.5 19a2.5 2.5 0 01-2.5-2.5V7a2.5 2.5 0 012.5-2.5h15a2.5 2.5 0 012.5 2.5v9.5a2.5 2.5 0 01-2.5 2.5h-15z" />
               </svg>
             </button>
@@ -122,56 +87,51 @@ export default function Header() {
             {/* 로그인 상태에 따른 표시 */}
             {isAuthenticated ? (
               /* 로그인된 사용자: 프로필 드롭다운 */
-              <div className="relative">
+              <div className={styles.headerProfile}>
                 <button
+                  className={styles.headerProfileButton}
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
-                  className="flex items-center space-x-2 transition-colors duration-200 hover:opacity-80"
-                  style={{ color: 'var(--foreground-2, #E2E2E2)' }}
                 >
                   {/* 프로필 이미지 */}
-                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-600 flex items-center justify-center">
+                  <div className={styles.headerProfileImage}>
                     {user?.profileImage ? (
                       <img 
                         src={user.profileImage} 
                         alt="프로필" 
-                        className="w-full h-full object-cover"
                       />
                     ) : (
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
+                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     )}
                   </div>
                   
                   {/* 사용자 닉네임 */}
-                  <span className="hidden sm:block text-sm font-medium" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>
+                  <span className={styles.headerProfileName}>
                     {user?.username || '사용자'}
                   </span>
                   
                   {/* 드롭다운 화살표 */}
-                  <svg className="w-4 h-4 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ 
-                    transform: isProfileOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                    color: 'var(--foreground-3, #ABABAB)' 
-                  }}>
+                  <svg 
+                    className={`${styles.headerProfileArrow} ${isProfileOpen ? styles.open : ''}`}
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
 
                 {/* 프로필 드롭다운 메뉴 */}
                 {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-lg" style={{ 
-                    backgroundColor: 'var(--background-1, #121212)',
-                    border: '1px solid var(--border-1, #323232)',
-                    pointerEvents: 'auto',
-                    zIndex: 1000
-                  }}>
-                    <div className="py-1">
+                  <div className={styles.headerDropdown}>
+                    <div style={{ padding: '0.25rem 0' }}>
                       {/* 사용자 정보 표시 */}
-                      <div className="px-4 py-2 border-b" style={{ borderColor: 'var(--border-1, #323232)' }}>
-                        <p className="text-sm font-medium" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>
+                      <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--border-1)' }}>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--foreground-1)' }}>
                           {user?.username || '사용자'}
                         </p>
-                        <p className="text-xs" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--foreground-3)' }}>
                           {user?.email || ''}
                         </p>
                       </div>
@@ -180,30 +140,31 @@ export default function Header() {
                       <Link
                         href="/mypage"
                         onClick={() => setIsProfileOpen(false)}
-                        className="block px-4 py-2 text-sm transition-colors duration-200 hover:opacity-80 cursor-pointer"
-                        style={{ color: 'var(--foreground-1, #F7F7F7)', pointerEvents: 'auto' }}
+                        style={{ textDecoration: 'none' }}
                       >
-                        보관함
+                        <button className={styles.headerDropdownItem}>
+                          보관함
+                        </button>
                       </Link>
                       
                       {/* 설정 */}
                       <Link
                         href="/settings"
                         onClick={() => setIsProfileOpen(false)}
-                        className="block px-4 py-2 text-sm transition-colors duration-200 hover:opacity-80 cursor-pointer"
-                        style={{ color: 'var(--foreground-1, #F7F7F7)', pointerEvents: 'auto' }}
+                        style={{ textDecoration: 'none' }}
                       >
-                        설정
+                        <button className={styles.headerDropdownItem}>
+                          설정
+                        </button>
                       </Link>
                       
                       {/* 구분선 */}
-                      <div className="border-t my-1" style={{ borderColor: 'var(--border-1, #323232)' }}></div>
+                      <div className={styles.headerDropdownDivider} />
                       
                       {/* 로그아웃 */}
                       <button
+                        className={`${styles.headerDropdownItem} ${styles.logout}`}
                         onClick={handleLogout}
-                        className="block w-full text-left px-4 py-2 text-sm transition-colors duration-200 hover:opacity-80 cursor-pointer"
-                        style={{ color: 'var(--foreground-3, #ABABAB)', pointerEvents: 'auto' }}
                       >
                         로그아웃
                       </button>
@@ -213,15 +174,7 @@ export default function Header() {
               </div>
             ) : (
               /* 로그인되지 않은 사용자: 로그인 버튼 */
-              <Link 
-                href="/login" 
-                className="px-4 py-2 rounded-lg transition-colors duration-200 font-medium cursor-pointer"
-                style={{ 
-                  backgroundColor: 'var(--foreground-slight, #816BFF)',
-                  color: 'var(--foreground-1, #F7F7F7)',
-                  pointerEvents: 'auto'
-                }}
-              >
+              <Link href="/login" className={styles.headerLoginButton}>
                 로그인/가입
               </Link>
             )}
@@ -230,12 +183,11 @@ export default function Header() {
 
         {/* 검색바 */}
         {isSearchOpen && (
-          <div className="pb-4">
-            <div className="relative">
+          <div className={styles.headerSearch}>
+            <div className={styles.headerSearchContainer}>
               <SearchBar
                 onSearch={handleSearch}
                 placeholder="작품 제목을 검색해 보세요"
-                className="[&>form>input]:bg-white/10 [&>form>input]:border-white/20 [&>form>input]:text-white [&>form>input]:placeholder-white/50 [&>form>input]:focus:border-white/50 [&>form>input]:focus:ring-white/50"
               />
             </div>
           </div>
@@ -245,8 +197,7 @@ export default function Header() {
       {/* 프로필 드롭다운 외부 클릭 시 닫기 */}
       {isProfileOpen && (
         <div 
-          className="fixed inset-0" 
-          style={{ zIndex: 998 }}
+          className={styles.headerOverlay}
           onClick={() => setIsProfileOpen(false)}
         />
       )}

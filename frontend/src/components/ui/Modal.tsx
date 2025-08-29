@@ -1,5 +1,6 @@
 "use client";
 import { ReactNode, useEffect } from "react";
+import styles from "./Modal.module.css";
 
 type ModalProps = {
   open?: boolean; // 기본 prop
@@ -31,10 +32,10 @@ export default function Modal({ open, isOpen, onClose, children }: ModalProps) {
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className={styles.modalOverlay}
     >
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative w-full max-w-md rounded-2xl bg-[#1a1a1a] p-8 text-white shadow-2xl">
+      <div className={styles.modalBackdrop} onClick={onClose} />
+      <div className={styles.modalContainer}>
         {children}
       </div>
     </div>

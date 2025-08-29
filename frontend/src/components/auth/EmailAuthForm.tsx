@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { login, register, checkEmailDuplicate, sendVerificationCode, verifyCode } from "@/lib/api/auth";
+import styles from "./EmailAuthForm.module.css";
 
 type AuthMode = 'login' | 'register';
 type RegisterStep = 'email' | 'verification' | 'password';
@@ -148,32 +149,32 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
+    <div className={styles.emailAuthOverlay}>
+      <div className={`${styles.emailAuthContainer} ${styles.emailAuthForm}`}>
+        <div className={styles.formHeader}>
+          <h2 className={styles.formTitle}>
             {mode === 'login' ? '로그인' : '회원가입'}
           </h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className={styles.closeButton}
           >
             ✕
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.inputGroup}>
+            <label htmlFor="email" className={styles.label}>
               이메일
             </label>
-            <div className="flex space-x-2">
+            <div className={styles.emailInputGroup}>
               <input
                 type="email"
                 id="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                className={styles.input}
                 placeholder="이메일을 입력하세요"
                 required
               />
@@ -181,7 +182,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
                 <button
                   type="button"
                   onClick={handleEmailCheck}
-                  className="px-3 py-2 bg-gray-500 text-white text-sm rounded-md hover:bg-gray-600 transition-colors"
+                  className={styles.duplicateCheckButton}
                 >
                   중복확인
                 </button>
@@ -190,11 +191,11 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           </div>
 
           {mode === 'register' && registerStep === 'email' && emailChecked && (
-            <div className="text-center">
+            <div className={styles.inputGroup}>
               <button
                 type="button"
                 onClick={handleSendVerificationCode}
-                className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                className={styles.sendVerificationButton}
               >
                 인증코드 발송
               </button>
@@ -202,8 +203,8 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           )}
 
           {mode === 'register' && registerStep === 'verification' && (
-            <div>
-              <label htmlFor="verificationCode" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className={styles.inputGroup}>
+              <label htmlFor="verificationCode" className={styles.label}>
                 인증코드
               </label>
               <input
@@ -211,7 +212,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
                 id="verificationCode"
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                className={styles.input}
                 placeholder="이메일로 받은 인증코드를 입력하세요"
                 required
               />
@@ -219,8 +220,8 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           )}
 
           {mode === 'register' && registerStep === 'password' && (
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className={styles.inputGroup}>
+              <label htmlFor="name" className={styles.label}>
                 닉네임
               </label>
               <input
@@ -228,7 +229,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                className={styles.input}
                 placeholder="닉네임을 입력하세요"
                 required
               />
@@ -236,8 +237,8 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           )}
 
           {(mode === 'login' || (mode === 'register' && registerStep === 'password')) && (
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <div className={styles.inputGroup}>
+              <label htmlFor="password" className={styles.label}>
                 비밀번호
               </label>
               <input
@@ -245,7 +246,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
                 id="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 placeholder-gray-400"
+                className={styles.input}
                 placeholder="비밀번호를 입력하세요"
                 required
               />
@@ -253,17 +254,17 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           )}
 
           {error && (
-            <div className="text-red-500 text-sm">{error}</div>
+            <div className={styles.errorMessage}>{error}</div>
           )}
 
           {successMessage && (
-            <div className="text-green-600 text-sm">{successMessage}</div>
+            <div className={styles.successMessage}>{successMessage}</div>
           )}
 
           <button
             type="submit"
             disabled={isLoading || (mode === 'register' && registerStep === 'email' && !emailChecked) || (mode === 'register' && registerStep === 'verification' && !verificationCode)}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
+            className={styles.submitButton}
           >
             {isLoading ? '처리중...' : (
               mode === 'login' ? '로그인' : 
@@ -273,18 +274,18 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           </button>
         </form>
 
-        <div className="mt-4 text-center">
+        <div className={styles.formFooter}>
           {mode === 'login' ? (
             <button
               onClick={switchToRegister}
-              className="text-blue-600 hover:text-blue-800 text-sm"
+              className={styles.modeSwitchButton}
             >
               계정이 없으신가요? 회원가입
             </button>
           ) : (
             <button
               onClick={switchToLogin}
-              className="text-blue-600 hover:text-blue-800 text-sm"
+              className={styles.modeSwitchButton}
             >
               이미 계정이 있으신가요? 로그인
             </button>
@@ -292,10 +293,10 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
         </div>
 
         {mode === 'register' && (
-          <div className="mt-2 text-center">
+          <div className={styles.formFooter}>
             <button
               onClick={resetForm}
-              className="text-gray-500 hover:text-gray-700 text-xs"
+              className={styles.resetButton}
             >
               처음부터 다시 시작
             </button>

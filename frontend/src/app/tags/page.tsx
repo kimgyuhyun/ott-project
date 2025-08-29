@@ -7,6 +7,7 @@ import FilterSidebar from "@/components/search/FilterSidebar";
 import AnimeGrid from "@/components/search/AnimeGrid";
 import { searchContent } from "@/lib/api/search";
 import { getGenres, getTags, getAnimeList, listAnime } from "@/lib/api/anime";
+import styles from "./TagsPage.module.css";
 
 /**
  * 태그별 검색 페이지
@@ -80,6 +81,7 @@ export default function TagsPage() {
            const list = (listRaw as any)?.items || normalizeToArray(listRaw);
            console.log('[DEBUG] 초기 최종 list:', list);
            console.log('[DEBUG] 초기 list[0]:', list[0]);
+           console.log('[DEBUG] 초기 list[0] 전체 키:', list[0] ? Object.keys(list[0]) : 'no list[0]');
            setAnimes(Array.isArray(list) ? list : []);
         } catch (e) {
           console.error('초기 데이터 로드 실패', e);
@@ -160,10 +162,12 @@ export default function TagsPage() {
         console.log('[DEBUG] listAnime 응답:', list);
         console.log('[DEBUG] list.items:', (list as any)?.items);
         console.log('[DEBUG] list.items[0]:', (list as any)?.items?.[0]);
+        console.log('[DEBUG] list.items[0] 전체 키:', (list as any)?.items?.[0] ? Object.keys((list as any).items[0]) : 'no items');
         // 백엔드 응답 구조에 맞게 .items 사용
         collected = (list as any)?.items || normalizeToArray(list);
         console.log('[DEBUG] 최종 collected:', collected);
         console.log('[DEBUG] collected[0]:', collected[0]);
+        console.log('[DEBUG] collected[0] 전체 키:', collected[0] ? Object.keys(collected[0]) : 'no collected[0]');
       }
 
       // 백엔드에서 이미 필터링된 결과이므로 클라이언트 측 필터링은 최소화
@@ -314,12 +318,12 @@ export default function TagsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className={styles.root}>
       <Header />
       
-      <main className="pt-16">
+      <main className={styles.mainContainer}>
         {/* 2단 레이아웃: 좌측 필터 + 우측 결과 */}
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row">
+        <div className={styles.layoutContainer}>
           {/* 좌측 필터 사이드바 */}
           <FilterSidebar
             selectedGenreIds={selectedGenreIds}

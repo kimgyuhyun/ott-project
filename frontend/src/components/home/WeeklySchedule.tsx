@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import AnimeCard from "./AnimeCard";
+import styles from "./WeeklySchedule.module.css";
 
 type AnimeItem = {
   aniId: number;
@@ -78,29 +79,25 @@ export default function WeeklySchedule({ onAnimeClick }: WeeklyScheduleProps) {
   const currentDayAnimes = scheduleData[selectedDay] || [];
 
   return (
-    <section className="py-12 bg-white">
-      <div className="max-w-7xl mx-auto px-4">
+    <div className={styles.weeklyContainer}>
+      <div className={styles.weeklyInnerContainer}>
         {/* 섹션 헤더 */}
-        <div className="flex items-center justify-between mb-8">
+        <div className={styles.weeklyHeader}>
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">요일별 신작</h2>
+            <h2 className={styles.weeklyTitle}>요일별 신작</h2>
           </div>
-          <button className="text-sm text-purple-600 hover:text-purple-700 transition-colors bg-purple-50 hover:bg-purple-100 px-4 py-2 rounded-lg">
+          <button className={styles.weeklyNoticeButton}>
             업로드 공지
           </button>
         </div>
 
         {/* 요일 탭 */}
-        <div className="flex items-center space-x-4 mb-8">
+        <div className={styles.weeklyTabs}>
           {days.map((day, index) => (
             <button
               key={index}
+              className={`${styles.weeklyTab} ${selectedDay === index ? styles.active : ''}`}
               onClick={() => setSelectedDay(index)}
-              className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-medium transition-colors ${
-                selectedDay === index
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
-              }`}
             >
               {day}
             </button>
@@ -109,7 +106,7 @@ export default function WeeklySchedule({ onAnimeClick }: WeeklyScheduleProps) {
 
         {/* 애니메이션 그리드 */}
         {currentDayAnimes.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <div className={styles.weeklyGrid}>
             {currentDayAnimes.map((anime) => (
               <AnimeCard
                 key={anime.aniId}
@@ -124,11 +121,11 @@ export default function WeeklySchedule({ onAnimeClick }: WeeklyScheduleProps) {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500">해당 요일에 방영되는 애니메이션이 없습니다.</p>
+          <div className={styles.weeklyEmpty}>
+            <p>해당 요일에 방영되는 애니메이션이 없습니다.</p>
           </div>
         )}
       </div>
-    </section>
+    </div>
   );
 }

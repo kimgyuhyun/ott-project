@@ -1,0 +1,44 @@
+/* 결제 실패 모달 오버레이 */
+.paymentFailureOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* 결제 실패 모달 컨테이너 */
+.paymentFailureContainer {
+  border-radius: 0.5rem;
+  padding: 2rem;
+  width: 90%;
+  max-width: 28rem;
+  border: 1px solid #323232;
+  text-align: center;
+  background-color: #121212;
+}
+
+/* 결제 실패 제목 */
+.paymentFailureTitle {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #F7F7F7;
+}
+
+/* 결제 실패 메시지 */
+.paymentFailureMessage {
+  margin-bottom: 2rem;
+  color: #ABABAB;
+}
+
+/* 확인 버튼 */
+.confirmButton {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  font-weight: 700;
+  background-color: #816BFF;
+  color: #F7F7F7;
+}

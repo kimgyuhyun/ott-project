@@ -2,6 +2,20 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  experimental: {
+    forceSwcTransforms: true,
+    esmExternals: 'loose',
+  },
+  compiler: {
+    styledComponents: true,
+  },
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+    };
+    return config;
+  },
   images: {
     remotePatterns: [
       {

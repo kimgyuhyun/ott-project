@@ -7,9 +7,7 @@ const API_BASE = '';
 
 // 공통 fetch 함수
 async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE}${endpoint}`;
-  
-  const response = await fetch(url, {
+  const response = await fetch(endpoint, {
     ...options,
     credentials: 'include', // 세션 쿠키 포함
     headers: {
@@ -24,6 +22,41 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
   }
 
   return response.json();
+}
+
+// 자막 관련 API
+export async function getSubtitles(episodeId: number) {
+  return apiCall(`/api/player/episodes/${episodeId}/subtitles`);
+}
+
+export async function getDefaultSubtitle(episodeId: number) {
+  return apiCall(`/api/player/episodes/${episodeId}/subtitles/default`);
+}
+
+export async function getSubtitleByLanguage(episodeId: number, language: string) {
+  return apiCall(`/api/player/episodes/${episodeId}/subtitles/${language}`);
+}
+
+// 스킵 관련 API
+export async function getSkips(episodeId: number) {
+  return apiCall(`/api/player/episodes/${episodeId}/skips`);
+}
+
+// 사용자 재생 설정 API
+export async function getUserPlaybackSettings() {
+  return apiCall('/api/player/users/me/settings');
+}
+
+export async function updateUserPlaybackSettings(settings: {
+  autoSkipIntro: boolean;
+  autoSkipEnding: boolean;
+  defaultQuality: string;
+  playbackSpeed: number;
+}) {
+  return apiCall('/api/users/me/settings', {
+    method: 'PUT',
+    body: JSON.stringify(settings),
+  });
 }
 
 // 에피소드 스트림 URL 발급
@@ -54,7 +87,6 @@ export async function getBulkEpisodeProgress(episodeIds: number[]) {
     body: JSON.stringify({ episodeIds }),
   });
 }
-
 // 다음 에피소드 조회
 export async function getNextEpisode(episodeId: number) {
   return apiCall(`/api/episodes/${episodeId}/next`);
@@ -64,3 +96,4 @@ export async function getNextEpisode(episodeId: number) {
 export async function getWatchHistory(page: number = 0, size: number = 20) {
   return apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}`);
 }
+

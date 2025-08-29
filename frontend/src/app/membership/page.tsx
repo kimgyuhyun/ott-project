@@ -8,6 +8,8 @@ import { useCheckout } from "@/hooks/useCheckout";
 import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import PaymentModal from "@/components/membership/PaymentModal";
 import PaymentFailureModal from "@/components/membership/PaymentFailureModal";
+import CardRegistrationModal from "@/components/membership/CardRegistrationModal";
+import styles from "./membership.module.css";
 
 /**
  * 멤버십 페이지
@@ -40,11 +42,16 @@ export default function MembershipPage() {
   };
 
   // 모달 열기/닫기
-  const openModal = () => setIsModalOpen(true);
+  const openModal = () => {
+    console.log('멤버십 모달 열기 시도');
+    console.log('isAuthenticated:', isAuthenticated);
+    console.log('user:', user);
+    setIsModalOpen(true);
+  };
   const closeModal = () => setIsModalOpen(false);
   const openPaymentModal = () => {
     // 비로그인 상태이거나 user 객체가 없으면 결제 단계로 가지 않고 로그인 페이지로 리다이렉트
-    if (isAuthenticated !== true || !user) {
+    if (!isAuthenticated || !user) {
       console.log('결제 모달 접근 차단: 로그인 필요 또는 user 객체 없음');
       window.location.href = '/login';
       return;
@@ -170,67 +177,65 @@ export default function MembershipPage() {
   // 로딩 중일 때
   if (isLoading) {
     return (
-          <div className="min-h-screen" style={{ backgroundColor: 'var(--background-1, #121212)' }}>
-      <Header />
-      <main className="relative pt-16">
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 mx-auto mb-4" style={{ borderColor: 'var(--foreground-slight, #816BFF)' }}></div>
-            <p style={{ color: 'var(--foreground-1, #F7F7F7)' }} className="text-xl">로딩 중...</p>
+      <div className={styles.membershipContainer}>
+        <Header />
+        <main className="relative pt-16">
+          <div className={styles.loadingContainer}>
+            <div className="text-center">
+              <div className={styles.loadingSpinner}></div>
+              <p className={styles.loadingText}>로딩 중...</p>
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
     );
   }
 
   // 에러가 있을 때
   if (error) {
     return (
-          <div className="min-h-screen" style={{ backgroundColor: 'var(--background-1, #121212)' }}>
-      <Header />
-      <main className="relative pt-16">
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="text-center">
-            <p style={{ color: 'var(--foreground-1, #F7F7F7)' }} className="text-xl mb-4">{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="px-6 py-3 rounded-lg"
-              style={{ backgroundColor: 'var(--foreground-slight, #816BFF)', color: 'var(--foreground-1, #F7F7F7)' }}
-            >
-              다시 시도
-            </button>
+      <div className={styles.membershipContainer}>
+        <Header />
+        <main className="relative pt-16">
+          <div className={styles.errorContainer}>
+            <div className="text-center">
+              <p className={styles.errorText}>{error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className={styles.retryButton}
+              >
+                다시 시도
+              </button>
+            </div>
           </div>
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--background-1, #121212)' }}>
+    <div className={styles.membershipContainer}>
       <Header />
       
       {/* 메인 콘텐츠 영역 */}
       <main className="relative pt-16">
         {/* 히어로 섹션 */}
-        <div className="min-h-screen flex items-center justify-center px-6" style={{ backgroundColor: 'var(--background-1, #121212)' }}>
+        <div className={styles.heroSection}>
           {/* 텍스트 콘텐츠 */}
-          <div className="text-center">
-            <h1 className="text-5xl md:text-6xl font-bold mb-4" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>
+          <div className={styles.textContent}>
+            <h1 className={styles.mainTitle}>
               동시방영 신작부터
             </h1>
-            <h2 className="text-3xl md:text-4xl font-medium mb-8" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
+            <h2 className={styles.subTitle}>
               역대 인기작까지 한 곳에서
             </h2>
             
             {/* 멤버십 시작 버튼 */}
             <button
               onClick={openModal}
-              className="text-xl font-bold px-12 py-4 rounded-lg transition-all duration-300 transform hover:scale-105 shadow-2xl"
-              style={{ backgroundColor: 'var(--foreground-slight, #816BFF)' }}
+              className={styles.startButton}
             >
-              <span style={{ color: 'var(--foreground-1, #F7F7F7)' }}>멤버십 시작하기</span>
+              <span className={styles.startButtonText}>멤버십 시작하기</span>
             </button>
             
             {/* 로그인 안내 메시지 제거 */}
@@ -238,68 +243,68 @@ export default function MembershipPage() {
         </div>
 
         {/* 멤버십 설명 구간 */}
-        <section className="py-20 px-6" style={{ backgroundColor: 'var(--background-1, #121212)' }}>
-          <div className="max-w-6xl mx-auto text-center">
-            <h2 className="text-4xl font-bold mb-4" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>
+        <section className={styles.descriptionSection}>
+          <div className={styles.descriptionContainer}>
+            <h2 className={styles.descriptionTitle}>
               나에게 맞는 멤버십을 확인하세요
             </h2>
-            <p className="text-xl mb-16" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
+            <p className={styles.descriptionText}>
               멤버십은 언제든 해지가 가능해요.
             </p>
             
             {/* 멤버십 플랜 카드 */}
-            <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <div className={styles.plansGrid}>
               {/* 베이직 플랜 */}
-              <div className="rounded-lg p-8 border-2" style={{ backgroundColor: 'var(--background-2, #000000)', borderColor: 'var(--border-1, #323232)' }}>
-                <h3 className="text-2xl font-bold mb-4" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>베이직</h3>
-                <p className="text-3xl font-bold mb-6" style={{ color: 'var(--foreground-slight, #816BFF)' }}>월 9,900원</p>
-                <ul className="space-y-3 text-left">
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+              <div className={styles.planCard}>
+                <h3 className={styles.planTitle}>베이직</h3>
+                <p className={styles.planPrice}>월 9,900원</p>
+                <ul className={styles.planFeatures}>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     프로필 1인·동시재생 1회선
                   </li>
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     최신화 시청
                   </li>
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     다운로드 지원
                   </li>
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     FHD 화질 지원
                   </li>
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     TV 앱 지원
                   </li>
                 </ul>
               </div>
               
               {/* 프리미엄 플랜 */}
-              <div className="rounded-lg p-8 border-2" style={{ backgroundColor: 'var(--background-2, #000000)', borderColor: 'var(--border-1, #323232)' }}>
-                <h3 className="text-2xl font-bold mb-4" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>프리미엄</h3>
-                <p className="text-3xl font-bold mb-6" style={{ color: 'var(--foreground-slight, #816BFF)' }}>월 14,900원</p>
-                <ul className="space-y-3 text-left">
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+              <div className={styles.planCard}>
+                <h3 className={styles.planTitle}>프리미엄</h3>
+                <p className={styles.planPrice}>월 14,900원</p>
+                <ul className={styles.planFeatures}>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     프로필 4인·동시재생 4회선
                   </li>
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     최신화 시청
                   </li>
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     다운로드 지원
                   </li>
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     FHD 화질 지원
                   </li>
-                  <li className="flex items-center" style={{ color: 'var(--foreground-3, #ABABAB)' }}>
-                    <span className="mr-3" style={{ color: 'var(--foreground-slight, #816BFF)' }}>✓</span>
+                  <li className={styles.planFeature}>
+                    <span className={styles.featureCheck}>✓</span>
                     TV 앱 지원
                   </li>
                 </ul>
@@ -307,8 +312,80 @@ export default function MembershipPage() {
             </div>
             
             {/* 멤버십 유의사항 */}
-            <div className="mt-16">
-              <p style={{ color: 'var(--foreground-3, #ABABAB)' }} className="text-lg">멤버십 유의사항</p>
+            <div className={styles.noticeSection}>
+              <h2 className={styles.noticeTitle}>
+                멤버십 유의사항
+              </h2>
+              
+              {/* 멤버십 구독 및 결제 안내 */}
+              <div className={styles.noticeBox}>
+                <h3 className={styles.noticeBoxTitle}>
+                  멤버십 구독 및 결제 안내
+                </h3>
+                <div className={styles.noticeBoxContent}>
+                  <p>• 결제 금액은 부가가치세(VAT)가 포함된 가격입니다.</p>
+                  <p>• 멤버십은 월정액 유료 이용권으로, 결제 즉시 적용되며 이용이 시작됩니다.</p>
+                  <p>• 매월 정기 결제일에 등록한 결제 수단을 통해 자동으로 결제됩니다.</p>
+                  <p>• 쿠폰, 분분, 이벤트 등 무료 혜택과 중복 사용은 불가합니다. 무료 이용 중 멤버십을 구매할 경우 남은 무료 이용 기간은 즉시 종료되며 복원되지 않습니다.</p>
+                  <p>• 미성년자 회원은 법정대리인의 명의 또는 동의를 통해 결제해야 하며, 동의 없이 결제된 경우 법정대리인이 이를 취소할 수 있습니다.</p>
+                  <p>• 멤버십은 언제든지 해지할 수 있으며, 해지 후에도 남은 이용 기간까지는 서비스를 이용하실 수 있습니다.</p>
+                  <p>• 멤버십 해지는 결제 예정일 최소 24시간 이전에 신청해야 합니다. 결제 예정일 기준 24시간 이내에는 멤버십 해지하더라도 다음 결제가 진행될 수 있습니다.</p>
+                  <p>• 통신사 또는 카드 정보 변경, 잔액 부족 등의 사유로 인해 결제가 실패할 경우, 멤버십 정기 결제가 자동으로 해지될 수 있습니다.</p>
+                  <p>• 결제 당일을 제외하고는 결제 수단은 언제든지 변경할 수 있으며, 변경된 결제 수단은 다음 정기 결제일부터 적용됩니다. (단, 휴대폰 결제로는 변경이 불가합니다.)</p>
+                  <p>• 인앱 결제 또는 외부 제휴처를 통해 구독한 멤버십을 보유한 경우, 라프텔 웹 결제로 즉시 변경은 불가하며 기존 멤버십을 해지한 뒤 이용 기간이 종료된 후 새로운 멤버십으로 변경할 수 있습니다.</p>
+                  <p>• 멤버십 결제 후 디지털 콘텐츠를 하나도 다운로드하지 않았고(다운로드 시작 포함), 스트리밍 서비스를 통해 전혀 재생하지 않은 경우에 한해, 결제일로부터 7일 이내 라프텔 고객센터에 요청하시면 환불 가능합니다. 단, 인앱 결제 또는 외부 제휴처를 통해 구독하신 경우, Google Play, App Store, LG U+등 제휴사 고객센터를 통해 환불 요청해 주시기 바랍니다.</p>
+                  <p>• 멤버십 이용 중에는 남은 기간에 대한 금액 환불이 불가합니다.</p>
+                </div>
+              </div>
+
+              {/* 콘텐츠 이용 안내 */}
+              <div className={styles.noticeBox}>
+                <h3 className={styles.noticeBoxTitle}>
+                  콘텐츠 이용 안내
+                </h3>
+                <div className={styles.noticeBoxContent}>
+                  <p>• 라프텔에서 제공되는 모든 콘텐츠는 대한민국 내에서만 이용 가능하며, 그 외 국가에서는 이용 불가합니다.</p>
+                  <p>• 일부 콘텐츠는 콘텐츠 제공사 또는 저작권자의 요청 등에 따라 별도 사전 고지 없이 서비스가 중단될 수 있습니다.</p>
+                  <p>• 콘텐츠 제공사 또는 저작권자의 요청에 따라 멤버십에서 제외되는 콘텐츠가 있을 수 있습니다.</p>
+                  <p>• 콘텐츠별 영상 화질, 음성 및 음향 방식, 언어 제공 등은 상이하며, 모든 콘텐츠가 동일한 사양으로 제공되지는 않습니다.</p>
+                  <p>• 멤버십에는 청소년 관람 불가 콘텐츠가 포함되어 있으며, 본인 확인 및 성인 인증된 회원만 청소년 관람 불가 콘텐츠 이용이 가능합니다.</p>
+                  <p>• 멤버십 종류에 따라 동시 시청 가능 기기 수가 다르며, 이를 초과하는 즉시 시청이 제한됩니다.</p>
+                  <p>• 다운로드한 콘텐츠는 일정 기간 동안만 시청 가능하며, 멤버십이 만료되면 더 이상 이용할 수 없습니다.</p>
+                  <p>• 일부 콘텐츠는 콘텐츠 제공사 또는 저작권자의 요청에 따라 스트리밍으로만 제공되며, 다운로드 이용이 불가할 수 있습니다.</p>
+                  <p>• 콘텐츠 제공사 또는 저작권자의 요청으로 특정 기기에서는 일부 콘텐츠 시청이 제한될 수 있습니다.</p>
+                </div>
+              </div>
+
+              {/* 재생 및 이용 환경 안내 */}
+              <div className={styles.noticeBox}>
+                <h3 className={styles.noticeBoxTitle}>
+                  재생 및 이용 환경 안내
+                </h3>
+                <div className={styles.noticeBoxContent}>
+                  <p>• 지원 기기 및 플랫폼은 [이곳]에서 확인하실 수 있으며, 지원되지 않는 환경에서는 일부 기능이 제한되거나 재생이 원활하지 않을 수 있습니다.</p>
+                  <p>• 해외 직구 등으로 국내 정식 출시되지 않은 기기에서는 호환성 문제로 인해 서비스 이용이 제한될 수 있습니다.</p>
+                  <p>• 지원하는 스마트폰, 태블릿, TV에서는 라프텔 공식 앱을 설치 후 이용 가능합니다.</p>
+                  <p>• 모바일 데이터(셀룰러) 환경에서는 데이터 요금이 과도하게 발생할 수 있으므로 Wi-Fi 이용을 권장합니다.</p>
+                  <p>• 사용하는 인터넷 환경에 따라 재생이 끊기거나 지연될 수 있으며, 원활한 시청을 위해 안정적인 고속 인터넷 환경이 필요합니다.</p>
+                  <p>• 모든 콘텐츠는 저작권자의 라이선스를 통해 제공되며, 디지털 저작권 관리(DRM) 기술로 보호됩니다.</p>
+                  <p>• 콘텐츠 재생은 DRM을 지원하는 환경에서만 가능합니다. 루팅되거나 탈옥된 기기, 시스템 설정이 변경된 기기에서는 재생이 제한됩니다.</p>
+                  <p>• 콘텐츠 보호 정책에 따라 Google Widevine L1 이상, Apple Fairplay 등 고급 보안 인증 및 HDCP 2.2 이상이 지원되지 않는 기기에서는 재생이 불가할 수 있습니다.</p>
+                  <p>• OS 버전, 기기 사양, 제조사에 따라 서비스가 정상 작동하지 않을 수 있습니다.</p>
+                  <p>• 영상 화질은 사용하는 인터넷 환경, 디바이스의 성능 등에 따라 달라질 수 있습니다. 모든 콘텐츠가 모든 화질로 동일하게 제공되지는 않습니다.</p>
+                  <p>• 콘텐츠 다운로드는 모바일/태블릿 앱에서만 가능하며, 일부 콘텐츠는 콘텐츠 제공사 또는 저작권자의 요청에 따라 다운로드 시청이 제한될 수 있습니다.</p>
+                  <p>• 콘텐츠 제공사 또는 저작권자의 요청으로 특정 기기에서는 일부 콘텐츠 시청이 제한될 수 있습니다.</p>
+                </div>
+              </div>
+
+              {/* 기타 안내 */}
+              <div className={styles.noticeBox}>
+                <h3 className={styles.noticeBoxTitle}>
+                  기타 안내
+                </h3>
+                <div className={styles.noticeBoxContent}>
+                  <p>• 기타 궁금하신 점은 고객센터를 통해 1:1 문의해 주시기 바랍니다.</p>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -316,77 +393,56 @@ export default function MembershipPage() {
 
       {/* 멤버십 선택 모달 */}
       {isModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'var(--background-dim-1, rgba(0,0,0,0.7))' }}>
-          <div className="rounded-lg p-8 max-w-md w-full border" style={{ backgroundColor: 'var(--background-1, #121212)', borderColor: 'var(--border-1, #323232)' }}>
+        <div className={styles.membershipSelectionModal}>
+          <div className={styles.membershipSelectionContainer}>
             {/* 모달 닫기 버튼 */}
             <button
               onClick={closeModal}
-              className="absolute top-4 right-4 text-2xl"
-              style={{ color: 'var(--foreground-3, #ABABAB)' }}
+              className={styles.modalCloseButton}
             >
               ×
             </button>
             
             {/* 모달 제목 */}
-            <div className="text-center mb-6">
-              <h3 className="text-2xl font-bold mb-2" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>멤버십 선택</h3>
-              <p style={{ color: 'var(--foreground-3, #ABABAB)' }}>언제든 해지가 가능해요!</p>
+            <div className={styles.modalTitle}>
+              <h3 className={styles.modalTitleText}>멤버십 선택</h3>
+              <p className={styles.modalSubtitle}>언제든 해지가 가능해요!</p>
             </div>
             
             {/* 멤버십 플랜 선택 */}
             <div className="space-y-4 mb-8">
               {/* 베이직 플랜 */}
               <div
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200`}
-                style={{
-                  backgroundColor: hoveredPlan === 'basic' && selectedPlan !== 'basic' ? 'var(--background-2, #000000)' : 'var(--background-1, #121212)',
-                  borderColor:
-                    selectedPlan === 'basic'
-                      ? 'var(--foreground-slight, #816BFF)'
-                      : hoveredPlan === 'basic'
-                        ? 'var(--border-2, #505050)'
-                        : 'var(--border-1, #323232)',
-                  boxShadow: selectedPlan === 'basic' ? '0 0 20px rgba(129, 107, 255, 0.2)' : 'none'
-                }}
+                className={`${styles.planSelectionCard} ${selectedPlan === 'basic' ? styles.planSelectionCardSelected : ''}`}
                 onMouseEnter={() => setHoveredPlan('basic')}
                 onMouseLeave={() => setHoveredPlan(null)}
                 onClick={() => handlePlanSelect('basic')}
               >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="text-lg font-semibold" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>베이직</h4>
-                    <p className="text-sm" style={{ color: 'var(--foreground-3, #ABABAB)' }}>프로필 1인 · 동시재생 1회선</p>
+                <div className={styles.planSelectionCardContent}>
+                  <div className={styles.planSelectionInfo}>
+                    <h4>베이직</h4>
+                    <p>프로필 1인 · 동시재생 1회선</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>월 9,900원</p>
+                  <div className={styles.planSelectionPrice}>
+                    월 9,900원
                   </div>
                 </div>
               </div>
               
               {/* 프리미엄 플랜 */}
               <div
-                className={`p-4 rounded-lg border-2 cursor-pointer transition-all duration-200`}
-                style={{
-                  backgroundColor: hoveredPlan === 'premium' && selectedPlan !== 'premium' ? 'var(--background-2, #000000)' : 'var(--background-1, #121212)',
-                  borderColor:
-                    selectedPlan === 'premium'
-                      ? 'var(--foreground-slight, #816BFF)'
-                      : hoveredPlan === 'premium'
-                        ? 'var(--border-2, #505050)'
-                        : 'var(--border-1, #323232)',
-                  boxShadow: selectedPlan === 'premium' ? '0 0 20px rgba(129, 107, 255, 0.2)' : 'none'
-                }}
+                className={`${styles.planSelectionCard} ${selectedPlan === 'premium' ? styles.planSelectionCardSelected : ''}`}
                 onMouseEnter={() => setHoveredPlan('premium')}
                 onMouseLeave={() => setHoveredPlan(null)}
                 onClick={() => handlePlanSelect('premium')}
               >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h4 className="text-lg font-semibold" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>프리미엄</h4>
-                    <p className="text-sm" style={{ color: 'var(--foreground-3, #ABABAB)' }}>프로필 4인 · 동시재생 4회선</p>
+                <div className={styles.planSelectionCardContent}>
+                  <div className={styles.planSelectionInfo}>
+                    <h4>프리미엄</h4>
+                    <p>프로필 4인 · 동시재생 4회선</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>월 14,900원</p>
+                  <div className={styles.planSelectionPrice}>
+                    월 14,900원
                   </div>
                 </div>
               </div>
@@ -395,12 +451,9 @@ export default function MembershipPage() {
             {/* 구독 시작 버튼 */}
             <button
               onClick={openPaymentModal}
-              className="w-full py-4 rounded-lg font-bold transition-colors"
-              style={{ backgroundColor: 'var(--foreground-slight, #816BFF)' }}
+              className={styles.subscriptionStartButton}
             >
-              <span style={{ color: 'var(--foreground-1, #F7F7F7)' }}>
-                {selectedPlan === 'basic' ? '베이직' : '프리미엄'} 멤버십 시작하기
-              </span>
+              {selectedPlan === 'basic' ? '베이직' : '프리미엄'} 멤버십 시작하기
             </button>
           </div>
         </div>
@@ -426,141 +479,15 @@ export default function MembershipPage() {
       />
 
       {/* 카드 등록 모달 */}
-      {isCardRegistrationModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: 'var(--background-dim-1, rgba(0,0,0,0.7))' }}>
-          <div className="rounded-lg p-6 max-w-md w-full border max-h-[90vh] overflow-y-auto" style={{ backgroundColor: 'var(--background-1, #121212)', borderColor: 'var(--border-1, #323232)' }}>
-            {/* 모달 헤더 */}
-            <div className="flex justify-between items-center mb-6">
-              <button
-                onClick={() => {
-                  closeCardRegistrationModal();
-                  setIsPaymentModalOpen(true);
-                }}
-                className="text-xl hover:opacity-80 transition-opacity"
-                style={{ color: 'var(--foreground-1, #F7F7F7)' }}
-              >
-                ←
-              </button>
-              <h3 className="text-xl font-bold" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>간편 결제 등록</h3>
-              <button
-                onClick={closeCardRegistrationModal}
-                className="text-xl hover:opacity-80 transition-opacity"
-                style={{ color: 'var(--foreground-1, #F7F7F7)' }}
-              >
-                ×
-              </button>
-            </div>
-
-            {/* 카드 정보 입력 */}
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-semibold mb-3" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>카드 정보 입력</h4>
-                
-                {/* 카드 번호 */}
-                <div className="mb-4">
-                  <label className="block text-sm mb-2" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>카드 번호</label>
-                  <div className="flex space-x-2">
-                    <input
-                      type="text"
-                      placeholder="0000"
-                      maxLength={4}
-                      className="flex-1 p-2 rounded outline-none"
-                      style={{ backgroundColor: 'var(--background-2, #000000)', borderBottom: '2px solid var(--border-1, #323232)', color: 'var(--foreground-1, #F7F7F7)' }}
-                    />
-                    <span style={{ color: 'var(--foreground-1, #F7F7F7)' }}>-</span>
-                    <input
-                      type="text"
-                      placeholder="0000"
-                      maxLength={4}
-                      className="flex-1 p-2 rounded outline-none"
-                      style={{ backgroundColor: 'var(--background-2, #000000)', borderBottom: '2px solid var(--border-1, #323232)', color: 'var(--foreground-1, #F7F7F7)' }}
-                    />
-                    <span style={{ color: 'var(--foreground-1, #F7F7F7)' }}>-</span>
-                    <input
-                      type="text"
-                      placeholder="0000"
-                      maxLength={4}
-                      className="flex-1 p-2 rounded outline-none"
-                      style={{ backgroundColor: 'var(--background-2, #000000)', borderBottom: '2px solid var(--border-1, #323232)', color: 'var(--foreground-1, #F7F7F7)' }}
-                    />
-                    <span style={{ color: 'var(--foreground-1, #F7F7F7)' }}>-</span>
-                    <input
-                      type="text"
-                      placeholder="0000"
-                      maxLength={4}
-                      className="flex-1 p-2 rounded outline-none"
-                      style={{ backgroundColor: 'var(--background-2, #000000)', borderBottom: '2px solid var(--border-1, #323232)', color: 'var(--foreground-1, #F7F7F7)' }}
-                    />
-                  </div>
-                </div>
-
-                {/* 유효기간 */}
-                <div className="mb-4">
-                  <label className="block text-sm mb-2" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>유효기간</label>
-                  <input
-                    type="text"
-                    placeholder="MM/YY"
-                    maxLength={5}
-                    className="w-full p-2 rounded outline-none"
-                    style={{ backgroundColor: 'var(--background-2, #000000)', borderBottom: '2px solid var(--border-1, #323232)', color: 'var(--foreground-1, #F7F7F7)' }}
-                  />
-                </div>
-
-                {/* 생년월일 */}
-                <div className="mb-4">
-                  <label className="block text-sm mb-2" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>생년월일</label>
-                  <input
-                    type="text"
-                    placeholder="YYMMDD (6자리)"
-                    maxLength={6}
-                    className="w-full p-2 rounded outline-none"
-                    style={{ backgroundColor: 'var(--background-2, #000000)', borderBottom: '2px solid var(--border-1, #323232)', color: 'var(--foreground-1, #F7F7F7)' }}
-                  />
-                </div>
-              </div>
-
-              {/* 카드 비밀번호 */}
-              <div>
-                <h4 className="font-semibold mb-3" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>카드 비밀번호</h4>
-                <div className="mb-4">
-                  <label className="block text-sm mb-2" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>카드 비밀번호</label>
-                  <p className="text-xs mb-2" style={{ color: 'var(--foreground-3, #ABABAB)' }}>비밀번호 앞 2자리</p>
-                  <input
-                    type="password"
-                    maxLength={2}
-                    className="w-full p-2 rounded outline-none"
-                    style={{ backgroundColor: 'var(--background-2, #000000)', borderBottom: '2px solid var(--border-1, #323232)', color: 'var(--foreground-1, #F7F7F7)' }}
-                  />
-                </div>
-              </div>
-
-              {/* 동의 체크박스 */}
-              <div className="mb-6">
-                <label className="flex items-start cursor-pointer">
-                  <input
-                    type="checkbox"
-                    defaultChecked
-                    className="mr-3 mt-1"
-                    style={{ accentColor: 'var(--foreground-slight, #816BFF)' }}
-                  />
-                  <span className="text-sm" style={{ color: 'var(--foreground-1, #F7F7F7)' }}>
-                    결제사 정보 제공에 동의합니다.
-                  </span>
-                </label>
-              </div>
-
-              {/* 등록하기 버튼 */}
-              <button
-                onClick={handleCardRegistrationSubmit}
-                className="w-full py-4 rounded-lg font-bold transition-colors"
-                style={{ backgroundColor: 'var(--button-slight-1, #323232)' }}
-              >
-                <span style={{ color: 'var(--foreground-1, #F7F7F7)' }}>등록하기</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <CardRegistrationModal
+        isOpen={isCardRegistrationModalOpen}
+        onClose={closeCardRegistrationModal}
+        onBack={() => {
+          closeCardRegistrationModal();
+          setIsPaymentModalOpen(true);
+        }}
+        onSubmit={handleCardRegistrationSubmit}
+      />
     </div>
   );
 }
