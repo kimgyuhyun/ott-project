@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
  * 메서드 개요
  * - canStream: 에피소드 재생 권한 여부 판단
  * - buildSignedStreamUrl: 품질 제한 적용 후 서명 URL 생성
- * - nextEpisodeId: 현재 화 기준 다음 화 ID 조회
  */
 @Service
 @Lazy
@@ -72,18 +71,5 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 
 		String join = filtered.contains("?") ? "&" : "?"; // 쿼리 구분자
 		return filtered + join + "e=" + expires + "&st=" + st; // 최종 URL 반환
-	}
-
-	/**
-	 * 현재 화 기준 다음 화 ID 조회(공개된 것만)
-	 */
-	@Transactional(readOnly = true)
-	public Long nextEpisodeId(Long currentEpisodeId) { // 다음 화 조회
-		var current = episodeMapper.findEpisodeById(currentEpisodeId); // MyBatis로 현재 화 조회
-		if (current == null || current.getAnimeId() == null) {
-			return null; // 없으면 null
-		}
-		var next = episodeMapper.findNextEpisode(current.getAnimeId(), current.getEpisodeNumber()); // MyBatis로 다음 화 조회
-		return (next != null) ? next.getId() : null; // 다음 화 ID 또는 null
 	}
 }

@@ -5,6 +5,7 @@ import { createOrUpdateRating, getMyRating, getRatingStats } from "@/lib/api/rat
 import Star from "@/components/ui/Star";
 import { getCurrentUser } from "@/lib/api/auth";
 import CommentList from "./CommentList";
+import styles from "./ReviewList.module.css";
 
 interface Review {
   id: number;
@@ -333,20 +334,19 @@ export default function ReviewList({ animeId }: ReviewListProps) {
   const hasAny = valuesForCalc.some(v => v > 0);
 
   if (isLoading) {
-    return <div className="text-center py-8">리뷰를 불러오는 중...</div>;
+    return <div className={styles.loadingContainer}>리뷰를 불러오는 중...</div>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className={styles.mainContainer}>
       {/* 평점 정보 섹션 */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+      <div className={styles.reviewCard}>
+        <div className={styles.ratingGrid}>
           {/* 내 별점 */}
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">내 별점</h3>
-            <div className="text-3xl font-bold text-purple-600 mb-1">{myRating ?? '-'}</div>
-            <div className="text-sm text-gray-600 mb-3">{myRating ? getRatingText(myRating) : '평점 없음'}</div>
-            <div className="flex justify-center gap-3"
+          <div className={styles.ratingSection}>
+            <h3 className={styles.ratingTitle}>내 별점</h3>
+            <div className={styles.ratingSubtitle}>{myRating ? getRatingText(myRating) : '평점 없음'}</div>
+            <div className={styles.myRatingInput}
                  onMouseLeave={() => setHoverRating(null)}>
               {[1, 2, 3, 4, 5].map((index) => {
                 const active = hoverRating ?? myRating ?? 0;
@@ -383,7 +383,7 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                       }
                     }}
                     aria-label={`별 ${index}`}
-                    className="w-7 h-7 inline-flex items-center justify-center cursor-pointer pointer-events-auto"
+                    style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                   >
                     <Star value={filled} size={28} color="#8B5CF6" emptyColor="#E5E7EB" />
                   </button>
@@ -393,11 +393,11 @@ export default function ReviewList({ animeId }: ReviewListProps) {
           </div>
 
           {/* 평균 별점 */}
-          <div className="text-center">
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">평균 별점</h3>
-            <div className="text-3xl font-bold text-purple-600 mb-1">{averageRating.toFixed(1)}</div>
-            <div className="text-sm text-gray-600 mb-3">{totalRatings}개의 별점</div>
-            <div className="flex justify-center gap-2">
+          <div className={styles.ratingSection}>
+            <h3 className={styles.ratingTitle}>평균 별점</h3>
+            <div className={styles.ratingValue}>{averageRating.toFixed(1)}</div>
+            <div className={styles.ratingSubtitle}>{totalRatings}개의 별점</div>
+            <div className={styles.ratingInput}>
               {[1, 2, 3, 4, 5].map((index) => {
                 const score = averageRating;
                 const filled = score >= index ? 1 : Math.max(0, Math.min(1, score - (index - 1)));
@@ -410,13 +410,13 @@ export default function ReviewList({ animeId }: ReviewListProps) {
 
           {/* 평점 분포 (세로 히스토그램, 전체 대비 비율) */}
           {hasAny && (
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">평점 분포</h3>
+            <div className={styles.ratingSection}>
+              <h3 className={styles.ratingTitle}>평점 분포</h3>
               {(() => {
                 const chartHeight = 140; // px
                 const minBarPx = 4; // 시각 최소 높이
                 return (
-                  <div className="flex items-end justify-between px-3" style={{ height: chartHeight + 'px' }}>
+                  <div className={styles.chartContainer} style={{ height: chartHeight + 'px' }}>
                     {halfKeys.map((label) => {
                       const count = ratingDistribution[label] ?? 0;
                       const ratio = totalRatings > 0 ? (count / totalRatings) : 0;
@@ -424,14 +424,14 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                       if (count > 0 && barPx < minBarPx) barPx = minBarPx;
                       const isIntegerLabel = label.endsWith('.0');
                       return (
-                        <div key={label} className="flex flex-col items-center w-9" aria-label={`별 ${label}: ${count}개 (${Math.round(ratio*100)}%)`}>
-                          <div className="flex items-end" style={{ height: chartHeight + 'px' }}>
-                            <div className="w-3 rounded-t transition-[height] duration-150 hover:brightness-110" style={{ height: barPx + 'px', backgroundColor: '#8B5CF6' }} />
+                        <div key={label} className={styles.chartBar} aria-label={`별 ${label}: ${count}개 (${Math.round(ratio*100)}%)`}>
+                          <div className={styles.chartBarInner} style={{ height: chartHeight + 'px' }}>
+                            <div className={styles.chartBarElement} style={{ height: barPx + 'px', backgroundColor: '#8B5CF6' }} />
                           </div>
                           {isIntegerLabel ? (
-                            <div className="text-xs text-gray-900 font-medium mt-1">{label}</div>
+                            <div className={styles.chartBarLabel}>{label}</div>
                           ) : (
-                            <div className="text-xs mt-1" style={{ visibility: 'hidden' }}>.</div>
+                            <div className={styles.chartBarSpacer}>.</div>
                           )}
                         </div>
                       );
@@ -442,41 +442,41 @@ export default function ReviewList({ animeId }: ReviewListProps) {
             </div>
           )}
           {ratingLoading && (
-            <div className="mt-2 px-3">
-              <div className="grid grid-cols-5 gap-3">
+            <div className={styles.chartLegend}>
+              <div className={styles.chartLegendGrid}>
                 {[1,2,3,4,5].map(k => (
-                  <div key={k} className="w-full h-3 rounded-full bg-gray-200 animate-pulse" />
+                  <div key={k} className={styles.chartLegendItem} />
                 ))}
               </div>
             </div>
           )}
           {ratingError && (
-            <div className="mt-2 text-center text-sm text-red-600">
+            <div className={styles.errorMessage}>
               {ratingError}
-              <button onClick={loadRatings} className="ml-2 px-2 py-0.5 bg-purple-600 text-white rounded">재시도</button>
+              <button onClick={loadRatings} className={styles.retryButton}>재시도</button>
             </div>
           )}
         </div>
 
         {/* 리뷰 작성 - 항상 표시 */}
-        <div className="mt-6">
+        <div className={styles.reviewFormSection}>
           {!currentUser && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <p className="text-blue-800 text-sm">리뷰를 작성하려면 로그인이 필요합니다.</p>
+            <div className={styles.loginRequiredMessage}>
+              <p className={styles.loginRequiredText}>리뷰를 작성하려면 로그인이 필요합니다.</p>
             </div>
           )}
           <textarea
             value={newReview.content}
             onChange={(e) => setNewReview(prev => ({ ...prev, content: e.target.value }))}
             placeholder="이 작품에 대한 내 평가를 남겨보세요!"
-            className="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className={styles.reviewTextarea}
             rows={4}
           />
-          <div className="flex justify-end mt-3">
+          <div className={styles.formButtons}>
             <button
               onClick={handleCreateReview}
               disabled={!newReview.content.trim()}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className={styles.submitButton}
             >
               작성하기
             </button>
@@ -485,17 +485,17 @@ export default function ReviewList({ animeId }: ReviewListProps) {
       </div>
 
       {/* 정렬 옵션 (오른쪽 정렬) */}
-      <div className="flex justify-end items-center">
-        <div className="flex space-x-2">
+      <div className={styles.sortSection}>
+        <div className={styles.sortButtons}>
           <button
             onClick={() => setSortBy('latest')}
-            className={`px-3 py-1 rounded ${sortBy === 'latest' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            className={`${styles.sortButton} ${sortBy === 'latest' ? styles.sortButtonActive : styles.sortButtonInactive}`}
           >
             최신순
           </button>
           <button
             onClick={() => setSortBy('rating')}
-            className={`px-3 py-1 rounded ${sortBy === 'rating' ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-700'}`}
+            className={`${styles.sortButton} ${sortBy === 'rating' ? styles.sortButtonActive : styles.sortButtonInactive}`}
           >
             평점순
           </button>
@@ -504,52 +504,52 @@ export default function ReviewList({ animeId }: ReviewListProps) {
 
       {/* 로그인 필요 메시지 */}
       {showLoginRequired && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-yellow-800">
+        <div className={styles.warningMessage}>
           로그인이 필요합니다.
         </div>
       )}
 
       {/* 리뷰 목록 */}
-      <div className="space-y-4">
+      <div className={styles.reviewsList}>
         {reviews.map((review) => (
-          <div key={review.id} className="border border-gray-200 rounded-lg">
+          <div key={review.id} className={styles.reviewItem}>
             {editingReview?.id === review.id ? (
               // 수정 모드
-              <div className="p-4">
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">평점</label>
-                    <div className="flex space-x-1">
+              <div className={styles.editForm}>
+                <div className={styles.editFormContent}>
+                  <div className={styles.formField}>
+                    <label className={styles.formLabel}>평점</label>
+                    <div className={styles.starRating}>
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
                           key={star}
                           onClick={() => setEditingReview(prev => prev ? { ...prev, rating: star } : null)}
-                          className={`text-2xl ${editingReview.rating >= star ? 'text-yellow-500' : 'text-gray-300'}`}
+                          className={`${styles.star} ${editingReview.rating >= star ? styles.starActive : styles.starInactive}`}
                         >
                           ★
                         </button>
                       ))}
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">내용</label>
+                  <div className={styles.formField}>
+                    <label className={styles.formLabel}>내용</label>
                     <textarea
                       value={editingReview.content}
                       onChange={(e) => setEditingReview(prev => prev ? { ...prev, content: e.target.value } : null)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      className={styles.editTextarea}
                       rows={4}
                     />
                   </div>
-                  <div className="flex justify-end space-x-2">
+                  <div className={styles.editButtons}>
                     <button
                       onClick={() => setEditingReview(null)}
-                      className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
+                      className={styles.cancelButton}
                     >
                       취소
                     </button>
                     <button
                       onClick={handleUpdateReview}
-                      className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                      className={styles.saveButton}
                     >
                       수정
                     </button>
@@ -558,18 +558,10 @@ export default function ReviewList({ animeId }: ReviewListProps) {
               </div>
             ) : (
               // 표시 모드
-              <div className="p-4">
-                <div className="flex justify-between items-start mb-1">
-                  <div className="flex items-center space-x-2">
-                    {/* 사용자 아바타 (이미지 우선, 없으면 이니셜) */}
-                    {review.userProfileImage ? (
-                      <img src={review.userProfileImage} alt={review.userName} className="w-8 h-8 rounded-full object-cover" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-gray-300 flex items-center justify-center text-xs text-white">
-                        {review.userName?.[0] || '?'}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-1.5">
+              <div className={styles.reviewContent}>
+                <div className={styles.reviewHeader}>
+                  <div className={styles.userRating}>
+                    <div className={styles.userRatingStars}>
                       {[1, 2, 3, 4, 5].map((star) => {
                         const isMine = !!(currentUser && review.userName === (currentUser as any).username);
                         const scoreVal = isMine && typeof myRating === 'number' && myRating > 0 ? myRating as number : (Number(review.rating) || 0);
@@ -577,7 +569,7 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                         return <Star key={star} value={filled} size={18} color="#8B5CF6" emptyColor="#E5E7EB" />;
                       })}
                     </div>
-                    <span className="text-sm font-semibold text-gray-800">{
+                    <span className={styles.userRatingValue}>{
                       (() => {
                         const isMine = !!(currentUser && review.userName === (currentUser as any).username);
                         const scoreVal = isMine && typeof myRating === 'number' && myRating > 0 ? myRating as number : (Number(review.rating) || 0);
@@ -585,18 +577,25 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                       })()
                     }</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-gray-500 mr-2">{review.createdAt ? (new Date(review.createdAt).toLocaleDateString()) : ''}{review.updatedAt && review.updatedAt !== review.createdAt ? ' (수정됨)' : ''}</span>
-                    <span className="font-semibold text-gray-800">{review.userName}</span>
+                  <div className={styles.reviewMeta}>
+                    <span className={styles.reviewDate}>{review.createdAt ? (new Date(review.createdAt).toLocaleDateString()) : ''}{review.updatedAt && review.updatedAt !== review.createdAt ? ' (수정됨)' : ''}</span>
+                    <div className={styles.userNameSection}>
+                      <img 
+                        src={review.userProfileImage || ''} 
+                        alt={review.userName} 
+                        className={styles.userNameAvatar}
+                        onError={(e) => {
+                          console.error('❌ 닉네임 프로필 이미지 로딩 실패:', review.userProfileImage);
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <span className={styles.userName}>{review.userName}</span>
+                    </div>
                     <button
                       onClick={() => handleToggleLike(review.id)}
-                      className={`flex items-center space-x-1 px-2 py-1 rounded text-sm transition-colors ${
-                        review.isLikedByCurrentUser
-                          ? 'bg-blue-100 text-blue-600 hover:bg-blue-200'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
+                      className={`${styles.actionButton} ${styles.likeButton} ${review.isLikedByCurrentUser ? styles.likeButtonActive : ''}`}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={styles.likeIcon}>
                         <path d="M2 10h4v12H2zM22 10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13 1 6.59 7.41C6.22 7.78 6 8.3 6 8.83V20c0 1.1.9 2 2 2h8c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73V10z"/>
                       </svg>
                       <span>{review.likeCount}</span>
@@ -605,13 +604,13 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                       <>
                         <button
                           onClick={() => setEditingReview(review)}
-                          className="px-2 py-1 bg-blue-100 text-blue-600 rounded text-sm hover:bg-blue-200 transition-colors"
+                          className={styles.editButton}
                         >
                           수정
                         </button>
                         <button
                           onClick={() => handleDeleteReview(review.id)}
-                          className="px-2 py-1 bg-red-100 text-red-600 rounded text-sm hover:bg-red-200 transition-colors"
+                          className={styles.deleteButton}
                         >
                           삭제
                         </button>
@@ -620,24 +619,24 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                   </div>
                 </div>
                 
-                <div className="text-gray-700">
+                <div className={styles.reviewText}>
                   {expandedReviews.has(review.id) ? (
                     <div>
-                      <p className="whitespace-pre-wrap">{review.content}</p>
+                      <p className={styles.reviewTextExpanded}>{review.content}</p>
                       <button
                         onClick={() => toggleReviewExpansion(review.id)}
-                        className="text-purple-600 hover:text-purple-800 text-sm mt-2"
+                        className={styles.expandButton}
                       >
                         접기
                       </button>
                     </div>
                   ) : (
                     <div>
-                      <p className="line-clamp-3">{review.content}</p>
+                      <p className={styles.reviewTextCollapsed}>{review.content}</p>
                       {review.content.length > 150 && (
                         <button
                           onClick={() => toggleReviewExpansion(review.id)}
-                          className="text-purple-600 hover:text-purple-800 text-sm mt-2"
+                          className={styles.expandButton}
                         >
                           더보기
                         </button>
@@ -654,7 +653,7 @@ export default function ReviewList({ animeId }: ReviewListProps) {
       </div>
 
       {reviews.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
+        <div className={styles.emptyState}>
           아직 리뷰가 없습니다. 첫 번째 리뷰를 작성해보세요!
         </div>
       )}

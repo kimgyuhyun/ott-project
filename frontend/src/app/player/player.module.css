@@ -89,6 +89,25 @@
   max-height: 70vh;
 }
 
+/* 와이드 모드 */
+.videoContainer.wideMode {
+  aspect-ratio: 21/9 !important;
+  max-height: none !important;
+  width: 100% !important;
+  height: 0 !important;
+  padding-bottom: 42.86% !important;
+  position: relative !important;
+}
+
+.videoContainer.wideMode .video {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
 .controls {
   position: absolute;
   bottom: 0;
@@ -96,11 +115,14 @@
   right: 0;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
   padding: 1rem;
-  transition: opacity 0.3s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(0);
+  opacity: 1;
 }
 
 .controls.hidden {
   opacity: 0;
+  transform: translateY(100%);
 }
 
 .progressContainer {
@@ -161,6 +183,39 @@
 .playPauseIcon {
   width: 2rem;
   height: 2rem;
+}
+
+/* 10초 뒤로/앞으로 감기 버튼 */
+.rewindButton,
+.forwardButton {
+  color: #ffffff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rewindButton:hover,
+.forwardButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #60a5fa;
+}
+
+.rewindIcon,
+.forwardIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* 다음 에피소드 버튼 아이콘 (컨트롤 내부) */
+.nextEpisodeIcon {
+  width: 1.25rem;
+  height: 1.25rem;
 }
 
 .timeDisplay {
@@ -230,22 +285,152 @@
   height: 1.5rem;
 }
 
+/* 환경설정 버튼 */
+.settingsButton {
+  color: #ffffff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settingsButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #60a5fa;
+}
+
+.settingsIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* 키보드 도움말 버튼 */
+.helpButton {
+  color: #ffffff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.helpButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #60a5fa;
+}
+
+.helpButton.active {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.helpButton.active:hover {
+  background-color: #2563eb;
+}
+
+.helpIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* PIP 모드 버튼 */
+.pipButton {
+  color: #ffffff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pipButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #60a5fa;
+}
+
+.pipButton.active {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.pipButton.active:hover {
+  background-color: #2563eb;
+}
+
+.pipIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* 와이드 모드 버튼 */
+.wideButton {
+  color: #ffffff;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wideButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #60a5fa;
+}
+
+.wideButton.active {
+  background-color: #3b82f6;
+  color: #ffffff;
+}
+
+.wideButton.active:hover {
+  background-color: #2563eb;
+}
+
+.wideIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
 .nextEpisodeContainer {
   text-align: center;
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 .nextEpisodeButton {
-  padding: 0.75rem 1.5rem;
-  background-color: #2563eb;
   color: #ffffff;
-  border-radius: 0.5rem;
+  background: none;
   border: none;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.2s;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
 }
 
 .nextEpisodeButton:hover {
-  background-color: #1d4ed8;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #60a5fa;
 }
 
 /* 새로운 레이아웃 스타일 */
@@ -423,6 +608,96 @@
 .commentField:focus {
   outline: none;
   border-color: #816bff;
+}
+
+/* 키보드 단축키 도움말 모달 */
+.keyboardHelpModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.keyboardHelpContent {
+  background-color: #1a1a1a;
+  border-radius: 0.75rem;
+  width: 90%;
+  max-width: 400px;
+  border: 1px solid #333333;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+}
+
+.keyboardHelpHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  border-bottom: 1px solid #333333;
+}
+
+.keyboardHelpHeader h3 {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.keyboardHelpClose {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 1.5rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.keyboardHelpClose:hover {
+  background-color: #333333;
+  color: #ffffff;
+}
+
+.keyboardHelpBody {
+  padding: 1.5rem;
+}
+
+.shortcutItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #333333;
+}
+
+.shortcutItem:last-child {
+  border-bottom: none;
+}
+
+.shortcutKey {
+  background-color: #2a2a2a;
+  color: #ffffff;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.375rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: 1px solid #4b5563;
+}
+
+.shortcutDesc {
+  color: #d1d5db;
+  font-size: 0.875rem;
 }
 
 /* 반응형 디자인 */

@@ -93,6 +93,11 @@ public class SecurityConfig {
                         .requestMatchers("/oauth2/failure").permitAll() // OAuth2 실패 페이지 허용
                         .requestMatchers("/api/episodes/*/skips").permitAll() // 스킵 메타 조회 공개
                         .requestMatchers("/api/episodes/*/skips/track").permitAll() // 스킵 사용 로깅 공개
+                        .requestMatchers("/api/episodes/*/next").permitAll() // 다음 에피소드 조회 공개
+                        .requestMatchers("/api/episodes/*/stream-url").authenticated() // 스트림 URL은 인증 필요
+                        .requestMatchers("/api/episodes/*/progress").authenticated() // 진행률은 인증 필요
+                        .requestMatchers("/api/episodes/progress").authenticated() // 벌크 진행률은 인증 필요
+                        .requestMatchers("/api/episodes/mypage/**").authenticated() // 마이페이지는 인증 필요
                         .requestMatchers("/api/admin/public/**").permitAll() // Admin 공개 컨텐츠
                         .requestMatchers("/api/anime/**").permitAll() // 애니메이션 조회 공개 (인증 없이 접근 가능)
                         .requestMatchers("/api/memberships/plans").permitAll() // 멤버십 플랜 조회 공개 (인증 없이 접근 가능)

@@ -27,11 +27,63 @@ export default function WeeklySchedule({ onAnimeClick }: WeeklyScheduleProps) {
   
   // 임시 데이터 (실제로는 API에서 가져올 데이터)
   const scheduleData: Record<number, AnimeItem[]> = {
-    0: [], // 월요일
-    1: [], // 화요일  
-    2: [], // 수요일
-    3: [], // 목요일
-    4: [ // 금요일 (4번 이미지에 있는 작품들)
+    0: [ // 월요일
+      {
+        aniId: 7,
+        title: "월요일 신작 1",
+        posterUrl: "https://placehold.co/200x280/4a90e2/ffffff?text=월요일+신작1",
+        rating: 4.5
+      },
+      {
+        aniId: 8,
+        title: "월요일 신작 2",
+        posterUrl: "https://placehold.co/200x280/50c878/ffffff?text=월요일+신작2",
+        rating: 4.6
+      }
+    ],
+    1: [ // 화요일
+      {
+        aniId: 9,
+        title: "화요일 신작 1",
+        posterUrl: "https://placehold.co/200x280/f39c12/ffffff?text=화요일+신작1",
+        rating: 4.4
+      },
+      {
+        aniId: 10,
+        title: "화요일 신작 2",
+        posterUrl: "https://placehold.co/200x280/e74c3c/ffffff?text=화요일+신작2",
+        rating: 4.7
+      }
+    ],
+    2: [ // 수요일
+      {
+        aniId: 11,
+        title: "수요일 신작 1",
+        posterUrl: "https://placehold.co/200x280/9b59b6/ffffff?text=수요일+신작1",
+        rating: 4.3
+      },
+      {
+        aniId: 12,
+        title: "수요일 신작 2",
+        posterUrl: "https://placehold.co/200x280/1abc9c/ffffff?text=수요일+신작2",
+        rating: 4.8
+      }
+    ],
+    3: [ // 목요일
+      {
+        aniId: 13,
+        title: "목요일 신작 1",
+        posterUrl: "https://placehold.co/200x280/34495e/ffffff?text=목요일+신작1",
+        rating: 4.5
+      },
+      {
+        aniId: 14,
+        title: "목요일 신작 2",
+        posterUrl: "https://placehold.co/200x280/e67e22/ffffff?text=목요일+신작2",
+        rating: 4.6
+      }
+    ],
+    4: [ // 금요일 (기존 데이터 유지)
       {
         aniId: 1,
         title: "타코피의 원죄",
@@ -72,8 +124,34 @@ export default function WeeklySchedule({ onAnimeClick }: WeeklyScheduleProps) {
         rating: 4.6
       }
     ],
-    5: [], // 토요일
-    6: []  // 일요일
+    5: [ // 토요일
+      {
+        aniId: 15,
+        title: "토요일 신작 1",
+        posterUrl: "https://placehold.co/200x280/2ecc71/ffffff?text=토요일+신작1",
+        rating: 4.4
+      },
+      {
+        aniId: 16,
+        title: "토요일 신작 2",
+        posterUrl: "https://placehold.co/200x280/3498db/ffffff?text=토요일+신작2",
+        rating: 4.7
+      }
+    ],
+    6: [ // 일요일
+      {
+        aniId: 17,
+        title: "일요일 신작 1",
+        posterUrl: "https://placehold.co/200x280/f1c40f/ffffff?text=일요일+신작1",
+        rating: 4.5
+      },
+      {
+        aniId: 18,
+        title: "일요일 신작 2",
+        posterUrl: "https://placehold.co/200x280/e91e63/ffffff?text=일요일+신작2",
+        rating: 4.6
+      }
+    ]
   };
 
   const currentDayAnimes = scheduleData[selectedDay] || [];
