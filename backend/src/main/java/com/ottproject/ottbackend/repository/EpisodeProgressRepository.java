@@ -26,4 +26,7 @@ public interface EpisodeProgressRepository extends JpaRepository<EpisodeProgress
 	
 	// 마이페이지용 시청 기록 목록 조회 (최근 시청 순)
 	List<EpisodeProgress> findByUser_IdOrderByUpdatedAtDesc(Long userId);
+	
+	// 마이페이지용 시청 기록 목록 조회 (페이지네이션 지원)
+	org.springframework.data.domain.Page<EpisodeProgress> findByUser_IdOrderByUpdatedAtDesc(Long userId, org.springframework.data.domain.Pageable pageable);
 }
