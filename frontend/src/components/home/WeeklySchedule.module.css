@@ -80,6 +80,25 @@
   gap: 1rem;
 }
 
+/* 반응형 그리드 - 추천/인기 애니와 동일한 패턴 */
+@media (min-width: 640px) {
+  .weeklyGrid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .weeklyGrid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .weeklyGrid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
 .weeklyEmpty {
   text-align: center;
   padding: 3rem 0;

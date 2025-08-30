@@ -1,0 +1,282 @@
+/* 플레이어 설정 모달 스타일 */
+.modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modalContent {
+  background-color: #1a1a1a;
+  border-radius: 0.75rem;
+  width: 90%;
+  max-width: 400px;
+  max-height: 80vh;
+  overflow-y: auto;
+  border: 1px solid #333333;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  border-bottom: 1px solid #333333;
+}
+
+.modalTitle {
+  color: #ffffff;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.closeButton:hover {
+  background-color: #333333;
+  color: #ffffff;
+}
+
+.closeIcon {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.modalBody {
+  padding: 1.5rem;
+}
+
+.settingSection {
+  margin-bottom: 1.5rem;
+}
+
+.settingSection:last-child {
+  margin-bottom: 0;
+}
+
+.settingItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  background-color: #2a2a2a;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #333333;
+}
+
+.settingItem:hover {
+  background-color: #333333;
+  border-color: #4b5563;
+}
+
+.settingLabel {
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.settingValue {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #d1d5db;
+  font-size: 0.875rem;
+}
+
+.arrowIcon {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.2s;
+}
+
+.settingItem:hover .arrowIcon {
+  transform: rotate(90deg);
+}
+
+.settingOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #1a1a1a;
+  border-radius: 0.375rem;
+  border: 1px solid #333333;
+}
+
+.optionButton {
+  padding: 0.5rem 0.75rem;
+  background-color: #2a2a2a;
+  border: 1px solid #333333;
+  border-radius: 0.375rem;
+  color: #d1d5db;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  text-align: left;
+  width: 100%;
+}
+
+.optionButton:hover {
+  background-color: #333333;
+  border-color: #4b5563;
+  color: #ffffff;
+}
+
+.optionButton.selected {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.optionButton.selected:hover {
+  background-color: #2563eb;
+}
+
+.toggleSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.toggleItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toggleLabel {
+  color: #d1d5db;
+  font-size: 0.875rem;
+}
+
+.toggleSwitch {
+  position: relative;
+  display: inline-block;
+  width: 3rem;
+  height: 1.5rem;
+}
+
+.toggleSwitch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggleSlider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #4b5563;
+  transition: 0.3s;
+  border-radius: 1.5rem;
+}
+
+.toggleSlider:before {
+  position: absolute;
+  content: "";
+  height: 1.125rem;
+  width: 1.125rem;
+  left: 0.1875rem;
+  bottom: 0.1875rem;
+  background-color: #ffffff;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggleSwitch input:checked + .toggleSlider {
+  background-color: #3b82f6;
+}
+
+.toggleSwitch input:checked + .toggleSlider:before {
+  transform: translateX(1.5rem);
+}
+
+.modalFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.5rem 1.5rem;
+  border-top: 1px solid #333333;
+}
+
+.cancelButton {
+  padding: 0.75rem 1.5rem;
+  background-color: #4b5563;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.cancelButton:hover {
+  background-color: #6b7280;
+}
+
+.saveButton {
+  padding: 0.75rem 1.5rem;
+  background-color: #3b82f6;
+  color: #ffffff;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.saveButton:hover {
+  background-color: #2563eb;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 640px) {
+  .modalContent {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  .modalHeader,
+  .modalBody,
+  .modalFooter {
+    padding: 1rem;
+  }
+  
+  .settingOptions {
+    gap: 0.375rem;
+  }
+  
+  .optionButton {
+    min-width: 70px;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+  }
+}
