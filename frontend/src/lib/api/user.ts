@@ -57,6 +57,33 @@ export async function getUserWatchHistory(page: number = 0, size: number = 20) {
   return apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}`);
 }
 
+// 특정 애니메이션의 시청 기록 조회
+export async function getAnimeWatchHistory(animeId: number) {
+  try {
+    const history = await getUserWatchHistory(0, 1000);
+    const animeHistory = (history as any).content?.filter((item: any) => item.animeId === animeId) || [];
+    
+    if (animeHistory.length === 0) return null;
+    
+    // 가장 최근에 본 에피소드 찾기
+    const latestEpisode = animeHistory.sort((a: any, b: any) => 
+      new Date(b.watchedAt || b.createdAt).getTime() - new Date(a.watchedAt || a.createdAt).getTime()
+    )[0];
+    
+    return {
+      episodeId: latestEpisode.episodeId,
+      episodeNumber: latestEpisode.episodeNumber || 1,
+      positionSec: latestEpisode.positionSec || 0,
+      duration: latestEpisode.duration || 0,
+      completed: latestEpisode.completed || false,
+      watchedAt: latestEpisode.watchedAt || latestEpisode.createdAt
+    };
+  } catch (error) {
+    console.error('애니메이션 시청 기록 조회 중 오류:', error);
+    return null;
+  }
+}
+
 // 사용자 보고싶다 작품 조회
 export async function getUserWantList(page: number = 0, size: number = 20) {
   return apiCall(`/api/mypage/favorites/anime?page=${page}&size=${size}`);
