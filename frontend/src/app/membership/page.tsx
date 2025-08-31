@@ -463,7 +463,14 @@ export default function MembershipPage() {
       <PaymentModal
         isOpen={isPaymentModalOpen}
         onClose={closePaymentModal}
-        planInfo={planInfo}
+        planInfo={{
+          name: selectedPlan === 'basic' ? '베이직' : '프리미엄',
+          price: selectedPlan === 'basic' ? '9,900' : '14,900',
+          features: selectedPlan === 'basic' 
+            ? ['프로필 1인·동시재생 1회선', '최신화 시청', '다운로드 지원', 'FHD 화질 지원', 'TV 앱 지원']
+            : ['프로필 4인·동시재생 4회선', '최신화 시청', '다운로드 지원', '4K 화질 지원', 'TV 앱 지원'],
+          code: selectedPlan === 'basic' ? 'BASIC_MONTHLY' : 'PREMIUM_MONTHLY'
+        }}
         paymentMethod={paymentMethod}
         onChangePaymentMethod={handlePaymentMethodChange}
         selectedPaymentService={selectedPaymentService}

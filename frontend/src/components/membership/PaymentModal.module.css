@@ -332,3 +332,111 @@
   color: #636363;
   cursor: not-allowed;
 }
+
+/* 성공 모달 */
+.successModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.successContent {
+  background-color: var(--background-1, #121212);
+  border: 1px solid var(--border-1, #323232);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+
+.successContent h3 {
+  color: var(--foreground-1, #F7F7F7);
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 16px;
+}
+
+.successContent p {
+  color: var(--foreground-2, #CCCCCC);
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.successContent button {
+  background-color: var(--foreground-slight, #816BFF);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 16px;
+}
+
+.successContent button:hover {
+  background-color: #6B5BC7;
+}
+
+/* 에러 모달 */
+.errorModal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.errorContent {
+  background-color: var(--background-1, #121212);
+  border: 1px solid var(--border-1, #323232);
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  max-width: 400px;
+  width: 90%;
+}
+
+.errorContent h3 {
+  color: #ff6b6b;
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 16px;
+}
+
+.errorContent p {
+  color: var(--foreground-2, #CCCCCC);
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.errorContent button {
+  background-color: var(--button-slight-1, #323232);
+  color: var(--foreground-1, #F7F7F7);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.errorContent button:hover {
+  background-color: var(--button-slight-2, #404040);
+}
