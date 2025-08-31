@@ -360,6 +360,14 @@
   padding: 1rem;
   border-radius: 8px;
   background-color: var(--background-2, #F7F7F7);
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.episodeItem:hover {
+  background-color: var(--background-3, #EFEFEF);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .episodeThumbnail {
@@ -412,21 +420,7 @@
   overflow: hidden;
 }
 
-.episodePlayButton {
-  flex-shrink: 0;
-  padding: 0.25rem 0.75rem;
-  font-size: 0.75rem;
-  border-radius: 4px;
-  transition: background-color 0.2s;
-  background-color: var(--foreground-slight, #816BFF);
-  color: var(--background-1, #FFFFFF);
-  border: none;
-  cursor: pointer;
-}
-
-.episodePlayButton:hover {
-  background-color: #6B5BFF;
-}
+/* 재생 버튼 스타일 제거 - 더 이상 사용하지 않음 */
 
 /* 리뷰 섹션 */
 .reviewsSection {

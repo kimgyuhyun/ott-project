@@ -275,7 +275,16 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               <div className={styles.episodesList}>
                 {episodes.length > 0 ? (
                   episodes.map((episode: any) => (
-                  <div key={episode.id} className={styles.episodeItem}>
+                  <div 
+                    key={episode.id} 
+                    className={styles.episodeItem}
+                    onClick={() => {
+                      // 플레이어 페이지로 이동 (현재 탭에서)
+                      router.push(`/player?episodeId=${episode.id}&animeId=${detail?.aniId ?? detail?.id}`);
+                      onClose(); // 모달 닫기
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className={styles.episodeThumbnail}>
                       <img 
                         src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
@@ -297,16 +306,6 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                         {episode.description || ''}
                       </p>
                     </div>
-                    <button 
-                      onClick={() => {
-                        // 플레이어 페이지로 이동 (현재 탭에서)
-                        router.push(`/player?episodeId=${episode.id}&animeId=${detail?.aniId ?? detail?.id}`);
-                        onClose(); // 모달 닫기
-                      }}
-                      className={styles.episodePlayButton}
-                    >
-                      재생
-                    </button>
                   </div>
                 ))
                 ) : (
