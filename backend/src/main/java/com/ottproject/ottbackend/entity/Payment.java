@@ -52,8 +52,8 @@ public class Payment { // 엔티티 시작
     @Column(nullable = false)
     private PaymentProvider provider; // 결제 제공자(STRIPE/IMPORT 등)
     
-    @Embedded // 금액/통화 VO 임베드
-    private Money price; // 결제 금액 및 통화(VO)
+    @Embedded // Money VO 임베드
+    private Money price; // 결제 금액/통화 VO
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

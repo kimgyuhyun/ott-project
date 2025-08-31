@@ -9,7 +9,9 @@ import com.ottproject.ottbackend.enums.PaymentStatus;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
+import com.ottproject.ottbackend.mybatis.MembershipSubscriptionQueryMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +30,7 @@ import java.util.List;
  * 메서드 개요
  * - runRecurringBilling: 정기결제 배치(스케줄)
  */
+@Slf4j // 로깅 추가
 @Service // 서비스 빈 등록
 @RequiredArgsConstructor // 생성자 주입
 public class RecurringBillingService { // 정기결제 스케줄러 서비스
@@ -36,22 +39,29 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 	private final PaymentRepository paymentRepository; // 결제 리포지토리
 	private final PaymentGateway paymentGateway; // 결제 게이트웨이 추상화
     private final MembershipNotificationService notificationService; // 알림 메일 서비스
+    private final MembershipSubscriptionQueryMapper membershipSubscriptionQueryMapper; // MyBatis 구독 조회 매퍼
 
 	/**
 	 * 정기결제 배치
-	 * - 매 분 실행(데모 목적), 실제 서비스에서는 주기 조정 필요
+	 * - 6시간마다 실행, 실제 서비스에서는 주기 조정 필요
 	 */
-	@Scheduled(cron = "0 */1 * * * *") // 매 분 실행
+	@Scheduled(cron = "0 0 */6 * * *") // 6시간마다 실행
 	@Transactional // 청구/연장 원자성 보장
 	public void runRecurringBilling() { // 배치 진입점
 		LocalDateTime now = LocalDateTime.now(); // 현재 시각
-		List<MembershipSubscription> all = subscriptionRepository.findAll(); // 간단히 전체 조회(실무는 대상만 선별 쿼리 권장)
-		for (MembershipSubscription sub : all) { // 구독 순회
-			if (sub.getStatus() != MembershipSubscriptionStatus.ACTIVE && sub.getStatus() != MembershipSubscriptionStatus.PAST_DUE) continue; // ACTIVE/PAST_DUE만 대상
-			if (!sub.isAutoRenew()) continue; // 자동갱신 OFF 제외
-			if (sub.isCancelAtPeriodEnd()) continue; // 말일 해지 예약 제외
-			if (sub.getNextBillingAt() == null || sub.getNextBillingAt().isAfter(now)) continue; // 청구 시각 미도래
-
+		log.info("정기결제 배치 시작 - {}", now);
+		
+		// MyBatis mapper를 사용하여 대상 구독만 효율적으로 조회
+		List<MembershipSubscription> targetSubscriptions = membershipSubscriptionQueryMapper
+			.findSubscriptionsForBilling(
+				List.of(MembershipSubscriptionStatus.ACTIVE.name(), MembershipSubscriptionStatus.PAST_DUE.name()), 
+				now
+			);
+		
+		log.info("처리 대상 구독 수: {}", targetSubscriptions.size());
+		
+		for (MembershipSubscription sub : targetSubscriptions) { // 구독 순회
+			// 기존 로직 유지 (필터링 제거 - 이미 매퍼에서 필터링됨)
 			List<PaymentMethod> methods = paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(sub.getUser().getId()); // 기본 우선 결제수단 목록(삭제 제외, 폴백 순회)
 			if (methods.isEmpty()) { // 결제수단 없음
 				sub.setStatus(MembershipSubscriptionStatus.PAST_DUE); // 연체 전환
@@ -132,6 +142,8 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 				}
 			}
 		}
+		
+		log.info("정기결제 배치 완료 - 처리된 구독: {}", targetSubscriptions.size());
 	}
 }
 

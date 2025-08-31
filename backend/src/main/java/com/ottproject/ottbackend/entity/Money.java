@@ -2,6 +2,8 @@ package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.AttributeOverrides;
 
 /**
  * 금액/통화 VO(@Embeddable)
@@ -21,13 +23,14 @@ import jakarta.persistence.Embeddable;
  * - getAmount()/getCurrency(): 불변 게터
  */
 @Embeddable // JPA 임베디드 값 객체로 매핑
+@AttributeOverrides({
+    @AttributeOverride(name = "amount", column = @Column(name = "price_amount", nullable = false)),
+    @AttributeOverride(name = "currency", column = @Column(name = "price_currency", length = 3, nullable = false))
+})
 public class Money { // 금액 VO 시작
 
-    @Column(name = "amount", nullable = false) // 컬럼명 유지: payments.amount
     private Long amount; // 최소 화폐단위 금액
-
-    @Column(name = "currency", length = 3, nullable = false) // 컬럼명 유지: payments.currency
-    private String currency; // 통화 코드(ISO 4217) - KRW/USD 지원
+    private String currency; // 통화 코드(ISO 4217)
 
     protected Money() { // JPA 기본 생성자
     }

@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.mybatis; // MyBatis 매퍼 패키지 선언
 
 import com.ottproject.ottbackend.dto.PaymentHistoryItemDto;
+import com.ottproject.ottbackend.entity.Payment;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -31,6 +32,12 @@ public interface PaymentQueryMapper { // 결제 조회 매퍼 인터페이스 �
 		@Param("userId") Long userId,
 		@Param("since") LocalDateTime since
 	);
+	
+	/** providerSessionId로 결제 정보 조회 */
+	Payment findByProviderSessionId(@Param("providerSessionId") String providerSessionId);
+	
+	/** 결제 ID로 결제 정보 조회 */
+	Payment findById(@Param("id") Long id);
 }
 
 

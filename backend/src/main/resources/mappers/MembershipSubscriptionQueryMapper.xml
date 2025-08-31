@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ottproject.ottbackend.mybatis.MembershipSubscriptionQueryMapper">
+    
+    <!-- 구독 엔티티와 연관 엔티티를 매핑하는 resultMap -->
+    <resultMap id="MembershipSubscriptionResultMap" type="com.ottproject.ottbackend.entity.MembershipSubscription">
+        <id property="id" column="id"/>
+        <result property="status" column="status"/>
+        <result property="startAt" column="start_at"/>
+        <result property="endAt" column="end_at"/>
+        <result property="autoRenew" column="auto_renew"/>
+        <result property="cancelAtPeriodEnd" column="cancel_at_period_end"/>
+        <result property="canceledAt" column="canceled_at"/>
+        <result property="nextBillingAt" column="next_billing_at"/>
+        <result property="retryCount" column="retry_count"/>
+        <result property="maxRetry" column="max_retry"/>
+        <result property="lastRetryAt" column="last_retry_at"/>
+        <result property="lastErrorCode" column="last_error_code"/>
+        <result property="lastErrorMessage" column="last_error_message"/>
+        
+        <!-- User 엔티티 매핑 -->
+        <association property="user" javaType="com.ottproject.ottbackend.entity.User">
+            <id property="id" column="user_id"/>
+        </association>
+        
+        <!-- MembershipPlan 엔티티 매핑 -->
+        <association property="membershipPlan" javaType="com.ottproject.ottbackend.entity.MembershipPlan">
+            <id property="id" column="plan_id"/>
+        </association>
+    </resultMap>
+    
+    <!-- 정기결제 대상 구독 조회 -->
+    <select id="findSubscriptionsForBilling" resultMap="MembershipSubscriptionResultMap">
+        SELECT 
+            s.id,
+            s.user_id,
+            s.plan_id,
+            s.status,
+            s.start_at,
+            s.end_at,
+            s.auto_renew,
+            s.cancel_at_period_end,
+            s.canceled_at,
+            s.next_billing_at,
+            s.retry_count,
+            s.max_retry,
+            s.last_retry_at,
+            s.last_error_code,
+            s.last_error_message
+        FROM subscriptions s
+        WHERE s.status IN
+        <foreach collection="statuses" item="status" open="(" separator="," close=")">
+            #{status}
+        </foreach>
+        AND s.auto_renew = true
+        AND s.cancel_at_period_end = false
+        AND s.next_billing_at IS NOT NULL
+        AND s.next_billing_at &lt;= #{now}
+        ORDER BY s.next_billing_at ASC
+    </select>
+    
+</mapper>
