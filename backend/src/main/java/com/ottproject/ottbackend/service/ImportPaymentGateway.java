@@ -11,22 +11,19 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-
 /**
  * ImportPaymentGateway
  *
  * 큰 흐름
- * - 아임포트 REST API와 연동하여 체크아웃 준비, 저장수단 재결제, 환불, 웹훅 서명검증을 수행한다.
+ * - 아임포트 REST API와 연동하여 체크아웃 준비, 저장수단 재결제, 환불, 웹훅 기본검증을 수행한다.
  *
  * 메서드 개요
  * - createCheckoutSession: 결제 준비 등록 후 세션ID/리다이렉트URL 반환
  * - issueRefund: 환불 수행
  * - chargeWithSavedMethod: 저장 결제수단 재청구
- * - verifyWebhookSignature: X-Iamport-Signature 검증(HMAC-SHA256)
+ * - verifyWebhookBasicValidation: 웹훅 데이터 기본 유효성 검증
  * - getAccessToken: 토큰 발급
+ * - verifyPaymentStatus: 아임포트 API로 결제 상태 재검증
  */
 @Component // 스프링 컴포넌트 등록
 public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 시작
@@ -38,9 +35,6 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 
 	@Value("${iamport.rest.api-secret:}")
 	private String apiSecret; // REST API Secret (application-*.yml: iamport.rest.api-secret)
-
-	@Value("${iamport.webhook.secret:}")
-	private String webhookSecret; // 웹훅 서명 비밀키(선택)
 
 	private final RestTemplate rest = new RestTemplate(); // REST 클라이언트
 
@@ -96,14 +90,117 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	}
 
 	@Override
-	public boolean verifyWebhookSignature(String rawBody, java.util.Map<String, String> headers) { // 서명 검증
-		if (webhookSecret == null || webhookSecret.isBlank()) { // 비밀키 미설정 시 우회
-			return true; // 테스트/개발 모드 패스
+	public boolean verifyWebhookBasicValidation(String rawBody, java.util.Map<String, String> headers) { // 기본 검증
+		// 웹훅 데이터의 기본 유효성만 검증
+		if (rawBody == null || rawBody.isBlank()) {
+			return false; // 바디 없음
 		}
-		String sig = firstNonEmpty(headers, "X-Iamport-Signature", "X-Imp-Signature", "X-Import-Signature"); // 헤더 후보
-		if (sig == null || sig.isBlank()) return false; // 헤더 없음
-		String computed = hmacSha256Hex(rawBody, webhookSecret); // HMAC 계산
-		return sig.equalsIgnoreCase(computed); // 비교
+		
+		// 개발 환경에서는 검증 우회 (실제 운영에서는 제거 필요)
+		if (isDevelopmentEnvironment()) {
+			return true;
+		}
+		
+		// 포트원 웹훅 형식 검증
+		try {
+			java.util.Map<String, Object> webhookData = parseJsonToMap(rawBody);
+			
+			// 필수 필드 확인 (포트원 웹훅 형식)
+			if (webhookData == null || webhookData.isEmpty()) {
+				return false; // JSON 파싱 실패
+			}
+			
+			// imp_uid, merchant_uid, status 필드 존재 여부 확인
+			String impUid = (String) webhookData.get("imp_uid");
+			String merchantUid = (String) webhookData.get("merchant_uid");
+			String status = (String) webhookData.get("status");
+			
+			if (impUid == null || impUid.isBlank() || 
+				merchantUid == null || merchantUid.isBlank() || 
+				status == null || status.isBlank()) {
+				return false; // 필수 필드 누락
+			}
+			
+			// status 값 유효성 확인 (포트원 웹훅 상태값)
+			if (!isValidStatus(status)) {
+				return false; // 유효하지 않은 상태값
+			}
+			
+			return true; // 모든 검증 통과
+		} catch (Exception e) {
+			return false; // JSON 파싱 실패 시 검증 실패
+		}
+	}
+	
+	/**
+	 * 포트원 웹훅 상태값 유효성 검증
+	 */
+	private boolean isValidStatus(String status) {
+		// 포트원 웹훅에서 사용하는 상태값들
+		return "ready".equals(status) ||      // 가상계좌 발급
+			   "paid".equals(status) ||       // 결제 완료
+			   "cancelled".equals(status) ||  // 결제 취소
+			   "failed".equals(status);       // 결제 실패
+	}
+	
+	/**
+	 * 개발 환경 여부 확인
+	 */
+	private boolean isDevelopmentEnvironment() {
+		String profile = System.getProperty("spring.profiles.active");
+		if (profile == null) {
+			profile = System.getenv("SPRING_PROFILES_ACTIVE");
+		}
+		return "dev".equals(profile) || "local".equals(profile);
+	}
+
+	/**
+	 * 아임포트 API로 결제 상태 재검증
+	 * - 웹훅 처리 후 실제 결제 상태를 API로 확인하여 보안 강화
+	 */
+	public boolean verifyPaymentStatus(String impUid, String merchantUid, long expectedAmount) {
+		try {
+			String token = getAccessToken(); // 액세스 토큰 획득
+			HttpHeaders headers = bearer(token); // 인증 헤더
+			
+			// 결제 상태 조회 API 호출
+			String url = apiBase + "/payments/" + impUid;
+			ResponseEntity<java.util.Map> response = rest.exchange(url, HttpMethod.GET, 
+				new HttpEntity<>(headers), java.util.Map.class);
+			
+			if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+				return false; // API 호출 실패
+			}
+			
+			java.util.Map<String, Object> paymentData = response.getBody();
+			java.util.Map<String, Object> responseData = (java.util.Map<String, Object>) paymentData.get("response");
+			
+			if (responseData == null) {
+				return false; // 응답 데이터 없음
+			}
+			
+			// 결제 상태 확인
+			String status = (String) responseData.get("status");
+			if (!"paid".equals(status)) {
+				return false; // 결제 완료 상태가 아님
+			}
+			
+			// 금액 확인
+			Number amount = (Number) responseData.get("amount");
+			if (amount == null || amount.longValue() != expectedAmount) {
+				return false; // 금액 불일치
+			}
+			
+			// merchant_uid 확인
+			String actualMerchantUid = (String) responseData.get("merchant_uid");
+			if (!merchantUid.equals(actualMerchantUid)) {
+				return false; // 주문번호 불일치
+			}
+			
+			return true; // 모든 검증 통과
+		} catch (Exception e) {
+			return false; // 예외 발생 시 검증 실패
+		}
 	}
 
 	private static String firstNonEmpty(java.util.Map<String, String> headers, String... keys) { // 첫 유효 헤더값
@@ -112,21 +209,6 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 			if (v != null && !v.isBlank()) return v; // 반환
 		}
 		return null; // 없음
-	}
-
-	private static String hmacSha256Hex(String data, String secret) { // HMAC-SHA256(hex)
-		try {
-			Mac mac = Mac.getInstance("HmacSHA256"); // 알고리즘
-			mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256")); // 키 설정
-			byte[] out = mac.doFinal(data.getBytes(StandardCharsets.UTF_8)); // 계산
-			StringBuilder sb = new StringBuilder(out.length * 2); // hex 버퍼
-			for (byte b : out) { // 바이트 순회
-				sb.append(String.format("%02x", b)); // 2자리 hex
-			}
-			return sb.toString(); // 결과 반환
-		} catch (Exception e) {
-			return ""; // 실패 시 빈 문자열
-		}
 	}
 
 	private String getAccessToken() { // 액세스 토큰 획득

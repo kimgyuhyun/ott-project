@@ -1,5 +1,5 @@
 "use client";
-import { createCheckout } from "@/lib/api/membership";
+import { createCheckout, checkPaymentStatus } from "@/lib/api/membership";
 
 declare global {
   interface Window {
@@ -32,7 +32,7 @@ export function useCheckout() {
     const successUrl = `${window.location.origin}/membership/guide`;
     const cancelUrl = `${window.location.origin}/oauth2/failure`;
 
-    const { providerSessionId, amount } = await createCheckout(
+    const { providerSessionId, amount, paymentId } = await createCheckout(
       planCode,
       successUrl,
       cancelUrl,
@@ -59,17 +59,56 @@ export function useCheckout() {
           amount,
           m_redirect_url: successUrl, // 모바일 복귀 URL
         },
-        (rsp: any) => {
+        async (rsp: any) => {
           if (rsp.success) {
-            // 결제 성공 시 멤버십 안내 페이지로 리다이렉트
-            window.location.href = successUrl;
-            resolve();
+            try {
+              // 결제 완료 후 백엔드 상태 확인
+              await waitForPaymentConfirmation(paymentId);
+              // 결제 성공 시 멤버십 안내 페이지로 리다이렉트
+              window.location.href = successUrl;
+              resolve();
+            } catch (error) {
+              console.error("결제 상태 확인 실패:", error);
+              // 상태 확인 실패 시에도 성공 페이지로 이동 (웹훅 처리 대기)
+              window.location.href = successUrl;
+              resolve();
+            }
           } else {
             reject(new Error(rsp.error_msg || "결제 실패"));
           }
         }
       );
     });
+  };
+
+  /**
+   * 결제 확인 완료까지 대기
+   * - 최대 재시도 횟수 및 대기 시간 설정
+   */
+  const waitForPaymentConfirmation = async (paymentId: number, maxRetries: number = 5, delayMs: number = 500): Promise<void> => {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        const status = await checkPaymentStatus(paymentId);
+        if (status.status === 'SUCCEEDED') {
+          console.log('결제 상태 확인 완료:', status);
+          return;
+        }
+        
+        console.log(`결제 상태 확인 중... (${i + 1}/${maxRetries}) - 현재상태: ${status.status}`);
+        
+        // 아직 처리 중인 경우 대기
+        if (i < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      } catch (error) {
+        console.warn(`결제 상태 확인 시도 ${i + 1} 실패:`, error);
+        if (i < maxRetries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+    
+    throw new Error('결제 상태 확인 시간 초과 (2.5초)');
   };
 
   return { requestPay };

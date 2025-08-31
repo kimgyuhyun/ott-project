@@ -5,6 +5,8 @@ import Header from "@/components/layout/Header";
 import { getEpisodeStreamUrl, saveEpisodeProgress, getEpisodeProgress, getNextEpisode } from "@/lib/api/player";
 import { getAnimeDetail } from "@/lib/api/anime";
 import PlayerSettingsModal from "@/components/player/PlayerSettingsModal";
+import { useAuth } from "@/hooks/useAuth";
+import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
 import styles from "./player.module.css";
 
 /**
@@ -44,6 +46,22 @@ export default function PlayerPage() {
   
   // 키보드 단축키 도움말 상태
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
+  
+  // 로그인 상태 체크 추가
+  const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // 로그인 상태 디버깅
+  useEffect(() => {
+    console.log('🔍 PlayerPage - 로그인 상태:', { isLoggedIn, authLoading });
+  }, [isLoggedIn, authLoading]);
+
+  // 로그인 상태가 변경되면 강제로 다시 확인
+  useEffect(() => {
+    if (!authLoading && isLoggedIn === null) {
+      console.log('🔍 PlayerPage - 로그인 상태가 null, 강제 확인 필요');
+    }
+  }, [isLoggedIn, authLoading]);
 
   useEffect(() => {
     if (episodeId && animeId) {
@@ -167,6 +185,55 @@ export default function PlayerPage() {
     };
   }, []);
 
+  // 비디오 자동 재생 시도 - 에피소드 변경 시에만 실행
+  useEffect(() => {
+    if (videoRef.current && streamUrl && isLoggedIn) {
+      const video = videoRef.current;
+      
+      // 비디오 로드 완료 후 자동 재생 시도
+      const handleCanPlay = async () => {
+        try {
+          console.log('🔍 비디오 자동 재생 시도');
+          await video.play();
+          setIsPlaying(true);
+          console.log('✅ 비디오 자동 재생 성공');
+        } catch (error) {
+          console.log('⚠️ 비디오 자동 재생 실패 (사용자 상호작용 필요):', error);
+          // 자동 재생 실패 시 사용자가 클릭해야 함
+          setIsPlaying(false);
+        }
+      };
+
+      video.addEventListener('canplay', handleCanPlay);
+      
+      return () => {
+        video.removeEventListener('canplay', handleCanPlay);
+      };
+    }
+  }, [streamUrl, isLoggedIn, episodeId]); // episodeId 추가하여 에피소드 변경 시에만 실행
+
+  // 페이지 로드 시 자동 재생 시도 - 에피소드 변경 시에만 실행
+  useEffect(() => {
+    if (videoRef.current && streamUrl && isLoggedIn && !isPlaying) {
+      const attemptAutoPlay = async () => {
+        try {
+          console.log('🔍 페이지 로드 시 자동 재생 시도');
+          await videoRef.current!.play();
+          setIsPlaying(true);
+          console.log('✅ 페이지 로드 시 자동 재생 성공');
+        } catch (error) {
+          console.log('⚠️ 페이지 로드 시 자동 재생 실패:', error);
+          // 실패해도 사용자가 수동으로 재생할 수 있음
+        }
+      };
+
+      // 약간의 지연 후 재생 시도 (DOM이 완전히 준비된 후)
+      const timer = setTimeout(attemptAutoPlay, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [streamUrl, isLoggedIn, episodeId]); // episodeId 추가하여 에피소드 변경 시에만 실행
+
   const loadPlayerData = async () => {
     if (!episodeId) return;
     
@@ -182,7 +249,15 @@ export default function PlayerPage() {
       }
     } catch (error) {
       console.error('스트림 URL 로드 실패:', error);
-      // 임시로 더미 비디오 URL 설정 (테스트용)
+      
+      // 403 에러 시 스트림 URL을 빈 문자열로 설정하여 로그인 필요 메시지 표시
+      if (error instanceof Error && (error.message.includes('403') || error.message.includes('재생 권한이 없습니다'))) {
+        setStreamUrl('');
+        setError(null); // 에러 상태 초기화
+        return;
+      }
+      
+      // 기타 에러는 기존 로직 유지
       setStreamUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4');
       console.log('더미 비디오 URL로 대체하여 테스트 진행');
     } finally {
@@ -353,6 +428,21 @@ export default function PlayerPage() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // 로그인 모달 닫기 핸들러 추가
+  const handleCloseLoginModal = () => {
+    setShowLoginModal(false);
+    router.push('/'); // 홈으로 리다이렉트
+  };
+
+  // 로딩 중이거나 로그인 체크 중일 때
+  if (authLoading) {
+    return (
+      <div className={styles.loadingContainer}>
+        <div className={styles.loadingText}>로그인 상태 확인 중...</div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className={styles.loadingContainer}>
@@ -398,179 +488,216 @@ export default function PlayerPage() {
               </div>
             )}
 
-                         {/* 비디오 플레이어 */}
-             <div className={`${styles.videoContainer} ${isWideMode ? styles.wideMode : ''}`}>
-               <video
-                 ref={videoRef}
-                 src={streamUrl}
-                 className={styles.video}
-                 onTimeUpdate={handleTimeUpdate}
-                 onPlay={() => setIsPlaying(true)}
-                 onPause={() => setIsPlaying(false)}
-                 onEnded={saveProgress}
-                 onLoadedMetadata={() => {
-                   if (videoRef.current && currentTime > 0) {
-                     videoRef.current.currentTime = currentTime;
-                   }
-                 }}
-                 controls={false}
-                 autoPlay
-               />
-              
-              {/* 커스텀 컨트롤 */}
-              <div className={`${styles.controls} ${!showControls ? styles.hidden : ''}`}>
-                {/* 진행률 바 */}
-                <div className={styles.progressContainer}>
-                  <input
-                    type="range"
-                    min="0"
-                    max={duration || 0}
-                    value={currentTime}
-                    onChange={handleSeek}
-                    className={styles.progressBar}
-                    style={{
-                      background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(currentTime / duration) * 100}%, #4b5563 ${(currentTime / duration) * 100}%, #4b5563 100%)`
-                    }}
-                  />
-                </div>
-                
-                {/* 컨트롤 버튼들 */}
-                <div className={styles.controlsRow}>
-                  <div className={styles.leftControls}>
-                    <button
-                      onClick={handlePlayPause}
-                      className={styles.playPauseButton}
-                    >
-                      {isPlaying ? (
-                        <svg className={styles.playPauseIcon} fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg className={styles.playPauseIcon} fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                    </button>
-
-                                         {/* 10초 뒤로 감기 버튼 */}
-                     <button
-                       onClick={handleRewind10}
-                       className={styles.rewindButton}
-                       title="10초 뒤로"
-                     >
-                       <svg className={styles.rewindIcon} fill="currentColor" viewBox="0 0 24 24">
-                         <path d="M11 6v12L2.5 12 11 6z"/>
-                       </svg>
-                     </button>
-
-                                         {/* 10초 앞으로 감기 버튼 */}
-                     <button
-                       onClick={handleForward10}
-                       className={styles.forwardButton}
-                       title="10초 앞으로"
-                     >
-                       <svg className={styles.forwardIcon} fill="currentColor" viewBox="0 0 24 24">
-                         <path d="M13 6v12l8.5-6L13 6z"/>
-                       </svg>
-                     </button>
-                    
-                    <div className={styles.timeDisplay}>
-                      {formatTime(currentTime)} / {formatTime(duration)}
-                    </div>
-
-                    {/* 다음 에피소드 버튼 */}
-                    {nextEpisode && (
-                      <button
-                        onClick={goToNextEpisode}
-                        className={styles.nextEpisodeButton}
-                        title="다음 에피소드"
-                      >
-                        <svg className={styles.nextEpisodeIcon} fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M6 18l8.5-6L6 6v12z"/>
-                          <path d="M16 6h2v12h-2z"/>
-                        </svg>
-                      </button>
-                    )}
+            {/* 비디오 플레이어 - 로그인 상태 및 스트림 URL 유무에 따라 조건부 렌더링 */}
+            {isLoggedIn && streamUrl ? (
+              <div className={`${styles.videoContainer} ${isWideMode ? styles.wideMode : ''}`}>
+                <video
+                  ref={videoRef}
+                  src={streamUrl}
+                  className={styles.video}
+                  onTimeUpdate={handleTimeUpdate}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onEnded={saveProgress}
+                  onLoadedMetadata={() => {
+                    if (videoRef.current && currentTime > 0) {
+                      videoRef.current.currentTime = currentTime;
+                    }
+                  }}
+                  controls={false}
+                  autoPlay
+                />
+               
+                {/* 커스텀 컨트롤 */}
+                <div className={`${styles.controls} ${!showControls ? styles.hidden : ''}`}>
+                  {/* 진행률 바 */}
+                  <div className={styles.progressContainer}>
+                    <input
+                      type="range"
+                      min="0"
+                      max={duration || 0}
+                      value={currentTime}
+                      onChange={handleSeek}
+                      className={styles.progressBar}
+                      style={{
+                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(currentTime / duration) * 100}%, #4b5563 ${(currentTime / duration) * 100}%, #4b5563 100%)`
+                      }}
+                    />
                   </div>
                   
-                  <div className={styles.rightControls}>
-                    {/* 볼륨 컨트롤 */}
-                    <div className={styles.volumeControl}>
-                      <svg className={styles.volumeIcon} fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.793L4.5 14H2a1 1 0 01-1-1V7a1 1 0 011-1h2.5l3.883-3.793A1 1 0 0110 4zM12.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828a1 1 0 010-1.415z" clipRule="evenodd" />
-                      </svg>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.1"
-                        value={volume}
-                        onChange={handleVolumeChange}
-                        className={styles.volumeSlider}
-                      />
+                  {/* 컨트롤 버튼들 */}
+                  <div className={styles.controlsRow}>
+                    <div className={styles.leftControls}>
+                      <button
+                        onClick={handlePlayPause}
+                        className={styles.playPauseButton}
+                      >
+                        {isPlaying ? (
+                          <svg className={styles.playPauseIcon} fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className={styles.playPauseIcon} fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </button>
+
+                      {/* 10초 뒤로 감기 버튼 */}
+                      <button
+                        onClick={handleRewind10}
+                        className={styles.rewindButton}
+                        title="10초 뒤로"
+                      >
+                        <svg className={styles.rewindIcon} fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M11 6v12L2.5 12 11 6z"/>
+                        </svg>
+                      </button>
+
+                      {/* 10초 앞으로 감기 버튼 */}
+                      <button
+                        onClick={handleForward10}
+                        className={styles.forwardButton}
+                        title="10초 앞으로"
+                      >
+                        <svg className={styles.forwardIcon} fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M13 6v12l8.5-6L13 6z"/>
+                        </svg>
+                      </button>
+                      
+                      <div className={styles.timeDisplay}>
+                        {formatTime(currentTime)} / {formatTime(duration)}
+                      </div>
+
+                      {/* 다음 에피소드 버튼 - 로그인한 사용자만 표시 */}
+                      {nextEpisode && isLoggedIn && (
+                        <button
+                          onClick={goToNextEpisode}
+                          className={styles.nextEpisodeButton}
+                          title="다음 에피소드"
+                        >
+                          <svg className={styles.nextEpisodeIcon} fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 18l8.5-6L6 6v12z"/>
+                            <path d="M16 6h2v12h-2z"/>
+                          </svg>
+                        </button>
+                      )}
                     </div>
-
-                    {/* 환경설정 버튼 */}
-                    <button
-                      onClick={() => setShowSettingsModal(true)}
-                      className={styles.settingsButton}
-                      title="플레이어 설정"
-                    >
-                      <svg className={styles.settingsIcon} fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-
-                    {/* 키보드 단축키 도움말 버튼 */}
-                    <button
-                      onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
-                      className={`${styles.helpButton} ${showKeyboardHelp ? styles.active : ''}`}
-                      title="키보드 단축키 도움말"
-                    >
-                      <svg className={styles.helpIcon} fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
-                      </svg>
-                    </button>
-
-                    {/* PIP 모드 버튼 */}
-                    <button
-                      onClick={handlePipMode}
-                      className={`${styles.pipButton} ${isPipMode ? styles.active : ''}`}
-                      title={isPipMode ? "PIP 모드 종료" : "PIP 모드"}
-                    >
-                      <svg className={styles.pipIcon} fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M19 7h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4zm2 8h-8V9h6c1.1 0 2 .9 2 2v4z"/>
-                      </svg>
-                    </button>
-
-                    {/* 와이드 모드 버튼 */}
-                    <button
-                      onClick={handleWideMode}
-                      className={`${styles.wideButton} ${isWideMode ? styles.active : ''}`}
-                      title={isWideMode ? "와이드 모드 종료" : "와이드 모드"}
-                    >
-                      <svg className={styles.wideIcon} fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/>
-                        <path d="M9 7H7v10h2V7zm4 0h-2v10h2V7zm4 0h-2v10h2V7z"/>
-                      </svg>
-                    </button>
                     
-                    {/* 전체화면 버튼 */}
-                    <button
-                      onClick={handleFullscreen}
-                      className={styles.fullscreenButton}
-                    >
-                      <svg className={styles.fullscreenIcon} fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12z" clipRule="evenodd" />
-                      </svg>
-                    </button>
+                    <div className={styles.rightControls}>
+                      {/* 볼륨 컨트롤 */}
+                      <div className={styles.volumeControl}>
+                        <svg className={styles.volumeIcon} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.793L4.5 14H2a1 1 0 01-1-1V7a1 1 0 011-1h2.5l3.883-3.793A1 1 0 0110 4zM12.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.983 0 0013 10a3.983 3.983 0 00-1.172-2.828a1 1 0 010-1.415z" clipRule="evenodd" />
+                        </svg>
+                        <input
+                          type="range"
+                          min="0"
+                          max="1"
+                          step="0.1"
+                          value={volume}
+                          onChange={handleVolumeChange}
+                          className={styles.volumeSlider}
+                        />
+                      </div>
+
+                      {/* 환경설정 버튼 */}
+                      <button
+                        onClick={() => setShowSettingsModal(true)}
+                        className={styles.settingsButton}
+                        title="플레이어 설정"
+                      >
+                        <svg className={styles.settingsIcon} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+
+                      {/* 키보드 단축키 도움말 버튼 */}
+                      <button
+                        onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
+                        className={`${styles.helpButton} ${showKeyboardHelp ? styles.active : ''}`}
+                        title="키보드 단축키 도움말"
+                      >
+                        <svg className={styles.helpIcon} fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
+                        </svg>
+                      </button>
+
+                      {/* PIP 모드 버튼 */}
+                      <button
+                        onClick={handlePipMode}
+                        className={`${styles.pipButton} ${isPipMode ? styles.active : ''}`}
+                        title={isPipMode ? "PIP 모드 종료" : "PIP 모드"}
+                      >
+                        <svg className={styles.pipIcon} fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M19 7h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4zm2 8h-8V9h6c1.1 0 2 .9 2 2v4z"/>
+                        </svg>
+                      </button>
+
+                      {/* 와이드 모드 버튼 */}
+                      <button
+                        onClick={handleWideMode}
+                        className={`${styles.wideButton} ${isWideMode ? styles.active : ''}`}
+                        title={isWideMode ? "와이드 모드 종료" : "와이드 모드"}
+                      >
+                        <svg className={styles.wideIcon} fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/>
+                          <path d="M9 7H7v10h2V7zm4 0h-2v10h2V7zm4 0h-2v10h2V7z"/>
+                        </svg>
+                      </button>
+                      
+                      {/* 전체화면 버튼 */}
+                      <button
+                        onClick={handleFullscreen}
+                        className={styles.fullscreenButton}
+                      >
+                        <svg className={styles.fullscreenIcon} fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* 로그인하지 않았거나 스트림 URL이 없을 때 메시지 */
+              <div className={styles.authRequiredVideo}>
+                <div className={styles.authRequiredContent}>
+                  {!isLoggedIn ? (
+                                         // 로그인하지 않은 경우
+                     <>
+                       <h2 className={styles.authRequiredTitle}>로그인이 필요합니다</h2>
+                      <p className={styles.authRequiredMessage}>
+                        이 콘텐츠를 시청하려면 로그인이 필요합니다.
+                      </p>
+                      <button 
+                        onClick={() => setShowLoginModal(true)}
+                        className={styles.authRequiredButton}
+                      >
+                        로그인하기
+                      </button>
+                    </>
+                  ) : (
+                                         // 로그인했지만 멤버십이 없는 경우
+                     <>
+                       <h2 className={styles.authRequiredTitle}>멤버십 가입이 필요합니다</h2>
+                       <p className={styles.authRequiredMessage}>
+                         이 콘텐츠를 시청하려면 멤버십 가입이 필요합니다.
+                       </p>
+                       <button 
+                         onClick={() => router.push('/membership')}
+                         className={styles.authRequiredButton}
+                       >
+                         멤버십 가입하기
+                       </button>
+                     </>
+                  )}
+                </div>
+              </div>
+            )}
 
-            {/* 다음 에피소드 버튼 (비디오 아래) */}
-            {nextEpisode && (
+            {/* 다음 에피소드 버튼 (비디오 아래) - 로그인한 사용자만 표시 */}
+            {nextEpisode && isLoggedIn && (
               <div className={styles.nextEpisodeContainer}>
                 <button
                   onClick={goToNextEpisode}
@@ -703,6 +830,12 @@ export default function PlayerPage() {
             </div>
           </div>
         )}
+
+        {/* 로그인 필요 모달 */}
+        <LoginRequiredModal 
+          isOpen={showLoginModal} 
+          onClose={handleCloseLoginModal} 
+        />
 
       </div>
     );

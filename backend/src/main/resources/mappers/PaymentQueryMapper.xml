@@ -8,8 +8,8 @@
             p.id as paymentId, <!-- 결제 PK -->
             mp.code as planCode, <!-- 플랜 코드 -->
             mp.name as planName, <!-- 플랜 명칭 -->
-            p.amount as amount, <!-- 금액(최소 화폐단위) -->
-            p.currency as currency, <!-- 통화 코드 -->
+            p.price_amount as amount, <!-- 금액(최소 화폐단위) -->
+            p.price_currency as currency, <!-- 통화 코드 -->
             p.status as status, <!-- 결제 상태 -->
             p.receipt_url as receiptUrl, <!-- 영수증 URL -->
             p.paid_at as paidAt, <!-- 결제 완료 시각 -->
@@ -33,9 +33,138 @@
         join episodes e on e.id = ep.episode_id <!-- 화수 조건 사용 위해 에피소드 조인 -->
         where ep.user_id = #{userId} <!-- 대상 사용자 -->
           and ep.updated_at &gt;= #{since} <!-- 결제 시각 이후 업데이트 된 기록만 -->
-          and e.episode_number &gt;= 4 <!-- 4화 이상(1~3 무료 제외)만 합산 -->
+          and e.episode_number &gt;= #{since} <!-- 4화 이상(1~3 무료 제외)만 합산 -->
     </select> <!-- sumWatchedSecondsSincePaidEpisodes 끝 -->
 
+    <!-- providerSessionId로 결제 정보 조회 -->
+    <select id="findByProviderSessionId" resultMap="PaymentResultMap">
+        select <!-- 선택 컬럼 시작 -->
+            p.id, <!-- 결제 PK -->
+            p.user_id, <!-- 사용자 ID -->
+            p.plan_id, <!-- 플랜 ID -->
+            p.provider, <!-- 결제 제공자 -->
+            p.price_amount, <!-- 금액 -->
+            p.price_currency, <!-- 통화 -->
+            p.status, <!-- 결제 상태 -->
+            p.provider_session_id, <!-- 제공자 세션 ID -->
+            p.provider_payment_id, <!-- 제공자 결제 ID -->
+            p.receipt_url, <!-- 영수증 URL -->
+            p.paid_at, <!-- 결제 완료 시각 -->
+            p.failed_at, <!-- 결제 실패 시각 -->
+            p.canceled_at, <!-- 결제 취소 시각 -->
+            p.refunded_at, <!-- 환불 완료 시각 -->
+            p.refunded_amount, <!-- 환불 금액 -->
+            p.created_at, <!-- 생성 시각 -->
+            p.updated_at, <!-- 수정 시각 -->
+            
+            <!-- 사용자 정보 -->
+            u.id as user_id,
+            u.email as user_email,
+            u.name as user_name,
+            u.role as user_role,
+            u.auth_provider as user_auth_provider,
+            u.created_at as user_created_at,
+            u.updated_at as user_updated_at,
+            
+            <!-- 플랜 정보 (실제 존재하는 컬럼만) -->
+            mp.id as plan_id,
+            mp.code as plan_code,
+            mp.name as plan_name,
+            mp.price_monthly_vat_included as plan_price_monthly,
+            mp.period_months as plan_period_months,
+            mp.concurrent_streams as plan_concurrent_streams,
+            mp.max_quality as plan_max_quality
+        from payments p <!-- 결제 테이블 -->
+        left join users u on u.id = p.user_id <!-- 사용자 조인 -->
+        left join plans mp on mp.id = p.plan_id <!-- 플랜 조인 -->
+        where p.provider_session_id = #{providerSessionId} <!-- 제공자 세션 ID 조건 -->
+    </select>
+
+    <!-- 결제 ID로 결제 정보 조회 -->
+    <select id="findById" resultMap="PaymentResultMap">
+        select <!-- 선택 컬럼 시작 -->
+            p.id, <!-- 결제 PK -->
+            p.user_id, <!-- 사용자 ID -->
+            p.plan_id, <!-- 플랜 ID -->
+            p.provider, <!-- 결제 제공자 -->
+            p.price_amount, <!-- 금액 -->
+            p.price_currency, <!-- 통화 -->
+            p.status, <!-- 결제 상태 -->
+            p.provider_session_id, <!-- 제공자 세션 ID -->
+            p.provider_payment_id, <!-- 제공자 결제 ID -->
+            p.receipt_url, <!-- 영수증 URL -->
+            p.paid_at, <!-- 결제 완료 시각 -->
+            p.failed_at, <!-- 결제 실패 시각 -->
+            p.canceled_at, <!-- 결제 취소 시각 -->
+            p.refunded_at, <!-- 환불 완료 시각 -->
+            p.refunded_amount, <!-- 환불 금액 -->
+            p.created_at, <!-- 생성 시각 -->
+            p.updated_at, <!-- 수정 시각 -->
+            <!-- User 정보 -->
+            u.id as user_id,
+            u.email as user_email,
+            u.name as user_name,
+            u.role as user_role,
+            u.auth_provider as user_auth_provider,
+            u.created_at as user_created_at,
+            u.updated_at as user_updated_at,
+            <!-- MembershipPlan 정보 -->
+            mp.id as plan_id,
+            mp.code as plan_code,
+            mp.name as plan_name,
+            mp.price_monthly_vat_included as plan_price_monthly,
+            mp.period_months as plan_period_months,
+            mp.concurrent_streams as plan_concurrent_streams,
+            mp.max_quality as plan_max_quality
+        from payments p <!-- 결제 테이블 별칭 p -->
+        left join users u on u.id = p.user_id <!-- 사용자 정보 조인 -->
+        left join plans mp on mp.id = p.plan_id <!-- 플랜 정보 조인 -->
+        where p.id = #{id} <!-- 결제 ID로 조회 -->
+    </select> <!-- findById 끝 -->
+
+    <!-- Payment 엔티티 결과 매핑 -->
+    <resultMap id="PaymentResultMap" type="com.ottproject.ottbackend.entity.Payment">
+        <id property="id" column="id"/>
+        <result property="provider" column="provider"/>
+        <result property="status" column="status"/>
+        <result property="providerSessionId" column="provider_session_id"/>
+        <result property="providerPaymentId" column="provider_payment_id"/>
+        <result property="receiptUrl" column="receipt_url"/>
+        <result property="paidAt" column="paid_at"/>
+        <result property="failedAt" column="failed_at"/>
+        <result property="canceledAt" column="canceled_at"/>
+        <result property="refundedAt" column="refunded_at"/>
+        <result property="refundedAmount" column="refunded_amount"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        
+        <!-- Money VO 매핑 -->
+        <association property="price" javaType="com.ottproject.ottbackend.entity.Money">
+            <result property="amount" column="price_amount"/>
+            <result property="currency" column="price_currency"/>
+        </association>
+        
+        <!-- User 엔티티 매핑 -->
+        <association property="user" javaType="com.ottproject.ottbackend.entity.User">
+            <id property="id" column="user_id"/>
+            <result property="email" column="user_email"/>
+            <result property="name" column="user_name"/>
+            <result property="role" column="user_role"/>
+            <result property="authProvider" column="user_auth_provider"/>
+            <result property="createdAt" column="user_created_at"/>
+            <result property="updatedAt" column="user_updated_at"/>
+        </association>
+        
+        <!-- MembershipPlan 엔티티 매핑 -->
+        <association property="membershipPlan" javaType="com.ottproject.ottbackend.entity.MembershipPlan">
+            <id property="id" column="plan_id"/>
+            <result property="code" column="plan_code"/>
+            <result property="name" column="plan_name"/>
+            <result property="periodMonths" column="plan_period_months"/>
+            <result property="concurrentStreams" column="plan_concurrent_streams"/>
+            <result property="maxQuality" column="plan_max_quality"/>
+        </association>
+    </resultMap>
 </mapper> <!-- 매퍼 끝 -->
 
 

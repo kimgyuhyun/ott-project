@@ -45,38 +45,38 @@ public class MembershipSubscription { // 멤버쉽 구독
     @Column(nullable = false)
     private MembershipSubscriptionStatus status; // 상태
 
-    @Column(nullable = false)
+    @Column(name = "start_at", nullable = false)
     private LocalDateTime startAt; // 시작 시각
 
-    @Column(nullable = true)
+    @Column(name = "end_at", nullable = true)
     private LocalDateTime endAt; // 종료 시각(null=무기한)
 
-    @Column(nullable = false)
+    @Column(name = "auto_renew", nullable = false)
     private boolean autoRenew; // 자동 갱신 여부
 
-    @Column(nullable = false)
+    @Column(name = "cancel_at_period_end", nullable = false)
     private boolean cancelAtPeriodEnd; // 말일 해지 예약 여부
 
-    @Column(nullable = true) // 해지 확정 시각 기록
+    @Column(name = "canceled_at", nullable = true) // 해지 확정 시각 기록
     private LocalDateTime canceledAt; // 해지 확정 시각(상태 CANCELED 전환 시점)
 
-    @Column(nullable = true)
+    @Column(name = "next_billing_at", nullable = true)
     private LocalDateTime nextBillingAt; // 다음 결제(갱신) 기준 시점
 
     // ===== 정기결제 재시도(dunning) 정책 필드 =====
-    @Column(nullable = false)
+    @Column(name = "retry_count", nullable = false)
     private int retryCount; // 현재까지 재시도 횟수(소프트 디클라인 기준)
 
-    @Column(nullable = false)
+    @Column(name = "max_retry", nullable = false)
     private int maxRetry; // 최대 재시도 횟수(기본 3)
 
-    @Column(nullable = true)
+    @Column(name = "last_retry_at", nullable = true)
     private LocalDateTime lastRetryAt; // 마지막 재시도 시각
 
-    @Column(length = 100)
+    @Column(name = "last_error_code", length = 100)
     private String lastErrorCode; // 마지막 실패 코드(게이트웨이)
 
-    @Column(length = 500)
+    @Column(name = "last_error_message", length = 500)
     private String lastErrorMessage; // 마지막 실패 메시지(게이트웨이)
 }
 

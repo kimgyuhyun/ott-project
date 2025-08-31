@@ -1,0 +1,102 @@
+.container {
+  min-height: 100vh;
+  background-color: var(--background-1, #121212);
+}
+
+.main {
+  padding-top: 80px;
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px 20px;
+}
+
+.cancelCard {
+  background-color: var(--background-2, #000000);
+  border: 1px solid var(--border-1, #323232);
+  border-radius: 16px;
+  padding: 48px;
+  text-align: center;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.cancelIcon {
+  margin-bottom: 24px;
+}
+
+.title {
+  color: var(--foreground-1, #F7F7F7);
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 16px;
+}
+
+.message {
+  color: var(--foreground-2, #CCCCCC);
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.primaryButton {
+  background-color: var(--foreground-slight, #816BFF);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.primaryButton:hover {
+  background-color: #6B5BC7;
+}
+
+.secondaryButton {
+  background-color: var(--button-slight-1, #323232);
+  color: var(--foreground-1, #F7F7F7);
+  border: 1px solid var(--border-1, #323232);
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.secondaryButton:hover {
+  background-color: var(--button-slight-2, #404040);
+  border-color: var(--border-2, #505050);
+}
+
+.redirectMessage {
+  color: var(--foreground-3, #ABABAB);
+  font-size: 14px;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .cancelCard {
+    padding: 32px 24px;
+  }
+  
+  .actions {
+    flex-direction: column;
+  }
+  
+  .title {
+    font-size: 24px;
+  }
+}

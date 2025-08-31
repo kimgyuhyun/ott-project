@@ -7,6 +7,7 @@ import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
 import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentMethodUpdateRequestDto;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
+import com.ottproject.ottbackend.dto.PaymentResultResponseDto;
 import com.ottproject.ottbackend.service.PaymentCommandService;
 import com.ottproject.ottbackend.service.PaymentReadService;
 import com.ottproject.ottbackend.service.PaymentMethodService;
@@ -24,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * PaymentController
@@ -35,7 +37,8 @@ import java.util.List;
  *
  * 엔드포인트 개요
  * - POST /api/payments/checkout: 체크아웃 생성
- * - POST /api/payments/{paymentId}/webhook, POST /api/payments/webhook: 웹훅 수신
+ * - POST /api/payments/webhook: 웹훅 수신 (통합)
+ * - GET /api/payments/{paymentId}/status: 결제 상태 확인
  * - GET /api/payments/history: 결제/환불 이력 조회
  * - POST/GET/PUT/DELETE/PATCH /api/payment-methods: 결제수단 CRUD/기본 지정
  * - POST /api/payments/{paymentId}/refund: 환불 요청
@@ -43,6 +46,7 @@ import java.util.List;
 @RestController // REST 컨트롤러 선언
 @RequiredArgsConstructor // 생성자 주입
 @RequestMapping("/api")
+@Slf4j
 public class PaymentController { // 결제 컨트롤러 시작
 	private final PaymentCommandService paymentCommandService; // 쓰기 서비스 주입
 	private final PaymentReadService paymentReadService; // 읽기 서비스 주입
@@ -104,28 +108,27 @@ public class PaymentController { // 결제 컨트롤러 시작
         return ResponseEntity.ok().build(); // 200 OK 반환
     }
 
-	@Operation(summary = "웹훅 수신(경로변수)", description = "게이트웨이가 결제 결과를 통지합니다. paymentId를 경로로 전달합니다.") // Swagger 문서화
+	@Operation(summary = "웹훅 수신", description = "아임포트로부터 결제 결과 웹훅을 수신하여 처리합니다.") // Swagger 문서화
 	@ApiResponse(responseCode = "200", description = "반영 완료") // 200 문서화
-	@PostMapping("/payments/{paymentId}/webhook") // HTTP POST 매핑: 경로변수로 paymentId 수신
-	public ResponseEntity<Void> webhookWithPath(@PathVariable Long paymentId, @RequestBody String rawBody, @RequestHeader HttpHeaders headers) { // 원문/헤더 수신
-		if (!paymentCommandService.verifyWebhook(headers, rawBody)) { // 서명 검증 실패 시
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid webhook signature"); // 401 Unauthorized
-		}
-		PaymentWebhookEventDto event = paymentCommandService.parseWebhookPayload(rawBody); // 서명 검증 후 안전 파싱
-		paymentCommandService.applyWebhookEvent(paymentId, event); // 서비스 위임으로 상태 반영(멱등 + 재검증)
+	@PostMapping("/payments/webhook") // HTTP POST 매핑: 통합된 웹훅 엔드포인트
+	public ResponseEntity<Void> webhook(@RequestBody String rawBody, @RequestHeader HttpHeaders headers) { // 원문/헤더 수신
+		paymentCommandService.processWebhook(headers, rawBody); // 통합된 웹훅 처리 메서드 호출
 		return ResponseEntity.ok().build(); // 200 OK 반환
 	}
 
-	@Operation(summary = "웹훅 수신(쿼리파라미터)", description = "게이트웨이가 결제 결과를 통지합니다. paymentId를 쿼리로 전달합니다.") // Swagger 문서화
-	@ApiResponse(responseCode = "200", description = "반영 완료") // 200 문서화
-	@PostMapping("/payments/webhook") // HTTP POST 매핑: 쿼리파라미터로 paymentId 수신
-	public ResponseEntity<Void> webhookWithQuery(@RequestParam("paymentId") Long paymentId, @RequestBody String rawBody, @RequestHeader HttpHeaders headers) { // 원문/헤더 수신
-		if (!paymentCommandService.verifyWebhook(headers, rawBody)) { // 서명 검증 실패 시
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid webhook signature"); // 401
+	@Operation(summary = "웹훅 테스트", description = "개발 환경에서만 사용 가능한 웹훅 테스트 엔드포인트")
+	@ApiResponse(responseCode = "200", description = "테스트 완료")
+	@PostMapping("/payments/webhook/test")
+	public ResponseEntity<Void> webhookTest(@RequestBody String rawBody, @RequestHeader HttpHeaders headers) {
+		log.info("웹훅 테스트 시작");
+		try {
+			paymentCommandService.processWebhook(headers, rawBody);
+			log.info("웹훅 테스트 성공");
+			return ResponseEntity.ok().build();
+		} catch (Exception e) {
+			log.error("웹훅 테스트 실패", e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
 		}
-		PaymentWebhookEventDto event = paymentCommandService.parseWebhookPayload(rawBody); // 서명 검증 후 파싱
-		paymentCommandService.applyWebhookEvent(paymentId, event); // 상태 반영
-		return ResponseEntity.ok().build(); // 200 OK
 	}
 
 	@Operation(summary = "결제 이력 조회", description = "사용자의 결제/환불 이력을 최신순으로 반환합니다.") // Swagger 문서화
@@ -148,6 +151,15 @@ public class PaymentController { // 결제 컨트롤러 시작
 		Long userId = securityUtil.requireCurrentUserId(session); // 로그인 사용자 확인
 		paymentCommandService.refundIfEligible(userId, paymentId); // 정책 검증 후 환불 실행
 		return ResponseEntity.ok().build(); // 바디 없이 200 OK
+	}
+	
+	@Operation(summary = "결제 상태 확인", description = "결제 ID로 결제 상태를 조회합니다.") // Swagger 문서화
+	@ApiResponse(responseCode = "200", description = "조회 성공") // 200 문서화
+	@GetMapping("/payments/{paymentId}/status") // HTTP GET 매핑: 결제 상태 조회
+	public ResponseEntity<PaymentResultResponseDto> checkPaymentStatus(@PathVariable Long paymentId, HttpSession session) { // 결제 상태 확인 API
+		Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인
+		PaymentResultResponseDto result = paymentReadService.getPaymentStatus(paymentId, userId); // 서비스 위임으로 상태 조회
+		return ResponseEntity.ok(result); // 200 OK + 상태 정보 반환
 	}
 }
 

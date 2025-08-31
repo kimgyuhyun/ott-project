@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.repository.EpisodeRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.mybatis.EpisodeMapper;
 import com.ottproject.ottbackend.util.HlsSignedUrlUtil;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Lazy;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
  * - canStream: 에피소드 재생 권한 여부 판단
  * - buildSignedStreamUrl: 품질 제한 적용 후 서명 URL 생성
  */
+@Slf4j
 @Service
 @Lazy
 @RequiredArgsConstructor
@@ -32,6 +34,7 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 
 	/**
 	 * 사용자의 특정 에피소드 재생 가능 여부 판단
+	 * - 멤버십 상태를 실시간으로 확인하여 정확한 권한 판단
 	 */
 	@Transactional(readOnly = true)
 	public boolean canStream(Long userId, Long episodeId) { // 권한 검사
@@ -39,13 +42,23 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 
 		var episode = episodeMapper.findEpisodeById(episodeId); // MyBatis로 에피소드 조회
 		if (episode == null || Boolean.FALSE.equals(episode.getIsActive()) || Boolean.FALSE.equals(episode.getIsReleased())) {
+			log.warn("에피소드 접근 차단 - episodeId: {}, isActive: {}, isReleased: {}", 
+				episodeId, episode != null ? episode.getIsActive() : null, episode != null ? episode.getIsReleased() : null);
 			return false; // 비활성/미공개 차단
 		}
 
 		Integer epNo = episode.getEpisodeNumber(); // 화수
-		if (epNo != null && epNo <= 3) return true; // 1~3화 무료
+		if (epNo != null && epNo <= 3) {
+			log.debug("무료 에피소드 접근 허용 - episodeId: {}, episodeNumber: {}", episodeId, epNo);
+			return true; // 1~3화 무료
+		}
 
-		return membershipService.isMember(userId); // 4화 이상은 멤버십 필요
+		// 4화 이상은 멤버십 필요 - 실시간 상태 확인
+		boolean isMember = membershipService.isMember(userId);
+		log.debug("멤버십 에피소드 접근 확인 - episodeId: {}, episodeNumber: {}, isMember: {}", 
+			episodeId, epNo, isMember);
+		
+		return isMember; // 4화 이상은 멤버십 필요
 	}
 
 	/**

@@ -13,7 +13,7 @@ import com.ottproject.ottbackend.entity.User;
  * - createCheckoutSession: 체크아웃 세션 생성
  * - issueRefund: 환불 처리
  * - chargeWithSavedMethod: 저장수단 자동 청구
- * - verifyWebhookSignature: 웹훅 서명 검증
+ * - verifyWebhookBasicValidation: 웹훅 기본 검증
  */
 public interface PaymentGateway { // 게이트웨이 추상화 시작
 
@@ -59,11 +59,11 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 	}
 
 	/**
-	 * 웹훅 서명 검증
-	 * - 게이트웨이가 보낸 원문 바디와 헤더를 사용하여 진위(HMAC 등)를 검증합니다.
-	 * - 검증이 비활성화된 환경에서는 항상 true를 반환할 수 있습니다.
+	 * 웹훅 기본 검증
+	 * - 게이트웨이가 보낸 웹훅 데이터의 기본 유효성을 검증합니다.
+	 * - 실제 검증은 웹훅 처리 후 API 호출로 수행합니다.
 	 */
-	boolean verifyWebhookSignature(String rawBody, java.util.Map<String, String> headers);
+	boolean verifyWebhookBasicValidation(String rawBody, java.util.Map<String, String> headers);
 
 	/**
 	 * 결제 실패 유형

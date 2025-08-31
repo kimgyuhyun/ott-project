@@ -96,6 +96,11 @@ export async function createCheckout(planCode: string, successUrl?: string, canc
   });
 }
 
+// 결제 상태 확인
+export async function checkPaymentStatus(paymentId: number) {
+  return apiCall<PaymentStatusResponse>(`/api/payments/${paymentId}/status`);
+}
+
 // 타입 정의
 export interface MembershipPlan {
   id: number;
@@ -151,4 +156,14 @@ export interface PaymentCheckoutCreateSuccess {
   paymentId: number;
   providerSessionId: string; // merchant_uid
   amount: number; // 결제 금액(dev에서는 1원)
+}
+
+export interface PaymentStatusResponse {
+  paymentId: number;
+  status: string;
+  providerPaymentId?: string;
+  receiptUrl?: string;
+  reasonCode?: string;
+  message?: string;
+  occurredAt: string;
 }
