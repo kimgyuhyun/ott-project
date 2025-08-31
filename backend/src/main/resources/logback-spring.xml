@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 콘솔 출력 설정 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 파일 출력 설정 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/ott-backend.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/ott-backend.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 결제 관련 로그를 INFO 레벨로 설정 -->
+    <logger name="com.ottproject.ottbackend.service.PaymentCommandService" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </logger>
+
+    <logger name="com.ottproject.ottbackend.service.PaymentWebhookService" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </logger>
+
+    <logger name="com.ottproject.ottbackend.service.PaymentReadService" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </logger>
+
+    <!-- 웹훅 처리 로그를 상세하게 기록 -->
+    <logger name="com.ottproject.ottbackend.controller.PaymentController" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </logger>
+
+    <!-- 멤버십 관련 로그 -->
+    <logger name="com.ottproject.ottbackend.service.MembershipSubscriptionMembershipService" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </logger>
+
+    <!-- 플레이어 인증 관련 로그 -->
+    <logger name="com.ottproject.ottbackend.service.PlaybackAuthService" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </logger>
+
+    <!-- 스프링 프레임워크 로그 -->
+    <logger name="org.springframework.security" level="INFO" />
+    <logger name="org.springframework.security.oauth2" level="INFO" />
+    <logger name="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping" level="INFO" />
+    <logger name="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter" level="INFO" />
+
+    <!-- MyBatis 로그 -->
+    <logger name="com.ottproject.ottbackend.mybatis" level="INFO" />
+
+    <!-- Swagger 로그 -->
+    <logger name="org.springdoc" level="INFO" />
+    <logger name="org.springdoc.core" level="INFO" />
+
+    <!-- 루트 로거 설정 -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- 에러 발생 시 스택 트레이스 전체 기록 -->
+    <logger name="com.ottproject.ottbackend" level="INFO" additivity="false">
+        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="FILE" />
+    </logger>
+</configuration>
