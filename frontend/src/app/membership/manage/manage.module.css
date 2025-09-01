@@ -1,0 +1,320 @@
+/* 멤버십 관리 페이지 컨테이너 */
+.manageContainer {
+  min-height: 100vh;
+  background-color: #0a0a0a;
+  color: #ffffff;
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  line-height: 1.5;
+  letter-spacing: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 메인 콘텐츠 */
+.mainContent {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  padding-top: 6rem;
+}
+
+/* 페이지 헤더 */
+.pageHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.pageTitle {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+/* 현재 멤버십 카드 */
+.currentMembershipCard {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid #333;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* 멤버십 섹션 */
+.membershipSection {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #333;
+}
+
+.membershipSection:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* 섹션 제목 */
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 1rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 플랜 정보 */
+.planInfo {
+  margin: 0;
+}
+
+.planName {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #816BFF;
+  margin: 0;
+}
+
+/* 결제 수단 정보 */
+.paymentMethodInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* 결제 수단이 없을 때 */
+.noPaymentMethod {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.noPaymentMethodText {
+  font-size: 0.875rem;
+  color: #a0a0a0;
+  font-style: italic;
+}
+
+/* 현재 결제 수단 */
+.currentPaymentMethod {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.paymentMethodIcon {
+  width: 40px;
+  height: 40px;
+  background: rgba(129, 107, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paymentMethodIconText {
+  font-size: 1.25rem;
+}
+
+.paymentMethodText {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+/* 결제 수단 변경 버튼 */
+.changePaymentMethodButton {
+  background: #2d2d2d;
+  color: #ffffff;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+}
+
+.changePaymentMethodButton:hover {
+  background: #3d3d3d;
+  border-color: #555;
+}
+
+/* 결제 예정일과 금액 */
+.detailValue {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.planPrice {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* 멤버십 해지 섹션 */
+.cancelSection {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.cancelMembershipButton {
+  background: #2d2d2d;
+  color: #ffffff;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.cancelMembershipButton:hover {
+  background: #3d3d3d;
+  border-color: #555;
+}
+
+.cancelMembershipButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 돌아가기 링크 */
+.backLinkContainer {
+  text-align: center;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  color: #816BFF;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  font-size: 0.875rem;
+}
+
+.backLink:hover {
+  color: #6B4BFF;
+}
+
+/* 로딩 상태 */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #333;
+  border-top: 4px solid #816BFF;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loadingText {
+  color: #a0a0a0;
+  font-size: 1.125rem;
+}
+
+/* 에러 상태 */
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.errorText {
+  color: #ef4444;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+}
+
+.retryButton {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.retryButton:hover {
+  background: #dc2626;
+}
+
+/* 멤버십 없음 상태 */
+.noMembershipContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.noMembershipTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.noMembershipText {
+  color: #a0a0a0;
+  margin-bottom: 2rem;
+  font-size: 1.125rem;
+}
+
+.subscribeButton {
+  background: linear-gradient(135deg, #816BFF 0%, #6B4BFF 100%);
+  color: #ffffff;
+  text-decoration: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: transform 0.3s ease;
+}
+
+.subscribeButton:hover {
+  transform: translateY(-2px);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .mainContent {
+    padding: 1rem;
+    padding-top: 5rem;
+  }
+  
+  .pageTitle {
+    font-size: 2rem;
+  }
+  
+  .currentMembershipCard {
+    padding: 1.5rem;
+  }
+  
+  .cancelMembershipButton {
+    min-width: 100%;
+  }
+}
