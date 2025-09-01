@@ -147,6 +147,17 @@ export default function Header() {
                         </button>
                       </Link>
                       
+                      {/* 라프텔 멤버십 */}
+                      <Link
+                        href="/membership/guide"
+                        onClick={() => setIsProfileOpen(false)}
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <button className={styles.headerDropdownItem}>
+                          라프텔 멤버십
+                        </button>
+                      </Link>
+
                       {/* 설정 */}
                       <Link
                         href="/settings"
@@ -158,6 +169,17 @@ export default function Header() {
                         </button>
                       </Link>
                       
+                      {/* 이용내역 (임시) */}
+                      <Link
+                        href="/history"
+                        onClick={() => setIsProfileOpen(false)}
+                        style={{ textDecoration: 'none' }}
+                      >
+                        <button className={styles.headerDropdownItem}>
+                          이용내역
+                        </button>
+                      </Link>
+
                       {/* 구분선 */}
                       <div className={styles.headerDropdownDivider} />
                       
