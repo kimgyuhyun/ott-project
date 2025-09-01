@@ -7,6 +7,19 @@ import styles from "./guide.module.css";
 
 export default function MembershipGuidePage() {
   const { membershipPlans, userMembership, isLoading, error, reloadUserMembership } = useMembershipData();
+  
+  // 확장된 플랜 (화살표로 접었다 펼쳤다)
+  const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+
+  // 플랜 이름 한국어 매핑
+  const translatePlanName = (name?: string | null) => {
+    if (!name) return '';
+    const map: Record<string, string> = {
+      'Basic Monthly': '베이직',
+      'Premium Monthly': '프리미엄',
+    };
+    return map[name] || name;
+  };
 
   // 결제 성공 파라미터 배너 (1회 노출)
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -24,33 +37,80 @@ export default function MembershipGuidePage() {
 
   const planForUser = useMemo(() => {
     if (!userMembership) return null;
-    const matched = membershipPlans.find(p => p.code === userMembership.planCode);
+    const matched = membershipPlans.find(p => {
+      const byCode = (p as any).code && userMembership.planCode && String((p as any).code).toUpperCase() === String(userMembership.planCode).toUpperCase();
+      const byName = p.name && userMembership.planName && String(p.name).toLowerCase() === String(userMembership.planName).toLowerCase();
+      return byCode || byName;
+    });
     return matched || null;
   }, [membershipPlans, userMembership]);
+
+  const nextPaymentText = useMemo(() => {
+    if (!userMembership?.nextBillingAt) return null;
+    try {
+      const d = new Date(userMembership.nextBillingAt);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}.${m}.${day} 결제 예정`;
+    } catch {
+      return null;
+    }
+  }, [userMembership]);
+
+  // 플랜 기능 리스트 생성 (DB 데이터 기반)
+  const getPlanFeatures = (plan: any) => {
+    if (!plan) return [];
+    
+    return [
+      `프로필 ${plan.concurrentStreams}인·동시재생 ${plan.concurrentStreams}회선`,
+      '최신화 시청',
+      '다운로드 지원',
+      `${plan.maxQuality} 화질 지원`,
+      'TV 앱 지원'
+    ];
+  };
+
+  // 멤버십 변경 처리
+  const handlePlanChange = async (plan: any) => {
+    if (!plan) return;
+    
+    try {
+      // 여기에 실제 플랜 변경 API 호출 로직 추가
+      alert(`${translatePlanName(plan.name)} 플랜으로 변경하시겠습니까?`);
+      // TODO: 실제 플랜 변경 API 구현
+    } catch (error) {
+      console.error('플랜 변경 실패:', error);
+    }
+  };
 
   const summaryCard = (
     <div className={styles.summaryCard}>
       <div className={styles.summaryCardHeader}>
         <div>
-          <h3 className={styles.summaryCardTitle}>베이직</h3>
-          <p className={styles.summaryCardPrice}>월 9,900원</p>
+          <h3 className={styles.summaryCardTitle}>{translatePlanName(planForUser?.name) || '멤버십'}</h3>
+          <p className={styles.summaryCardPrice}>
+            {planForUser ? `월 ${planForUser.monthlyPrice.toLocaleString()}원` : ''}
+          </p>
         </div>
-        <span className={styles.currentBadge}>현재 이용 중 ✓</span>
+        {userMembership?.status === 'ACTIVE' && (
+          <span className={styles.currentBadge}>현재 이용 중 ✓</span>
+        )}
       </div>
 
       <div className={styles.summaryCardFeatures}>
         <ul className="space-y-2">
-          <li className={styles.summaryCardFeature}>✓ 프로필 1인·동시재생 1회선</li>
-          <li className={styles.summaryCardFeature}>✓ 최신화 시청</li>
-          <li className={styles.summaryCardFeature}>✓ 다운로드 지원</li>
-          <li className={styles.summaryCardFeature}>✓ FHD 화질 지원</li>
-          <li className={styles.summaryCardFeature}>✓ TV 앱 지원</li>
+          {getPlanFeatures(planForUser).map((feature, index) => (
+            <li key={index} className={styles.summaryCardFeature}>{feature}</li>
+          ))}
         </ul>
       </div>
 
       <div className={styles.summaryCardFooter}>
-        <span className={styles.paymentDate}>2025.09.03 결제 예정</span>
-        <Link href="/mypage" className={styles.membershipManageLink}>내 멤버십 관리 &gt;</Link>
+        {nextPaymentText && (
+          <span className={styles.paymentDate}>{nextPaymentText}</span>
+        )}
+        <Link href="/membership/manage" className={styles.membershipManageLink}>내 멤버십 관리 &gt;</Link>
       </div>
     </div>
   );
@@ -102,14 +162,59 @@ export default function MembershipGuidePage() {
           {/* 다른 멤버십 */}
           <div className={styles.otherMembershipSection}>
             <h3 className={styles.otherMembershipTitle}>다른 멤버십</h3>
-            <div className={styles.otherMembershipCard}>
-              <div className={styles.otherMembershipCardContent}>
-                <span className={styles.otherMembershipName}>프리미엄</span>
-                <svg className={styles.arrowIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+            {(membershipPlans.filter(p => {
+              if (!userMembership) return true;
+              const byCodeDifferent = (p as any).code && userMembership.planCode && String((p as any).code).toUpperCase() !== String(userMembership.planCode).toUpperCase();
+              const byNameDifferent = p.name && userMembership.planName && String(p.name).toLowerCase() !== String(userMembership.planName).toLowerCase();
+              // If code is present, use it; otherwise fallback to name comparison
+              return (p as any).code ? byCodeDifferent : byNameDifferent;
+            })).map(p => (
+              <div 
+                key={(p as any).code || p.name} 
+                className={styles.otherMembershipCard}
+                onClick={() => setExpandedPlan(expandedPlan === p.name ? null : p.name)}
+              >
+                {/* 카드 헤더 (항상 보임) */}
+                <div className={styles.otherMembershipCardContent}>
+                  <div>
+                    <h3 className={styles.otherMembershipName}>{translatePlanName(p.name)}</h3>
+                  </div>
+                  <svg 
+                    className={`${styles.arrowIcon} ${expandedPlan === p.name ? styles.arrowIconExpanded : ''}`} 
+                    fill="none" 
+                    stroke="currentColor" 
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+                
+                {/* 카드 확장 내용 (클릭 시 보임) */}
+                {expandedPlan === p.name && (
+                  <div className={styles.cardExpandedContent}>
+                    <p className={styles.expandedPlanPrice}>월 {p.monthlyPrice.toLocaleString()}원</p>
+                    
+                    <div className={styles.expandedPlanFeatures}>
+                      <ul className="space-y-2">
+                        {getPlanFeatures(p).map((feature, index) => (
+                          <li key={index} className={styles.expandedPlanFeature}>{feature}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
+                        handlePlanChange(p);
+                      }}
+                      className={styles.changePlanButton}
+                    >
+                      멤버십 변경하기
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
+            ))}
           </div>
 
           {/* 멤버십 유의사항 */}

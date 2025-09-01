@@ -118,6 +118,7 @@ export interface UserMembership {
   planName: string;
   startDate: string;
   endDate: string;
+  nextBillingAt: string;
   autoRenew: boolean;
   status: string;
 }

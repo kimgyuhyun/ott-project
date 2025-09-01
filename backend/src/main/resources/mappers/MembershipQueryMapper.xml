@@ -20,6 +20,7 @@
             p.code AS planCode,
             p.name AS planName,
             s.end_at AS endAt,
+            s.next_billing_at AS nextBillingAt,
             s.auto_renew AS autoRenew,
             CASE WHEN s.cancel_at_period_end = TRUE THEN 'CANCELED' ELSE s.status END AS status
         FROM subscriptions s

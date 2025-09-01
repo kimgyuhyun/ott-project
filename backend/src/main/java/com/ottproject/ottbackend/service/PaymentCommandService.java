@@ -3,12 +3,18 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.dto.MembershipSubscribeRequestDto;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateRequestDto;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateSuccessResponseDto;
+import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
+import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
 import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.Payment;
+import com.ottproject.ottbackend.entity.PaymentMethod;
 import com.ottproject.ottbackend.entity.User;
+import java.util.List;
+import com.ottproject.ottbackend.enums.PaymentMethodType;
+import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
@@ -16,6 +22,7 @@ import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.mybatis.PaymentQueryMapper;
+import com.ottproject.ottbackend.service.ImportPaymentGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -26,7 +33,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import com.ottproject.ottbackend.service.ImportPaymentGateway;
 
 /**
  * PaymentCommandService
@@ -55,6 +61,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final PlayerProgressReadService playerProgressReadService; // 플레이어 진행률 읽기 서비스(누적 시청 검증)
 	private final MembershipSubscriptionRepository subscriptionRepository; // 구독 리포지토리(웹훅 전이 반영)
 	private final PaymentQueryMapper paymentQueryMapper; // 결제 조회 매퍼
+	private final PaymentMethodService paymentMethodService; // 결제수단 서비스
 
 	// 테스트 결제 금액(원). 0이면 실제 플랜 금액으로 결제
 	@Value("${payments.test-amount:0}")
@@ -81,13 +88,37 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		// 3. 데이터 검증
 		validateWebhookData(event);
 		
-		// 4. 결제 이벤트 처리
-		processPaymentEvent(event);
-		
-		// 5. API 재검증 (보안 강화)
-		if (event.status == PaymentStatus.SUCCEEDED && event.providerPaymentId != null) {
-			verifyWebhookWithApi(event);
+		// 4. (성공인 경우) API 선재검증 후 전이 적용
+		if (event.status == PaymentStatus.SUCCEEDED) {
+			// merchant_uid로 기대 금액 조회
+			Payment paymentForVerify = paymentQueryMapper.findByProviderSessionId(event.providerSessionId);
+			if (paymentForVerify == null) {
+				log.error("재검증을 위한 결제 조회 실패 - merchant_uid: {}", event.providerSessionId);
+				throw new ResponseStatusException(HttpStatus.NOT_FOUND, "결제를 찾을 수 없습니다");
+			}
+			long expectedAmount = (paymentForVerify.getPrice() != null ? paymentForVerify.getPrice().getAmount() : 0L);
+			boolean isValid = false;
+			try {
+				if (paymentGateway instanceof ImportPaymentGateway) {
+					ImportPaymentGateway importGateway = (ImportPaymentGateway) paymentGateway;
+					isValid = importGateway.verifyPaymentStatus(
+						event.providerPaymentId,
+						event.providerSessionId,
+						expectedAmount
+					);
+				}
+			} catch (Exception ex) {
+				log.error("API 선재검증 중 예외 - imp_uid: {}, merchant_uid: {}", event.providerPaymentId, event.providerSessionId, ex);
+				isValid = false;
+			}
+			if (!isValid) {
+				log.error("API 선재검증 실패 - imp_uid: {}, merchant_uid: {}", event.providerPaymentId, event.providerSessionId);
+				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "웹훅 재검증 실패");
+			}
 		}
+		
+		// 5. 결제 이벤트 처리(성공은 위 선재검증 통과 후 진행)
+		processPaymentEvent(event);
 		
 		log.info("웹훅 처리 완료 - merchant_uid: {}", event.providerSessionId);
 	}
@@ -106,9 +137,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			if (event.providerPaymentId == null || event.providerPaymentId.isBlank()) {
 				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "성공 웹훅에 imp_uid 누락");
 			}
-			if (event.amount == null || event.amount <= 0) {
-				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "성공 웹훅에 금액 누락");
-			}
+			// amount는 웹훅에 없을 수 있으므로 필수로 강제하지 않음(아임포트 가이드에 따라 API 재검증으로 대조)
 		}
 	}
 	
@@ -126,7 +155,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		log.info("결제 이벤트 처리 - paymentId: {}, 현재상태: {}, 웹훅상태: {}", 
 			payment.getId(), payment.getStatus(), event.status);
 		
-		// 상태별 처리
+		// 상태별 처리 (아임포트 권고: 웹훅 수신만으로 확정하지 말고, 성공 케이스는 API 재검증 수행)
 		switch (event.status) {
 			case SUCCEEDED:
 				handlePaymentSuccess(payment, event);
@@ -140,6 +169,9 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			case REFUNDED:
 				handlePaymentRefund(payment, event);
 				break;
+			case PENDING:
+				log.info("웹훅 사전 상태(PENDING) 수신 - merchant_uid: {}", event.providerSessionId);
+				return;
 			default:
 				log.error("지원하지 않는 웹훅 상태 - status: {}", event.status);
 				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 상태입니다");
@@ -196,10 +228,61 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	@Transactional(readOnly = true)
 	public com.ottproject.ottbackend.dto.PaymentWebhookEventDto parseWebhookPayload(String rawBody) {
 		try {
-			com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper(); // ObjectMapper 생성
-			return om.readValue(rawBody, com.ottproject.ottbackend.dto.PaymentWebhookEventDto.class); // JSON 파싱
+			com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper(); // 파서
+			@SuppressWarnings("unchecked")
+			java.util.Map<String, Object> body = om.readValue(rawBody, java.util.Map.class); // Map으로 파싱
+			if (body == null || body.isEmpty()) {
+				throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Empty webhook payload");
+			}
+			// Iamport 원문 키가 존재하면 내부 DTO로 수동 매핑
+			if (body.containsKey("imp_uid") || body.containsKey("merchant_uid") || body.containsKey("status")) {
+				com.ottproject.ottbackend.dto.PaymentWebhookEventDto dto = new com.ottproject.ottbackend.dto.PaymentWebhookEventDto();
+				dto.providerPaymentId = safeString(body.get("imp_uid"));
+				dto.providerSessionId = safeString(body.get("merchant_uid"));
+				dto.status = mapIamportStatus(safeString(body.get("status")));
+				java.lang.Number amt = safeNumber(body.get("amount"));
+				dto.amount = (amt == null ? null : amt.longValue());
+				dto.currency = safeString(body.get("currency"));
+				dto.receiptUrl = safeString(body.get("receipt_url"));
+				return dto;
+			}
+			// 내부 포맷이면 그대로 바인딩
+			return om.convertValue(body, com.ottproject.ottbackend.dto.PaymentWebhookEventDto.class);
+		} catch (org.springframework.web.server.ResponseStatusException ex) {
+			throw ex;
 		} catch (Exception e) {
 			throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid webhook payload"); // 400
+		}
+	}
+
+	private com.ottproject.ottbackend.enums.PaymentStatus mapIamportStatus(String status) {
+		if (status == null) return null;
+		String s = status.trim().toLowerCase();
+		switch (s) {
+			case "paid":
+				return com.ottproject.ottbackend.enums.PaymentStatus.SUCCEEDED;
+			case "failed":
+				return com.ottproject.ottbackend.enums.PaymentStatus.FAILED;
+			case "cancelled":
+			case "canceled":
+				return com.ottproject.ottbackend.enums.PaymentStatus.CANCELED;
+			case "ready":
+				return com.ottproject.ottbackend.enums.PaymentStatus.PENDING;
+			default:
+				return null;
+		}
+	}
+
+	private String safeString(Object v) {
+		return v == null ? null : String.valueOf(v);
+	}
+
+	private java.lang.Number safeNumber(Object v) {
+		if (v instanceof java.lang.Number) return (java.lang.Number) v;
+		try {
+			return v == null ? null : Long.parseLong(String.valueOf(v));
+		} catch (Exception e) {
+			return null;
 		}
 	}
 
@@ -233,10 +316,49 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 
 		long chargeAmount = (testAmount > 0 ? testAmount : plan.getPrice().getAmount()); // 테스트금액 우선
 
+		// 결제수단 자동 등록 (간편결제 또는 다른 결제수단)
+		PaymentMethod paymentMethod = null;
+		if (req.paymentService != null && !req.paymentService.isBlank()) {
+			// 결제수단 타입 결정
+			PaymentMethodType methodType;
+			if ("kakao".equals(normalizedService)) {
+				methodType = PaymentMethodType.KAKAO_PAY; // 카카오페이
+			} else if ("toss".equals(normalizedService)) {
+				methodType = PaymentMethodType.TOSS_PAY; // 토스페이먼츠
+			} else if ("nice".equals(normalizedService)) {
+				methodType = PaymentMethodType.NICE_PAY; // 나이스페이먼츠
+			} else {
+				methodType = PaymentMethodType.CARD; // 카드
+			}
+			
+			// 결제수단 등록
+			PaymentMethodRegisterRequestDto methodDto = new PaymentMethodRegisterRequestDto();
+			methodDto.provider = PaymentProvider.IMPORT;
+			methodDto.type = methodType;
+			methodDto.providerMethodId = "temp_" + System.currentTimeMillis(); // 임시 ID
+			methodDto.brand = req.paymentService;
+			methodDto.isDefault = true; // 첫 결제수단이므로 기본으로 설정
+			methodDto.priority = 100;
+			methodDto.label = req.paymentService + " 결제";
+			
+			paymentMethodService.register(userId, methodDto);
+			
+			// 등록된 결제수단 조회
+			List<PaymentMethodResponseDto> methods = paymentMethodService.list(userId);
+			if (!methods.isEmpty()) {
+				// 가장 최근에 등록된 것을 사용
+				PaymentMethodResponseDto latestMethod = methods.get(0);
+				paymentMethod = PaymentMethod.builder()
+					.id(latestMethod.id)
+					.build();
+			}
+		}
+
 		Payment payment = Payment.builder() // 결제 엔티티 생성
 				.user(User.builder().id(userId).build()) // 사용자 FK
 				.membershipPlan(plan) // 플랜 FK
-				.provider(com.ottproject.ottbackend.enums.PaymentProvider.IMPORT) // IMPORT 사용
+				.provider(PaymentProvider.IMPORT) // IMPORT 사용
+				.paymentMethod(paymentMethod) // 결제수단 연결
 				.price(new Money(chargeAmount, plan.getPrice().getCurrency())) // Money VO 사용
 				.status(PaymentStatus.PENDING) // 초기 상태
 				.build(); // 빌드
@@ -435,37 +557,5 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		}
 	}
 
-	/**
-	 * 아임포트 API로 웹훅 데이터 재검증
-	 * - 웹훅 처리 후 실제 결제 상태를 API로 확인하여 보안 강화
-	 */
-	private void verifyWebhookWithApi(PaymentWebhookEventDto event) {
-		try {
-			// ImportPaymentGateway로 캐스팅하여 API 재검증 메서드 호출
-			if (paymentGateway instanceof ImportPaymentGateway) {
-				ImportPaymentGateway importGateway = (ImportPaymentGateway) paymentGateway;
-				
-				// 결제 상태 재검증
-				boolean isValid = importGateway.verifyPaymentStatus(
-					event.providerPaymentId, 
-					event.providerSessionId, 
-					event.amount != null ? event.amount.longValue() : 0
-				);
-				
-				if (!isValid) {
-					log.error("API 재검증 실패 - imp_uid: {}, merchant_uid: {}", 
-						event.providerPaymentId, event.providerSessionId);
-					// 재검증 실패 시 로깅만 하고 웹훅 처리는 계속 진행
-					// (이미 DB에 반영되었을 수 있으므로)
-				} else {
-					log.info("API 재검증 성공 - imp_uid: {}, merchant_uid: {}", 
-						event.providerPaymentId, event.providerSessionId);
-				}
-			}
-		} catch (Exception e) {
-			log.error("API 재검증 중 예외 발생 - imp_uid: {}, merchant_uid: {}", 
-				event.providerPaymentId, event.providerSessionId, e);
-			// 재검증 실패 시 로깅만 하고 웹훅 처리는 계속 진행
-		}
-	}
+
 }
