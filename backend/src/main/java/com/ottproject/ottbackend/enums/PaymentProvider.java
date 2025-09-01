@@ -10,5 +10,8 @@ package com.ottproject.ottbackend.enums; // 결제 제공자 enum 패키지 선�
  * - IMPORT
  */
 public enum PaymentProvider { // 게이트웨이 식별자
-    IMPORT // 아임포트
+    STRIPE,     // Stripe
+    IMPORT,     // 아임포트
+    TOSS,       // 토스페이먼츠
+    KAKAO       // 카카오페이
 }

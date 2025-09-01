@@ -2,6 +2,7 @@ package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
+import com.ottproject.ottbackend.entity.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -65,6 +66,10 @@ public class Payment { // 엔티티 시작
     
     @Column(length = 255)
     private String providerPaymentId; // 최종 결제 식별자
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_method_id")
+    private PaymentMethod paymentMethod; // 사용된 결제수단
     
     @Column(length = 2048)
     private String receiptUrl; // 영수증 URL(성공 시)
