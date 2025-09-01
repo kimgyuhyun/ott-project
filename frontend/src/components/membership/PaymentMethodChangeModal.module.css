@@ -1,0 +1,254 @@
+/* 모달 오버레이 */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+
+/* 모달 콘텐츠 */
+.modalContent {
+  background-color: #121212;
+  border: 1px solid #323232;
+  border-radius: 12px;
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* 모달 헤더 */
+.modalHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
+  border-bottom: 1px solid #323232;
+}
+
+.modalTitle {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.closeButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* 결제 수단 선택 섹션 */
+.paymentMethodSection {
+  padding: 1.5rem;
+}
+
+.paymentMethodOption {
+  margin-bottom: 1.5rem;
+}
+
+.paymentMethodLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-bottom: 1rem;
+}
+
+.paymentMethodRadio {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.75rem;
+  accent-color: #816BFF;
+}
+
+.paymentMethodText {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+/* 간편 결제 추가 영역 */
+.addPaymentArea {
+  border: 2px dashed #666;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  background-color: #000000;
+  margin-top: 1rem;
+}
+
+.addPaymentContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.addIcon {
+  font-size: 2rem;
+  color: #666;
+}
+
+.addText {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+/* 다른 결제 수단 그리드 */
+.otherPaymentGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.paymentMethodCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+  border: 2px solid #323232;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background-color: #000000;
+}
+
+.paymentMethodCard:hover {
+  border-color: #816BFF;
+  background-color: #1a1a1a;
+}
+
+.paymentMethodCardSelected {
+  border-color: #816BFF;
+  background-color: #1a1a1a;
+}
+
+.paymentMethodIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+}
+
+.paymentMethodLabel {
+  font-size: 0.75rem;
+  color: #ffffff;
+  text-align: center;
+  font-weight: 500;
+}
+
+/* 모달 푸터 */
+.modalFooter {
+  padding: 1.5rem;
+  border-top: 1px solid #323232;
+}
+
+/* 정보 섹션 */
+.infoSection {
+  margin-bottom: 1.5rem;
+}
+
+.infoList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.infoList li {
+  color: #a0a0a0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.infoList li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #a0a0a0;
+}
+
+/* 동의 섹션 */
+.agreementSection {
+  margin-bottom: 1.5rem;
+}
+
+.agreementLabel {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.agreementCheckbox {
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-right: 0.75rem;
+  accent-color: #816BFF;
+}
+
+.agreementText {
+  font-size: 0.875rem;
+  color: #ffffff;
+}
+
+/* 변경하기 버튼 */
+.changeButton {
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.changeButtonDisabled {
+  background-color: #666;
+  color: #ffffff;
+  cursor: not-allowed;
+}
+
+.changeButtonEnabled {
+  background-color: #816BFF;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.changeButtonEnabled:hover {
+  background-color: #6B4BFF;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 640px) {
+  .modalContent {
+    margin: 1rem;
+    max-height: calc(100vh - 2rem);
+  }
+  
+  .modalHeader,
+  .paymentMethodSection,
+  .modalFooter {
+    padding: 1rem;
+  }
+}
+

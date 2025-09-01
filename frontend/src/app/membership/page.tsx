@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/lib/AuthContext";
 import { subscribeMembership, registerPaymentMethod } from "@/lib/api/membership";
@@ -16,6 +17,7 @@ import styles from "./membership.module.css";
  * 어두운 테마의 애니메이션 스트리밍 서비스 멤버십 페이지
  */
 export default function MembershipPage() {
+  const router = useRouter();
   const { isAuthenticated, user, isInitialized } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<string>('basic');
@@ -35,6 +37,16 @@ export default function MembershipPage() {
   // 데이터 훅 사용
   const { membershipPlans, userMembership, paymentMethods, isLoading, error, reloadPaymentMethods, reloadUserMembership } = useMembershipData();
   const { requestPay } = useCheckout();
+
+  // 멤버십 사용 중인 유저 리다이렉트 체크
+  useEffect(() => {
+    if (isInitialized && isAuthenticated && userMembership) {
+      // 활성 상태인 멤버십이 있으면 가이드 페이지로 리다이렉트
+      if (userMembership.status === 'ACTIVE') {
+        router.push('/membership/guide');
+      }
+    }
+  }, [isInitialized, isAuthenticated, userMembership, router]);
 
   // 멤버십 플랜 선택
   const handlePlanSelect = (plan: string) => {
@@ -418,15 +430,15 @@ export default function MembershipPage() {
                 onMouseLeave={() => setHoveredPlan(null)}
                 onClick={() => handlePlanSelect('basic')}
               >
-                <div className={styles.planSelectionCardContent}>
-                  <div className={styles.planSelectionInfo}>
-                    <h4>베이직</h4>
-                    <p>프로필 1인 · 동시재생 1회선</p>
-                  </div>
-                  <div className={styles.planSelectionPrice}>
-                    월 9,900원
-                  </div>
-                </div>
+                                 <div className={styles.planSelectionCardContent}>
+                   <div className={styles.planSelectionInfo}>
+                     <h4>베이직</h4>
+                     <p>프로필 1인 · 동시재생 1회선</p>
+                   </div>
+                   <div className={styles.planSelectionPrice}>
+                     월 9,900원
+                   </div>
+                 </div>
               </div>
               
               {/* 프리미엄 플랜 */}
@@ -436,15 +448,15 @@ export default function MembershipPage() {
                 onMouseLeave={() => setHoveredPlan(null)}
                 onClick={() => handlePlanSelect('premium')}
               >
-                <div className={styles.planSelectionCardContent}>
-                  <div className={styles.planSelectionInfo}>
-                    <h4>프리미엄</h4>
-                    <p>프로필 4인 · 동시재생 4회선</p>
-                  </div>
-                  <div className={styles.planSelectionPrice}>
-                    월 14,900원
-                  </div>
-                </div>
+                                 <div className={styles.planSelectionCardContent}>
+                   <div className={styles.planSelectionInfo}>
+                     <h4>프리미엄</h4>
+                     <p>프로필 4인 · 동시재생 4회선</p>
+                   </div>
+                   <div className={styles.planSelectionPrice}>
+                     월 14,900원
+                   </div>
+                 </div>
               </div>
             </div>
             
