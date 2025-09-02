@@ -52,6 +52,28 @@ export async function cancelMembership(idempotencyKey?: string) {
   });
 }
 
+// 멤버십 정기결제 재시작
+export async function resumeMembership() {
+  return apiCall<UserMembership>('/api/memberships/resume', {
+    method: 'POST',
+  });
+}
+
+// 멤버십 플랜 변경
+export async function changeMembershipPlan(newPlanCode: string) {
+  return apiCall<MembershipPlanChangeResponse>('/api/memberships/change-plan', {
+    method: 'PUT',
+    body: JSON.stringify({ newPlanCode }),
+  });
+}
+
+// 플랜 변경 예약 취소
+export async function cancelScheduledPlanChange() {
+  return apiCall<UserMembership>('/api/memberships/change-plan/cancel', {
+    method: 'POST',
+  });
+}
+
 // 결제수단 등록
 export async function registerPaymentMethod(paymentMethod: PaymentMethodRegisterRequest) {
   return apiCall<void>('/api/payment-methods', {
@@ -107,9 +129,9 @@ export interface MembershipPlan {
   code: string;
   name: string;
   monthlyPrice: number;
-  duration: number;
-  maxConcurrentStreams: number;
-  quality: string;
+  periodMonths: number;
+  concurrentStreams: number;
+  maxQuality: string;
 }
 
 export interface UserMembership {
@@ -117,10 +139,19 @@ export interface UserMembership {
   planCode: string;
   planName: string;
   startDate: string;
-  endDate: string;
+  endAt: string;
   nextBillingAt: string;
   autoRenew: boolean;
   status: string;
+  nextPlanCode?: string;
+  nextPlanName?: string;
+}
+
+export interface MembershipPlanChangeResponse {
+  changeType: 'UPGRADE' | 'DOWNGRADE';
+  effectiveDate: string;
+  prorationAmount?: number;
+  message: string;
 }
 
 export interface PaymentMethodResponse {

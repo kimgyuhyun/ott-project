@@ -245,6 +245,18 @@
   background-color: #6B46C1;
 }
 
+/* 전환 예약됨(비활성) 버튼 상태 */
+.changePlanButton:disabled {
+  background-color: #2f2f2f;
+  color: #9b9b9b;
+  cursor: default;
+  opacity: 1;
+}
+
+.changePlanButton:disabled:hover {
+  background-color: #2f2f2f;
+}
+
 /* 로그인 유도 카드 */
 .loginCard {
   border-radius: 0.5rem;
@@ -423,3 +435,5 @@
 .noticeContent p {
   margin-bottom: 0.5rem;
 }
+
+

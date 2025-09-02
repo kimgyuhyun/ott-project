@@ -54,6 +54,9 @@ export default function PaymentModal({
   const handlePayment = async () => {
     if (!agreed || !selectedPaymentService) return;
 
+    console.log('PaymentModal - planInfo:', planInfo);
+    console.log('PaymentModal - planCode:', planInfo.code);
+
     try {
       const result = await processPayment({
         planCode: planInfo.code,
@@ -87,7 +90,7 @@ export default function PaymentModal({
         <div className={styles.paymentModalContainer}>
           {/* 모달 헤더 */}
           <div className={styles.modalHeader}>
-            <h3 className={styles.modalTitle}>결제</h3>
+            <h3 className={styles.modalTitle}>멤버십 결제</h3>
             <button
               onClick={onClose}
               className={styles.closeButton}
@@ -109,7 +112,7 @@ export default function PaymentModal({
           {/* 결제 금액 정보 */}
           <div className={styles.paymentAmountInfo}>
             <div className={styles.paymentAmountRow}>
-              <span className={styles.paymentAmountLabel}>정기 결제 (매월)</span>
+              <span className={styles.paymentAmountLabel}>멤버십 결제 (매월)</span>
               <span className={styles.paymentAmountValue}>월 {planInfo.price}원</span>
             </div>
             <div className={styles.paymentTotalRow}>
@@ -219,7 +222,7 @@ export default function PaymentModal({
                 className={styles.agreementCheckbox}
               />
               <span className={styles.agreementText}>
-                가격 및 유의사항을 확인하였으며, 매월 정기결제에 동의합니다.
+                가격 및 유의사항을 확인하였으며, 멤버십 정기결제에 동의합니다.
               </span>
             </label>
           </div>
@@ -231,7 +234,7 @@ export default function PaymentModal({
             className={`${styles.paymentButton} ${agreed && selectedPaymentService && !isLoading ? styles.paymentButtonEnabled : styles.paymentButtonDisabled}`}
           >
             <span>
-              {isLoading ? '결제 처리 중...' : `${planInfo.price}원 결제하기`}
+              {isLoading ? '결제 처리 중...' : `멤버십 ${planInfo.price}원 결제하기`}
             </span>
           </button>
 

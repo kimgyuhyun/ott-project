@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   z-index: 50;
-  padding: 1rem;
+  padding: 0.5rem;
   background-color: rgba(0, 0, 0, 0.7);
 }
 
@@ -14,12 +14,25 @@
 .paymentModalContainer {
   max-width: 32rem;
   width: 100%;
-  padding: 2rem;
+  padding: 1.5rem;
   max-height: 90vh;
   overflow-y: auto;
   border-radius: 0.75rem;
   background-color: #121212;
   border: 1px solid #323232;
+  box-sizing: border-box;
+}
+
+/* 모바일 대응 */
+@media (max-width: 640px) {
+  .paymentModalOverlay {
+    padding: 0.25rem;
+  }
+  
+  .paymentModalContainer {
+    padding: 1rem;
+    max-height: 95vh;
+  }
 }
 
 /* 모달 헤더 */
@@ -143,7 +156,7 @@
 
 .simplePaymentButton {
   width: 100%;
-  padding: 2rem 1.5rem;
+  padding: 1.5rem 1rem;
   cursor: pointer;
   transition: all 0.3s ease;
   border-radius: 0.75rem;
@@ -152,7 +165,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 6rem;
+  min-height: 4rem;
+  box-sizing: border-box;
 }
 
 .simplePaymentButton:hover {
@@ -169,14 +183,14 @@
 }
 
 .simplePaymentIcon {
-  width: 3.5rem;
-  height: 3.5rem;
+  width: 2.5rem;
+  height: 2.5rem;
   border-radius: 50%;
   background-color: #323232;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.75rem;
+  font-size: 1.25rem;
   color: #F7F7F7;
   border: 2px solid #505050;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -191,7 +205,7 @@
 
 .simplePaymentText {
   color: #F7F7F7;
-  font-size: 0.875rem;
+  font-size: 0.8rem;
 }
 
 /* 다른 결제 수단 */
@@ -204,6 +218,45 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 0.75rem;
   margin-bottom: 2rem;
+}
+
+/* 모바일에서 결제 수단 그리드 조정 */
+@media (max-width: 640px) {
+  .otherPaymentGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .paymentMethodCard {
+    padding: 1rem 0.75rem;
+    min-height: 4rem;
+  }
+  
+  .paymentMethodIcon {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 0.75rem;
+  }
+  
+  .paymentMethodLabel {
+    font-size: 0.75rem;
+  }
+  
+  /* 간편결제 버튼 모바일 조정 */
+  .simplePaymentButton {
+    padding: 1.5rem 1rem;
+    min-height: 4rem;
+  }
+  
+  .simplePaymentIcon {
+    width: 2.5rem;
+    height: 2.5rem;
+    font-size: 1.25rem;
+  }
+  
+  .simplePaymentText {
+    font-size: 0.8rem;
+  }
 }
 
 .paymentMethodCard {

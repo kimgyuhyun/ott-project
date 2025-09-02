@@ -25,6 +25,9 @@ export const usePayment = () => {
     setIsLoading(true);
     setError(null);
 
+    console.log('usePayment - request:', request);
+    console.log('usePayment - planCode:', request.planCode);
+
     try {
       // 1. 백엔드에서 체크아웃 세션 생성
       const checkoutResponse = await createCheckout(
