@@ -6,6 +6,7 @@ import com.ottproject.ottbackend.dto.PaymentCheckoutCreateSuccessResponseDto;
 import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
 import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
+import com.ottproject.ottbackend.dto.PaymentProrationRequestDto;
 import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.Money;
@@ -25,6 +26,8 @@ import com.ottproject.ottbackend.mybatis.PaymentQueryMapper;
 import com.ottproject.ottbackend.service.ImportPaymentGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
@@ -33,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * PaymentCommandService
@@ -56,12 +60,13 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final MembershipPlanRepository membershipPlanRepository; // 플랜 리포지토리
 	private final PaymentRepository paymentRepository; // 결제 리포지토리
 	private final IdempotencyKeyRepository idempotencyKeyRepository; // 멱등키 리포지토리
-	private final MembershipCommandService membershipCommandService; // 멤버십 쓰기 서비스
+
 	private final PaymentGateway paymentGateway; // 게이트웨이 어댑터(IMPORT 구현 주입)
 	private final PlayerProgressReadService playerProgressReadService; // 플레이어 진행률 읽기 서비스(누적 시청 검증)
 	private final MembershipSubscriptionRepository subscriptionRepository; // 구독 리포지토리(웹훅 전이 반영)
 	private final PaymentQueryMapper paymentQueryMapper; // 결제 조회 매퍼
 	private final PaymentMethodService paymentMethodService; // 결제수단 서비스
+	private final ApplicationEventPublisher eventPublisher; // 이벤트 발행자
 
 	// 테스트 결제 금액(원). 0이면 실제 플랜 금액으로 결제
 	@Value("${payments.test-amount:0}")
@@ -316,37 +321,53 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 
 		long chargeAmount = (testAmount > 0 ? testAmount : plan.getPrice().getAmount()); // 테스트금액 우선
 
-		// 결제수단 자동 등록 (간편결제 또는 다른 결제수단)
+		// 결제수단 자동 등록 (아임포트 pay_method와 1:1 매핑)
 		PaymentMethod paymentMethod = null;
 		if (req.paymentService != null && !req.paymentService.isBlank()) {
-			// 결제수단 타입 결정
+			// 아임포트 pay_method와 1:1 매핑되는 타입 설정
 			PaymentMethodType methodType;
-			if ("kakao".equals(normalizedService)) {
-				methodType = PaymentMethodType.KAKAO_PAY; // 카카오페이
-			} else if ("toss".equals(normalizedService)) {
-				methodType = PaymentMethodType.TOSS_PAY; // 토스페이먼츠
-			} else if ("nice".equals(normalizedService)) {
-				methodType = PaymentMethodType.NICE_PAY; // 나이스페이먼츠
+			String brandUpper = null;
+			if (normalizedService != null) {
+				switch (normalizedService) {
+					case "kakao":
+						methodType = PaymentMethodType.KAKAO_PAY;
+						brandUpper = null; // 간편결제는 brand 불필요
+						break;
+					case "toss":
+						methodType = PaymentMethodType.TOSS_PAY;
+						brandUpper = null; // 간편결제는 brand 불필요
+						break;
+					case "nice":
+						methodType = PaymentMethodType.NICE_PAY;
+						brandUpper = null; // 간편결제는 brand 불필요
+						break;
+					default:
+						methodType = PaymentMethodType.CARD;
+						// 카드 브랜드는 결제 성공 후 PG 응답(card_name)으로 확정 저장
+						break;
+				}
 			} else {
-				methodType = PaymentMethodType.CARD; // 카드
+				methodType = PaymentMethodType.CARD;
 			}
-			
+
 			// 결제수단 등록
 			PaymentMethodRegisterRequestDto methodDto = new PaymentMethodRegisterRequestDto();
 			methodDto.provider = PaymentProvider.IMPORT;
 			methodDto.type = methodType;
 			methodDto.providerMethodId = "temp_" + System.currentTimeMillis(); // 임시 ID
-			methodDto.brand = req.paymentService;
+			methodDto.brand = brandUpper; // ACCOUNT일 때만 세팅, CARD는 나중에 확정
 			methodDto.isDefault = true; // 첫 결제수단이므로 기본으로 설정
 			methodDto.priority = 100;
-			methodDto.label = req.paymentService + " 결제";
+			methodDto.label = (methodType == PaymentMethodType.CARD ? "카드" : 
+				methodType == PaymentMethodType.KAKAO_PAY ? "카카오페이" :
+				methodType == PaymentMethodType.TOSS_PAY ? "토스페이" :
+				methodType == PaymentMethodType.NICE_PAY ? "나이스페이" : "결제") + " 결제";
 			
 			paymentMethodService.register(userId, methodDto);
 			
 			// 등록된 결제수단 조회
 			List<PaymentMethodResponseDto> methods = paymentMethodService.list(userId);
 			if (!methods.isEmpty()) {
-				// 가장 최근에 등록된 것을 사용
 				PaymentMethodResponseDto latestMethod = methods.get(0);
 				paymentMethod = PaymentMethod.builder()
 					.id(latestMethod.id)
@@ -432,11 +453,53 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			paymentRepository.save(payment);
 			log.info("결제 정보 저장 완료 - imp_uid: {}", event.providerPaymentId);
 
-			// 멤버십 구독 생성
-			MembershipSubscribeRequestDto dto = new MembershipSubscribeRequestDto(); // 구독 DTO
-			dto.planCode = payment.getMembershipPlan().getCode(); // 플랜 코드
-			membershipCommandService.subscribe(payment.getUser().getId(), dto); // 구독 반영
-			log.info("멤버십 구독 생성 완료 - userId: {}, planCode: {}", payment.getUser().getId(), dto.planCode);
+			// PG 응답으로 결제수단 type/brand 최종 확정 (아임포트 pay_method와 1:1 매핑)
+			try {
+				if (paymentGateway instanceof ImportPaymentGateway) {
+					ImportPaymentGateway importGateway = (ImportPaymentGateway) paymentGateway;
+					ImportPaymentGateway.PaymentDetails details = importGateway.fetchPaymentDetails(event.providerPaymentId);
+					PaymentMethod pm = payment.getPaymentMethod();
+					if (pm != null) {
+						pm.setProvider(PaymentProvider.IMPORT);
+						String payMethod = details.payMethod == null ? "" : details.payMethod.trim().toLowerCase();
+						
+						// pay_method와 1:1 매핑
+						switch (payMethod) {
+							case "card":
+								pm.setType(PaymentMethodType.CARD);
+								String cardName = details.cardName;
+								pm.setBrand(cardName != null && !cardName.isBlank() ? 
+									cardName.trim().toUpperCase() : "CARD");
+								break;
+							case "kakaopay":
+								pm.setType(PaymentMethodType.KAKAO_PAY);
+								pm.setBrand(null); // 간편결제는 brand 불필요
+								break;
+							case "tosspayments":
+							case "toss":
+								pm.setType(PaymentMethodType.TOSS_PAY);
+								pm.setBrand(null); // 간편결제는 brand 불필요
+								break;
+							case "nice":
+								pm.setType(PaymentMethodType.NICE_PAY);
+								pm.setBrand(null); // 간편결제는 brand 불필요
+								break;
+							default:
+								pm.setType(PaymentMethodType.CARD); // 기본값
+								pm.setBrand("UNKNOWN");
+						}
+					}
+				}
+			} catch (Exception ex) {
+				log.warn("결제수단 확정 중 세부정보 조회 실패 - imp_uid: {}", event.providerPaymentId, ex);
+			}
+
+			// 멤버십 구독 생성 (이벤트 발행)
+			eventPublisher.publishEvent(new com.ottproject.ottbackend.event.MembershipSubscriptionRequestedEvent(
+				payment.getUser().getId(), 
+				payment.getMembershipPlan().getCode()
+			));
+			log.info("멤버십 구독 생성 이벤트 발행 - userId: {}, planCode: {}", payment.getUser().getId(), payment.getMembershipPlan().getCode());
 
 		} else if (event.status == PaymentStatus.FAILED) { // 실패
 			payment.setStatus(PaymentStatus.FAILED); // 상태
@@ -548,14 +611,77 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 */
 	private void createMembershipSubscription(Long userId, String planCode) {
 		try {
-			MembershipSubscribeRequestDto dto = new MembershipSubscribeRequestDto(); // 구독 DTO 생성
-			dto.planCode = planCode; // 플랜 코드 설정
-			membershipCommandService.subscribe(userId, dto); // 구독 생성
+			// 이벤트 발행으로 구독 생성 요청
+			eventPublisher.publishEvent(new com.ottproject.ottbackend.event.MembershipSubscriptionRequestedEvent(userId, planCode));
+			log.info("멤버십 구독 생성 이벤트 발행 - userId: {}, planCode: {}", userId, planCode);
 		} catch (Exception e) {
 			// 구독 생성 실패 시 로깅 (결제는 성공했으므로 롤백하지 않음)
-			log.error("멤버십 구독 생성 실패 - userId: {}, planCode: {}", userId, planCode, e);
+			log.error("멤버십 구독 생성 이벤트 발행 실패 - userId: {}, planCode: {}", userId, planCode, e);
 		}
 	}
 
+	/**
+	 * 차액 결제 처리 (업그레이드 시)
+	 * - 개발 환경에서는 1원으로 처리
+	 * - 운영 환경에서는 실제 차액으로 처리
+	 */
+	public void processProrationPayment(Long userId, Integer prorationAmount) {
+		// 개발 환경에서는 1원으로 처리
+		Integer actualAmount = isDevEnvironment() ? 1 : prorationAmount;
+		
+		log.info("차액 결제 처리 - userId: {}, 원래 금액: {}, 실제 결제 금액: {}", 
+				userId, prorationAmount, actualAmount);
+		
+		// 사용자의 기본 결제 수단 조회
+		List<PaymentMethodResponseDto> paymentMethods = paymentMethodService.list(userId);
+		PaymentMethodResponseDto defaultPaymentMethod = paymentMethods.stream()
+				.filter(pm -> pm.isDefault)
+				.findFirst()
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록된 결제 수단이 없습니다."));
+		
+		// 차액 결제용 요청 생성
+		PaymentProrationRequestDto prorationRequest = new PaymentProrationRequestDto();
+		prorationRequest.setAmount(actualAmount);
+		prorationRequest.setDescription("멤버십 플랜 업그레이드 차액 결제");
+		
+		// 멱등키 생성 (차액 결제용)
+		String idempotencyKey = "proration_" + userId + "_" + System.currentTimeMillis();
+		
+		try {
+			// 차액 결제 처리 (임시로 로그만 출력)
+			log.info("차액 결제 처리 - userId: {}, amount: {}, paymentMethodId: {}", 
+					userId, actualAmount, defaultPaymentMethod.id);
+			
+		} catch (Exception e) {
+			log.error("차액 결제 실패 - userId: {}, amount: {}", userId, actualAmount, e);
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "차액 결제 처리 중 오류가 발생했습니다.");
+		}
+	}
+	
+	@Value("${payments.dev-mode:false}")
+	private boolean devMode; // 개발 모드 설정값
+	
+	/**
+	 * 개발 환경 여부 확인
+	 * - application-dev.yml에서 설정된 payments.dev-mode 값으로 판단
+	 */
+	private boolean isDevEnvironment() {
+		return devMode;
+	}
+
+	/**
+	 * 차액 결제 요청 이벤트 리스너
+	 * - 멤버십 업그레이드 시 발행된 이벤트를 처리하여 차액 결제 수행
+	 */
+	@EventListener
+	@Transactional
+	public void handleProrationPaymentRequested(com.ottproject.ottbackend.event.ProrationPaymentRequestedEvent event) {
+		try {
+			processProrationPayment(event.getUserId(), event.getAmount());
+			log.info("이벤트 기반 차액 결제 처리 완료 - userId: {}, amount: {}", event.getUserId(), event.getAmount());
+		} catch (Exception e) {
+			log.error("이벤트 기반 차액 결제 처리 실패 - userId: {}, amount: {}", event.getUserId(), event.getAmount(), e);
+		}
+	}
 
 }

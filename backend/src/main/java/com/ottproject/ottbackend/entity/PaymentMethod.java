@@ -50,13 +50,13 @@ public class PaymentMethod { // 엔티티 시작
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private PaymentMethodType type; // 결제 수단 타입(CARD, ACCOUNT 등)
+    private PaymentMethodType type; // 결제 수단 타입(CARD, KAKAO_PAY, TOSS_PAY, NICE_PAY 등)
 
     @Column(nullable = false, length = 255)
     private String providerMethodId; // 제공자 측 결제수단 식별자(토큰/키)
 
     @Column(length = 50)
-    private String brand; // 카드 브랜드(예: VISA, Master)
+    private String brand; // 결제 브랜드: 카드일 때만 사용(VISA/MasterCard/...) - 간편결제는 type으로 구분
 
     @Column(length = 4)
     private String last4; // 카드 번호 마지막 4자리(마스킹)

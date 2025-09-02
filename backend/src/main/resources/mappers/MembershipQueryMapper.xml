@@ -5,6 +5,7 @@
     <select id="listPlans" resultType="com.ottproject.ottbackend.dto.MembershipPlanDto"> <!-- 호출 메서드 id=listPlans, 결과를 MembershipPlanDto로 매핑 -->
         SELECT <!-- SELECT 문 시작 -->
         id, <!-- 플랜 고유 식별자 -->
+        code, <!-- 플랜 코드 -->
         name, <!-- 플랜 이름 -->
         price_monthly_vat_included AS monthlyPrice, <!-- 월 구독가(VAT 포함) 컬럼을 DTO의 camelCase 필드로 별칭 매핑 -->
         period_months AS periodMonths, <!-- 구독 기간(월) 컬럼을 DTO 필드로 별칭 매핑 -->
@@ -22,11 +23,43 @@
             s.end_at AS endAt,
             s.next_billing_at AS nextBillingAt,
             s.auto_renew AS autoRenew,
-            CASE WHEN s.cancel_at_period_end = TRUE THEN 'CANCELED' ELSE s.status END AS status
+            CASE 
+              WHEN s.cancel_at_period_end = TRUE AND s.end_at &lt; #{now} THEN 'CANCELED' 
+              ELSE s.status 
+            END AS status,
+            np.code AS nextPlanCode,
+            np.name AS nextPlanName
         FROM subscriptions s
         JOIN plans p ON p.id = s.plan_id
+        LEFT JOIN plans np ON np.id = s.next_plan_id
         WHERE s.user_id = #{userId}
           AND s.start_at &lt;= #{now}
+          AND (s.end_at IS NULL OR s.end_at >= #{now})
+        ORDER BY s.start_at DESC
+        LIMIT 1
+    </select>
+
+    <!-- 해지된 멤버십 조회 (autoRenew: false) -->
+    <select id="findMyCancelledMembership" resultType="com.ottproject.ottbackend.dto.UserMembershipDto">
+        SELECT
+            p.code AS planCode,
+            p.name AS planName,
+            s.end_at AS endAt,
+            s.next_billing_at AS nextBillingAt,
+            s.auto_renew AS autoRenew,
+            CASE 
+              WHEN s.cancel_at_period_end = TRUE AND s.end_at &lt; #{now} THEN 'CANCELED' 
+              ELSE s.status 
+            END AS status,
+            np.code AS nextPlanCode,
+            np.name AS nextPlanName
+        FROM subscriptions s
+        JOIN plans p ON p.id = s.plan_id
+        LEFT JOIN plans np ON np.id = s.next_plan_id
+        WHERE s.user_id = #{userId}
+          AND s.start_at &lt;= #{now}
+          AND s.auto_renew = false
+          AND s.cancel_at_period_end = true
           AND (s.end_at IS NULL OR s.end_at >= #{now})
         ORDER BY s.start_at DESC
         LIMIT 1

@@ -28,4 +28,13 @@ public interface MembershipSubscriptionQueryMapper {
         @Param("statuses") List<String> statuses,
         @Param("now") LocalDateTime now
     );
+
+    /**
+     * 플랜 변경 예약된 구독 조회
+     * - nextBillingAt이 현재 시각 이하이고 nextPlanId가 있는 구독
+     * - 정기 결제 시 플랜 변경을 적용할 대상 구독들
+     */
+    List<MembershipSubscription> findSubscriptionsWithScheduledPlanChanges(
+        @Param("now") LocalDateTime now
+    );
 }

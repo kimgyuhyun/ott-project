@@ -131,6 +131,40 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 			return false; // JSON 파싱 실패 시 검증 실패
 		}
 	}
+
+	/**
+	 * 아임포트 결제 상세 조회 결과(타입/브랜드 확정을 위해 사용)
+	 */
+	public static final class PaymentDetails {
+		public String payMethod;   // ex) card, kakaopay, tosspayments, nice, ...
+		public String pgProvider;  // ex) kakaopay, tosspayments, nice
+		public String cardName;    // ex) VISA, MasterCard, 삼성카드
+	}
+
+	/**
+	 * 결제 상세 조회: pay_method/pg_provider/card_name 추출
+	 */
+	public PaymentDetails fetchPaymentDetails(String impUid) {
+		String token = getAccessToken();
+		HttpHeaders headers = bearer(token);
+		ResponseEntity<java.util.Map> response = rest.exchange(
+			apiBase + "/payments/" + impUid,
+			HttpMethod.GET,
+			new HttpEntity<>(headers),
+			java.util.Map.class
+		);
+		if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+			throw new IllegalStateException("Failed to fetch payment details from Iamport");
+		}
+		java.util.Map<String, Object> body = response.getBody();
+		@SuppressWarnings("unchecked")
+		java.util.Map<String, Object> res = (java.util.Map<String, Object>) body.get("response");
+		PaymentDetails d = new PaymentDetails();
+		d.payMethod = (String) (res == null ? null : res.get("pay_method"));
+		d.pgProvider = (String) (res == null ? null : res.get("pg_provider"));
+		d.cardName = (String) (res == null ? null : res.get("card_name"));
+		return d;
+	}
 	
 	/**
 	 * 포트원 웹훅 상태값 유효성 검증

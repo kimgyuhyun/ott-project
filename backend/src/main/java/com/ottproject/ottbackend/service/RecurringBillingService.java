@@ -6,6 +6,7 @@ import com.ottproject.ottbackend.entity.PaymentMethod;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
+import com.ottproject.ottbackend.enums.PlanChangeType;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
@@ -51,7 +52,10 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 		LocalDateTime now = LocalDateTime.now(); // 현재 시각
 		log.info("정기결제 배치 시작 - {}", now);
 		
-		// MyBatis mapper를 사용하여 대상 구독만 효율적으로 조회
+		// 1. 플랜 변경 예약된 구독 처리
+		processScheduledPlanChanges(now);
+		
+		// 2. MyBatis mapper를 사용하여 대상 구독만 효율적으로 조회
 		List<MembershipSubscription> targetSubscriptions = membershipSubscriptionQueryMapper
 			.findSubscriptionsForBilling(
 				List.of(MembershipSubscriptionStatus.ACTIVE.name(), MembershipSubscriptionStatus.PAST_DUE.name()), 
@@ -144,6 +148,51 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 		}
 		
 		log.info("정기결제 배치 완료 - 처리된 구독: {}", targetSubscriptions.size());
+	}
+	
+	/**
+	 * 플랜 변경 예약된 구독 처리
+	 * - 다음 결제일이 도래한 플랜 변경 예약 구독들을 처리
+	 */
+	private void processScheduledPlanChanges(LocalDateTime now) {
+		log.info("플랜 변경 예약 구독 처리 시작 - {}", now);
+		
+		// 플랜 변경 예약된 구독 조회
+		List<MembershipSubscription> scheduledPlanChanges = membershipSubscriptionQueryMapper
+				.findSubscriptionsWithScheduledPlanChanges(now);
+		
+		log.info("플랜 변경 예약 구독 수: {}", scheduledPlanChanges.size());
+		
+		for (MembershipSubscription subscription : scheduledPlanChanges) {
+			try {
+				// 플랜 변경 적용
+				subscription.setMembershipPlan(subscription.getNextPlan());
+				subscription.setNextPlan(null);
+				subscription.setPlanChangeScheduledAt(null);
+				subscription.setChangeType(null);
+				
+				// 구독 정보 저장
+				subscriptionRepository.save(subscription);
+				
+				// 플랜 변경 완료 알림 발송
+				notificationService.sendPlanChangeNotification(
+						subscription.getUser(), 
+						subscription, 
+						subscription.getMembershipPlan()
+				);
+				
+				log.info("플랜 변경 완료 - userId: {}, newPlan: {}", 
+						subscription.getUser().getId(), 
+						subscription.getMembershipPlan().getName());
+				
+			} catch (Exception e) {
+				log.error("플랜 변경 처리 실패 - userId: {}, subscriptionId: {}", 
+						subscription.getUser().getId(), 
+						subscription.getId(), e);
+			}
+		}
+		
+		log.info("플랜 변경 예약 구독 처리 완료 - 처리된 구독: {}", scheduledPlanChanges.size());
 	}
 }
 
