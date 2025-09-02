@@ -1,0 +1,75 @@
+/* 전환 예약 취소 확인 모달 */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.container {
+  width: 100%;
+  max-width: 560px;
+  background: var(--background-1, #121212);
+  border: 1px solid var(--border-1, #323232);
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  text-align: center;
+}
+
+.title {
+  color: var(--foreground-1, #F7F7F7);
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 12px 0;
+  text-align: center;
+}
+
+.desc {
+  color: var(--foreground-2, #CFCFCF);
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+  text-align: center;
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.cancelBtn {
+  background: transparent;
+  color: #8B7CFF;
+  border: none;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 10px;
+}
+
+.confirmBtn {
+  background: #8B7CFF;
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 10px;
+}
+
+.confirmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .container { padding: 20px; }
+  .title { font-size: 20px; }
+  .desc { font-size: 14px; }
+}
+
+
