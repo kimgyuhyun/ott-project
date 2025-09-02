@@ -40,7 +40,7 @@ public class PaymentMethodService { // 결제수단 도메인 서비스
 	public void register(Long userId, PaymentMethodRegisterRequestDto dto) { // 결제수단 등록
 		PaymentMethod pm = PaymentMethod.builder()
 				.user(User.builder().id(userId).build())
-				.provider(dto.provider)
+				.provider(com.ottproject.ottbackend.enums.PaymentProvider.IMPORT)
 				.type(dto.type)
 				.providerMethodId(dto.providerMethodId)
 				.brand(dto.brand)

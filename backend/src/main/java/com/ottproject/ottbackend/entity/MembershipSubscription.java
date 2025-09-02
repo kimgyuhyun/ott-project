@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
+import com.ottproject.ottbackend.enums.PlanChangeType;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
  * - startAt/endAt: 기간
  * - autoRenew/cancelAtPeriodEnd/canceledAt/nextBillingAt: 정책/일정
  * - retryCount/maxRetry/lastRetryAt/lastError*: dunning 상태
+ * - nextPlan/planChangeScheduledAt/changeType: 플랜 변경 예약 정보
  */
 @Entity
 @Table(name = "subscriptions", indexes = {
@@ -78,6 +80,18 @@ public class MembershipSubscription { // 멤버쉽 구독
 
     @Column(name = "last_error_message", length = 500)
     private String lastErrorMessage; // 마지막 실패 메시지(게이트웨이)
+
+    // ===== 플랜 변경 예약 필드 =====
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "next_plan_id")
+    private MembershipPlan nextPlan; // 다음 결제일부터 적용될 플랜
+
+    @Column(name = "plan_change_scheduled_at")
+    private LocalDateTime planChangeScheduledAt; // 플랜 변경 예약일시
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "change_type")
+    private PlanChangeType changeType; // 변경 유형 (UPGRADE/DOWNGRADE)
 }
 
 

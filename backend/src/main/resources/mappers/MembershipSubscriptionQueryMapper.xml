@@ -18,6 +18,10 @@
         <result property="lastErrorCode" column="last_error_code"/>
         <result property="lastErrorMessage" column="last_error_message"/>
         
+        <!-- 플랜 변경 예약 필드 추가 -->
+        <result property="planChangeScheduledAt" column="plan_change_scheduled_at"/>
+        <result property="changeType" column="change_type"/>
+        
         <!-- User 엔티티 매핑 -->
         <association property="user" javaType="com.ottproject.ottbackend.entity.User">
             <id property="id" column="user_id"/>
@@ -26,6 +30,11 @@
         <!-- MembershipPlan 엔티티 매핑 -->
         <association property="membershipPlan" javaType="com.ottproject.ottbackend.entity.MembershipPlan">
             <id property="id" column="plan_id"/>
+        </association>
+        
+        <!-- NextPlan 엔티티 매핑 -->
+        <association property="nextPlan" javaType="com.ottproject.ottbackend.entity.MembershipPlan">
+            <id property="id" column="next_plan_id"/>
         </association>
     </resultMap>
     
@@ -46,7 +55,10 @@
             s.max_retry,
             s.last_retry_at,
             s.last_error_code,
-            s.last_error_message
+            s.last_error_message,
+            s.next_plan_id,
+            s.plan_change_scheduled_at,
+            s.change_type
         FROM subscriptions s
         WHERE s.status IN
         <foreach collection="statuses" item="status" open="(" separator="," close=")">
@@ -56,6 +68,34 @@
         AND s.cancel_at_period_end = false
         AND s.next_billing_at IS NOT NULL
         AND s.next_billing_at &lt;= #{now}
+        ORDER BY s.next_billing_at ASC
+    </select>
+    
+    <!-- 플랜 변경 예약된 구독 조회 -->
+    <select id="findSubscriptionsWithScheduledPlanChanges" resultMap="MembershipSubscriptionResultMap">
+        SELECT 
+            s.id,
+            s.user_id,
+            s.plan_id,
+            s.status,
+            s.start_at,
+            s.end_at,
+            s.auto_renew,
+            s.cancel_at_period_end,
+            s.canceled_at,
+            s.next_billing_at,
+            s.retry_count,
+            s.max_retry,
+            s.last_retry_at,
+            s.last_error_code,
+            s.last_error_message,
+            s.next_plan_id,
+            s.plan_change_scheduled_at,
+            s.change_type
+        FROM subscriptions s
+        WHERE s.next_billing_at IS NOT NULL
+        AND s.next_billing_at &lt;= #{now}
+        AND s.next_plan_id IS NOT NULL
         ORDER BY s.next_billing_at ASC
     </select>
     

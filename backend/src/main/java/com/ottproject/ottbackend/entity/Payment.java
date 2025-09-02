@@ -74,6 +74,12 @@ public class Payment { // 엔티티 시작
     @Column(length = 2048)
     private String receiptUrl; // 영수증 URL(성공 시)
     
+    @Column(length = 2048)
+    private String description; // 결제 설명
+    
+    @Column(columnDefinition = "TEXT")
+    private String metadata; // JSON 형태의 메타데이터
+    
     @Column
     private LocalDateTime paidAt; // 성공 시각
     
@@ -87,6 +93,9 @@ public class Payment { // 엔티티 시작
     
     @Column
     private LocalDateTime refundedAt; // 환불 완료 시각
+    
+    @Column
+    private LocalDateTime completedAt; // 결제 완료 시각
     
     @CreatedDate // 생성 시각 자동 기록
     @Column(nullable = false)

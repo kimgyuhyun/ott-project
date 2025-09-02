@@ -1,18 +1,18 @@
 "use client";
 import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import { useState, useEffect } from "react";
-import { usePayment } from "@/hooks/usePayment";
+import { useProrationPayment } from "@/hooks/useProrationPayment";
 import { useAuth } from "@/hooks/useAuth";
-import styles from "./PaymentModal.module.css";
+import styles from "./ProrationPaymentModal.module.css";
 
 interface PlanInfo {
   name: string;
   price: string;
   features: string[];
-  code: string; // 플랜 코드 추가
+  code: string;
 }
 
-interface PaymentModalProps {
+interface ProrationPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   planInfo: PlanInfo;
@@ -24,7 +24,7 @@ interface PaymentModalProps {
   onPay: () => void;
 }
 
-export default function PaymentModal({
+export default function ProrationPaymentModal({
   isOpen,
   onClose,
   planInfo,
@@ -34,13 +34,13 @@ export default function PaymentModal({
   onSelectPaymentService,
   onOpenCardRegistration,
   onPay,
-}: PaymentModalProps) {
+}: ProrationPaymentModalProps) {
   const [agreed, setAgreed] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   
-  const { processPayment, isLoading, error } = usePayment();
+  const { processProrationPayment, isLoading, error } = useProrationPayment();
   const { user } = useAuth();
 
   // 에러 발생 시 에러 모달 표시
@@ -52,27 +52,31 @@ export default function PaymentModal({
   }, [error]);
 
   const handlePayment = async () => {
-    if (!agreed || !selectedPaymentService) return;
+    if (!agreed) return;
+    // '다른 결제 수단' 선택 시에는 PG 선택 필수, 간편 결제는 선택 없어도 진행
+    if (paymentMethod === 'other' && !selectedPaymentService) return;
 
-    console.log('PaymentModal - planInfo:', planInfo);
-    console.log('PaymentModal - planCode:', planInfo.code);
+    console.log('ProrationPaymentModal - planInfo:', planInfo);
+    console.log('ProrationPaymentModal - planCode:', planInfo.code);
 
     try {
-      const result = await processPayment({
+      const result = await processProrationPayment({
         planCode: planInfo.code,
-        paymentService: selectedPaymentService,
+        // 간편 결제인 경우 선택값이 없으면 기본 PG로 'kakao' 사용
+        paymentService: paymentMethod === 'other' ? selectedPaymentService : (selectedPaymentService || 'kakao'),
         successUrl: `${window.location.origin}/membership/success`,
         cancelUrl: `${window.location.origin}/membership/cancel`
       });
 
       if (result.success) {
+        onPay();
         setShowSuccess(true);
       } else {
-        setErrorMessage(result.errorMessage || '결제에 실패했습니다.');
+        setErrorMessage(result.errorMessage || '차액 결제에 실패했습니다.');
         setShowError(true);
       }
     } catch (err) {
-      setErrorMessage('결제 처리 중 오류가 발생했습니다.');
+      setErrorMessage('차액 결제 처리 중 오류가 발생했습니다.');
       setShowError(true);
     }
   };
@@ -86,11 +90,11 @@ export default function PaymentModal({
 
   return (
     <>
-      <div className={styles.paymentModalOverlay}>
-        <div className={styles.paymentModalContainer}>
+      <div className={styles.prorationPaymentModalOverlay}>
+        <div className={styles.prorationPaymentModalContainer}>
           {/* 모달 헤더 */}
           <div className={styles.modalHeader}>
-            <h3 className={styles.modalTitle}>멤버십 결제</h3>
+            <h3 className={styles.modalTitle}>플랜 업그레이드 차액 결제</h3>
             <button
               onClick={onClose}
               className={styles.closeButton}
@@ -112,8 +116,8 @@ export default function PaymentModal({
           {/* 결제 금액 정보 */}
           <div className={styles.paymentAmountInfo}>
             <div className={styles.paymentAmountRow}>
-              <span className={styles.paymentAmountLabel}>멤버십 결제 (매월)</span>
-              <span className={styles.paymentAmountValue}>월 {planInfo.price}원</span>
+              <span className={styles.paymentAmountLabel}>차액 결제</span>
+              <span className={styles.paymentAmountValue}>차액 {planInfo.price}원</span>
             </div>
             <div className={styles.paymentTotalRow}>
               <span className={styles.paymentTotalValue}>{planInfo.price}원</span>
@@ -222,7 +226,7 @@ export default function PaymentModal({
                 className={styles.agreementCheckbox}
               />
               <span className={styles.agreementText}>
-                가격 및 유의사항을 확인하였으며, 멤버십 정기결제에 동의합니다.
+                플랜 업그레이드 차액 결제에 동의합니다.
               </span>
             </label>
           </div>
@@ -230,66 +234,33 @@ export default function PaymentModal({
           {/* 결제 버튼 */}
           <button
             onClick={handlePayment}
-            disabled={!agreed || !selectedPaymentService || isLoading}
-            className={`${styles.paymentButton} ${agreed && selectedPaymentService && !isLoading ? styles.paymentButtonEnabled : styles.paymentButtonDisabled}`}
+            disabled={!agreed || (paymentMethod === 'other' && !selectedPaymentService) || isLoading}
+            className={`${styles.paymentButton} ${agreed && (paymentMethod !== 'other' || selectedPaymentService) && !isLoading ? styles.paymentButtonEnabled : styles.paymentButtonDisabled}`}
           >
             <span>
-              {isLoading ? '결제 처리 중...' : `멤버십 ${planInfo.price}원 결제하기`}
+              {isLoading ? '차액 결제 처리 중...' : `차액 ${planInfo.price}원 결제하기`}
             </span>
           </button>
 
           {/* 멤버십 안내 섹션 */}
           <div className={styles.membershipNoticeSection}>
             <div className={styles.noticeBox}>
-              <h4 className={styles.noticeBoxTitle}>멤버십 구독 및 결제 안내</h4>
+              <h4 className={styles.noticeBoxTitle}>플랜 업그레이드 안내</h4>
               <div className={styles.noticeBoxContent}>
+                <p>• 업그레이드 시 남은 기간에 대한 차액이 즉시 결제됩니다.</p>
+                <p>• 결제 완료 후 즉시 새로운 플랜 혜택을 이용하실 수 있습니다.</p>
+                <p>• 다음 정기 결제일부터는 새로운 플랜 가격으로 자동 결제됩니다.</p>
+                <p>• 차액 결제 후에는 다운그레이드가 불가능합니다.</p>
                 <p>• 결제 금액은 부가가치세(VAT)가 포함된 가격입니다.</p>
-                <p>• 멤버십은 월정액 유료 이용권으로, 결제 즉시 적용되며 이용이 시작됩니다.</p>
-                <p>• 매월 정기 결제일에 등록한 결제 수단을 통해 자동으로 결제됩니다.</p>
-                <p>• 쿠폰, 분분, 이벤트 등 무료 혜택과 중복 사용은 불가합니다.</p>
-                <p>• 미성년자 회원은 법정대리인의 명의 또는 동의를 통해 결제해야 합니다.</p>
-                <p>• 멤버십은 언제든지 해지할 수 있으며, 해지 후에도 남은 이용 기간까지는 서비스를 이용하실 수 있습니다.</p>
-                <p>• 멤버십 해지는 결제 예정일 최소 24시간 이전에 신청해야 합니다.</p>
-                <p>• 결제 실패 시 멤버십 정기 결제가 자동으로 해지될 수 있습니다.</p>
-                <p>• 결제 당일을 제외하고는 결제 수단은 언제든지 변경할 수 있습니다.</p>
-                <p>• 환불은 결제일로부터 7일 이내, 콘텐츠를 이용하지 않은 경우에만 가능합니다.</p>
               </div>
             </div>
 
             <div className={styles.noticeBox}>
-              <h4 className={styles.noticeBoxTitle}>콘텐츠 이용 안내</h4>
+              <h4 className={styles.noticeBoxTitle}>환불 정책</h4>
               <div className={styles.noticeBoxContent}>
-                <p>• 라프텔에서 제공되는 모든 콘텐츠는 대한민국 내에서만 이용 가능합니다.</p>
-                <p>• 일부 콘텐츠는 별도 사전 고지 없이 서비스가 중단될 수 있습니다.</p>
-                <p>• 콘텐츠별 영상 화질, 음성 및 음향 방식, 언어 제공 등은 상이합니다.</p>
-                <p>• 멤버십에는 청소년 관람 불가 콘텐츠가 포함되어 있습니다.</p>
-                <p>• 멤버십 종류에 따라 동시 시청 가능 기기 수가 다릅니다.</p>
-                <p>• 다운로드한 콘텐츠는 일정 기간 동안만 시청 가능합니다.</p>
-                <p>• 일부 콘텐츠는 스트리밍으로만 제공됩니다.</p>
-              </div>
-            </div>
-
-            <div className={styles.noticeBox}>
-              <h4 className={styles.noticeBoxTitle}>재생 및 이용 환경 안내</h4>
-              <div className={styles.noticeBoxContent}>
-                <p>• 지원 기기 및 플랫폼은 [이곳]에서 확인하실 수 있습니다.</p>
-                <p>• 해외 직구 등으로 국내 정식 출시되지 않은 기기에서는 호환성 문제가 있을 수 있습니다.</p>
-                <p>• 지원하는 기기에서는 라프텔 공식 앱을 설치 후 이용 가능합니다.</p>
-                <p>• 모바일 데이터 환경에서는 Wi-Fi 이용을 권장합니다.</p>
-                <p>• 안정적인 고속 인터넷 환경이 필요합니다.</p>
-                <p>• 모든 콘텐츠는 DRM 기술로 보호됩니다.</p>
-                <p>• 루팅되거나 탈옥된 기기에서는 재생이 제한됩니다.</p>
-                <p>• 고급 보안 인증이 지원되지 않는 기기에서는 재생이 불가할 수 있습니다.</p>
-                <p>• OS 버전, 기기 사양, 제조사에 따라 서비스가 정상 작동하지 않을 수 있습니다.</p>
-                <p>• 영상 화질은 인터넷 환경과 디바이스 성능에 따라 달라집니다.</p>
-                <p>• 콘텐츠 다운로드는 모바일/태블릿 앱에서만 가능합니다.</p>
-              </div>
-            </div>
-
-            <div className={styles.noticeBox}>
-              <div className={styles.noticeBoxTitle}>기타 안내</div>
-              <div className={styles.noticeBoxContent}>
-                <p>• 기타 궁금하신 점은 고객센터를 통해 1:1 문의해 주시기 바랍니다.</p>
+                <p>• 차액 결제 후에는 환불이 불가능합니다.</p>
+                <p>• 플랜 변경은 다음 결제일부터 다운그레이드만 가능합니다.</p>
+                <p>• 기타 문의사항은 고객센터를 통해 문의해 주시기 바랍니다.</p>
               </div>
             </div>
           </div>
@@ -300,8 +271,8 @@ export default function PaymentModal({
       {showSuccess && (
         <div className={styles.successModal}>
           <div className={styles.successContent}>
-            <h3>결제가 완료되었습니다!</h3>
-            <p>멤버십이 정상적으로 활성화되었습니다.</p>
+            <h3>차액 결제가 완료되었습니다!</h3>
+            <p>플랜이 즉시 업그레이드되었습니다.</p>
             <div className={styles.successButtonGroup}>
               <button 
                 onClick={() => {
@@ -332,7 +303,7 @@ export default function PaymentModal({
       {showError && (
         <div className={styles.errorModal}>
           <div className={styles.errorContent}>
-            <h3>결제 실패</h3>
+            <h3>차액 결제 실패</h3>
             <p>{errorMessage}</p>
             <button onClick={handleCloseError}>확인</button>
           </div>
@@ -341,5 +312,3 @@ export default function PaymentModal({
     </>
   );
 }
-
-

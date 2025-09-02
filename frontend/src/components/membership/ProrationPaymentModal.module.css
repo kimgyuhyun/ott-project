@@ -1,5 +1,5 @@
-/* 결제 모달 오버레이 */
-.paymentModalOverlay {
+/* 차액 결제 모달 오버레이 */
+.prorationPaymentModalOverlay {
   position: fixed;
   inset: 0;
   display: flex;
@@ -10,8 +10,8 @@
   background-color: rgba(0, 0, 0, 0.7);
 }
 
-/* 결제 모달 컨테이너 */
-.paymentModalContainer {
+/* 차액 결제 모달 컨테이너 */
+.prorationPaymentModalContainer {
   max-width: 32rem;
   width: 100%;
   padding: 1.5rem;
@@ -25,11 +25,11 @@
 
 /* 모바일 대응 */
 @media (max-width: 640px) {
-  .paymentModalOverlay {
+  .prorationPaymentModalOverlay {
     padding: 0.25rem;
   }
   
-  .paymentModalContainer {
+  .prorationPaymentModalContainer {
     padding: 1rem;
     max-height: 95vh;
   }

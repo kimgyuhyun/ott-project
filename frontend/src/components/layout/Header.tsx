@@ -3,6 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { useMembershipData } from "@/hooks/useMembershipData";
 import SearchBar from "@/components/search/SearchBar";
 import styles from "./Header.module.css";
 
@@ -11,6 +12,7 @@ export default function Header() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
+  const { userMembership } = useMembershipData();
 
   // 현재 페이지가 해당 링크와 일치하는지 확인하는 함수
   const isActiveLink = (path: string) => {
@@ -29,6 +31,20 @@ export default function Header() {
   // 검색 실행 처리
   const handleSearch = (query: string) => {
     window.location.href = `/tags?search=${encodeURIComponent(query)}`;
+  };
+
+  // 멤버십 링크 결정 (멤버십 구독 중이거나 사용 가능 기간 내의 멤버는 모두 guide로)
+  const getMembershipLink = () => {
+    if (userMembership) {
+      // 멤버십이 있고, 현재 시간이 endAt 이전이면 사용 가능 기간 내
+      const now = new Date();
+      const endDate = new Date(userMembership.endAt);
+      
+      if (now < endDate) {
+        return '/membership/guide'; // 멤버십 구독 중이거나 사용 가능 기간 내
+      }
+    }
+    return '/membership'; // 멤버십 없음 또는 만료된 멤버십
   };
 
   return (
@@ -57,7 +73,7 @@ export default function Header() {
                 요일별 신작
               </Link>
               <Link
-                href="/membership"
+                href={getMembershipLink()}
                 className={`${styles.headerNavItem} ${isActiveLink('/membership') ? styles.active : ''}`}
               >
                 멤버십
@@ -149,7 +165,7 @@ export default function Header() {
                       
                       {/* 라프텔 멤버십 */}
                       <Link
-                        href="/membership/guide"
+                        href={getMembershipLink()}
                         onClick={() => setIsProfileOpen(false)}
                         style={{ textDecoration: 'none' }}
                       >

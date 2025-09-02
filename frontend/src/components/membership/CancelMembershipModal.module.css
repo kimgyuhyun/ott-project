@@ -1,0 +1,135 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  width: 100%;
+  max-width: 560px;
+  background: #121212;
+  border: 1px solid #323232;
+  border-radius: 12px;
+  padding: 28px;
+  color: #f0f0f0;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+}
+
+.desc {
+  font-size: 14px;
+  color: #c8c8c8;
+  margin: 0 0 16px 0;
+  line-height: 1.5;
+}
+
+.benefitCard {
+  text-align: left;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: #171717;
+  margin: 0 auto 14px auto;
+}
+
+.planTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f0f0f0;
+  margin: 0 0 12px 0;
+}
+
+.benefitCard ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.benefitCard li {
+  position: relative;
+  padding-left: 24px;
+  margin: 8px 0;
+  line-height: 1.4;
+}
+
+.benefitCard li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #9b59ff;
+}
+
+.profileNotice {
+  text-align: left;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: #161616;
+  margin: 0 auto 14px auto;
+  color: #dcdcdc;
+}
+
+.purchaseNotice {
+  font-size: 12px;
+  color: #b8b8b8;
+  margin: 0 0 18px 0;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.primaryBtn {
+  background: #9b59ff;
+  color: #111;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.secondaryBtn {
+  background: #2a2a2a;
+  color: #f0f0f0;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondaryBtn:hover {
+  background: #333333;
+}
+
+.disabled {
+  background: #2a2a2a;
+  color: #777;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: not-allowed;
+}
+
+

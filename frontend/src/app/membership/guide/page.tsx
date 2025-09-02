@@ -3,6 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
+import { changeMembershipPlan } from "@/lib/api/membership";
+import PlanChangeModal from "@/components/membership/PlanChangeModal";
+import PaymentModal from "@/components/membership/PaymentModal";
+import ProrationPaymentModal from "@/components/membership/ProrationPaymentModal";
 import styles from "./guide.module.css";
 
 export default function MembershipGuidePage() {
@@ -10,6 +14,16 @@ export default function MembershipGuidePage() {
   
   // 확장된 플랜 (화살표로 접었다 펼쳤다)
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+  
+  // 멤버십 변경 모달 상태
+  const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  
+  // 결제 모달 상태
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showProrationPaymentModal, setShowProrationPaymentModal] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('simple');
+  const [selectedPaymentService, setSelectedPaymentService] = useState('');
 
   // 플랜 이름 한국어 매핑
   const translatePlanName = (name?: string | null) => {
@@ -52,11 +66,21 @@ export default function MembershipGuidePage() {
       const y = d.getFullYear();
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
-      return `${y}.${m}.${day} 결제 예정`;
+      const base = `${y}.${m}.${day}`;
+      // 다음 전환 플랜이 예약되어 있으면 플랜명을 함께 표기
+      if (userMembership.nextPlanCode) {
+        const nextPlan = membershipPlans.find(p => (p as any).code && String((p as any).code).toUpperCase() === String(userMembership.nextPlanCode).toUpperCase());
+        const nextPlanName = translatePlanName(nextPlan?.name);
+        if (nextPlanName) {
+          return `${base} ${nextPlanName} 결제 예정`;
+        }
+      }
+      return `${base} 결제 예정`;
     } catch {
       return null;
     }
-  }, [userMembership]);
+  }, [membershipPlans, userMembership]);
+
 
   // 플랜 기능 리스트 생성 (DB 데이터 기반)
   const getPlanFeatures = (plan: any) => {
@@ -71,18 +95,36 @@ export default function MembershipGuidePage() {
     ];
   };
 
-  // 멤버십 변경 처리
-  const handlePlanChange = async (plan: any) => {
-    if (!plan) return;
-    
-    try {
-      // 여기에 실제 플랜 변경 API 호출 로직 추가
-      alert(`${translatePlanName(plan.name)} 플랜으로 변경하시겠습니까?`);
-      // TODO: 실제 플랜 변경 API 구현
-    } catch (error) {
-      console.error('플랜 변경 실패:', error);
-    }
+  // 차액 계산 (간단한 예시)
+  const calculateProrationAmount = (currentPlan: any, targetPlan: any) => {
+    if (!currentPlan || !targetPlan) return 0;
+    const priceDifference = targetPlan.monthlyPrice - currentPlan.monthlyPrice;
+    // 남은 기간에 대한 차액 계산 (간단히 월 가격의 50%로 가정)
+    return Math.floor(priceDifference * 0.5);
   };
+
+  // 멤버십 변경 처리
+  const handlePlanChange = (plan: any) => {
+    if (!plan) return;
+    setSelectedPlan(plan);
+    setIsChangeModalOpen(true);
+  };
+
+  // 업그레이드 시 차액 결제 모달 열기
+  const handleUpgradePayment = (plan: any) => {
+    setSelectedPlan(plan);
+    setIsChangeModalOpen(false);
+    setShowProrationPaymentModal(true);
+  };
+
+  // 차액 결제 완료 후 처리
+  const handleProrationPaymentSuccess = async () => {
+    setShowProrationPaymentModal(false);
+    reloadUserMembership();
+    alert('플랜 업그레이드가 완료되었습니다.');
+  };
+
+
 
   const summaryCard = (
     <div className={styles.summaryCard}>
@@ -202,15 +244,25 @@ export default function MembershipGuidePage() {
                       </ul>
                     </div>
                     
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
-                        handlePlanChange(p);
-                      }}
-                      className={styles.changePlanButton}
-                    >
-                      멤버십 변경하기
-                    </button>
+                    {userMembership?.nextPlanCode && (p as any).code && String((p as any).code).toUpperCase() === String(userMembership.nextPlanCode).toUpperCase() ? (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); }}
+                        className={styles.changePlanButton}
+                        disabled
+                      >
+                        전환 예약됨
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
+                          handlePlanChange(p);
+                        }}
+                        className={styles.changePlanButton}
+                      >
+                        멤버십 변경하기
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -284,6 +336,43 @@ export default function MembershipGuidePage() {
           </div>
         </div>
       </main>
+
+      {/* 멤버십 변경 확인 모달 */}
+      <PlanChangeModal
+        isOpen={isChangeModalOpen}
+        onClose={() => setIsChangeModalOpen(false)}
+        currentPlan={planForUser}
+        targetPlan={selectedPlan}
+        userMembership={userMembership}
+        onPlanChanged={reloadUserMembership}
+        onUpgradePayment={handleUpgradePayment}
+      />
+
+      {/* 차액 결제 모달 - 업그레이드 시 표시 */}
+      {showProrationPaymentModal && selectedPlan && planForUser && (
+        <ProrationPaymentModal
+          isOpen={showProrationPaymentModal}
+          onClose={() => setShowProrationPaymentModal(false)}
+          planInfo={{
+            name: `${translatePlanName(selectedPlan.name)} 업그레이드`,
+            price: calculateProrationAmount(planForUser, selectedPlan).toLocaleString(),
+            features: [
+              `프로필 ${selectedPlan.concurrentStreams}인·동시재생 ${selectedPlan.concurrentStreams}회선`,
+              '최신화 시청',
+              '다운로드 지원',
+              `${selectedPlan.maxQuality} 화질 지원`,
+              'TV 앱 지원'
+            ],
+            code: selectedPlan.code
+          }}
+          paymentMethod={paymentMethod}
+          onChangePaymentMethod={setPaymentMethod}
+          selectedPaymentService={selectedPaymentService}
+          onSelectPaymentService={setSelectedPaymentService}
+          onOpenCardRegistration={() => {}}
+          onPay={handleProrationPaymentSuccess}
+        />
+      )}
     </div>
   );
 }

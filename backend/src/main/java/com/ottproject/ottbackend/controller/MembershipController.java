@@ -3,6 +3,8 @@ package com.ottproject.ottbackend.controller;
 import com.ottproject.ottbackend.dto.MembershipPlanDto;
 import com.ottproject.ottbackend.dto.MembershipSubscribeRequestDto;
 import com.ottproject.ottbackend.dto.MembershipCancelMembershipRequestDto;
+import com.ottproject.ottbackend.dto.MembershipPlanChangeRequestDto;
+import com.ottproject.ottbackend.dto.MembershipPlanChangeResponseDto;
 import com.ottproject.ottbackend.dto.UserMembershipDto;
 import com.ottproject.ottbackend.service.MembershipCommandService;
 import com.ottproject.ottbackend.service.MembershipReadService;
@@ -27,6 +29,7 @@ import java.util.List;
  * - GET /api/users/me/membership: 내 멤버십 상태
  * - POST /api/memberships/subscribe: 구독 신청
  * - POST /api/memberships/cancel: 구독 해지(말일, 멱등)
+ * - PUT /api/memberships/change-plan: 플랜 변경(업그레이드/다운그레이드)
  */
 @RestController
 @RequiredArgsConstructor
@@ -67,5 +70,35 @@ public class MembershipController {
         Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 현재 사용자 ID 확인(401 가능)
         commandService.cancel(userId, dto); // 쓰기 서비스로 말일 해지 예약 수행(멱등키가 있으면 중복 방지)
         return ResponseEntity.ok(readService.getMyMembership(userId)); // 변경 직후 최신 멤버십 상태 반환
+    }
+
+    @Operation(summary = "멤버십 정기결제 재시작", description = "해지 예약된 멤버십의 정기결제를 다시 시작합니다.")
+    @ApiResponse(responseCode = "200", description = "재시작 완료: 최신 멤버십 상태 반환")
+    @PostMapping("/api/memberships/resume")
+    public ResponseEntity<UserMembershipDto> resume(HttpSession session) {
+        Long userId = securityUtil.requireCurrentUserId(session);
+        commandService.resume(userId);
+        return ResponseEntity.ok(readService.getMyMembership(userId));
+    }
+
+    @Operation(summary = "플랜 변경", description = "멤버십 플랜을 변경합니다. 업그레이드는 즉시 적용+차액결제, 다운그레이드는 다음 결제일부터 적용됩니다.")
+    @ApiResponse(responseCode = "200", description = "변경 완료: 변경 결과 정보 반환")
+    @ApiResponse(responseCode = "400", description = "잘못된 요청: 유효하지 않은 플랜 코드 또는 현재와 같은 플랜")
+    @PutMapping("/api/memberships/change-plan")
+    public ResponseEntity<MembershipPlanChangeResponseDto> changePlan(
+            @RequestBody MembershipPlanChangeRequestDto request, 
+            HttpSession session) {
+        Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인(401 가능)
+        MembershipPlanChangeResponseDto response = commandService.changePlan(userId, request); // 플랜 변경 처리
+        return ResponseEntity.ok(response); // 변경 결과 반환
+    }
+
+    @Operation(summary = "플랜 변경 예약 취소", description = "다음 결제일 전환 예약을 취소합니다.")
+    @ApiResponse(responseCode = "200", description = "취소 완료")
+    @PostMapping("/api/memberships/change-plan/cancel")
+    public ResponseEntity<UserMembershipDto> cancelScheduledPlanChange(HttpSession session) {
+        Long userId = securityUtil.requireCurrentUserId(session);
+        commandService.cancelScheduledPlanChange(userId);
+        return ResponseEntity.ok(readService.getMyMembership(userId));
     }
 }

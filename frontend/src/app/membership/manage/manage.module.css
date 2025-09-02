@@ -19,12 +19,12 @@
 
 /* 페이지 헤더 */
 .pageHeader {
-  text-align: center;
+  text-align: left;
   margin-bottom: 3rem;
 }
 
 .pageTitle {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 700;
   color: #ffffff;
   margin: 0;
@@ -66,6 +66,10 @@
 /* 플랜 정보 */
 .planInfo {
   margin: 0;
+  display: flex;
+  flex-direction: column; /* 제목 아래 버튼 배치 */
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .planName {
@@ -134,6 +138,10 @@
   cursor: pointer;
   transition: all 0.3s ease;
   align-self: flex-start;
+  text-decoration: none; /* a 링크 사용 시 밑줄 제거 */
+  display: inline-block; /* a 링크도 버튼처럼 렌더링 */
+  line-height: 1.2;
+  margin-top: 0; /* column 레이아웃에서 gap으로 간격 제어 */
 }
 
 .changePaymentMethodButton:hover {
@@ -152,6 +160,93 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: #ffffff;
+}
+
+/* 플랜 변경 섹션 */
+.planChangeSection {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid #333;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.availablePlans {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.planOption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.planOption:hover {
+  border-color: #816BFF;
+  background: #3d3d3d;
+}
+
+.planOptionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.planOptionName {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.planOptionPrice {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #816BFF;
+}
+
+.planOptionType {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  text-align: center;
+  width: fit-content;
+}
+
+.planOptionType:contains("업그레이드") {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.planOptionType:contains("다운그레이드") {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.changePlanButton {
+  background: linear-gradient(135deg, #816BFF 0%, #6B4BFF 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.changePlanButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(129, 107, 255, 0.3);
 }
 
 /* 멤버십 해지 섹션 */
@@ -200,6 +295,80 @@
 
 .backLink:hover {
   color: #6B4BFF;
+}
+
+/* 확인 모달 오버레이 */
+.confirmModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+/* 확인 모달 컨테이너 */
+.confirmModal {
+  width: 100%;
+  max-width: 560px;
+  background: var(--background-1, #121212);
+  border: 1px solid var(--border-1, #323232);
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+
+.confirmTitle {
+  color: var(--foreground-1, #F7F7F7);
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 12px 0;
+}
+
+.confirmDesc {
+  color: var(--foreground-2, #CFCFCF);
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.cancelBtn {
+  background: transparent;
+  color: #8B7CFF;
+  border: none;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 10px;
+}
+
+.confirmBtn {
+  background: #8B7CFF;
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 10px;
+}
+
+.confirmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .confirmModal {
+    padding: 20px;
+  }
+  .confirmTitle { font-size: 20px; }
+  .confirmDesc { font-size: 14px; }
 }
 
 /* 로딩 상태 */
@@ -314,7 +483,153 @@
     padding: 1.5rem;
   }
   
+  .planChangeSection {
+    padding: 1.5rem;
+  }
+  
+  .planOption {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .changePlanButton {
+    width: 100%;
+  }
+  
   .cancelMembershipButton {
     min-width: 100%;
   }
+}
+
+/* 해지 완료 화면 스타일 */
+.cancelledContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.cancelledTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f0f0f0;
+  margin: 0 0 16px 0;
+  line-height: 1.3;
+}
+
+.cancelledDesc {
+  font-size: 16px;
+  color: #c8c8c8;
+  margin: 0 0 32px 0;
+  line-height: 1.5;
+}
+
+.restartButton {
+  background: #9b59ff;
+  color: #111;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 40px;
+  transition: background-color 0.2s ease;
+}
+
+.restartButton:hover {
+  background: #8a4bdf;
+}
+
+.restartButton:active {
+  background: #7a42c7;
+}
+
+.restartButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #666;
+}
+
+.expirationInfo {
+  padding: 16px 24px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.expirationText {
+  font-size: 14px;
+  color: #b8b8b8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* 중앙 알림 (다크) */
+.centerNoticeOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1200;
+  padding: 16px;
+}
+
+.centerNoticeBox {
+  width: 100%;
+  max-width: 480px;
+  background: #121212;
+  color: #eaeaea;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  padding: 20px 24px;
+}
+
+.centerNoticeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.centerNoticeTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.centerNoticeClose {
+  background: transparent;
+  border: none;
+  color: #a8a8a8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.centerNoticeClose:hover {
+  background: #1e1e1e;
+  color: #ffffff;
+}
+
+.centerNoticeMessage {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #cfcfcf;
+}
+
+.centerNoticeSuccess {
+  border-color: #8B7CFF;
+}
+
+.centerNoticeError {
+  border-color: #8a2b2b;
 }
