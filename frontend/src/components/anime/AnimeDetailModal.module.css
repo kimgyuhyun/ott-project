@@ -27,7 +27,7 @@
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: var(--shadow-basic, rgba(0, 0, 0, 0.25));
-  background-color: var(--background-1, #FFFFFF);
+  background-color: var(--background-1, #121212);
 }
 
 /* 애니상세모달 닫기 버튼 */
@@ -37,7 +37,7 @@
   right: 1rem;
   transition: color 0.2s;
   z-index: 20;
-  color: var(--foreground-3, #8A8A8A);
+  color: var(--foreground-3, #ABABAB);
   background: none;
   border: none;
   cursor: pointer;
@@ -45,7 +45,7 @@
 }
 
 .animeDetailModalCloseButton:hover {
-  color: var(--foreground-2, #505050);
+  color: var(--foreground-2, #ABABAB);
 }
 
 .animeDetailModalCloseButton svg {
@@ -102,7 +102,7 @@
   box-shadow: var(--shadow-basic, rgba(0, 0, 0, 0.25));
   border: 2px solid;
   border-color: var(--border-1, #EEEEEE);
-  background-color: var(--background-1, #FFFFFF);
+  background-color: var(--background-1, #121212);
 }
 
 .posterImage {
@@ -115,7 +115,7 @@
 .topInfoOverlay {
   position: relative;
   z-index: 10;
-  color: var(--foreground-1, #121212);
+  color: var(--foreground-1, #F7F7F7);
 }
 
 /* 평점 및 배지 */
@@ -140,7 +140,7 @@
 .ratingValue {
   font-weight: 600;
   font-size: 1.125rem;
-  color: var(--foreground-1, #121212);
+  color: var(--foreground-1, #F7F7F7);
 }
 
 .ratingBadge {
@@ -149,7 +149,7 @@
   font-weight: 700;
   border-radius: 4px;
   background-color: var(--foreground-slight, #816BFF);
-  color: var(--background-1, #FFFFFF);
+  color: var(--background-1, #121212);
 }
 
 /* 애니메이션 제목 */
@@ -157,7 +157,7 @@
   font-size: 1.875rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  color: var(--foreground-1, #121212);
+  color: var(--foreground-1, #F7F7F7);
 }
 
 /* 장르 및 정보 */
@@ -173,13 +173,13 @@
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.875rem;
-  background-color: var(--background-3, #EEEEEE);
-  color: var(--foreground-2, #505050);
+  background-color: var(--background-3, #323232);
+  color: var(--foreground-2, #ABABAB);
 }
 
 .episodeCount {
   font-size: 0.875rem;
-  color: var(--foreground-3, #8A8A8A);
+  color: var(--foreground-3, #ABABAB);
 }
 
 /* 애니상세모달 액션 버튼들 */
@@ -254,19 +254,19 @@
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 0.75rem;
-  color: var(--foreground-1, #121212);
+  color: var(--foreground-1, #F7F7F7);
 }
 
 .synopsisText {
   line-height: 1.6;
-  color: var(--foreground-2, #505050);
+  color: var(--foreground-2, #ABABAB);
 }
 
 /* 탭 메뉴 */
 .tabMenu {
   border-bottom: 1px solid;
   border-color: var(--border-1, #EEEEEE);
-  background-color: var(--background-1, #FFFFFF);
+  background-color: var(--background-1, #121212);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -294,7 +294,7 @@
   border-bottom-color: transparent;
   transition: all 0.2s ease;
   font-weight: 400;
-  color: var(--foreground-3, #8A8A8A);
+  color: var(--foreground-3, #ABABAB);
   background: none;
   border: none;
   cursor: pointer;
@@ -303,8 +303,8 @@
 }
 
 .tabButton:hover {
-  color: var(--foreground-2, #505050);
-  background-color: var(--background-2, #F7F7F7);
+  color: var(--foreground-2, #ABABAB);
+  background-color: var(--background-2, #1a1a1a);
 }
 
 .tabButton.active {
@@ -321,8 +321,8 @@
 
 .tabCount {
   font-size: 0.75rem;
-  color: var(--foreground-4, #D0D0D0);
-  background-color: var(--background-3, #EEEEEE);
+  color: var(--foreground-4, #ABABAB);
+  background-color: var(--background-3, #323232);
   padding: 0.125rem 0.375rem;
   border-radius: 9999px;
   min-width: 1.5rem;
@@ -344,7 +344,7 @@
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: var(--foreground-1, #121212);
+  color: var(--foreground-1, #F7F7F7);
 }
 
 .episodesList {
@@ -359,13 +359,13 @@
   gap: 1rem;
   padding: 1rem;
   border-radius: 8px;
-  background-color: var(--background-2, #F7F7F7);
+  background-color: var(--background-2, #1a1a1a);
   transition: all 0.2s ease;
   cursor: pointer;
 }
 
 .episodeItem:hover {
-  background-color: var(--background-3, #EFEFEF);
+  background-color: var(--background-3, #323232);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -399,7 +399,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--foreground-1, #121212);
+  color: var(--foreground-1, #F7F7F7);
 }
 
 .episodeMeta {
@@ -407,13 +407,13 @@
   align-items: center;
   gap: 0.75rem;
   font-size: 0.75rem;
-  color: var(--foreground-3, #8A8A8A);
+  color: var(--foreground-3, #ABABAB);
 }
 
 .episodeDescription {
   font-size: 0.875rem;
   line-height: 1.4;
-  color: var(--foreground-2, #505050);
+  color: var(--foreground-2, #ABABAB);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -432,13 +432,13 @@
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: var(--foreground-1, #121212);
+  color: var(--foreground-1, #F7F7F7);
 }
 
 .reviewsError {
   text-align: center;
   padding: 3rem 0;
-  background-color: var(--background-2, #F7F7F7);
+  background-color: var(--background-2, #1a1a1a);
   border-radius: 8px;
   margin: 1rem 0;
 }
@@ -452,8 +452,8 @@
 .reviewsErrorDetails {
   font-size: 0.875rem;
   margin-top: 0.5rem;
-  color: var(--foreground-3, #8A8A8A);
-  background-color: var(--background-1, #FFFFFF);
+  color: var(--foreground-3, #ABABAB);
+  background-color: var(--background-1, #121212);
   padding: 1rem;
   border-radius: 4px;
   border: 1px solid var(--border-1, #EEEEEE);
@@ -466,21 +466,21 @@
 .shopSection {
   text-align: center;
   padding: 3rem 0;
-  color: var(--foreground-3, #8A8A8A);
+  color: var(--foreground-3, #ABABAB);
 }
 
 /* 비슷한 작품 섹션 */
 .similarSection {
   text-align: center;
   padding: 3rem 0;
-  color: var(--foreground-3, #8A8A8A);
+  color: var(--foreground-3, #ABABAB);
 }
 
 /* 빈 상태 */
 .emptyState {
   text-align: center;
   padding: 1.5rem 0;
-  color: var(--foreground-3, #8A8A8A);
+  color: var(--foreground-3, #ABABAB);
 }
 
 /* 반응형 디자인 */

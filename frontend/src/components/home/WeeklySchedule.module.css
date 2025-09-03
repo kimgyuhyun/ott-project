@@ -1,6 +1,6 @@
 .weeklyContainer {
   padding: 3rem 0;
-  background-color: white;
+  background-color: #121212;
 }
 
 .weeklyInnerContainer {
@@ -19,14 +19,14 @@
 .weeklyTitle {
   font-size: 0.82646vw;
   font-weight: 700;
-  color: var(--foreground-1);
+  color: var(--foreground-1, #F7F7F7);
   margin-bottom: 0.5rem;
 }
 
 .weeklyNoticeButton {
   font-size: 0.875rem;
-  color: var(--foreground-slight);
-  background-color: var(--button-slight-1);
+  color: var(--foreground-slight, #ABABAB);
+  background-color: var(--button-slight-1, #323232);
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
@@ -35,7 +35,7 @@
 }
 
 .weeklyNoticeButton:hover {
-  background-color: var(--button-slight-2);
+  background-color: var(--button-slight-2, #404040);
 }
 
 .weeklyTabs {
@@ -57,21 +57,21 @@
   transition: all 0.2s;
   border: none;
   cursor: pointer;
-  background-color: var(--background-3);
-  color: var(--foreground-2);
+  background-color: var(--background-3, #323232);
+  color: var(--foreground-2, #ABABAB);
 }
 
 .weeklyTab:hover {
-  background-color: var(--background-4);
+  background-color: var(--background-4, #404040);
 }
 
 .weeklyTab.active {
-  background-color: var(--foreground-slight);
+  background-color: var(--foreground-slight, #816BFF);
   color: white;
 }
 
 .weeklyTab.active:hover {
-  background-color: var(--foreground-slight);
+  background-color: var(--foreground-slight, #816BFF);
 }
 
 .weeklyGrid {
@@ -102,5 +102,5 @@
 .weeklyEmpty {
   text-align: center;
   padding: 3rem 0;
-  color: var(--foreground-3);
+  color: var(--foreground-3, #ABABAB);
 }

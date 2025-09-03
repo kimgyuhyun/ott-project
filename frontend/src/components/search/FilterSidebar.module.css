@@ -1,8 +1,8 @@
 /* 필터 사이드바 컨테이너 */
 .filterSidebar {
   width: 100%;
-  background-color: white;
-  border-right: 1px solid #e5e7eb;
+  background-color: #121212;
+  border-right: 1px solid #323232;
   padding: 1.5rem;
   overflow-y: auto;
 }
@@ -22,15 +22,15 @@
 .filterTitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #1f2937;
+  color: #F7F7F7;
   margin-bottom: 0.75rem;
 }
 
 .resetButton {
   width: 100%;
   padding: 0.5rem 1rem;
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: #323232;
+  color: #F7F7F7;
   border-radius: 0.5rem;
   border: none;
   cursor: pointer;
@@ -39,14 +39,14 @@
 }
 
 .resetButton:hover {
-  background-color: #e5e7eb;
+  background-color: #404040;
 }
 
 .filterCount {
   margin-left: 0.5rem;
   font-size: 0.75rem;
-  background-color: #d1d5db;
-  color: #4b5563;
+  background-color: #323232;
+  color: #ABABAB;
   padding: 0.25rem 0.5rem;
   border-radius: 9999px;
 }
@@ -66,7 +66,7 @@
 .filterSectionTitle {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #F7F7F7;
 }
 
 .filterCount {
@@ -105,15 +105,15 @@
 }
 
 .checkboxItem:hover {
-  background-color: #f9fafb;
+  background-color: #1a1a1a;
 }
 
 .checkbox {
   width: 1rem;
   height: 1rem;
   color: #7c3aed;
-  background-color: #f3f4f6;
-  border: 1px solid #d1d5db;
+  background-color: #323232;
+  border: 1px solid #404040;
   border-radius: 0.25rem;
   cursor: pointer;
 }
@@ -124,7 +124,7 @@
 }
 
 .checkboxLabel {
-  color: #374151;
+  color: #ABABAB;
   font-size: 0.875rem;
 }
 
@@ -154,17 +154,19 @@
 .selectLabel {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #F7F7F7;
   margin-bottom: 0.5rem;
 }
 
 .select {
   width: 100%;
   padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid #404040;
   border-radius: 0.5rem;
   font-size: 0.875rem;
   outline: none;
+  background-color: #323232;
+  color: #F7F7F7;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
