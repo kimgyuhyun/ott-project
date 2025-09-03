@@ -68,5 +68,6 @@ export * from './user';
 export * from './search';
 export * from './reviews';
 export * from './comments';
+export * from './episodeComments';
 export * from './player';
 export * from './skip';
