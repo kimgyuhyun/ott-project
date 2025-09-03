@@ -1,36 +1,22 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getReviewComments, createComment, updateComment, deleteComment, toggleCommentLike, getCommentReplies, createReply } from "@/lib/api/comments";
+import { getEpisodeComments, createEpisodeComment, updateEpisodeComment, deleteEpisodeComment, toggleEpisodeCommentLike, getEpisodeCommentReplies, createEpisodeReply } from "@/lib/api/episodeComments";
 import { getCurrentUser } from "@/lib/api/auth";
-import styles from "./CommentList.module.css";
+import styles from "./EpisodeCommentList.module.css";
+import { EpisodeComment } from "@/types/episodeComments";
 
-interface Comment {
-  id: number;
-  userName: string;
-  userProfileImage?: string;
-  content: string;
-  likeCount: number;
-  isLikedByCurrentUser: boolean;
-  replacesCount?: number;
-  createdAt?: string;
-  updatedAt?: string;
+interface EpisodeCommentListProps {
+  episodeId: number;
 }
 
-interface CommentListProps {
-  reviewId: number;
-  myRating?: number; // synced rating from parent
-  onCommentCreated?: () => void; // 댓글 작성 후 콜백
-  refreshTrigger?: number; // 새로고침 트리거
-}
-
-export default function CommentList({ reviewId, myRating = 0, onCommentCreated, refreshTrigger }: CommentListProps) {
-  const [comments, setComments] = useState<Comment[]>([]);
+export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProps) {
+  const [comments, setComments] = useState<EpisodeComment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState<number | null>(null);
-  const [editingComment, setEditingComment] = useState<Comment | null>(null);
-  const [editingReply, setEditingReply] = useState<Comment | null>(null);
+  const [editingComment, setEditingComment] = useState<EpisodeComment | null>(null);
+  const [editingReply, setEditingReply] = useState<EpisodeComment | null>(null);
   const [newComment, setNewComment] = useState({ content: '' });
   const scrollYRef = useRef<number>(0);
 
@@ -74,13 +60,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
   useEffect(() => {
     loadComments();
     loadCurrentUser();
-  }, [reviewId]);
-
-  useEffect(() => {
-    if (refreshTrigger && refreshTrigger > 0) {
-      loadComments(false);
-    }
-  }, [refreshTrigger]);
+  }, [episodeId]);
 
   useEffect(() => {
     restoreScroll();
@@ -107,25 +87,23 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
     }
   };
 
-  const loadComments = async (showLoading = true) => {
+  const loadComments = async () => {
     try {
-      if (showLoading) {
-        setIsLoading(true);
-        saveScroll();
-      }
-      const data = await getReviewComments(reviewId);
+      setIsLoading(true);
+      saveScroll();
+      const data = await getEpisodeComments(episodeId);
       console.log('📡 댓글 API 응답:', data);
-      let commentsData: Comment[] = [];
+      let commentsData: EpisodeComment[] = [];
       if (data && typeof data === 'object') {
         if ('items' in (data as any) && Array.isArray((data as any).items)) {
           console.log('✅ Comments: items 구조로 파싱');
-          commentsData = (data as any).items as Comment[];
+          commentsData = (data as any).items as EpisodeComment[];
         } else if ('content' in (data as any) && Array.isArray((data as any).content)) {
           console.log('✅ Comments: content 구조로 파싱');
-          commentsData = (data as any).content as Comment[];
+          commentsData = (data as any).content as EpisodeComment[];
         } else if (Array.isArray(data)) {
           console.log('✅ Comments: 배열 응답으로 파싱');
-          commentsData = data as unknown as Comment[];
+          commentsData = data as unknown as EpisodeComment[];
         } else {
           console.warn('⚠️ 예상치 못한 댓글 데이터 구조:', data);
           commentsData = [];
@@ -138,10 +116,8 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
     } catch (error) {
       console.error('댓글 로드 실패:', error);
     } finally {
-      if (showLoading) {
-        setIsLoading(false);
-        setTimeout(() => restoreScroll(), 0);
-      }
+      setIsLoading(false);
+      setTimeout(() => restoreScroll(), 0);
     }
   };
 
@@ -150,13 +126,9 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
     
     try {
       saveScroll();
-      await createComment(reviewId, { content: newComment.content });
+      await createEpisodeComment(episodeId, { content: newComment.content });
       setNewComment({ content: '' });
-      setShowCreateForm(false);
-      // 대댓글처럼 부분적 새로고침 사용 (로딩 상태 표시하지 않음)
-      await loadComments(false);
-      // 부모 컴포넌트에 댓글 작성 완료 알림
-      onCommentCreated?.();
+      loadComments();
       setTimeout(() => restoreScroll(), 0);
     } catch (error) {
       console.error('댓글 작성 실패:', error);
@@ -177,7 +149,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
     setEditingComment(null);
 
     try {
-      await updateComment(reviewId, targetId, { content: newContent });
+      await updateEpisodeComment(episodeId, targetId, { content: newContent });
     } catch (error) {
       console.error('댓글 수정 실패:', error);
       setComments(prev);
@@ -193,7 +165,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
     setComments(prevComments => prevComments.filter(c => c.id !== commentId));
 
     try {
-      await deleteComment(reviewId, commentId);
+      await deleteEpisodeComment(episodeId, commentId);
       restoreScroll();
     } catch (error) {
       console.error('댓글 삭제 실패:', error);
@@ -221,7 +193,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
 
     // 2) 대댓글 낙관적 토글 (모든 parentId 배열에서 해당 ID를 찾아 갱신)
     setReplies(prev => {
-      const next: Record<number, Comment[]> = { ...prev };
+      const next: Record<number, EpisodeComment[]> = { ...prev };
       Object.keys(next).forEach(k => {
         const pid = Number(k);
         next[pid] = next[pid]?.map(r => {
@@ -234,7 +206,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
     });
 
     try {
-      await toggleCommentLike(reviewId, commentId);
+      await toggleEpisodeCommentLike(episodeId, commentId);
       restoreScroll();
     } catch (error) {
       console.error('좋아요 토글 실패:', error);
@@ -245,25 +217,25 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
   };
 
   // 대댓글 로드/작성
-  const [replies, setReplies] = useState<Record<number, Comment[]>>({});
+  const [replies, setReplies] = useState<Record<number, EpisodeComment[]>>({});
   const [expandedReplies, setExpandedReplies] = useState<Set<number>>(new Set());
 
   const loadReplies = async (parentId: number) => {
     try {
-      const data = await getCommentReplies(reviewId, parentId);
+      const data = await getEpisodeCommentReplies(episodeId, parentId);
       console.log('📡 대댓글 API 응답:', data);
       
-      let repliesData: Comment[] = [];
+      let repliesData: EpisodeComment[] = [];
       if (data && typeof data === 'object') {
         if ('items' in (data as any) && Array.isArray((data as any).items)) {
           console.log('✅ Replies: items 구조로 파싱');
-          repliesData = (data as any).items as Comment[];
+          repliesData = (data as any).items as EpisodeComment[];
         } else if ('content' in (data as any) && Array.isArray((data as any).content)) {
           console.log('✅ Replies: content 구조로 파싱');
-          repliesData = (data as any).content as Comment[];
+          repliesData = (data as any).content as EpisodeComment[];
         } else if (Array.isArray(data)) {
           console.log('✅ Replies: 배열 응답으로 파싱');
-          repliesData = data as unknown as Comment[];
+          repliesData = data as unknown as EpisodeComment[];
         } else {
           console.warn('⚠️ 예상치 못한 대댓글 데이터 구조:', data);
           repliesData = [];
@@ -290,7 +262,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
     <div className={styles.mainContainer}>
 
 
-      {showCreateForm && (
+      {(
         <div className={styles.commentForm}>
           <textarea
             value={newComment.content}
@@ -301,7 +273,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
           />
           <div className={styles.formButtons}>
             <button
-              onClick={() => setShowCreateForm(false)}
+              onClick={() => setNewComment({ content: '' })}
               className={styles.cancelButton}
             >
               취소
@@ -372,7 +344,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                         </button>
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
-                          className={styles.actionButton}
+                          className={styles.deleteButton}
                         >
                           삭제
                         </button>
@@ -432,7 +404,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                           if (!newComment.content.trim()) return;
                           try {
                             saveScroll();
-                            await createReply(reviewId, comment.id, newComment.content);
+                            await createEpisodeReply(episodeId, comment.id, newComment.content);
                             setNewComment({ content: '' });
                             setShowReplyForm(null);
                             // 해당 댓글의 대댓글만 다시 로드
@@ -459,21 +431,21 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                   <div className={styles.repliesHeader}>
                     {((Boolean(replies[comment.id]?.length) || (typeof comment.replacesCount === 'number' && comment.replacesCount > 0))) && (
                       <button
-                        onClick={async () => {
-                          setExpandedReplies(prev => {
-                            const next = new Set(prev);
-                            if (next.has(comment.id)) next.delete(comment.id); else next.add(comment.id);
-                            return next;
-                          });
-                          if (!replies[comment.id]) {
-                            await loadReplies(comment.id);
-                          }
-                        }}
-                        className={styles.replyButton}
-                      >
-                        {expandedReplies.has(comment.id) 
-                          ? `답글 ${replies[comment.id]?.length || 0}개 숨기기` 
-                          : `답글 ${(comment.replacesCount ?? (replies[comment.id]?.length || 0))}개 보기`}
+                      onClick={async () => {
+                        setExpandedReplies(prev => {
+                          const next = new Set(prev);
+                          if (next.has(comment.id)) next.delete(comment.id); else next.add(comment.id);
+                          return next;
+                        });
+                        if (!replies[comment.id]) {
+                          await loadReplies(comment.id);
+                        }
+                      }}
+                      className={styles.replyButton}
+                    >
+                                              {expandedReplies.has(comment.id) 
+                                                ? `답글 ${replies[comment.id]?.length || 0}개 숨기기` 
+                                                : `답글 ${(comment.replacesCount ?? (replies[comment.id]?.length || 0))}개 보기`}
                       </button>
                     )}
                   </div>
@@ -492,7 +464,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                             <button onClick={async () => {
                               if (!editingReply || !editingReply.content.trim()) return;
                               try {
-                                await updateComment(reviewId, reply.id, { content: editingReply.content });
+                                await updateEpisodeComment(episodeId, reply.id, { content: editingReply.content });
                                 // 갱신 후 목록 새로고침
                                 await loadReplies(comment.id);
                                 setEditingReply(null);
@@ -503,31 +475,31 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                       ) : (
                         <>
                           <div className={styles.replyHeader}>
-                                                         <div className={styles.replyMeta}>
-                               <span className={styles.replyDate}>{formatRelativeTime(reply.createdAt, reply.updatedAt)}</span>
-                               <div className={styles.userNameSection}>
-                                 <img 
-                                   src={reply.userProfileImage || ''} 
-                                   alt={reply.userName} 
-                                   className={styles.userNameAvatar}
-                                   onError={(e) => {
-                                     console.error('❌ 대댓글 닉네임 프로필 이미지 로딩 실패:', reply.userProfileImage);
-                                     e.currentTarget.style.display = 'none';
-                                   }}
-                                 />
-                                 <span className={styles.replyUserName}>{reply.userName}</span>
-                               </div>
+                            <div className={styles.replyMeta}>
+                              <span className={styles.replyDate}>{formatRelativeTime(reply.createdAt, reply.updatedAt)}</span>
+                              <div className={styles.userNameSection}>
+                                <img 
+                                  src={reply.userProfileImage || ''} 
+                                  alt={reply.userName} 
+                                  className={styles.userNameAvatar}
+                                  onError={(e) => {
+                                    console.error('❌ 대댓글 닉네임 프로필 이미지 로딩 실패:', reply.userProfileImage);
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                />
+                                <span className={styles.replyUserName}>{reply.userName}</span>
+                              </div>
                               <div className={styles.replyActions}>
                                 {currentUser && currentUser.id === reply.userId && (
                                   <>
-                                    <button onClick={() => setEditingReply(reply)} className={styles.actionButton}>수정</button>
+                                    <button onClick={() => setEditingReply(reply)} className={styles.replyEditButton}>수정</button>
                                     <button onClick={async () => {
                                       if (!confirm('정말로 이 대댓글을 삭제하시겠습니까?')) return;
                                       try {
-                                        await deleteComment(reviewId, reply.id);
+                                        await deleteEpisodeComment(episodeId, reply.id);
                                         await loadReplies(comment.id);
                                       } catch (e) { console.log('대댓글 삭제 실패:', e); }
-                                    }} className={styles.actionButton}>삭제</button>
+                                    }} className={styles.replyDeleteButton}>삭제</button>
                                   </>
                                 )}
                               </div>
@@ -549,8 +521,6 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                           </div>
                         </>
                       )}
-
-
                     </div>
                   ))}
 

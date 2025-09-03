@@ -247,7 +247,7 @@
 
 @media (min-width: 1025px) {
   .headerContent {
-    justify-content: flex-start;
+    justify-content: center;
   }
   
   .headerLogo {

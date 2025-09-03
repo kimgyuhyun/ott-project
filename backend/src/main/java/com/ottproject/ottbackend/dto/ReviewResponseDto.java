@@ -31,4 +31,7 @@ public class ReviewResponseDto {
 
     private Integer likeCount; // 리뷰 좋아요 개수
     private Boolean isLikedByCurrentUser; // 현재 사용자 좋아요 여부
+    
+    private java.time.LocalDateTime createdAt; // 생성일시
+    private java.time.LocalDateTime updatedAt; // 수정일시
 }

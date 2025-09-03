@@ -225,7 +225,7 @@ export default function MembershipManagePage() {
               onClick={handleResumeMembership}
               disabled={isResuming}
             >
-              {isResuming ? '처리 중...' : '멤버십 정기결제 다시 시작'}
+              {isResuming ? '처리 중...' : '멤버십 다시 시작하기'}
             </button>
             
             <div className={styles.expirationInfo}>
@@ -237,7 +237,7 @@ export default function MembershipManagePage() {
                       year: 'numeric',
                       month: '2-digit', 
                       day: '2-digit'
-                    }).replace(/\. /g, '.').replace('.', '');
+                    }).replace(/\. /g, '.').replace(/\.$/, '');
                   }
                   return '정보 없음';
                 })()}
@@ -281,7 +281,14 @@ export default function MembershipManagePage() {
                   : translatePlanName(planForUser?.name) || userMembership.planName
                 }
               </h4>
-              <Link href="/membership" className={styles.changePaymentMethodButton}>멤버십 변경</Link>
+              {userMembership.nextPlanCode && (
+                <button 
+                  className={styles.changePaymentMethodButton}
+                  onClick={() => setShowCancelChangeModal(true)}
+                >
+                  멤버십 변경
+                </button>
+              )}
             </div>
           </div>
 
@@ -373,6 +380,7 @@ export default function MembershipManagePage() {
       <CancelPlanChangeModal
         isOpen={showCancelChangeModal}
         nextPlanName={translatePlanName(userMembership.nextPlanName)}
+        currentPlanName={translatePlanName(planForUser?.name || userMembership.planName)}
         onCancel={() => setShowCancelChangeModal(false)}
         onConfirm={handleCancelScheduledChange}
         isProcessing={isCancellingChange}
