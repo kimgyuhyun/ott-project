@@ -5,6 +5,7 @@ import Header from "@/components/layout/Header";
 import { getEpisodeStreamUrl, saveEpisodeProgress, getEpisodeProgress, getNextEpisode } from "@/lib/api/player";
 import { getAnimeDetail } from "@/lib/api/anime";
 import PlayerSettingsModal from "@/components/player/PlayerSettingsModal";
+import EpisodeCommentList from "@/components/episode/EpisodeCommentList";
 import { useAuth } from "@/hooks/useAuth";
 import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
 import styles from "./player.module.css";
@@ -696,34 +697,12 @@ export default function PlayerPage() {
               </div>
             )}
 
-            {/* 다음 에피소드 버튼 (비디오 아래) - 로그인한 사용자만 표시 */}
-            {nextEpisode && isLoggedIn && (
-              <div className={styles.nextEpisodeContainer}>
-                <button
-                  onClick={goToNextEpisode}
-                  className={styles.nextEpisodeButton}
-                >
-                  다음 에피소드 보기
-                </button>
-              </div>
-            )}
 
-            {/* 댓글 섹션 */}
-            <div className={styles.commentSection}>
-              <div className={styles.commentHeader}>
-                <span className={styles.commentCount}>댓글 8</span>
-                <div className={styles.commentSort}>
-                  <span className={styles.sortLabel}>인기순</span>
-                </div>
-              </div>
-              <div className={styles.commentInput}>
-                <input 
-                  type="text" 
-                  placeholder="댓글을 남겨보세요" 
-                  className={styles.commentField}
-                />
-              </div>
-            </div>
+
+            {/* 에피소드 댓글 섹션 */}
+            {episodeId && (
+              <EpisodeCommentList episodeId={parseInt(episodeId)} />
+            )}
           </div>
 
           {/* 오른쪽: 에피소드 목록 사이드바 */}

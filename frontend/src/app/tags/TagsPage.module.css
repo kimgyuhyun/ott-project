@@ -2,8 +2,8 @@
 .root {
   /* 페이지 전체 스코프 래퍼 */
   min-height: 100vh;
-  background-color: var(--background-1);
-  color: var(--foreground-1);
+  background-color: var(--background-1, #121212);
+  color: var(--foreground-1, #F7F7F7);
   overflow-x: hidden;
 }
 
@@ -38,7 +38,7 @@
   border-radius: 8px;
   border: 4px solid transparent;
   background-clip: content-box;
-  background-color: var(--background-5);
+  background-color: var(--background-5, #323232);
 }
 
 /* 필요 시 태그 페이지 전용 섹션/컴포넌트용 클래스 확장 예정 */

@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import { getUserProfile, getUserWatchHistory, getUserWantList, getUserStats } from "@/lib/api/user";
+import styles from "./mypage.module.css";
 
 type TabType = 'recent' | 'want' | 'purchased' | 'binge';
 
@@ -73,82 +74,86 @@ export default function MyPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-600">로딩 중...</div>
+      <div className={styles.mypageContainer}>
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingText}>로딩 중...</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-red-600">{error}</div>
+      <div className={styles.mypageContainer}>
+        <div className={styles.errorContainer}>
+          <div className={styles.errorText}>{error}</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={styles.mypageContainer}>
       <Header />
       
-      <main className="pt-16">
-        <div className="max-w-6xl mx-auto flex gap-8 px-6 py-8">
+      <main className={styles.mainContent} style={{ paddingTop: '4rem' }}>
+        <div className={styles.contentWrapper} style={{ maxWidth: '80rem', margin: '0 auto', display: 'flex', gap: '1.5rem', padding: '0 1rem', paddingTop: '1.5rem', paddingBottom: '1.5rem' }}>
           {/* 왼쪽 사이드바 - 프로필 정보 */}
-          <div className="w-72 flex-shrink-0">
+          <div className={styles.sidebar}>
             {/* 프로필 정보 섹션 */}
-            <div className="bg-white rounded-lg p-6 mb-6 shadow-sm border border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-800 mb-4">프로필 정보</h2>
+            <div className={styles.profileSection} style={{ backgroundColor: '#000000', borderRadius: '0.5rem', padding: '1.25rem', marginBottom: '1rem', boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.5)', border: '1px solid #323232' }}>
+              <h2 className={styles.profileTitle} style={{ fontSize: '1rem', fontWeight: 600, color: '#F7F7F7', marginBottom: '0.75rem' }}>프로필 정보</h2>
               
               {/* 프로필 이미지 및 기본 정보 */}
-              <div className="text-center mb-6">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full overflow-hidden bg-purple-500 flex items-center justify-center">
+              <div className={styles.profileInfo}>
+                <div className={styles.profileImageContainer}>
                   {/* 프로필 이미지 */}
                   {userProfile?.profileImage ? (
                     <img 
                       src={userProfile.profileImage} 
                       alt="프로필 이미지"
-                      className="w-full h-full object-cover"
+                      className={styles.profileImage}
                     />
                   ) : (
-                    <span className="text-white text-2xl">😈</span>
+                    <span className={styles.profileDefaultIcon}>😈</span>
                   )}
                 </div>
-                <h3 className="text-xl font-bold text-gray-800 mb-1">
+                <h3 className={styles.profileName}>
                   {userProfile?.username || '사용자'}
                 </h3>
-                <p className="text-green-500 font-medium">Lv.0 베이비</p>
+                <p className={styles.profileLevel}>Lv.0 베이비</p>
               </div>
 
               {/* 프로필 선택 버튼 */}
-              <button className="w-full py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm transition-colors mb-6">
+              <button className={styles.profileSelectButton} style={{ marginBottom: '2rem' }}>
                 프로필 선택
               </button>
 
               {/* 활동 통계 - 가로 일렬 배치로 변경 */}
-              <div className="flex justify-between items-center mb-6">
-                <div className="text-center">
-                  <div className="text-gray-800 font-semibold text-lg">
+              <div className={styles.statsContainer} style={{ marginBottom: '2rem', borderTop: 'none', borderBottom: 'none' }}>
+                <div className={styles.statItem}>
+                  <div className={styles.statNumber}>
                     {userStats?.ratingCount || 0}
                   </div>
-                  <div className="text-gray-600 text-xs">별점</div>
+                  <div className={styles.statLabel}>별점</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-gray-800 font-semibold text-lg">
+                <div className={styles.statItem}>
+                  <div className={styles.statNumber}>
                     {userStats?.reviewCount || 0}
                   </div>
-                  <div className="text-gray-600 text-xs">리뷰</div>
+                  <div className={styles.statLabel}>리뷰</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-gray-800 font-semibold text-lg">
+                <div className={styles.statItem}>
+                  <div className={styles.statNumber}>
                     {userStats?.commentCount || 0}
                   </div>
-                  <div className="text-gray-600 text-xs">댓글</div>
+                  <div className={styles.statLabel}>댓글</div>
                 </div>
               </div>
 
               {/* 보관함 버튼 */}
-              <button className="w-full py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm transition-colors flex items-center justify-center space-x-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <button className={styles.archiveButton}>
+                <svg className={styles.archiveIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
                 <span>보관함</span>
@@ -156,13 +161,13 @@ export default function MyPage() {
             </div>
 
             {/* 멤버십 시작하기 배너 - 크기 줄임 */}
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-4 text-center">
-              <div className="w-10 h-10 mx-auto mb-2 bg-white/20 rounded-full flex items-center justify-center">
+            <div className={styles.membershipBanner}>
+              <div className={styles.bannerIcon}>
                 {/* 귀여운 캐릭터 이미지 (플레이스홀더) */}
-                <span className="text-white text-sm">🌟</span>
+                <span className={styles.bannerIconText}>🌟</span>
               </div>
-              <h3 className="text-base font-bold text-white mb-1">멤버십 시작하기</h3>
-              <p className="text-white/90 text-xs leading-relaxed">
+              <h3 className={styles.bannerTitle}>멤버십 시작하기</h3>
+              <p className={styles.bannerText}>
                 한일 동시방영 신작부터<br />
                 역대 인기애니까지 무제한
               </p>
@@ -170,23 +175,21 @@ export default function MyPage() {
           </div>
 
           {/* 오른쪽 메인 콘텐츠 - 보관함 */}
-          <div className="flex-1">
+          <div className={styles.mainContentArea} style={{ flex: 1, minWidth: 0 }}>
             {/* 탭 메뉴 */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-              <div className="flex border-b border-gray-200">
+            <div className={styles.tabContainer}>
+              <div className={styles.tabMenu}>
                 {tabs.map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
-                      activeTab === tab.id
-                        ? 'text-purple-600 border-b-2 border-purple-600'
-                        : 'text-gray-500 hover:text-gray-700'
+                    className={`${styles.tabButton} ${
+                      activeTab === tab.id ? styles.tabButtonActive : ''
                     }`}
                   >
                     {tab.label}
                     {tab.count > 0 && (
-                      <span className="ml-2 bg-gray-200 text-gray-600 px-2 py-1 rounded-full text-xs">
+                      <span className={styles.tabCount}>
                         {tab.count}
                       </span>
                     )}
@@ -195,25 +198,24 @@ export default function MyPage() {
               </div>
 
               {/* 탭별 콘텐츠 */}
-              <div className="p-6">
+              <div className={styles.tabContent} style={{ padding: '15rem 5rem' }}>
                 {activeTab === 'recent' && (
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">최근 본 작품</h3>
                     {watchHistory.length > 0 ? (
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      <div className={styles.animeGrid}>
                         {watchHistory.map((anime: any) => (
                           <div 
                             key={anime.id} 
-                            className="cursor-pointer hover:scale-105 transition-transform"
+                            className={styles.animeItem}
                             onClick={() => handleAnimeClick(anime)}
                           >
-                            <div className="w-full aspect-[3/4] bg-gray-200 rounded-lg mb-2"></div>
-                            <p className="text-sm text-gray-800 truncate">{anime.title}</p>
+                            <div className={styles.animePoster}></div>
+                            <p className={styles.animeTitle}>{anime.title}</p>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className={styles.emptyState}>
                         최근 본 작품이 없습니다
                       </div>
                     )}
@@ -222,22 +224,22 @@ export default function MyPage() {
 
                 {activeTab === 'want' && (
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4">보고싶은 작품</h3>
-                    {favorites.length > 0 ? (
-                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {favorites.map((anime: any) => (
+                    <h3 className={styles.tabTitle}>보고싶은 작품</h3>
+                    {wantList.length > 0 ? (
+                      <div className={styles.animeGrid}>
+                        {wantList.map((anime: any) => (
                           <div 
                             key={anime.id} 
-                            className="cursor-pointer hover:scale-105 transition-transform"
+                            className={styles.animeItem}
                             onClick={() => handleAnimeClick(anime)}
                           >
-                            <div className="w-full aspect-[3/4] bg-gray-200 rounded-lg mb-2"></div>
-                            <p className="text-sm text-gray-800 truncate">{anime.title}</p>
+                            <div className={styles.animePoster}></div>
+                            <p className={styles.animeTitle}>{anime.title}</p>
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-gray-500">
+                      <div className={styles.emptyState}>
                         보고싶은 작품이 없습니다
                       </div>
                     )}
@@ -245,13 +247,13 @@ export default function MyPage() {
                 )}
 
                 {activeTab === 'purchased' && (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className={styles.emptyState}>
                     구매한 작품이 없습니다
                   </div>
                 )}
 
                 {activeTab === 'binge' && (
-                  <div className="text-center py-8 text-gray-500">
+                  <div className={styles.emptyState}>
                     정주행 중인 작품이 없습니다
                   </div>
                 )}

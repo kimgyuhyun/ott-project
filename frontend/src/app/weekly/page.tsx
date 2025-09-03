@@ -91,46 +91,46 @@ export default function WeeklyPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-600">로딩 중...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-xl text-gray-300">로딩 중...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-red-600">{error}</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-xl text-red-400">{error}</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-gray-900">
       <Header />
       
       <main className="pt-16">
         <div className="max-w-7xl mx-auto px-6 py-8">
           {/* 페이지 제목 */}
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">요일별 신작</h1>
+          <h1 className="text-3xl font-bold text-white mb-6">요일별 신작</h1>
 
           {/* 서비스 업데이트 안내 박스 */}
-          <div className="bg-gray-100 rounded-lg p-6 mb-8">
+          <div className="bg-gray-800 rounded-lg p-6 mb-8">
             <div className="flex items-start space-x-3">
-              <div className="text-yellow-500 text-xl">🔔</div>
+              <div className="text-yellow-400 text-xl">🔔</div>
               <div className="flex-1">
-                <div className="space-y-3 text-gray-700 text-sm">
+                <div className="space-y-3 text-gray-300 text-sm">
                   <p>
                     8월 12일 서비스 예정이었던 <span className="font-medium">《가치아쿠타》 3화</span>는 
-                    판권사 사정으로 인해 4화와 함께 <span className="font-medium text-yellow-600">8월 28일 업데이트 예정</span>입니다.
+                    판권사 사정으로 인해 4화와 함께 <span className="font-medium text-yellow-400">8월 28일 업데이트 예정</span>입니다.
                   </p>
                   <p>
                     8월 21일 업데이트 예정이었던 <span className="font-medium">《앤 셜리 (Anne Shirley)》 19화</span>는 
-                    현지 휴방으로 인해 <span className="font-medium text-yellow-600">8월 28일 업데이트 예정</span>입니다.
+                    현지 휴방으로 인해 <span className="font-medium text-yellow-400">8월 28일 업데이트 예정</span>입니다.
                   </p>
                   <p>
                     <span className="font-medium">《가라오케 가자!》 5화</span>는 
-                    현지 휴방으로 인해 <span className="font-medium text-yellow-600">9월 중 서비스 예정</span>입니다.
+                    현지 휴방으로 인해 <span className="font-medium text-yellow-400">9월 중 서비스 예정</span>입니다.
                   </p>
                 </div>
               </div>
@@ -146,7 +146,7 @@ export default function WeeklyPage() {
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   activeDay === day.id
                     ? 'bg-purple-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                 }`}
               >
                 {day.label}
@@ -176,10 +176,10 @@ export default function WeeklyPage() {
             </div>
           ) : (
             <div className="text-center py-12">
-              <div className="text-gray-500 text-lg mb-2">
+              <div className="text-gray-400 text-lg mb-2">
                 {days.find(d => d.id === activeDay)?.label} 신작이 없습니다
               </div>
-              <p className="text-gray-400">다른 요일을 선택해보세요</p>
+              <p className="text-gray-500">다른 요일을 선택해보세요</p>
             </div>
           )}
         </div>

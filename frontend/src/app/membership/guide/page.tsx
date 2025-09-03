@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
-import { changeMembershipPlan } from "@/lib/api/membership";
+import { changeMembershipPlan, resumeMembership } from "@/lib/api/membership";
 import PlanChangeModal from "@/components/membership/PlanChangeModal";
 import PaymentModal from "@/components/membership/PaymentModal";
 import ProrationPaymentModal from "@/components/membership/ProrationPaymentModal";
@@ -24,6 +24,10 @@ export default function MembershipGuidePage() {
   const [showProrationPaymentModal, setShowProrationPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('simple');
   const [selectedPaymentService, setSelectedPaymentService] = useState('');
+  
+  // 멤버십 재시작 상태
+  const [isResuming, setIsResuming] = useState(false);
+  const [notice, setNotice] = useState<{ type: 'success' | 'error', title: string, message: string } | null>(null);
 
   // 플랜 이름 한국어 매핑
   const translatePlanName = (name?: string | null) => {
@@ -67,15 +71,19 @@ export default function MembershipGuidePage() {
       const m = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       const base = `${y}.${m}.${day}`;
+      
+      // autoRenew가 false면 "만료 예정", true면 "결제 예정"
+      const suffix = userMembership.autoRenew ? '결제 예정' : '만료 예정';
+      
       // 다음 전환 플랜이 예약되어 있으면 플랜명을 함께 표기
       if (userMembership.nextPlanCode) {
         const nextPlan = membershipPlans.find(p => (p as any).code && String((p as any).code).toUpperCase() === String(userMembership.nextPlanCode).toUpperCase());
         const nextPlanName = translatePlanName(nextPlan?.name);
         if (nextPlanName) {
-          return `${base} ${nextPlanName} 결제 예정`;
+          return `${base} ${nextPlanName} ${suffix}`;
         }
       }
-      return `${base} 결제 예정`;
+      return `${base} ${suffix}`;
     } catch {
       return null;
     }
@@ -124,6 +132,25 @@ export default function MembershipGuidePage() {
     alert('플랜 업그레이드가 완료되었습니다.');
   };
 
+  // 멤버십 정기결제 재시작 핸들러
+  const handleResumeMembership = async () => {
+    if (isResuming) return;
+    
+    setIsResuming(true);
+    try {
+      await resumeMembership();
+      await reloadUserMembership();
+      setNotice({ type: 'success', title: '정기결제 재시작', message: '멤버십 정기결제가 다시 시작되었습니다.' });
+    } catch (error) {
+      console.error('멤버십 재시작 실패:', error);
+      setNotice({ type: 'error', title: '실패', message: '정기결제 재시작에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+    } finally {
+      setIsResuming(false);
+    }
+  };
+
+
+
 
 
   const summaryCard = (
@@ -150,9 +177,25 @@ export default function MembershipGuidePage() {
 
       <div className={styles.summaryCardFooter}>
         {nextPaymentText && (
-          <span className={styles.paymentDate}>{nextPaymentText}</span>
+          <div className={styles.paymentDateContainer}>
+            <div className={styles.paymentDateRow}>
+              <span className={styles.paymentDate}>{nextPaymentText}</span>
+              <Link href="/membership/manage" className={styles.membershipManageLink}>내 멤버십 관리 &gt;</Link>
+            </div>
+            {userMembership && !userMembership.autoRenew && (
+              <>
+                <div className={styles.paymentDateDivider}></div>
+                <button 
+                  className={styles.restartButton}
+                  onClick={handleResumeMembership}
+                  disabled={isResuming}
+                >
+                  {isResuming ? '처리 중...' : '멤버십 다시 시작하기'}
+                </button>
+              </>
+            )}
+          </div>
         )}
-        <Link href="/membership/manage" className={styles.membershipManageLink}>내 멤버십 관리 &gt;</Link>
       </div>
     </div>
   );
@@ -161,6 +204,17 @@ export default function MembershipGuidePage() {
     <div className={styles.guideContainer}>
       <Header />
       <main className="relative pt-16">
+        {notice && (
+          <div className={styles.centerNoticeOverlay} onClick={() => setNotice(null)}>
+            <div className={`${styles.centerNoticeBox} ${notice.type === 'success' ? styles.centerNoticeSuccess : styles.centerNoticeError}`} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.centerNoticeHeader}>
+                <h4 className={styles.centerNoticeTitle}>{notice.title}</h4>
+                <button className={styles.centerNoticeClose} onClick={() => setNotice(null)}>✕</button>
+              </div>
+              <div className={styles.centerNoticeMessage}>{notice.message}</div>
+            </div>
+          </div>
+        )}
         <div className={styles.mainContent}>
           {/* 히어로 */}
           <div className={styles.heroSection}>

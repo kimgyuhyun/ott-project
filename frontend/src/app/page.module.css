@@ -1,6 +1,7 @@
 /* 홈 컨테이너 */
 .homeContainer {
   min-height: 100vh;
+  background-color: #121212;
 }
 
 /* 홈 메인 영역 */
@@ -25,7 +26,7 @@
 /* 로딩 텍스트 */
 .loadingText {
   font-size: 1.25rem;
-  color: var(--foreground-3);
+  color: var(--foreground-3, #ABABAB);
 }
 
 /* 오류 컨테이너 */
@@ -51,7 +52,7 @@
 /* 오류 도움말 */
 .errorHelp {
   font-size: 0.875rem;
-  color: var(--foreground-3);
+  color: var(--foreground-3, #ABABAB);
   margin-bottom: 1rem;
 }
 
@@ -72,7 +73,7 @@
 
 /* 콘텐츠 섹션 */
 .contentSection {
-  background-color: white;
+  background-color: #121212;
 }
 
 /* 콘텐츠 컨테이너 */
@@ -86,7 +87,7 @@
 .sectionTitle {
   font-size: 0.82646vw;
   font-weight: 700;
-  color: var(--foreground-1);
+  color: var(--foreground-1, #F7F7F7);
   margin-bottom: 1.5rem;
 }
 
@@ -111,7 +112,7 @@
 .animeGridPoster {
   width: 100%;
   aspect-ratio: 3/4;
-  background-color: #e5e7eb;
+  background-color: #323232;
   border-radius: 0.5rem;
   margin-bottom: 0.5rem;
 }
@@ -119,7 +120,7 @@
 /* 애니메 그리드 제목 */
 .animeGridTitle {
   font-size: 0.875rem;
-  color: var(--foreground-1);
+  color: var(--foreground-1, #F7F7F7);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
