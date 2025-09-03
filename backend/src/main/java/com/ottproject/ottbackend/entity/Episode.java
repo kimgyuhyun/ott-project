@@ -7,6 +7,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 에피소드 엔티티
@@ -58,6 +60,10 @@ public class Episode {
     @JoinColumn(name = "anime_id", nullable = false) //
     private Anime anime; // NEW 에피소드가 속한 애니 정보
 
+    @OneToMany(mappedBy = "episode", cascade = CascadeType.ALL, orphanRemoval = true) // 일대다 관계, cascade로 연쇄 삭제, 고아 객체 제거
+    @Builder.Default
+    private List<EpisodeComment> episodeComments = new ArrayList<>(); // 에피소드 댓글 목록
+
     @CreatedDate // 생성일시 자동 설정
     @Column(nullable = false)
     @Builder.Default
@@ -80,5 +86,23 @@ public class Episode {
         if (anime != null && !anime.getEpisodes().contains(this)) { 
             anime.getEpisodes().add(this);
         }
+    }
+
+    /**
+     * 에피소드 댓글 추가 메서드
+     * @param episodeComment 추가할 에피소드 댓글
+     */
+    public void addEpisodeComment(EpisodeComment episodeComment) {
+        this.episodeComments.add(episodeComment);
+        episodeComment.setEpisode(this); // 양방향 관계 설정
+    }
+
+    /**
+     * 에피소드 댓글 제거 메서드
+     * @param episodeComment 제거할 에피소드 댓글
+     */
+    public void removeEpisodeComment(EpisodeComment episodeComment) {
+        this.episodeComments.remove(episodeComment);
+        episodeComment.setEpisode(null); // 양방향 관계 해제
     }
 }

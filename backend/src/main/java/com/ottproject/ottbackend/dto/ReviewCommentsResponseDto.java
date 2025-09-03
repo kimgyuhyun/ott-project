@@ -34,4 +34,7 @@ public class ReviewCommentsResponseDto {
 	private Integer replacesCount; // 대댓글 개수(옵션)
 	private Integer likeCount; // 댓글 좋아요 개수
 	private Boolean isLikedByCurrentUser; // 현재 사용자 좋아요 여부
+	
+	private java.time.LocalDateTime createdAt; // 생성일시
+	private java.time.LocalDateTime updatedAt; // 수정일시
 }

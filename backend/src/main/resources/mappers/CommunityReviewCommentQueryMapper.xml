@@ -39,7 +39,9 @@
     WHERE rl2.review_id = r.id AND rl2.user_id = #{currentUserId} <!-- 현재 사용자 좋아요 여부 확인 -->
     )
     THEN TRUE ELSE FALSE END
-    ) AS isLikedByCurrentUser <!-- ReviewResponseDto.isLikedByCurrentUser -->
+    ) AS isLikedByCurrentUser, <!-- ReviewResponseDto.isLikedByCurrentUser -->
+    r.created_at AS createdAt, <!-- ReviewResponseDto.createdAt -->
+    r.updated_at AS updatedAt <!-- ReviewResponseDto.updatedAt -->
     </sql>
 
     <!-- =====
@@ -74,7 +76,9 @@
         WHERE cl2.comment_id = c.id AND cl2.user_id = #{currentUserId} <!-- 현재 사용자 좋아요 여부 -->
         )
         THEN TRUE ELSE FALSE END
-        ) AS isLikedByCurrentUser <!-- ReviewCommentsResponseDto.isLikedByCurrentUser -->
+        ) AS isLikedByCurrentUser, <!-- ReviewCommentsResponseDto.isLikedByCurrentUser -->
+        c.created_at AS createdAt, <!-- ReviewCommentsResponseDto.createdAt -->
+        c.updated_at AS updatedAt <!-- ReviewCommentsResponseDto.updatedAt -->
     </sql>
 
     <!-- =====
