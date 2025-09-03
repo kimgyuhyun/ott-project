@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?> <!-- XML 헤더 -->
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd"> <!-- MyBatis DTD -->
+
+<!--
+  Mapper: EpisodeCommentQueryMapper
+  - 에피소드 댓글/대댓글 목록/총개수 조회
+  - 현재 사용자 좋아요 여부 계산 포함
+-->
+<mapper namespace="com.ottproject.ottbackend.mybatis.EpisodeCommentQueryMapper">  <!-- 인터페이스 FQCN -->
+
+    <!-- =====
+    에피소드 댓글/대댓글 공통 SELECT 컬럼 묶음
+    - 댓글 기본 정보 + 작성자 정보 + 대댓글 개수 + 좋아요 개수 + 현재 사용자 좋아요 여부
+    - resultType: EpisodeCommentsResponseDto 필드명과 alias 일치
+    ===== -->
+    <sql id="episode_comment_select_columns">
+        c.id AS id, <!-- EpisodeCommentsResponseDto.id -->
+        c.episode_id AS episodeId, <!-- EpisodeCommentsResponseDto.episodeId -->
+        c.parent_id AS parentId, <!-- EpisodeCommentsResponseDto.parentId -->
+        u.id AS userId, <!-- EpisodeCommentsResponseDto.userId -->
+        u.name AS userName, <!-- EpisodeCommentsResponseDto.userName -->
+        u.profile_image AS userProfileImage, <!-- EpisodeCommentsResponseDto.userProfileImage -->
+        c.content AS content, <!-- EpisodeCommentsResponseDto.content -->
+        c.status AS commentStatus, <!-- EpisodeCommentsResponseDto.commentStatus(enum) -->
+        (
+        SELECT COUNT(1) <!-- 대댓글 수 -->
+        FROM episode_comments c2
+        WHERE c2.parent_id = c.id
+        AND c2.status = 'ACTIVE'
+        ) AS replacesCount, <!-- EpisodeCommentsResponseDto.replacesCount -->
+        (
+        SELECT COUNT(1) <!-- 댓글 좋아요 수 -->
+        FROM episode_comment_likes cl
+        WHERE cl.episode_comment_id = c.id
+        ) AS likeCount, <!-- EpisodeCommentsResponseDto.likeCount -->
+        (
+        CASE WHEN #{currentUserId} IS NOT NULL AND EXISTS (
+        SELECT 1
+        FROM episode_comment_likes cl2
+        WHERE cl2.episode_comment_id = c.id AND cl2.user_id = #{currentUserId} <!-- 현재 사용자 좋아요 여부 -->
+        )
+        THEN TRUE ELSE FALSE END
+        ) AS isLikedByCurrentUser, <!-- EpisodeCommentsResponseDto.isLikedByCurrentUser -->
+        c.created_at AS createdAt, <!-- EpisodeCommentsResponseDto.createdAt -->
+        c.updated_at AS updatedAt <!-- EpisodeCommentsResponseDto.updatedAt -->
+    </sql>
+
+    <!-- =====
+    최상위 댓글 목록: 특정 에피소드 기준
+    - parent_id IS NULL -> 최상위만
+    - ACTIVE 상태만
+    - 오래된 순 정렬(스레드 가독성)
+    - 페이징 지원
+    ===== -->
+    <select id="findCommentsByEpisodeId" resultType="com.ottproject.ottbackend.dto.EpisodeCommentsResponseDto">
+        SELECT <!-- SELECT: 댓글 표시 컬럼 묶음 사용 -->
+        <include refid="episode_comment_select_columns"/> <!-- include: 공통 SELECT 컬럼(대댓글 수/좋아요/현재 사용자 좋아요 여부 포함) 삽입 -->
+        FROM episode_comments c <!-- 에피소드 댓글 테이블 -->
+        JOIN users u ON u.id = c.user_id <!-- 작성자 조인 -->
+        WHERE c.episode_id = #{episodeId} <!-- 대상 에피소드 -->
+        AND c.parent_id IS NULL <!-- 최상위 댓글만 -->
+        AND c.status = 'ACTIVE' <!-- 활성 댓글만 -->
+        <choose> <!-- 정렬 분기 -->
+            <when test="sort == 'best'">
+                ORDER BY likeCount DESC, c.id DESC <!-- 좋아요순, 같으면 최신순 -->
+            </when>
+            <otherwise>
+                ORDER BY c.id DESC <!-- 기본 최신순 -->
+            </otherwise>
+        </choose>
+        LIMIT #{limit} OFFSET #{offset} <!-- 페이지네이션: limit=페이지 크기, offset=건너뛸 행 수(page*size) -->
+    </select>
+
+    <!-- =====
+    최상위 댓글 총 개수(페이지네이션 total)
+    - 목록 조건과 동일한 WHERE 사용
+    ===== -->
+    <select id="countCommentsByEpisodeId" resultType="long">
+        SELECT COUNT(1) <!-- 총 개수 -->
+        FROM episode_comments c
+        WHERE c.episode_id = #{episodeId} <!-- 대상 에피소드 -->
+        AND c.parent_id IS NULL <!-- 최상위만 -->
+        AND c.status = 'ACTIVE' <!-- 활성만 카운트 -->
+    </select>
+
+    <!-- =====
+    대댓글 목록: 특정 부모 댓글 기준
+    - parent_id = #{parentId}
+    - ACTIVE 상태만
+    - 오래된 순 정렬
+    ===== -->
+    <select id="findRepliesByParentId" resultType="com.ottproject.ottbackend.dto.EpisodeCommentsResponseDto">
+        SELECT <!-- SELECT: 대댓글 표시 컬럼 묶음 사용 -->
+        <include refid="episode_comment_select_columns"/> <!-- include: 공통 SELECT 컬럼 삽입 -->
+        FROM episode_comments c <!-- 에피소드 댓글 테이블 -->
+        JOIN users u ON u.id = c.user_id <!-- 작성자 조인 -->
+        WHERE c.parent_id = #{parentId} <!-- 대상 부모 댓글 -->
+        AND c.status = 'ACTIVE' <!-- 활성 대댓글만 -->
+        ORDER BY c.id ASC <!-- 오래된 순 -->
+    </select>
+<!-- end of EpisodeCommentQueryMapper -->
+</mapper>
