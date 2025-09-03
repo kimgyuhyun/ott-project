@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { getAnimeReviews, createReview, toggleReviewLike, updateReview, deleteReview, isValidReviewResponse } from "@/lib/api/reviews";
 import { createOrUpdateRating, getMyRating, getRatingStats } from "@/lib/api/rating";
+import { createComment } from "@/lib/api/comments";
 import Star from "@/components/ui/Star";
 import { getCurrentUser } from "@/lib/api/auth";
 import CommentList from "./CommentList";
@@ -17,6 +18,7 @@ interface Review {
   isLikedByCurrentUser: boolean;
   createdAt?: string;
   updatedAt?: string;
+  userId?: number;
 }
 
 interface ReviewListProps {
@@ -33,6 +35,7 @@ export default function ReviewList({ animeId }: ReviewListProps) {
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
   const [myRating, setMyRating] = useState<number | null>(null);
   const [showLoginRequired, setShowLoginRequired] = useState(false);
+  const [showCommentForm, setShowCommentForm] = useState<number | null>(null);
   const halfKeys = ['1.0','1.5','2.0','2.5','3.0','3.5','4.0','4.5','5.0'] as const;
   const [ratingStats, setRatingStats] = useState<Record<string, number>>({ '1.0':0,'1.5':0,'2.0':0,'2.5':0,'3.0':0,'3.5':0,'4.0':0,'4.5':0,'5.0':0 });
   const [hoverRating, setHoverRating] = useState<number | null>(null);
@@ -40,6 +43,7 @@ export default function ReviewList({ animeId }: ReviewListProps) {
   const [ratingLoading, setRatingLoading] = useState(false);
   const [ratingError, setRatingError] = useState<string | null>(null);
   const scrollYRef = useRef<number>(0);
+  const [commentRefreshTrigger, setCommentRefreshTrigger] = useState(0);
 
   useEffect(() => {
     loadReviews();
@@ -155,6 +159,17 @@ export default function ReviewList({ animeId }: ReviewListProps) {
       console.log('🎯 최종 파싱된 리뷰 데이터:', reviewsData);
       console.log('📝 리뷰 개수:', reviewsData.length);
       
+      // 첫 번째 리뷰의 날짜 필드 확인
+      if (reviewsData.length > 0) {
+        const firstReview = reviewsData[0];
+        console.log('📅 첫 번째 리뷰 날짜 정보:', {
+          createdAt: firstReview.createdAt,
+          updatedAt: firstReview.updatedAt,
+          hasCreatedAt: 'createdAt' in firstReview,
+          hasUpdatedAt: 'updatedAt' in firstReview
+        });
+      }
+      
       setReviews(reviewsData);
       
       // 사용자 평점은 Rating API에서 로드함
@@ -182,6 +197,43 @@ export default function ReviewList({ animeId }: ReviewListProps) {
     if (rating >= 3.0) return '볼만해요';
     if (rating >= 2.0) return '그럭저럭';
     return '별로예요';
+  };
+
+  const formatRelativeTime = (iso?: string, updatedIso?: string) => {
+    if (!iso) return '';
+    try {
+      // UTC 시간을 로컬 시간으로 변환
+      const created = new Date(iso + 'Z'); // Z를 추가해서 UTC로 명시
+      const updated = updatedIso ? new Date(updatedIso + 'Z') : null;
+      const diff = Date.now() - created.getTime();
+      const minutes = Math.floor(diff / 60000);
+      const hours = Math.floor(minutes / 60);
+      const days = Math.floor(hours / 24);
+      const months = Math.floor(days / 30);
+      const years = Math.floor(days / 365);
+      
+      let base = '';
+      if (years > 0) {
+        base = `${years}년 전`;
+      } else if (months > 0) {
+        base = `${months}개월 전`;
+      } else if (days > 0) {
+        base = `${days}일 전`;
+      } else if (hours > 0) {
+        base = `${hours}시간 전`;
+      } else if (minutes > 0) {
+        base = `${minutes}분 전`;
+      } else {
+        base = '방금 전';
+      }
+      
+      if (updated && Math.abs(updated.getTime() - created.getTime()) > 60_000) {
+        base += ' (수정됨)';
+      }
+      return base;
+    } catch {
+      return '';
+    }
   };
 
   const handleCreateReview = async () => {
@@ -578,7 +630,6 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                     }</span>
                   </div>
                   <div className={styles.reviewMeta}>
-                    <span className={styles.reviewDate}>{review.createdAt ? (new Date(review.createdAt).toLocaleDateString()) : ''}{review.updatedAt && review.updatedAt !== review.createdAt ? ' (수정됨)' : ''}</span>
                     <div className={styles.userNameSection}>
                       <img 
                         src={review.userProfileImage || ''} 
@@ -591,32 +642,29 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                       />
                       <span className={styles.userName}>{review.userName}</span>
                     </div>
-                    <button
-                      onClick={() => handleToggleLike(review.id)}
-                      className={`${styles.actionButton} ${styles.likeButton} ${review.isLikedByCurrentUser ? styles.likeButtonActive : ''}`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={styles.likeIcon}>
-                        <path d="M2 10h4v12H2zM22 10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13 1 6.59 7.41C6.22 7.78 6 8.3 6 8.83V20c0 1.1.9 2 2 2h8c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73V10z"/>
-                      </svg>
-                      <span>{review.likeCount}</span>
-                    </button>
-                    {currentUser && review.userName === (currentUser as any).username && (
+
+                    {currentUser && ((typeof review.userId === 'number' && (currentUser as any).id === review.userId) || review.userName === (currentUser as any).username) && (
                       <>
                         <button
                           onClick={() => setEditingReview(review)}
-                          className={styles.editButton}
+                          className={styles.actionButton}
                         >
                           수정
                         </button>
                         <button
                           onClick={() => handleDeleteReview(review.id)}
-                          className={styles.deleteButton}
+                          className={styles.actionButton}
                         >
                           삭제
                         </button>
                       </>
                     )}
                   </div>
+                </div>
+                
+                {/* 별점과 내용 사이에 날짜 표시 */}
+                <div className={styles.reviewDateSection}>
+                  <span className={styles.reviewDate}>{formatRelativeTime(review.createdAt, review.updatedAt)}</span>
                 </div>
                 
                 <div className={styles.reviewText}>
@@ -645,7 +693,86 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                   )}
                 </div>
                 
-                <CommentList reviewId={review.id} myRating={myRating ?? 0} />
+                <div className={styles.reviewActionButtons}>
+                  <button
+                    onClick={() => handleToggleLike(review.id)}
+                    className={`${styles.likeButton} ${
+                      review.isLikedByCurrentUser ? styles.likeButtonActive : styles.likeButtonInactive
+                    }`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={styles.likeIcon}>
+                      <path d="M2 10h4v12H2zM22 10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13 1 6.59 7.41C6.22 7.78 6 8.3 6 8.83V20c0 1.1.9 2 2 2h8c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73V10z"/>
+                    </svg>
+                    <span>{review.likeCount}</span>
+                  </button>
+                  
+                  {currentUser && (
+                    <button
+                      onClick={() => setShowCommentForm(showCommentForm === review.id ? null : review.id)}
+                      className={styles.commentButton}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={styles.commentIcon}>
+                        <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                      </svg>
+                      댓글
+                    </button>
+                  )}
+                </div>
+                
+                {/* 리뷰 댓글 입력 폼 */}
+                {showCommentForm === review.id && (
+                  <div className={styles.reviewCommentForm}>
+                    <textarea
+                      value={newReview.content}
+                      onChange={(e) => setNewReview(prev => ({ ...prev, content: e.target.value }))}
+                      placeholder="댓글을 작성해주세요..."
+                      className={styles.reviewCommentTextarea}
+                      rows={3}
+                    />
+                    <div className={styles.reviewCommentFormButtons}>
+                      <button
+                        onClick={() => {
+                          setShowCommentForm(null);
+                          setNewReview({ content: '' });
+                        }}
+                        className={styles.cancelButton}
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!newReview.content.trim()) return;
+                          try {
+                            saveScroll();
+                            await createComment(review.id, { content: newReview.content });
+                            setNewReview({ content: '' });
+                            setShowCommentForm(null);
+                            // 해당 리뷰의 댓글만 새로고침
+                            setCommentRefreshTrigger(prev => prev + 1);
+                            setTimeout(() => restoreScroll(), 0);
+                          } catch (error) {
+                            console.error('댓글 작성 실패:', error);
+                            setTimeout(() => restoreScroll(), 0);
+                          }
+                        }}
+                        disabled={!newReview.content.trim()}
+                        className={styles.saveButton}
+                      >
+                        작성
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                <CommentList 
+                  reviewId={review.id} 
+                  myRating={myRating ?? 0} 
+                  refreshTrigger={commentRefreshTrigger}
+                  onCommentCreated={() => {
+                    // 댓글 작성 후 스크롤 위치 복원
+                    setTimeout(() => restoreScroll(), 0);
+                  }}
+                />
               </div>
             )}
           </div>

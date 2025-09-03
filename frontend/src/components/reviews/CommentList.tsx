@@ -19,13 +19,16 @@ interface Comment {
 interface CommentListProps {
   reviewId: number;
   myRating?: number; // synced rating from parent
+  onCommentCreated?: () => void; // 댓글 작성 후 콜백
+  refreshTrigger?: number; // 새로고침 트리거
 }
 
-export default function CommentList({ reviewId, myRating = 0 }: CommentListProps) {
+export default function CommentList({ reviewId, myRating = 0, onCommentCreated, refreshTrigger }: CommentListProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showReplyForm, setShowReplyForm] = useState<number | null>(null);
   const [editingComment, setEditingComment] = useState<Comment | null>(null);
   const [editingReply, setEditingReply] = useState<Comment | null>(null);
   const [newComment, setNewComment] = useState({ content: '' });
@@ -34,14 +37,31 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
   const formatRelativeTime = (iso?: string, updatedIso?: string) => {
     if (!iso) return '';
     try {
-      const created = new Date(iso);
-      const updated = updatedIso ? new Date(updatedIso) : null;
+      // UTC 시간을 로컬 시간으로 변환
+      const created = new Date(iso + 'Z'); // Z를 추가해서 UTC로 명시
+      const updated = updatedIso ? new Date(updatedIso + 'Z') : null;
       const diff = Date.now() - created.getTime();
       const minutes = Math.floor(diff / 60000);
       const hours = Math.floor(minutes / 60);
       const days = Math.floor(hours / 24);
+      const months = Math.floor(days / 30);
       const years = Math.floor(days / 365);
-      let base = years > 0 ? `${years}년 전` : days > 0 ? `${days}일 전` : hours > 0 ? `${hours}시간 전` : `${minutes}분 전`;
+      
+      let base = '';
+      if (years > 0) {
+        base = `${years}년 전`;
+      } else if (months > 0) {
+        base = `${months}개월 전`;
+      } else if (days > 0) {
+        base = `${days}일 전`;
+      } else if (hours > 0) {
+        base = `${hours}시간 전`;
+      } else if (minutes > 0) {
+        base = `${minutes}분 전`;
+      } else {
+        base = '방금 전';
+      }
+      
       if (updated && Math.abs(updated.getTime() - created.getTime()) > 60_000) {
         base += ' (수정됨)';
       }
@@ -55,6 +75,12 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
     loadComments();
     loadCurrentUser();
   }, [reviewId]);
+
+  useEffect(() => {
+    if (refreshTrigger && refreshTrigger > 0) {
+      loadComments(false);
+    }
+  }, [refreshTrigger]);
 
   useEffect(() => {
     restoreScroll();
@@ -81,10 +107,12 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
     }
   };
 
-  const loadComments = async () => {
+  const loadComments = async (showLoading = true) => {
     try {
-      setIsLoading(true);
-      saveScroll();
+      if (showLoading) {
+        setIsLoading(true);
+        saveScroll();
+      }
       const data = await getReviewComments(reviewId);
       console.log('📡 댓글 API 응답:', data);
       let commentsData: Comment[] = [];
@@ -110,8 +138,10 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
     } catch (error) {
       console.error('댓글 로드 실패:', error);
     } finally {
-      setIsLoading(false);
-      setTimeout(() => restoreScroll(), 0);
+      if (showLoading) {
+        setIsLoading(false);
+        setTimeout(() => restoreScroll(), 0);
+      }
     }
   };
 
@@ -119,12 +149,18 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
     if (!newComment.content.trim()) return;
     
     try {
+      saveScroll();
       await createComment(reviewId, { content: newComment.content });
       setNewComment({ content: '' });
       setShowCreateForm(false);
-      loadComments();
+      // 대댓글처럼 부분적 새로고침 사용 (로딩 상태 표시하지 않음)
+      await loadComments(false);
+      // 부모 컴포넌트에 댓글 작성 완료 알림
+      onCommentCreated?.();
+      setTimeout(() => restoreScroll(), 0);
     } catch (error) {
       console.error('댓글 작성 실패:', error);
+      setTimeout(() => restoreScroll(), 0);
     }
   };
 
@@ -210,7 +246,6 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
 
   // 대댓글 로드/작성
   const [replies, setReplies] = useState<Record<number, Comment[]>>({});
-  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({});
   const [expandedReplies, setExpandedReplies] = useState<Set<number>>(new Set());
 
   const loadReplies = async (parentId: number) => {
@@ -245,17 +280,7 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
     }
   };
 
-  const submitReply = async (parentId: number) => {
-    const content = replyDrafts[parentId]?.trim();
-    if (!content) return;
-    try {
-      await createReply(reviewId, parentId, content);
-      setReplyDrafts(prev => ({ ...prev, [parentId]: '' }));
-      await loadReplies(parentId);
-    } catch (e) {
-      console.log('대댓글 작성 실패:', e);
-    }
-  };
+
 
   if (isLoading) {
     return <div className={styles.loadingContainer}>댓글을 불러오는 중...</div>;
@@ -263,15 +288,7 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
 
   return (
     <div className={styles.mainContainer}>
-      {/* 댓글 작성 폼 */}
-      {currentUser && !showCreateForm && (
-        <button
-          onClick={() => setShowCreateForm(true)}
-          className={styles.createForm}
-        >
-          댓글을 작성해주세요
-        </button>
-      )}
+
 
       {showCreateForm && (
         <div className={styles.commentForm}>
@@ -345,7 +362,7 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
                       />
                       <span className={styles.userName}>{comment.userName}</span>
                     </div>
-                    {currentUser && (
+                    {currentUser && currentUser.id === comment.userId && (
                       <div className={styles.commentActions}>
                         <button
                           onClick={() => setEditingComment(comment)}
@@ -355,7 +372,7 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
                         </button>
                         <button
                           onClick={() => handleDeleteComment(comment.id)}
-                          className={styles.deleteButton}
+                          className={styles.actionButton}
                         >
                           삭제
                         </button>
@@ -376,26 +393,89 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
                     </svg>
                     <span>{comment.likeCount}</span>
                   </button>
+                  
+                  {currentUser && (
+                    <button
+                      onClick={() => setShowReplyForm(showReplyForm === comment.id ? null : comment.id)}
+                      className={styles.replyButton}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={styles.replyIcon}>
+                        <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h4l4 4 4-4h4c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                      </svg>
+                      답글
+                    </button>
+                  )}
                 </div>
+
+                {/* 답글 입력 폼 */}
+                {showReplyForm === comment.id && (
+                  <div className={styles.replyForm}>
+                    <textarea
+                      value={newComment.content}
+                      onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
+                      placeholder="답글을 작성해주세요..."
+                      className={styles.replyTextarea}
+                      rows={3}
+                    />
+                    <div className={styles.replyFormButtons}>
+                      <button
+                        onClick={() => {
+                          setShowReplyForm(null);
+                          setNewComment({ content: '' });
+                        }}
+                        className={styles.cancelButton}
+                      >
+                        취소
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (!newComment.content.trim()) return;
+                          try {
+                            saveScroll();
+                            await createReply(reviewId, comment.id, newComment.content);
+                            setNewComment({ content: '' });
+                            setShowReplyForm(null);
+                            // 해당 댓글의 대댓글만 다시 로드
+                            await loadReplies(comment.id);
+                            // 대댓글 영역 자동으로 펼치기
+                            setExpandedReplies(prev => new Set([...prev, comment.id]));
+                            setTimeout(() => restoreScroll(), 0);
+                          } catch (error) {
+                            console.error('답글 작성 실패:', error);
+                            setTimeout(() => restoreScroll(), 0);
+                          }
+                        }}
+                        disabled={!newComment.content.trim()}
+                        className={styles.saveButton}
+                      >
+                        작성
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* 대댓글 영역 */}
                 <div className={styles.repliesSection}>
                   <div className={styles.repliesHeader}>
-                    <button
-                      onClick={async () => {
-                        setExpandedReplies(prev => {
-                          const next = new Set(prev);
-                          if (next.has(comment.id)) next.delete(comment.id); else next.add(comment.id);
-                          return next;
-                        });
-                        if (!replies[comment.id]) {
-                          await loadReplies(comment.id);
-                        }
-                      }}
-                      className={styles.replyButton}
-                    >
-                      {expandedReplies.has(comment.id) ? '대댓글 숨기기' : '대댓글 보기'}
-                    </button>
+                    {((Boolean(replies[comment.id]?.length) || (typeof comment.replacesCount === 'number' && comment.replacesCount > 0))) && (
+                      <button
+                        onClick={async () => {
+                          setExpandedReplies(prev => {
+                            const next = new Set(prev);
+                            if (next.has(comment.id)) next.delete(comment.id); else next.add(comment.id);
+                            return next;
+                          });
+                          if (!replies[comment.id]) {
+                            await loadReplies(comment.id);
+                          }
+                        }}
+                        className={styles.replyButton}
+                      >
+                        {expandedReplies.has(comment.id) 
+                          ? `답글 ${replies[comment.id]?.length || 0}개 숨기기` 
+                          : `답글 ${(comment.replacesCount ?? (replies[comment.id]?.length || 0))}개 보기`}
+                      </button>
+                    )}
                   </div>
                   {expandedReplies.has(comment.id) && replies[comment.id]?.map((reply) => (
                     <div key={reply.id} className={styles.replyItem}>
@@ -438,56 +518,42 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
                                  <span className={styles.replyUserName}>{reply.userName}</span>
                                </div>
                               <div className={styles.replyActions}>
-                                <button
-                                  onClick={() => handleToggleLike(reply.id)}
-                                  className={`${styles.replyLikeButton} ${
-                                    reply.isLikedByCurrentUser ? styles.replyLikeButtonActive : styles.replyLikeButtonInactive
-                                  }`}
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={styles.replyLikeIcon}>
-                                    <path d="M2 10h4v12H2zM22 10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13 1 6.59 7.41C6.22 7.78 6 8.3 6 8.83V20c0 1.1.9 2 2 2h8c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73V10z"/>
-                                  </svg>
-                                  <span>{reply.likeCount}</span>
-                                </button>
-                                {currentUser && reply.userName === (currentUser as any).username && (
+                                {currentUser && currentUser.id === reply.userId && (
                                   <>
-                                    <button onClick={() => setEditingReply(reply)} className={styles.replyEditButton}>수정</button>
+                                    <button onClick={() => setEditingReply(reply)} className={styles.actionButton}>수정</button>
                                     <button onClick={async () => {
                                       if (!confirm('정말로 이 대댓글을 삭제하시겠습니까?')) return;
                                       try {
                                         await deleteComment(reviewId, reply.id);
                                         await loadReplies(comment.id);
                                       } catch (e) { console.log('대댓글 삭제 실패:', e); }
-                                    }} className={styles.replyDeleteButton}>삭제</button>
+                                    }} className={styles.actionButton}>삭제</button>
                                   </>
                                 )}
                               </div>
                             </div>
                           </div>
                           <div className={styles.replyContent}>{reply.content}</div>
+                          <div className={styles.replyActionButtons}>
+                            <button
+                              onClick={() => handleToggleLike(reply.id)}
+                              className={`${styles.replyLikeButton} ${
+                                reply.isLikedByCurrentUser ? styles.replyLikeButtonActive : styles.replyLikeButtonInactive
+                              }`}
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className={styles.replyLikeIcon}>
+                                <path d="M2 10h4v12H2zM22 10c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L13 1 6.59 7.41C6.22 7.78 6 8.3 6 8.83V20c0 1.1.9 2 2 2h8c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73V10z"/>
+                              </svg>
+                              <span>{reply.likeCount}</span>
+                            </button>
+                          </div>
                         </>
                       )}
 
 
                     </div>
                   ))}
-                  {/* 대댓글 입력 폼 */}
-                  {expandedReplies.has(comment.id) && (
-                    <div className={styles.replyForm}>
-                      <input
-                        value={replyDrafts[comment.id] || ''}
-                        onChange={(e) => setReplyDrafts(prev => ({ ...prev, [comment.id]: e.target.value }))}
-                        placeholder="대댓글을 입력하세요"
-                        className={styles.replyInput}
-                      />
-                      <button
-                        onClick={() => submitReply(comment.id)}
-                        className={styles.replySubmitButton}
-                      >
-                        등록
-                      </button>
-                    </div>
-                  )}
+
                 </div>
               </div>
             )}
@@ -495,11 +561,7 @@ export default function CommentList({ reviewId, myRating = 0 }: CommentListProps
         ))}
       </div>
 
-      {comments.length === 0 && !showCreateForm && (
-        <div className={styles.emptyState}>
-          아직 작성된 댓글이 없습니다.
-        </div>
-      )}
+
     </div>
   );
 }

@@ -15,11 +15,11 @@
 
 /* 리뷰 카드 */
 .reviewCard {
-  background-color: #FFFFFF;
+  background-color: #121212;
   border-radius: 1rem;
   padding: 2rem;
-  border: 1px solid #E5E7EB;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  border: 1px solid #323232;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 
 /* 별점 섹션 그리드 */
@@ -44,7 +44,7 @@
 .ratingTitle {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #1F2937;
+  color: #F7F7F7;
   margin-bottom: 0.5rem;
 }
 
@@ -58,7 +58,7 @@
 
 .ratingSubtitle {
   font-size: 0.875rem;
-  color: #6B7280;
+  color: #ABABAB;
   margin-bottom: 0.5rem;
 }
 
@@ -137,7 +137,7 @@
 
 .chartBarLabel {
   font-size: 0.75rem;
-  color: #111827;
+  color: #F7F7F7;
   font-weight: 500;
   margin-top: 0.25rem;
 }
@@ -164,7 +164,7 @@
   width: 100%;
   height: 0.75rem;
   border-radius: 9999px;
-  background-color: #E5E7EB;
+  background-color: #323232;
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
@@ -208,13 +208,13 @@
 .loginRequiredMessage {
   margin-bottom: 1rem;
   padding: 0.75rem;
-  background-color: #EFF6FF;
-  border: 1px solid #BFDBFE;
+  background-color: #1a1a2e;
+  border: 1px solid #323232;
   border-radius: 0.5rem;
 }
 
 .loginRequiredText {
-  color: #1E40AF;
+  color: #816BFF;
   font-size: 0.875rem;
 }
 
@@ -226,13 +226,15 @@
 .reviewTextarea {
   width: 100%;
   padding: 1rem;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #404040;
   border-radius: 0.75rem;
   outline: none;
   resize: vertical;
   min-height: 8rem;
   font-size: 0.875rem;
   line-height: 1.5;
+  background-color: #1a1a1a;
+  color: #F7F7F7;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
@@ -301,21 +303,21 @@
 }
 
 .sortButtonInactive {
-  background-color: #E5E7EB;
-  color: #374151;
+  background-color: #323232;
+  color: #ABABAB;
 }
 
 .sortButtonInactive:hover {
-  background-color: #D1D5DB;
+  background-color: #404040;
 }
 
 /* 경고 메시지 */
 .warningMessage {
-  background-color: #FEF3C7;
+  background-color: #2d1b00;
   border: 1px solid #F59E0B;
   border-radius: 0.5rem;
   padding: 1rem;
-  color: #92400E;
+  color: #F59E0B;
   margin-bottom: 1rem;
 }
 
@@ -328,11 +330,11 @@
 
 /* 개별 리뷰 */
 .reviewItem {
-  background-color: #FFFFFF;
-  border: 1px solid #E5E7EB;
+  background-color: #121212;
+  border: 1px solid #323232;
   border-radius: 0.75rem;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
   transition: box-shadow 0.2s;
 }
 
@@ -361,7 +363,7 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #374151;
+  color: #ABABAB;
   margin-bottom: 0.5rem;
 }
 
@@ -387,11 +389,13 @@
 .editTextarea {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #D1D5DB;
+  border: 1px solid #404040;
   border-radius: 0.5rem;
   outline: none;
   resize: vertical;
   min-height: 6rem;
+  background-color: #1a1a1a;
+  color: #F7F7F7;
 }
 
 .editTextarea:focus {
@@ -407,26 +411,34 @@
 
 .cancelButton {
   padding: 0.5rem 1rem;
-  color: #6B7280;
+  color: #ABABAB;
   background: none;
   border: none;
   cursor: pointer;
   transition: color 0.2s;
   border-radius: 0.25rem;
+  height: 2rem;
 }
 
 .cancelButton:hover {
-  color: #374151;
+  color: #F7F7F7;
 }
 
 .saveButton {
-  padding: 0.5rem 1rem;
-  background-color: #8B5CF6;
-  color: #FFFFFF;
-  border-radius: 0.5rem;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  padding: 0.25rem 0.75rem !important;
+  background-color: #8B5CF6 !important;
+  color: #FFFFFF !important;
+  border-radius: 0.5rem !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: background-color 0.2s !important;
+  font-size: 0.875rem !important;
+  line-height: 1 !important;
+  height: 2rem !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .saveButton:hover {
@@ -462,7 +474,7 @@
   width: 2rem;
   height: 2rem;
   border-radius: 9999px;
-  background-color: #D1D5DB;
+  background-color: #323232;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -485,12 +497,12 @@
 .userRatingValue {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #1F2937;
+  color: #F7F7F7;
 }
 
 .userRatingText {
   font-size: 0.875rem;
-  color: #6B7280;
+  color: #ABABAB;
 }
 
 .reviewMeta {
@@ -499,15 +511,17 @@
   gap: 0.5rem;
 }
 
+/* 색상은 인라인 스타일로 지정 (높이 변동 방지) */
+
 .reviewDate {
   font-size: 0.75rem;
-  color: #6B7280;
+  color: #ABABAB;
   margin-right: 0.5rem;
 }
 
 .userName {
   font-weight: 600;
-  color: #1F2937;
+  color: #F7F7F7;
 }
 
 .userNameSection {
@@ -521,7 +535,7 @@
   height: 1.5rem;
   border-radius: 9999px;
   object-fit: cover;
-  background-color: #D1D5DB;
+  background-color: #323232;
   min-width: 1.5rem;
 }
 
@@ -533,33 +547,82 @@
 }
 
 .actionButton {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-  transition: all 0.2s;
-  border: none;
-  cursor: pointer;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.25rem !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 0.25rem !important;
+  font-size: 0.75rem !important;
+  transition: all 0.2s !important;
+  border: none !important;
+  cursor: pointer !important;
+  background: none !important;
+  color: #ABABAB !important;
+  line-height: 1 !important;
+  height: 2rem !important;
+  box-sizing: border-box !important;
+}
+
+.actionButton.edit,
+.actionButton.delete {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0.25rem 0.5rem !important;
+  font-size: 0.75rem !important;
+  line-height: 1 !important;
+  height: 2rem !important;
+  box-sizing: border-box !important;
+  border-radius: 0.25rem !important;
+  transition: all 0.2s !important;
+  border: none !important;
+  cursor: pointer !important;
+  background: none !important;
+  font-family: inherit !important;
+  vertical-align: middle !important;
+}
+
+.actionButton.edit {
+  color: #2563EB !important;
+}
+
+.actionButton.delete {
+  color: #DC2626 !important;
+}
+
+.actionButton:hover {
+  background-color: transparent;
 }
 
 .likeButton {
-  background-color: #F3F4F6;
-  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+  color: #ABABAB;
 }
 
 .likeButton:hover {
-  background-color: #E5E7EB;
+  background-color: #323232;
 }
 
 .likeButtonActive {
-  background-color: #FEF3C7;
-  color: #92400E;
+  background: none;
+  color: #8B5CF6;
 }
 
 .likeButtonActive:hover {
-  background-color: #FDE68A;
+  background-color: #323232;
+}
+
+.likeButtonInactive {
+  color: #ABABAB;
 }
 
 .likeIcon {
@@ -567,39 +630,85 @@
   height: 1rem;
 }
 
-.editButton {
-  background-color: #DBEAFE;
-  color: #1E40AF;
-  border-radius: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  transition: background-color 0.2s;
+.reviewActionButtons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.commentButton {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+  background: none;
   border: none;
   cursor: pointer;
-}
-
-.editButton:hover {
-  background-color: #BFDBFE;
-}
-
-.deleteButton {
-  background-color: #FEE2E2;
-  color: #DC2626;
+  padding: 0.25rem;
   border-radius: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  transition: background-color 0.2s;
-  border: none;
-  cursor: pointer;
+  color: #8B5CF6;
 }
 
-.deleteButton:hover {
-  background-color: #FECACA;
+.commentButton:hover {
+  color: #7C3AED;
+  background-color: #323232;
 }
+
+.commentIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.reviewCommentForm {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  background-color: #1a1a1a;
+  border-radius: 0.5rem;
+  border: 1px solid #323232;
+}
+
+.reviewCommentTextarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  outline: none;
+  resize: vertical;
+  min-height: 4rem;
+  background-color: #121212;
+  color: #F7F7F7;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.reviewCommentTextarea:focus {
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
+}
+
+.reviewCommentFormButtons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.reviewDateSection {
+  margin: 0.5rem 0;
+}
+
+.reviewDateSection .reviewDate {
+  font-size: 0.75rem;
+  color: #ABABAB;
+}
+
+/* editButton/deleteButton 규칙 제거: 모든 버튼은 actionButton 기본색을 따름 */
 
 /* 리뷰 텍스트 */
 .reviewText {
-  color: #374151;
+  color: #ABABAB;
   margin-bottom: 0.5rem;
 }
 
@@ -637,7 +746,7 @@
 .emptyState {
   text-align: center;
   padding: 3rem 0;
-  color: #6B7280;
+  color: #ABABAB;
 }
 
 /* 반응형 디자인 */
