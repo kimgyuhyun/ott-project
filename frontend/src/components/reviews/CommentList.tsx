@@ -2,10 +2,12 @@
 import { useState, useEffect, useRef } from "react";
 import { getReviewComments, createComment, updateComment, deleteComment, toggleCommentLike, getCommentReplies, createReply } from "@/lib/api/comments";
 import { getCurrentUser } from "@/lib/api/auth";
+import DropdownMenu from "@/components/ui/DropdownMenu";
 import styles from "./CommentList.module.css";
 
 interface Comment {
   id: number;
+  userId?: number;
   userName: string;
   userProfileImage?: string;
   content: string;
@@ -352,7 +354,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                     <span className={styles.commentDate}>{formatRelativeTime(comment.createdAt, comment.updatedAt)}</span>
                     <div className={styles.userNameSection}>
                       <img 
-                        src={comment.userProfileImage || ''} 
+                        src={comment.userProfileImage || '/icons/default-avatar.svg'} 
                         alt={comment.userName} 
                         className={styles.userNameAvatar}
                         onError={(e) => {
@@ -363,20 +365,24 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                       <span className={styles.userName}>{comment.userName}</span>
                     </div>
                     {currentUser && currentUser.id === comment.userId && (
-                      <div className={styles.commentActions}>
-                        <button
-                          onClick={() => setEditingComment(comment)}
-                          className={styles.actionButton}
-                        >
-                          수정
-                        </button>
-                        <button
-                          onClick={() => handleDeleteComment(comment.id)}
-                          className={styles.actionButton}
-                        >
-                          삭제
-                        </button>
-                      </div>
+                      <DropdownMenu
+                        items={[
+                          {
+                            label: "수정",
+                            onClick: () => setEditingComment(comment),
+                            className: "edit"
+                          },
+                          {
+                            label: "삭제",
+                            onClick: () => handleDeleteComment(comment.id),
+                            className: "delete"
+                          }
+                        ]}
+                      >
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </DropdownMenu>
                     )}
                   </div>
                 </div>
@@ -457,7 +463,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                 {/* 대댓글 영역 */}
                 <div className={styles.repliesSection}>
                   <div className={styles.repliesHeader}>
-                    {((Boolean(replies[comment.id]?.length) || (typeof comment.replacesCount === 'number' && comment.replacesCount > 0))) && (
+                     {(Boolean(replies[comment.id]?.length) || (comment.replacesCount && comment.replacesCount > 0)) && (
                       <button
                         onClick={async () => {
                           setExpandedReplies(prev => {
@@ -519,16 +525,30 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                                </div>
                               <div className={styles.replyActions}>
                                 {currentUser && currentUser.id === reply.userId && (
-                                  <>
-                                    <button onClick={() => setEditingReply(reply)} className={styles.actionButton}>수정</button>
-                                    <button onClick={async () => {
-                                      if (!confirm('정말로 이 대댓글을 삭제하시겠습니까?')) return;
-                                      try {
-                                        await deleteComment(reviewId, reply.id);
-                                        await loadReplies(comment.id);
-                                      } catch (e) { console.log('대댓글 삭제 실패:', e); }
-                                    }} className={styles.actionButton}>삭제</button>
-                                  </>
+                                  <DropdownMenu
+                                    items={[
+                                      {
+                                        label: "수정",
+                                        onClick: () => setEditingReply(reply),
+                                        className: "edit"
+                                      },
+                                      {
+                                        label: "삭제",
+                                        onClick: async () => {
+                                          if (!confirm('정말로 이 대댓글을 삭제하시겠습니까?')) return;
+                                          try {
+                                            await deleteComment(reviewId, reply.id);
+                                            await loadReplies(comment.id);
+                                          } catch (e) { console.log('대댓글 삭제 실패:', e); }
+                                        },
+                                        className: "delete"
+                                      }
+                                    ]}
+                                  >
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                    </svg>
+                                  </DropdownMenu>
                                 )}
                               </div>
                             </div>

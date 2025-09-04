@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { getAnimeReviews, createReview, toggleReviewLike, updateReview, deleteReview, isValidReviewResponse } from "@/lib/api/reviews";
-import { createOrUpdateRating, getMyRating, getRatingStats } from "@/lib/api/rating";
+import { createOrUpdateRating, getMyRating, getRatingStats, deleteMyRating } from "@/lib/api/rating";
 import { createComment } from "@/lib/api/comments";
 import Star from "@/components/ui/Star";
+import DropdownMenu from "@/components/ui/DropdownMenu";
 import { getCurrentUser } from "@/lib/api/auth";
 import CommentList from "./CommentList";
 import styles from "./ReviewList.module.css";
@@ -23,9 +24,10 @@ interface Review {
 
 interface ReviewListProps {
   animeId: number;
+  onRatingChange?: (newRating: number) => void; // 평점 변경 시 부모에게 알림
 }
 
-export default function ReviewList({ animeId }: ReviewListProps) {
+export default function ReviewList({ animeId, onRatingChange }: ReviewListProps) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
@@ -44,6 +46,7 @@ export default function ReviewList({ animeId }: ReviewListProps) {
   const [ratingError, setRatingError] = useState<string | null>(null);
   const scrollYRef = useRef<number>(0);
   const [commentRefreshTrigger, setCommentRefreshTrigger] = useState(0);
+  const [isReviewFocused, setIsReviewFocused] = useState(false);
 
   useEffect(() => {
     loadReviews();
@@ -59,6 +62,14 @@ export default function ReviewList({ animeId }: ReviewListProps) {
     console.log('🔄 loadRatings triggered by animeId change:', animeId);
     loadRatings();
   }, [animeId]);
+
+  // 평균 평점이 변경될 때 부모에게 알림 (무한 루프 방지)
+  useEffect(() => {
+    if (onRatingChange && averageFromApi > 0) {
+      const newAverage = Math.round(averageFromApi * 10) / 10;
+      onRatingChange(newAverage);
+    }
+  }, [averageFromApi]); // averageFromApi만 의존성으로 설정
 
   // 초기 마운트 시 스크롤 복원
   useEffect(() => {
@@ -350,24 +361,44 @@ export default function ReviewList({ animeId }: ReviewListProps) {
     const prevStats = { ...ratingStats };
 
     // 낙관적 업데이트: 분포/내 별점
-    // 0.5 스텝 유지
-    const halfStep = Math.max(0.5, Math.min(5, Math.round(rating * 2) / 2));
-    setMyRating(halfStep); // 즉시 UI 반영
-    setRatingStats(curr => {
-      const next: Record<string, number> = { ...curr };
-      const prevKey = typeof prevMy === 'number' ? (Math.round(prevMy * 2) / 2).toFixed(1) : undefined;
-      const newKey = (Math.round(halfStep * 2) / 2).toFixed(1);
-      if (prevKey && next[prevKey] !== undefined) next[prevKey] = Math.max(0, (next[prevKey] || 0) - 1);
-      if (next[newKey] !== undefined) next[newKey] = (next[newKey] || 0) + 1;
-      return next;
-    });
+    // 0.5 스텝 유지 (0점 허용)
+    const halfStep = Math.max(0, Math.min(5, Math.round(rating * 2) / 2));
+    
+    if (halfStep === 0) {
+      // 0점이면 평점 제거
+      setMyRating(null);
+      setRatingStats(curr => {
+        const next: Record<string, number> = { ...curr };
+        const prevKey = typeof prevMy === 'number' ? (Math.round(prevMy * 2) / 2).toFixed(1) : undefined;
+        if (prevKey && next[prevKey] !== undefined) next[prevKey] = Math.max(0, (next[prevKey] || 0) - 1);
+        return next;
+      });
+    } else {
+      // 0점이 아니면 평점 설정
+      setMyRating(halfStep);
+      setRatingStats(curr => {
+        const next: Record<string, number> = { ...curr };
+        const prevKey = typeof prevMy === 'number' ? (Math.round(prevMy * 2) / 2).toFixed(1) : undefined;
+        const newKey = (Math.round(halfStep * 2) / 2).toFixed(1);
+        if (prevKey && next[prevKey] !== undefined) next[prevKey] = Math.max(0, (next[prevKey] || 0) - 1);
+        if (next[newKey] !== undefined) next[newKey] = (next[newKey] || 0) + 1;
+        return next;
+      });
+    }
 
     try {
       // API 호출과 동기화
-      await createOrUpdateRating(animeId, halfStep);
+      if (halfStep === 0) {
+        // 0점이면 평점 삭제
+        await deleteMyRating(animeId);
+        setMyRating(null);
+      } else {
+        // 0점이 아니면 평점 생성/수정
+        await createOrUpdateRating(animeId, halfStep);
+        setMyRating(halfStep);
+      }
       // 서버 기준 재조회 후 myRating도 보정
       await loadRatings();
-      setMyRating(halfStep);
       restoreScroll();
     } catch (e) {
       console.error('별점 저장 실패:', e);
@@ -409,19 +440,51 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                     key={index}
                     onClick={(e) => {
                       const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                      const half = (e.clientX - rect.left) / rect.width <= 0.5 ? 0.5 : 1.0;
-                      handleRatingClick(index - 1 + half);
+                      const clickX = e.clientX - rect.left;
+                      const clickRatio = clickX / rect.width;
+                      
+                      let rating = 0;
+                      if (clickRatio <= 0.1) {
+                        rating = 0; // 0점 (평점 없음)
+                      } else if (clickRatio <= 0.5) {
+                        rating = index - 1 + 0.5; // 0.5점
+                      } else {
+                        rating = index; // 1점
+                      }
+                      
+                      handleRatingClick(rating);
                     }}
                     onMouseMove={(e) => {
                       const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                      const half = (e.clientX - rect.left) / rect.width <= 0.5 ? 0.5 : 1.0;
-                      const next = index - 1 + half;
+                      const clickX = e.clientX - rect.left;
+                      const clickRatio = clickX / rect.width;
+                      
+                      let next = 0;
+                      if (clickRatio <= 0.1) {
+                        next = 0; // 0점 (평점 없음)
+                      } else if (clickRatio <= 0.5) {
+                        next = index - 1 + 0.5; // 0.5점
+                      } else {
+                        next = index; // 1점
+                      }
+                      
                       if (hoverRating !== next) setHoverRating(next);
                     }}
                     onMouseEnter={(e) => {
                       const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                      const half = (e.clientX - rect.left) / rect.width <= 0.5 ? 0.5 : 1.0;
-                      setHoverRating(index - 1 + half);
+                      const clickX = e.clientX - rect.left;
+                      const clickRatio = clickX / rect.width;
+                      
+                      let next = 0;
+                      if (clickRatio <= 0.1) {
+                        next = 0; // 0점 (평점 없음)
+                      } else if (clickRatio <= 0.5) {
+                        next = index - 1 + 0.5; // 0.5점
+                      } else {
+                        next = index; // 1점
+                      }
+                      
+                      setHoverRating(next);
                     }}
                     onKeyDown={(e) => {
                       if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
@@ -430,7 +493,7 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                         handleRatingClick(next);
                       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
                         e.preventDefault();
-                        const prev = Math.max(0.5, Math.round(((myRating || 0) - 0.5) * 2) / 2);
+                        const prev = Math.max(0, Math.round(((myRating || 0) - 0.5) * 2) / 2);
                         handleRatingClick(prev);
                       }
                     }}
@@ -520,19 +583,35 @@ export default function ReviewList({ animeId }: ReviewListProps) {
           <textarea
             value={newReview.content}
             onChange={(e) => setNewReview(prev => ({ ...prev, content: e.target.value }))}
+            onFocus={() => setIsReviewFocused(true)}
+            onBlur={() => {
+              // 포커스를 잃을 때 약간의 지연을 두어 버튼 클릭이 가능하도록 함
+              setTimeout(() => setIsReviewFocused(false), 200);
+            }}
             placeholder="이 작품에 대한 내 평가를 남겨보세요!"
             className={styles.reviewTextarea}
             rows={4}
           />
-          <div className={styles.formButtons}>
-            <button
-              onClick={handleCreateReview}
-              disabled={!newReview.content.trim()}
-              className={styles.submitButton}
-            >
-              작성하기
-            </button>
-          </div>
+          {isReviewFocused && (
+            <div className={styles.formButtons}>
+              <button
+                onClick={() => {
+                  setNewReview({ content: '' });
+                  setIsReviewFocused(false);
+                }}
+                className={styles.cancelButton}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreateReview}
+                disabled={!newReview.content.trim()}
+                className={styles.submitButton}
+              >
+                작성하기
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -632,7 +711,7 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                   <div className={styles.reviewMeta}>
                     <div className={styles.userNameSection}>
                       <img 
-                        src={review.userProfileImage || ''} 
+                        src={review.userProfileImage || '/icons/default-avatar.svg'} 
                         alt={review.userName} 
                         className={styles.userNameAvatar}
                         onError={(e) => {
@@ -644,20 +723,24 @@ export default function ReviewList({ animeId }: ReviewListProps) {
                     </div>
 
                     {currentUser && ((typeof review.userId === 'number' && (currentUser as any).id === review.userId) || review.userName === (currentUser as any).username) && (
-                      <>
-                        <button
-                          onClick={() => setEditingReview(review)}
-                          className={styles.actionButton}
-                        >
-                          수정
-                        </button>
-                        <button
-                          onClick={() => handleDeleteReview(review.id)}
-                          className={styles.actionButton}
-                        >
-                          삭제
-                        </button>
-                      </>
+                      <DropdownMenu
+                        items={[
+                          {
+                            label: "수정",
+                            onClick: () => setEditingReview(review),
+                            className: "edit"
+                          },
+                          {
+                            label: "삭제",
+                            onClick: () => handleDeleteReview(review.id),
+                            className: "delete"
+                          }
+                        ]}
+                      >
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </DropdownMenu>
                     )}
                   </div>
                 </div>
