@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import ReviewList from "@/components/reviews/ReviewList";
 import { getAnimeDetail } from "@/lib/api/anime";
 import { getAnimeWatchHistory } from "@/lib/api/user";
+import { toggleFavorite, isFavorited } from "@/lib/api/favorites";
 import styles from "./AnimeDetailModal.module.css";
 
 
@@ -23,9 +24,23 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   const [detail, setDetail] = useState<any>(anime);
   const [watchHistory, setWatchHistory] = useState<any>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isFavoritedState, setIsFavoritedState] = useState<boolean>(false);
+  const [isLoadingFavorite, setIsLoadingFavorite] = useState(false);
+  const [currentRating, setCurrentRating] = useState<number | null>(null); // 실시간 평점 상태
+
+  // 평점 변경 콜백 함수
+  const handleRatingChange = (newRating: number) => {
+    setCurrentRating(newRating);
+    // detail 객체의 rating도 업데이트
+    setDetail((prev: any) => ({ ...prev, rating: newRating }));
+  };
 
   useEffect(() => {
     setDetail(anime);
+    // 초기 평점 설정
+    if (anime?.rating) {
+      setCurrentRating(anime.rating);
+    }
   }, [anime]);
 
   useEffect(() => {
@@ -43,9 +58,11 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   useEffect(() => {
     if (!isOpen || !detail?.aniId) return;
     
+    console.log('🔍 시청 기록 조회 시작 - animeId:', detail.aniId);
     setIsLoadingHistory(true);
     getAnimeWatchHistory(detail.aniId)
       .then((history) => {
+        console.log('🔍 시청 기록 조회 결과:', history);
         setWatchHistory(history);
       })
       .catch((error) => {
@@ -54,6 +71,20 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       })
       .finally(() => {
         setIsLoadingHistory(false);
+      });
+  }, [isOpen, detail?.aniId]);
+
+  // 보고싶다 상태 확인
+  useEffect(() => {
+    if (!isOpen || !detail?.aniId) return;
+    
+    isFavorited(detail.aniId)
+      .then((favorited) => {
+        setIsFavoritedState(favorited);
+      })
+      .catch((error) => {
+        console.error('보고싶다 상태 조회 실패:', error);
+        setIsFavoritedState(false);
       });
   }, [isOpen, detail?.aniId]);
 
@@ -85,6 +116,16 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   console.log('🔍 AnimeDetailModal - anime 객체:', detail);
   console.log('🔍 AnimeDetailModal - anime.aniId:', detail?.aniId);
   console.log('🔍 AnimeDetailModal - anime 타입:', typeof detail);
+  console.log('🔍 시청 기록 상태:', {
+    watchHistory,
+    isLoadingHistory,
+    hasWatchHistory: !!watchHistory,
+    isCompleted: watchHistory?.completed,
+    episodeNumber: watchHistory?.episodeNumber,
+    positionSec: watchHistory?.positionSec,
+    shouldShowContinue: !isLoadingHistory && watchHistory && !watchHistory.completed,
+    shouldShowPlay: !isLoadingHistory && (!watchHistory || watchHistory.completed)
+  });
 
   if (!isOpen) return null;
 
@@ -147,7 +188,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               <div className={styles.ratingContainer}>
                 <span className={styles.ratingStar}>★</span>
                 <span className={styles.ratingValue}>
-                  {typeof detail?.rating === 'number' ? detail.rating.toFixed(1) : 'N/A'}
+                  {typeof currentRating === 'number' ? currentRating.toFixed(1) : 'N/A'}
                 </span>
               </div>
               <span className={styles.ratingBadge}>
@@ -178,57 +219,125 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
                     {/* 액션 버튼들 */}
         <div className={styles.animeDetailModalActionButtons}>
-              {/* 이어보기 버튼 - 시청 기록이 있을 때만 표시 */}
-              {watchHistory && !watchHistory.completed && (
-                <button 
-                  onClick={() => {
-                    // 이어보기: 마지막으로 본 에피소드부터 재생
-                    const position = watchHistory.positionSec > 0 ? `&position=${watchHistory.positionSec}` : '';
-                    router.push(`/player?episodeId=${watchHistory.episodeId}&animeId=${detail?.aniId}${position}`);
-                    onClose();
-                  }}
-                  className={`${styles.animeDetailModalActionButton} ${styles.animeDetailModalActionButtonPrimary}`}
-                >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
-                  </svg>
-                  <span>{watchHistory.episodeNumber}화 이어보기</span>
-                </button>
+              {/* 로딩 중일 때 */}
+              {isLoadingHistory && (
+                <div className={styles.loadingMessage}>시청 기록을 불러오는 중...</div>
+              )}
+              
+              {/* 이어보기 버튼 - 시청 기록이 있고 완료되지 않은 경우 */}
+              {!isLoadingHistory && watchHistory && !watchHistory.completed && (
+                <div className={styles.playButtonContainer}>
+                  <button 
+                    onClick={() => {
+                      console.log('🎬 이어보기 버튼 클릭:', {
+                        episodeId: watchHistory.episodeId,
+                        animeId: detail?.aniId,
+                        positionSec: watchHistory.positionSec,
+                        episodeNumber: watchHistory.episodeNumber
+                      });
+                      // 이어보기: 마지막으로 본 에피소드부터 재생
+                      const position = watchHistory.positionSec > 0 ? `&position=${watchHistory.positionSec}` : '';
+                      const url = `/player?episodeId=${watchHistory.episodeId}&animeId=${detail?.aniId}${position}`;
+                      console.log('🔗 이동할 URL:', url);
+                      router.push(url);
+                      onClose();
+                    }}
+                    className={styles.playButton}
+                  >
+                    <div className={styles.playButtonIcon}>
+                      <svg fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                    <span className={styles.playButtonText}>{watchHistory.episodeNumber}화 이어보기</span>
+                  </button>
+                </div>
               )}
               
               {/* 처음보기 또는 완료된 경우 보러가기 버튼 */}
-              {(!watchHistory || watchHistory.completed) && (
-                <button 
-                  onClick={() => {
-                    // 시청 기록이 있지만 완료된 경우: 다음 에피소드부터 시작
-                    // 시청 기록이 없는 경우: 1화부터 시작
-                    const nextEpisodeId = watchHistory && watchHistory.completed 
-                      ? (watchHistory.episodeNumber + 1) 
-                      : 1;
-                    router.push(`/player?episodeId=${nextEpisodeId}&animeId=${detail?.aniId}`);
-                    onClose();
-                  }}
-                  className={`${styles.animeDetailModalActionButton} ${styles.animeDetailModalActionButtonPrimary}`}
-                >
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>
-                    {watchHistory && watchHistory.completed 
-                      ? `${watchHistory.episodeNumber + 1}화 재생하기`
-                      : '1화 재생하기'
-                    }
-                  </span>
-                </button>
+              {!isLoadingHistory && (!watchHistory || watchHistory.completed) && (
+                <div className={styles.playButtonContainer}>
+                  <button 
+                    onClick={() => {
+                      console.log('🎬 재생하기 버튼 클릭:', {
+                        watchHistory,
+                        hasWatchHistory: !!watchHistory,
+                        isCompleted: watchHistory?.completed,
+                        animeId: detail?.aniId
+                      });
+                      
+                      // 시청 기록이 있지만 완료된 경우: 다음 에피소드부터 시작
+                      // 시청 기록이 없는 경우: 1화부터 시작
+                      let nextEpisodeId = 1;
+                      if (watchHistory && watchHistory.completed) {
+                        // 완료된 경우 다음 에피소드
+                        nextEpisodeId = watchHistory.episodeNumber + 1;
+                      }
+                      
+                      const url = `/player?episodeId=${nextEpisodeId}&animeId=${detail?.aniId}`;
+                      console.log('🔗 이동할 URL:', url);
+                      router.push(url);
+                      onClose();
+                    }}
+                    className={styles.playButton}
+                  >
+                    <div className={styles.playButtonIcon}>
+                      <svg fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                    <span className={styles.playButtonText}>
+                      {watchHistory && watchHistory.completed 
+                        ? `${watchHistory.episodeNumber + 1}화 재생하기`
+                        : '1화 재생하기'
+                      }
+                    </span>
+                  </button>
+                </div>
               )}
               
               {/* 보고싶다 버튼 */}
-              <button className={`${styles.animeDetailModalActionButton} ${styles.animeDetailModalActionButtonSecondary}`}>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-                <span>보고싶다</span>
-              </button>
+              <div className={styles.favoriteButtonContainer}>
+                <button 
+                  onClick={async () => {
+                    if (isLoadingFavorite) return;
+                    
+                    try {
+                      setIsLoadingFavorite(true);
+                      const newState = await toggleFavorite(detail?.aniId);
+                      setIsFavoritedState(newState);
+                      console.log('보고싶다 토글 완료:', newState);
+                    } catch (error) {
+                      console.error('보고싶다 토글 실패:', error);
+                      alert('보고싶다 기능을 사용할 수 없습니다.');
+                    } finally {
+                      setIsLoadingFavorite(false);
+                    }
+                  }}
+                  disabled={isLoadingFavorite}
+                  className={`${styles.favoriteButton} ${isFavoritedState ? styles.favorited : ''}`}
+                >
+                  <div className={styles.favoriteButtonContent}>
+                    {isFavoritedState ? (
+                      <svg 
+                        className={styles.checkIcon} 
+                        fill="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                      </svg>
+                    ) : (
+                      <span className={styles.plusIcon}>+</span>
+                    )}
+                    <span className={styles.favoriteButtonText}>
+                      {isFavoritedState ? '보관중' : '보고싶다'}
+                    </span>
+                  </div>
+                </button>
+                <div className={styles.favoriteTooltip}>
+                  {isFavoritedState ? '보관함에서 제거' : '보관함에 추가'}
+                </div>
+              </div>
               
               {/* 공유 버튼 */}
               <button className={`${styles.animeDetailModalActionButton} ${styles.animeDetailModalActionButtonSecondary}`}>
@@ -318,7 +427,11 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
           {/* 리뷰 탭: ReviewList 항상 마운트되도록 렌더링, 탭 아닐 때는 hidden 처리 */}
           <div className={styles.reviewsSection} style={{ display: activeTab === 'reviews' ? 'block' : 'none' }}>
             {detail?.aniId ? (
-              <ReviewList key={detail?.aniId ?? detail?.id} animeId={(detail?.aniId ?? detail?.id) as number} />
+              <ReviewList 
+                key={detail?.aniId ?? detail?.id} 
+                animeId={(detail?.aniId ?? detail?.id) as number} 
+                onRatingChange={handleRatingChange}
+              />
             ) : (
               <div className={styles.reviewsError}>
                 <p className={styles.reviewsErrorMessage}>⚠️ 애니메이션 ID를 찾을 수 없습니다.</p>

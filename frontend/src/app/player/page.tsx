@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { getEpisodeStreamUrl, saveEpisodeProgress, getEpisodeProgress, getNextEpisode } from "@/lib/api/player";
@@ -34,12 +34,32 @@ export default function PlayerPage() {
   const [showControls, setShowControls] = useState(true);
   const [nextEpisode, setNextEpisode] = useState<any>(null);
   
-  // 플레이어 설정 상태
+  // 플레이어 설정 상태 (localStorage에서 불러오기)
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [videoQuality, setVideoQuality] = useState("auto");
-  const [playbackRate, setPlaybackRate] = useState(1);
-  const [autoSkipIntro, setAutoSkipIntro] = useState(false);
-  const [autoSkipOutro, setAutoSkipOutro] = useState(false);
+  const [videoQuality, setVideoQuality] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('player_videoQuality') || "auto";
+    }
+    return "auto";
+  });
+  const [playbackRate, setPlaybackRate] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return parseFloat(localStorage.getItem('player_playbackRate') || "1");
+    }
+    return 1;
+  });
+  const [autoSkipIntro, setAutoSkipIntro] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('player_autoSkipIntro') === 'true';
+    }
+    return false;
+  });
+  const [autoSkipOutro, setAutoSkipOutro] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('player_autoSkipOutro') === 'true';
+    }
+    return false;
+  });
   
   // PIP 모드 및 와이드 모드 상태
   const [isPipMode, setIsPipMode] = useState(false);
@@ -75,15 +95,168 @@ export default function PlayerPage() {
     }
   }, [episodeId, animeId]);
 
-  // 자동 진행률 저장 (30초마다)
+  // 자동 진행률 저장 (5초마다) - 한 번만 시작
   useEffect(() => {
-    if (currentTime > 0 && duration > 0) {
-      const interval = setInterval(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (duration > 0 && isLoggedIn && episodeId) {
+      console.log('⏰ 자동 저장 타이머 시작:', { duration, isLoggedIn, episodeId });
+      
+      interval = setInterval(() => {
+        console.log('⏰ 5초 경과 - 자동 저장 실행');
         saveProgress();
-      }, 30000);
-      return () => clearInterval(interval);
+      }, 5000);
     }
-  }, [currentTime, duration]);
+    
+    return () => {
+      if (interval) {
+        console.log('⏰ 자동 저장 타이머 정리');
+        clearInterval(interval);
+        interval = null;
+      }
+    };
+  }, [duration, isLoggedIn, episodeId]); // currentTime 제거
+
+  const saveProgress = useCallback(async () => {
+    // 엣지 케이스 검증
+    if (!episodeId) {
+      console.log('❌ saveProgress: episodeId가 없음');
+      return;
+    }
+    
+    if (!isLoggedIn) {
+      console.log('❌ saveProgress: 로그인되지 않음');
+      return;
+    }
+    
+    if (!videoRef.current) {
+      console.log('❌ saveProgress: 비디오 엘리먼트가 없음');
+      return;
+    }
+    
+    // 비디오에서 직접 현재 시간을 가져와서 더 정확한 값 사용
+    const videoCurrentTime = videoRef.current.currentTime;
+    const videoDuration = videoRef.current.duration;
+    
+    // NaN, Infinity, 음수 값 검증
+    if (!isFinite(videoCurrentTime) || !isFinite(videoDuration) || 
+        videoCurrentTime < 0 || videoDuration <= 0) {
+      console.log('❌ saveProgress: 유효하지 않은 시간 정보', { 
+        videoCurrentTime, 
+        videoDuration,
+        stateCurrentTime: currentTime,
+        stateDuration: duration,
+        isFiniteCurrent: isFinite(videoCurrentTime),
+        isFiniteDuration: isFinite(videoDuration)
+      });
+      return;
+    }
+    
+    const positionSec = Math.floor(videoCurrentTime);
+    const durationSec = Math.floor(videoDuration);
+    
+    // 비정상적인 값 검증
+    if (positionSec > durationSec) {
+      console.log('⚠️ 비정상적인 진행률 감지 - 저장 중단:', { positionSec, durationSec });
+      return;
+    }
+    
+    // 너무 짧은 재생 시간은 저장하지 않음 (광고 스킵 등)
+    if (positionSec < 5) {
+      console.log('⚠️ 너무 짧은 재생 시간 - 저장 중단:', { positionSec });
+      return;
+    }
+    
+    console.log('🔍 saveProgress 호출:', {
+      episodeId: parseInt(episodeId),
+      positionSec,
+      durationSec,
+      isLoggedIn,
+      '비디오 currentTime': videoCurrentTime,
+      '비디오 duration': videoDuration,
+      '상태 currentTime': currentTime,
+      '상태 duration': duration,
+      '네트워크 상태': navigator.onLine
+    });
+    
+    // 네트워크 연결 확인
+    if (!navigator.onLine) {
+      console.log('⚠️ 오프라인 상태 - 진행률 저장 건너뜀');
+      return;
+    }
+    
+    try {
+      const result = await saveEpisodeProgress(parseInt(episodeId), {
+        positionSec,
+        durationSec
+      });
+      console.log('✅ 진행률 저장 성공:', result);
+    } catch (error) {
+      console.error('❌ 진행률 저장 실패:', error);
+      console.error('❌ 에러 상세:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined
+      });
+      
+      // 특정 에러 타입별 처리
+      if (error instanceof Error) {
+        if (error.message.includes('401') || error.message.includes('403')) {
+          console.log('🔐 인증 오류 - 로그인 상태 확인 필요');
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          console.log('🌐 네트워크 오류 - 재시도 필요');
+        }
+      }
+    }
+  }, [episodeId, isLoggedIn, currentTime, duration]);
+
+  // 페이지를 나갈 때 시청 진행률 저장
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (currentTime > 0 && duration > 0 && episodeId && isLoggedIn) {
+        console.log('🚪 페이지 나가기 - 진행률 저장:', {
+          episodeId,
+          currentTime: Math.floor(currentTime),
+          duration: Math.floor(duration)
+        });
+        
+        // 동기적으로 저장 (navigator.sendBeacon 사용)
+        const data = JSON.stringify({
+          positionSec: Math.floor(currentTime),
+          durationSec: Math.floor(duration)
+        });
+        
+        const success = navigator.sendBeacon(`/api/episodes/${episodeId}/progress`, data);
+        console.log('🚪 sendBeacon 결과:', success);
+      }
+    };
+
+    // 탭 전환/최소화 감지
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('👁️ 탭 숨김 - 진행률 저장');
+        saveProgress();
+      } else {
+        console.log('👁️ 탭 복원');
+      }
+    };
+
+    // 페이지 포커스 변경 감지
+    const handlePageHide = () => {
+      console.log('📱 페이지 숨김 - 진행률 저장');
+      saveProgress();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [currentTime, duration, episodeId, isLoggedIn, saveProgress]);
 
   // PIP 모드 이벤트 리스너
   useEffect(() => {
@@ -245,8 +418,25 @@ export default function PlayerPage() {
       
       // 기존 진행률 로드
       const progress = await getEpisodeProgress(parseInt(episodeId));
+      console.log('🔍 기존 진행률 로드:', progress);
       if (progress) {
-        setCurrentTime((progress as any).positionSec || 0);
+        const savedPosition = (progress as any).positionSec || 0;
+        const savedDuration = (progress as any).durationSec || 0;
+        
+        // 비정상적인 진행률 데이터 검증 (진행률이 전체 길이의 90% 이상이면 초기화)
+        if (savedDuration > 0 && savedPosition > savedDuration * 0.9) {
+          console.log('⚠️ 비정상적인 진행률 감지, 0초부터 시작:', { savedPosition, savedDuration });
+          // setCurrentTime(0); // 제거 - 비디오가 자연스럽게 0초부터 시작하도록
+        } else if (savedPosition > 0) {
+          console.log('🔍 저장된 위치로 설정:', savedPosition);
+          setCurrentTime(savedPosition);
+        } else {
+          console.log('🔍 저장된 진행률이 0초, 자연스럽게 시작');
+          // setCurrentTime(0); // 제거 - 비디오가 자연스럽게 0초부터 시작하도록
+        }
+      } else {
+        console.log('🔍 저장된 진행률 없음, 자연스럽게 시작');
+        // setCurrentTime(0); // 제거 - 비디오가 자연스럽게 0초부터 시작하도록
       }
     } catch (error) {
       console.error('스트림 URL 로드 실패:', error);
@@ -308,32 +498,39 @@ export default function PlayerPage() {
     }
   };
 
-  const handleTimeUpdate = (event: any) => {
+  const handleTimeUpdate = useCallback((event: any) => {
     const video = event.target;
-    setCurrentTime(video.currentTime);
-    setDuration(video.duration);
-  };
+    const newCurrentTime = video.currentTime;
+    const newDuration = video.duration;
+    
+    // 상태 업데이트 (불필요한 리렌더링 방지)
+    // currentTime은 0.5초마다 업데이트하여 저장 정확도 향상
+    setCurrentTime(prev => Math.abs(prev - newCurrentTime) > 0.5 ? newCurrentTime : prev);
+    setDuration(prev => Math.abs(prev - newDuration) > 0.1 ? newDuration : prev);
+  }, []);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = useCallback(() => {
     const video = videoRef.current;
     if (video) {
       if (isPlaying) {
         video.pause();
+        // pause 이벤트에서 setIsPlaying(false)가 호출되므로 여기서는 호출하지 않음
       } else {
         video.play();
+        // play 이벤트에서 setIsPlaying(true)가 호출되므로 여기서는 호출하지 않음
       }
-      setIsPlaying(!isPlaying);
     }
-  };
+  }, [isPlaying]);
 
-  const handleSeek = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSeek = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const video = videoRef.current;
     if (video) {
       const newTime = parseFloat(event.target.value);
       video.currentTime = newTime;
-      setCurrentTime(newTime);
+      // onSeeked 이벤트에서 setCurrentTime이 호출되므로 여기서는 호출하지 않음
+      // onSeeked 이벤트에서 saveProgress도 호출됨
     }
-  };
+  }, []);
 
   // 10초 뒤로 감기
   const handleRewind10 = () => {
@@ -366,9 +563,27 @@ export default function PlayerPage() {
   // 재생 속도 변경
   const handlePlaybackRateChange = (rate: number) => {
     setPlaybackRate(rate);
+    localStorage.setItem('player_playbackRate', rate.toString());
     if (videoRef.current) {
       videoRef.current.playbackRate = rate;
     }
+  };
+
+  // 비디오 품질 변경
+  const handleVideoQualityChange = (quality: string) => {
+    setVideoQuality(quality);
+    localStorage.setItem('player_videoQuality', quality);
+  };
+
+  // 자동 스킵 설정 변경
+  const handleAutoSkipIntroChange = (intro: boolean) => {
+    setAutoSkipIntro(intro);
+    localStorage.setItem('player_autoSkipIntro', intro.toString());
+  };
+
+  const handleAutoSkipOutroChange = (outro: boolean) => {
+    setAutoSkipOutro(outro);
+    localStorage.setItem('player_autoSkipOutro', outro.toString());
   };
 
   const handleFullscreen = () => {
@@ -404,18 +619,6 @@ export default function PlayerPage() {
     setIsWideMode(!isWideMode);
   };
 
-  const saveProgress = async () => {
-    if (!episodeId) return;
-    
-    try {
-      await saveEpisodeProgress(parseInt(episodeId), {
-        positionSec: Math.floor(currentTime),
-        durationSec: Math.floor(duration)
-      });
-    } catch (error) {
-      console.error('진행률 저장 실패:', error);
-    }
-  };
 
   const goToNextEpisode = () => {
     if (nextEpisode) {
@@ -432,7 +635,6 @@ export default function PlayerPage() {
   // 로그인 모달 닫기 핸들러 추가
   const handleCloseLoginModal = () => {
     setShowLoginModal(false);
-    router.push('/'); // 홈으로 리다이렉트
   };
 
   // 로딩 중이거나 로그인 체크 중일 때
@@ -474,7 +676,7 @@ export default function PlayerPage() {
       <Header />
       
       <div className={styles.mainContent}>
-        <div className={styles.playerLayout}>
+        <div className={`${styles.playerLayout} ${isWideMode ? styles.wideLayout : ''}`}>
           {/* 왼쪽: 메인 비디오 플레이어 */}
           <div className={styles.videoSection}>
             {/* 애니메이션 정보 */}
@@ -498,11 +700,28 @@ export default function PlayerPage() {
                   className={styles.video}
                   onTimeUpdate={handleTimeUpdate}
                   onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
+                  onPause={() => {
+                    setIsPlaying(false);
+                    saveProgress(); // 일시정지 시에도 진행률 저장
+                  }}
                   onEnded={saveProgress}
+                  onSeeked={(event) => {
+                    const video = event.target;
+                    setCurrentTime(video.currentTime);
+                    saveProgress(); // 구간 이동 시에도 진행률 저장
+                  }}
                   onLoadedMetadata={() => {
-                    if (videoRef.current && currentTime > 0) {
+                    console.log('🔍 비디오 메타데이터 로드 완료:', { currentTime, duration });
+                    if (videoRef.current && currentTime > 0 && videoRef.current.duration > 0) {
+                      console.log('🔍 비디오 위치 설정:', currentTime, '실제 duration:', videoRef.current.duration);
                       videoRef.current.currentTime = currentTime;
+                      // handleTimeUpdate가 자동으로 상태를 업데이트하므로 여기서는 setCurrentTime 호출하지 않음
+                    } else {
+                      console.log('🔍 비디오 위치 설정 안함:', { 
+                        currentTime, 
+                        hasVideo: !!videoRef.current,
+                        videoDuration: videoRef.current?.duration || 0
+                      });
                     }
                   }}
                   controls={false}
@@ -588,9 +807,40 @@ export default function PlayerPage() {
                     <div className={styles.rightControls}>
                       {/* 볼륨 컨트롤 */}
                       <div className={styles.volumeControl}>
-                        <svg className={styles.volumeIcon} fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.793L4.5 14H2a1 1 0 01-1-1V7a1 1 0 011-1h2.5l3.883-3.793A1 1 0 0110 4zM12.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.983 0 0013 10a3.983 3.983 0 00-1.172-2.828a1 1 0 010-1.415z" clipRule="evenodd" />
-                        </svg>
+                        {volume > 0 ? (
+                          <svg 
+                            className={styles.volumeIcon} 
+                            fill="currentColor" 
+                            viewBox="0 0 20 20"
+                            onClick={() => {
+                              const newVolume = volume > 0 ? 0 : 1;
+                              setVolume(newVolume);
+                              if (videoRef.current) {
+                                videoRef.current.volume = newVolume;
+                              }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.793L4.5 14H2a1 1 0 01-1-1V7a1 1 0 011-1h2.5l3.883-3.793A1 1 0 0110 4zM12.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.983 0 0013 10a3.983 3.983 0 00-1.172-2.828a1 1 0 010-1.415z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg 
+                            className={styles.volumeIcon} 
+                            fill="currentColor" 
+                            viewBox="0 0 20 20"
+                            onClick={() => {
+                              const newVolume = volume > 0 ? 0 : 1;
+                              setVolume(newVolume);
+                              if (videoRef.current) {
+                                videoRef.current.volume = newVolume;
+                              }
+                            }}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.617.793L4.5 14H2a1 1 0 01-1-1V7a1 1 0 011-1h2.5l3.883-3.793A1 1 0 0110 4zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.983 0 0013 10a3.983 3.983 0 00-1.172-2.828a1 1 0 010-1.415z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06L3.28 2.22z" clipRule="evenodd" />
+                          </svg>
+                        )}
                         <input
                           type="range"
                           min="0"
@@ -599,6 +849,9 @@ export default function PlayerPage() {
                           value={volume}
                           onChange={handleVolumeChange}
                           className={styles.volumeSlider}
+                          style={{
+                            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${volume * 100}%, #4b5563 ${volume * 100}%, #4b5563 100%)`
+                          }}
                         />
                       </div>
 
@@ -699,14 +952,62 @@ export default function PlayerPage() {
 
 
 
-            {/* 에피소드 댓글 섹션 */}
-            {episodeId && (
-              <EpisodeCommentList episodeId={parseInt(episodeId)} />
+            {/* 와이드모드일 때 댓글과 에피소드 목록을 나란히 배치 */}
+            {isWideMode ? (
+              <div className={styles.wideModeContent}>
+                <div className={styles.commentsSection}>
+                  {episodeId && (
+                    <EpisodeCommentList episodeId={parseInt(episodeId)} />
+                  )}
+                </div>
+                <div className={styles.episodeSidebar}>
+                  <h3 className={styles.sidebarTitle}>{animeInfo?.title || '애니메이션'}</h3>
+                  <div className={styles.episodeList}>
+                    {animeInfo?.episodes ? (
+                      animeInfo.episodes.map((episode: any) => (
+                        <div 
+                          key={episode.id} 
+                          className={`${styles.episodeItem} ${episode.id == episodeId ? styles.activeEpisode : ''}`}
+                          onClick={() => router.push(`/player?episodeId=${episode.id}&animeId=${animeId}`)}
+                        >
+                          <div className={styles.episodeThumbnail}>
+                            <img 
+                              src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
+                              alt={episode.title}
+                              className={styles.thumbnail}
+                            />
+                            <div className={styles.membershipBadge}>
+                              <span className={styles.crownIcon}>👑</span>
+                              <span className={styles.membershipText}>멤버십</span>
+                            </div>
+                          </div>
+                          <div className={styles.episodeInfo}>
+                            <h4 className={styles.episodeTitle}>{episode.title}</h4>
+                            <span className={styles.episodeDuration}>
+                              {episode.duration ? `${episode.duration}분` : '24분'}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className={styles.noEpisodes}>에피소드 정보가 없습니다.</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* 에피소드 댓글 섹션 */}
+                {episodeId && (
+                  <EpisodeCommentList episodeId={parseInt(episodeId)} />
+                )}
+              </>
             )}
           </div>
 
-          {/* 오른쪽: 에피소드 목록 사이드바 */}
-          <div className={styles.episodeSidebar}>
+          {/* 오른쪽: 에피소드 목록 사이드바 (일반 모드일 때만) */}
+          {!isWideMode && (
+            <div className={styles.episodeSidebar}>
             <h3 className={styles.sidebarTitle}>{animeInfo?.title || '애니메이션'}</h3>
             <div className={styles.episodeList}>
               {animeInfo?.episodes ? (
@@ -740,7 +1041,8 @@ export default function PlayerPage() {
               )}
             </div>
           </div>
-                 </div>
+          )}
+        </div>
        </div>
 
                {/* 환경설정 모달 */}
@@ -751,16 +1053,10 @@ export default function PlayerPage() {
           currentPlaybackRate={playbackRate}
           autoSkipIntro={autoSkipIntro}
           autoSkipOutro={autoSkipOutro}
-          onQualityChange={setVideoQuality}
+          onQualityChange={handleVideoQualityChange}
           onPlaybackRateChange={handlePlaybackRateChange}
-          onAutoSkipIntroChange={(skip) => {
-            setAutoSkipIntro(skip);
-            setAutoSkipOutro(skip);
-          }}
-          onAutoSkipOutroChange={(skip) => {
-            setAutoSkipIntro(skip);
-            setAutoSkipOutro(skip);
-          }}
+          onAutoSkipIntroChange={handleAutoSkipIntroChange}
+          onAutoSkipOutroChange={handleAutoSkipOutroChange}
         />
 
         {/* 키보드 단축키 도움말 모달 */}

@@ -31,7 +31,13 @@ public class SettingsService { // 사용자 재생 설정
     public UserSettingsDto get(Long userId) {
         return userSettingsRepository.findByUserId(userId)
                 .map(this::convertToDto)
-                .orElse(null);
+                .orElse(UserSettingsDto.builder()
+                        .autoSkipIntro(true)
+                        .autoSkipEnding(true)
+                        .defaultQuality("auto")
+                        .autoNextEpisode(true)
+                        .theme("light") // 기본 테마
+                        .build());
     }
 
     /**

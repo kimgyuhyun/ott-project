@@ -54,30 +54,83 @@ export async function updateUserSettings(settings: any) {
 
 // 사용자 시청 기록 조회
 export async function getUserWatchHistory(page: number = 0, size: number = 20) {
-  return apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}`);
+  // 캐시 방지를 위해 타임스탬프 추가
+  const timestamp = Date.now();
+  return apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}&t=${timestamp}`);
 }
 
 // 특정 애니메이션의 시청 기록 조회
 export async function getAnimeWatchHistory(animeId: number) {
   try {
+    // 캐시 방지를 위해 타임스탬프 추가
     const history = await getUserWatchHistory(0, 1000);
+    console.log('🔍 전체 시청 기록:', history);
+    
     const animeHistory = (history as any).content?.filter((item: any) => item.animeId === animeId) || [];
+    console.log('🔍 해당 애니메이션 시청 기록:', animeHistory);
+    console.log('🔍 시청 기록 상세:', animeHistory.map((item: any) => ({
+      episodeId: item.episodeId,
+      episodeNumber: item.episodeNumber,
+      positionSec: item.positionSec,
+      completed: item.completed,
+      updatedAt: item.updatedAt,
+      watchedAt: item.watchedAt,
+      createdAt: item.createdAt,
+      durationSec: item.durationSec,
+      전체데이터: item
+    })));
+    
+    // 각 시청 기록의 상세 정보를 개별적으로 출력
+    animeHistory.forEach((item: any, index: number) => {
+      console.log(`🔍 시청 기록 ${index + 1}:`, {
+        episodeId: item.episodeId,
+        episodeNumber: item.episodeNumber,
+        positionSec: item.positionSec,
+        durationSec: item.durationSec,
+        updatedAt: item.updatedAt,
+        모든필드: Object.keys(item),
+        원본데이터: item
+      });
+    });
     
     if (animeHistory.length === 0) return null;
     
-    // 가장 최근에 본 에피소드 찾기
+    // 가장 최근에 본 에피소드 찾기 (마지막 시청 시간 기준)
     const latestEpisode = animeHistory.sort((a: any, b: any) => 
-      new Date(b.watchedAt || b.createdAt).getTime() - new Date(a.watchedAt || a.createdAt).getTime()
+      new Date(b.updatedAt || b.watchedAt || b.createdAt).getTime() - 
+      new Date(a.updatedAt || a.watchedAt || a.createdAt).getTime()
     )[0];
     
-    return {
+    console.log('🔍 가장 최근 에피소드:', latestEpisode);
+    
+    // episodeNumber를 여러 필드에서 찾기
+    const episodeNumber = latestEpisode.episodeNumber || 
+                         latestEpisode.episode?.episodeNumber || 
+                         latestEpisode.episodeNumber || 
+                         1;
+    
+    console.log('🔍 에피소드 번호 찾기:', {
+      episodeNumber: latestEpisode.episodeNumber,
+      episode_episodeNumber: latestEpisode.episode?.episodeNumber,
+      최종결정: episodeNumber
+    });
+    
+    // 완료 상태 계산 (진행률이 90% 이상이면 완료로 간주)
+    const durationSec = latestEpisode.durationSec || 0;
+    const positionSec = latestEpisode.positionSec || 0;
+    const isCompleted = durationSec > 0 && positionSec > 0 && (positionSec / durationSec) >= 0.9;
+    
+    const result = {
       episodeId: latestEpisode.episodeId,
-      episodeNumber: latestEpisode.episodeNumber || 1,
-      positionSec: latestEpisode.positionSec || 0,
-      duration: latestEpisode.duration || 0,
-      completed: latestEpisode.completed || false,
-      watchedAt: latestEpisode.watchedAt || latestEpisode.createdAt
+      episodeNumber: episodeNumber,
+      positionSec: positionSec,
+      duration: durationSec,
+      completed: isCompleted,
+      watchedAt: latestEpisode.updatedAt || latestEpisode.watchedAt || latestEpisode.createdAt
     };
+    
+    console.log('🔍 반환할 시청 기록:', result);
+    return result;
   } catch (error) {
     console.error('애니메이션 시청 기록 조회 중 오류:', error);
     return null;
@@ -86,50 +139,22 @@ export async function getAnimeWatchHistory(animeId: number) {
 
 // 사용자 보고싶다 작품 조회
 export async function getUserWantList(page: number = 0, size: number = 20) {
-  return apiCall(`/api/mypage/favorites/anime?page=${page}&size=${size}`);
+  console.log('🌐 [FRONTEND] getUserWantList 호출 - page:', page, 'size:', size);
+  
+  try {
+    const result = await apiCall(`/api/mypage/favorites/anime?page=${page}&size=${size}`);
+    console.log('🌐 [FRONTEND] getUserWantList 응답:', result);
+    return result;
+  } catch (error) {
+    console.error('🌐 [FRONTEND] getUserWantList 에러:', error);
+    throw error;
+  }
 }
 
 // 사용자 활동 통계 조회
 export async function getUserStats() {
-  try {
-    // 시청 기록과 보고싶다 데이터를 병렬로 조회
-    const [watchHistory, wantList] = await Promise.all([
-      getUserWatchHistory(0, 1000), // 충분히 큰 크기로 조회
-      getUserWantList(0, 1000)
-    ]);
-    
-    // 통계 계산
-    const totalEpisodes = (watchHistory as any).content?.length || 0;
-    const totalAnime = new Set((watchHistory as any).content?.map((item: any) => item.animeId) || []).size;
-          const wantCount = (wantList as any).content?.length || 0;
-    const completedAnime = (watchHistory as any).content?.filter((item: any) => item.completed)?.length || 0;
-    const watchingAnime = totalAnime - completedAnime;
-    
-    // 총 시청 시간 계산 (초 단위)
-    const totalWatchTime = (watchHistory as any).content?.reduce((total: number, item: any) => {
-      return total + (item.positionSec || 0);
-    }, 0) || 0;
-    
-    return {
-      totalWatchTime,
-      totalEpisodes,
-      totalAnime,
-      wantCount,
-      completedAnime,
-      watchingAnime
-    };
-  } catch (error) {
-    console.error('통계 계산 중 오류:', error);
-    // 오류 시 기본값 반환
-    return {
-      totalWatchTime: 0,
-      totalEpisodes: 0,
-      totalAnime: 0,
-      wantCount: 0,
-      completedAnime: 0,
-      watchingAnime: 0
-    };
-  }
+  // 백엔드 집계 API 호출
+  return apiCall('/api/mypage/stats');
 }
 
 // 비밀번호 변경

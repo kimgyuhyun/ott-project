@@ -54,8 +54,14 @@ public class FavoriteAnimeController { // 보고싶다 전용 컨트롤러
                                                                  @RequestParam(defaultValue = "favoritedAt") String sort, // 정렬키
                                                                  HttpSession session // 세션에서 사용자 확인
     ) {
+        System.out.println("🎯 [CONTROLLER] 보고싶다 목록 조회 요청 - page: " + page + ", size: " + size + ", sort: " + sort);
+        
         Long userId = securityUtil.requireCurrentUserId(session); // 현재 사용자 ID 확인
+        System.out.println("🎯 [CONTROLLER] 인증된 사용자 ID: " + userId);
+        
         PagedResponse<FavoriteAnimeDto> body = favoriteAnimeService.list(userId, page, size, sort); // 목록 조회
+        System.out.println("🎯 [CONTROLLER] 서비스 응답 - 총 개수: " + body.getTotal() + ", 현재 페이지 아이템 수: " + body.getItems().size());
+        
         return ResponseEntity.ok(body); // 200 OK
     }
 

@@ -35,10 +35,10 @@
         WHERE cl.episode_comment_id = c.id
         ) AS likeCount, <!-- EpisodeCommentsResponseDto.likeCount -->
         (
-        CASE WHEN #{currentUserId} IS NOT NULL AND EXISTS (
+        CASE WHEN #{currentUserId,jdbcType=BIGINT} IS NOT NULL AND EXISTS (
         SELECT 1
         FROM episode_comment_likes cl2
-        WHERE cl2.episode_comment_id = c.id AND cl2.user_id = #{currentUserId} <!-- 현재 사용자 좋아요 여부 -->
+        WHERE cl2.episode_comment_id = c.id AND cl2.user_id = #{currentUserId,jdbcType=BIGINT} <!-- 현재 사용자 좋아요 여부 -->
         )
         THEN TRUE ELSE FALSE END
         ) AS isLikedByCurrentUser, <!-- EpisodeCommentsResponseDto.isLikedByCurrentUser -->

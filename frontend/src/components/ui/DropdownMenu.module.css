@@ -1,0 +1,100 @@
+/* 드롭다운 컨테이너 */
+.dropdownContainer {
+  position: relative;
+  display: inline-block;
+}
+
+/* 드롭다운 트리거 버튼 (세 점 아이콘) */
+.dropdownTrigger {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6B7280;
+  transition: color 0.2s ease;
+}
+
+.dropdownTrigger:hover {
+  color: #374151;
+}
+
+.dropdownTrigger:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px #8B5CF6;
+}
+
+/* 세 점 아이콘 */
+.dropdownTrigger svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* 드롭다운 메뉴 */
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  min-width: 120px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+/* 드롭다운 아이템 */
+.dropdownItem {
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  color: #F7F7F7;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdownItem:hover {
+  background-color: #404040;
+}
+
+.dropdownItem:focus {
+  outline: none;
+  background-color: #404040;
+}
+
+/* 수정 아이템 */
+.dropdownItem.edit {
+  color: #10B981;
+}
+
+.dropdownItem.edit:hover {
+  background-color: #404040;
+  color: #34D399;
+}
+
+/* 삭제 아이템 */
+.dropdownItem.delete {
+  color: #EF4444;
+}
+
+.dropdownItem.delete:hover {
+  background-color: #404040;
+  color: #F87171;
+}
+
+/* 아이콘 스타일 */
+.dropdownItem svg {
+  width: 14px;
+  height: 14px;
+}

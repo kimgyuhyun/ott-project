@@ -50,10 +50,11 @@
   border: 1px solid #404040;
   border-radius: 0.5rem;
   outline: none;
-  resize: vertical;
+  resize: none;
   min-height: 4rem;
   background-color: #1a1a1a;
   color: #F7F7F7;
+  box-sizing: border-box;
 }
 
 .commentTextarea:focus {
@@ -125,10 +126,11 @@
   border: 1px solid #404040;
   border-radius: 0.5rem;
   outline: none;
-  resize: vertical;
+  resize: none;
   min-height: 4rem;
   background-color: #1a1a1a;
   color: #F7F7F7;
+  box-sizing: border-box;
 }
 
 .editTextarea:focus {
@@ -370,11 +372,12 @@
   border: 1px solid #404040;
   border-radius: 0.5rem;
   outline: none;
-  resize: vertical;
+  resize: none;
   min-height: 4rem;
   background-color: #121212;
   color: #F7F7F7;
   font-size: 0.875rem;
+  box-sizing: border-box;
   line-height: 1.5;
 }
 
@@ -455,10 +458,11 @@
   border: 1px solid #404040;
   border-radius: 0.5rem;
   outline: none;
-  resize: vertical;
+  resize: none;
   min-height: 4rem;
   background-color: #1a1a1a;
   color: #F7F7F7;
+  box-sizing: border-box;
 }
 
 .replyEditTextarea:focus {

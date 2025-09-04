@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- 마이페이지 집계 전용 매퍼 -->
+<mapper namespace="com.ottproject.ottbackend.mybatis.MypageStatsQueryMapper">
+
+    <!-- 유저별 보고싶다/리뷰/댓글 집계 -->
+    <select id="findMypageStatsByUserId" resultType="com.ottproject.ottbackend.dto.MypageStatsDto">
+        SELECT
+            -- 보고싶다 개수
+            (SELECT COUNT(1)
+             FROM ani_favorites f
+             WHERE f.user_id = #{userId}
+            ) AS wantCount,
+
+            -- 리뷰 개수
+            (SELECT COUNT(1)
+             FROM reviews r
+             WHERE r.user_id = #{userId}
+               AND r.status = 'ACTIVE'
+            ) AS reviewCount,
+
+            -- 댓글 개수 (최상위/대댓글 모두 포함, 활성만)
+            (SELECT COUNT(1)
+             FROM comments c
+             WHERE c.user_id = #{userId}
+               AND c.status = 'ACTIVE'
+            ) AS commentCount
+    </select>
+
+</mapper>
+
+

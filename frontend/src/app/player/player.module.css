@@ -90,19 +90,47 @@
 }
 
 /* 와이드 모드 */
+.playerLayout.wideLayout {
+  flex-direction: column !important;
+}
+
+.playerLayout.wideLayout .videoSection {
+  width: 100% !important;
+  margin-right: 0 !important;
+}
+
+/* 와이드모드에서 댓글과 에피소드 목록을 나란히 배치 */
+.wideModeContent {
+  display: flex;
+  gap: 2rem;
+  margin-top: 1.5rem;
+  width: 100%;
+}
+
+.commentsSection {
+  flex: 1;
+  min-width: 0;
+}
+
+.wideModeContent .episodeSidebar {
+  width: 350px;
+  flex-shrink: 0;
+  background-color: #1a1a1a;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
 .videoContainer.wideMode {
   aspect-ratio: 21/9 !important;
-  max-height: none !important;
+  max-height: 60vh !important;
   width: 100% !important;
-  height: 0 !important;
-  padding-bottom: 42.86% !important;
+  height: auto !important;
   position: relative !important;
 }
 
 .videoContainer.wideMode .video {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
   width: 100% !important;
   height: 100% !important;
   object-fit: contain !important;

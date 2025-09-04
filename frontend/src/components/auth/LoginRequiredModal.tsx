@@ -20,7 +20,6 @@ export default function LoginRequiredModal({ isOpen, onClose }: LoginRequiredMod
     <div className={styles.overlay}>
       <div className={styles.modal}>
         <div className={styles.content}>
-          <div className={styles.icon}>🔒</div>
           <h2 className={styles.title}>작품 감상을 위해 로그인이 필요해요</h2>
           <p className={styles.description}>
             로그인하시면 모든 에피소드를 시청할 수 있습니다.
