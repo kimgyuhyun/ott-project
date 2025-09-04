@@ -47,13 +47,32 @@ export default function Home() {
             credentials: 'include'
           });
           if (response.ok) {
-            const settings = await response.json();
-            // 사용자가 테마를 설정했는지 확인
-            if (settings.theme && (settings.theme === 'light' || settings.theme === 'dark')) {
-              // 사용자 설정 테마 사용
-              document.documentElement.setAttribute('data-theme', settings.theme);
+            // 응답 내용 확인
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const text = await response.text();
+              if (text.trim()) {
+                try {
+                  const settings = JSON.parse(text);
+                  // 사용자가 테마를 설정했는지 확인
+                  if (settings.theme && (settings.theme === 'light' || settings.theme === 'dark')) {
+                    // 사용자 설정 테마 사용
+                    document.documentElement.setAttribute('data-theme', settings.theme);
+                  } else {
+                    // 테마 설정 안함: 메인 페이지 기본값 light
+                    document.documentElement.setAttribute('data-theme', 'light');
+                  }
+                } catch (parseError) {
+                  console.error('JSON 파싱 오류:', parseError);
+                  // 파싱 실패 시 기본값 사용
+                  document.documentElement.setAttribute('data-theme', 'light');
+                }
+              } else {
+                // 빈 응답 시 기본값 사용
+                document.documentElement.setAttribute('data-theme', 'light');
+              }
             } else {
-              // 테마 설정 안함: 메인 페이지 기본값 light
+              // JSON이 아닌 응답 시 기본값 사용
               document.documentElement.setAttribute('data-theme', 'light');
             }
           } else {
