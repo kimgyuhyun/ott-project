@@ -71,6 +71,7 @@ public class EpisodeController {
     
     @Operation(summary = "시청 진행률 저장", description = "에피소드 시청 진행률을 저장합니다.")
     @ApiResponse(responseCode = "200", description = "저장 성공")
+    @ApiResponse(responseCode = "400", description = "잘못된 요청 데이터")
     @PostMapping("/{id}/progress")
     public ResponseEntity<Void> saveProgress(
             @Parameter(description = "에피소드 ID") @PathVariable Long id,
@@ -80,8 +81,23 @@ public class EpisodeController {
         Integer positionSec = request.get("positionSec");
         Integer durationSec = request.get("durationSec");
         
-        playerService.saveProgress(userId, id, positionSec, durationSec);
-        return ResponseEntity.ok().build();
+        // 입력 데이터 검증
+        if (positionSec == null || durationSec == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        if (positionSec < 0 || durationSec <= 0 || positionSec > durationSec) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        try {
+            playerService.saveProgress(userId, id, positionSec, durationSec);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            // 로그 기록 후 500 에러 반환
+            System.err.println("진행률 저장 실패: " + e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
     
     @Operation(summary = "시청 진행률 조회", description = "에피소드 시청 진행률을 조회합니다.")
