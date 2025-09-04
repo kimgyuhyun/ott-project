@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef } from "react";
 import { getEpisodeComments, createEpisodeComment, updateEpisodeComment, deleteEpisodeComment, toggleEpisodeCommentLike, getEpisodeCommentReplies, createEpisodeReply } from "@/lib/api/episodeComments";
 import { getCurrentUser } from "@/lib/api/auth";
+import DropdownMenu from "@/components/ui/DropdownMenu";
+import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
 import styles from "./EpisodeCommentList.module.css";
 import { EpisodeComment } from "@/types/episodeComments";
 
@@ -18,6 +20,9 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
   const [editingComment, setEditingComment] = useState<EpisodeComment | null>(null);
   const [editingReply, setEditingReply] = useState<EpisodeComment | null>(null);
   const [newComment, setNewComment] = useState({ content: '' });
+  const [showLoginRequired, setShowLoginRequired] = useState(false);
+  const [isCommentFocused, setIsCommentFocused] = useState(false);
+  const [focusedReplyId, setFocusedReplyId] = useState<number | null>(null);
   const scrollYRef = useRef<number>(0);
 
   const formatRelativeTime = (iso?: string, updatedIso?: string) => {
@@ -252,39 +257,45 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
     }
   };
 
-
-
   if (isLoading) {
     return <div className={styles.loadingContainer}>댓글을 불러오는 중...</div>;
   }
 
   return (
     <div className={styles.mainContainer}>
-
-
       {(
         <div className={styles.commentForm}>
           <textarea
             value={newComment.content}
             onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
+            onFocus={() => setIsCommentFocused(true)}
+            onBlur={() => {
+              // 포커스를 잃을 때 약간의 지연을 두어 버튼 클릭이 가능하도록 함
+              setTimeout(() => setIsCommentFocused(false), 200);
+            }}
             placeholder="댓글을 작성해주세요..."
             className={styles.commentTextarea}
             rows={3}
           />
-          <div className={styles.formButtons}>
-            <button
-              onClick={() => setNewComment({ content: '' })}
-              className={styles.cancelButton}
-            >
-              취소
-            </button>
-            <button
-              onClick={handleCreateComment}
-              className={styles.saveButton}
-            >
-              작성
-            </button>
-          </div>
+          {isCommentFocused && (
+            <div className={styles.formButtons}>
+              <button
+                onClick={() => {
+                  setNewComment({ content: '' });
+                  setIsCommentFocused(false);
+                }}
+                className={styles.cancelButton}
+              >
+                취소
+              </button>
+              <button
+                onClick={handleCreateComment}
+                className={styles.saveButton}
+              >
+                작성
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -335,20 +346,24 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
                       <span className={styles.userName}>{comment.userName}</span>
                     </div>
                     {currentUser && currentUser.id === comment.userId && (
-                      <div className={styles.commentActions}>
-                        <button
-                          onClick={() => setEditingComment(comment)}
-                          className={styles.actionButton}
-                        >
-                          수정
-                        </button>
-                        <button
-                          onClick={() => handleDeleteComment(comment.id)}
-                          className={styles.deleteButton}
-                        >
-                          삭제
-                        </button>
-                      </div>
+                      <DropdownMenu
+                        items={[
+                          {
+                            label: "수정",
+                            onClick: () => setEditingComment(comment),
+                            className: "edit"
+                          },
+                          {
+                            label: "삭제",
+                            onClick: () => handleDeleteComment(comment.id),
+                            className: "delete"
+                          }
+                        ]}
+                      >
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                        </svg>
+                      </DropdownMenu>
                     )}
                   </div>
                 </div>
@@ -385,44 +400,53 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
                     <textarea
                       value={newComment.content}
                       onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
+                      onFocus={() => setFocusedReplyId(comment.id)}
+                      onBlur={() => {
+                        // 포커스를 잃을 때 약간의 지연을 두어 버튼 클릭이 가능하도록 함
+                        setTimeout(() => setFocusedReplyId(null), 200);
+                      }}
                       placeholder="답글을 작성해주세요..."
                       className={styles.replyTextarea}
                       rows={3}
                     />
-                    <div className={styles.replyFormButtons}>
-                      <button
-                        onClick={() => {
-                          setShowReplyForm(null);
-                          setNewComment({ content: '' });
-                        }}
-                        className={styles.cancelButton}
-                      >
-                        취소
-                      </button>
-                      <button
-                        onClick={async () => {
-                          if (!newComment.content.trim()) return;
-                          try {
-                            saveScroll();
-                            await createEpisodeReply(episodeId, comment.id, newComment.content);
-                            setNewComment({ content: '' });
+                    {focusedReplyId === comment.id && (
+                      <div className={styles.replyFormButtons}>
+                        <button
+                          onClick={() => {
                             setShowReplyForm(null);
-                            // 해당 댓글의 대댓글만 다시 로드
-                            await loadReplies(comment.id);
-                            // 대댓글 영역 자동으로 펼치기
-                            setExpandedReplies(prev => new Set([...prev, comment.id]));
-                            setTimeout(() => restoreScroll(), 0);
-                          } catch (error) {
-                            console.error('답글 작성 실패:', error);
-                            setTimeout(() => restoreScroll(), 0);
-                          }
-                        }}
-                        disabled={!newComment.content.trim()}
-                        className={styles.saveButton}
-                      >
-                        작성
-                      </button>
-                    </div>
+                            setNewComment({ content: '' });
+                            setFocusedReplyId(null);
+                          }}
+                          className={styles.cancelButton}
+                        >
+                          취소
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (!newComment.content.trim()) return;
+                            try {
+                              saveScroll();
+                              await createEpisodeReply(episodeId, comment.id, newComment.content);
+                              setNewComment({ content: '' });
+                              setShowReplyForm(null);
+                              setFocusedReplyId(null);
+                              // 해당 댓글의 대댓글만 다시 로드
+                              await loadReplies(comment.id);
+                              // 대댓글 영역 자동으로 펼치기
+                              setExpandedReplies(prev => new Set([...prev, comment.id]));
+                              setTimeout(() => restoreScroll(), 0);
+                            } catch (error) {
+                              console.error('답글 작성 실패:', error);
+                              setTimeout(() => restoreScroll(), 0);
+                            }
+                          }}
+                          disabled={!newComment.content.trim()}
+                          className={styles.saveButton}
+                        >
+                          작성
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -491,16 +515,30 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
                               </div>
                               <div className={styles.replyActions}>
                                 {currentUser && currentUser.id === reply.userId && (
-                                  <>
-                                    <button onClick={() => setEditingReply(reply)} className={styles.replyEditButton}>수정</button>
-                                    <button onClick={async () => {
-                                      if (!confirm('정말로 이 대댓글을 삭제하시겠습니까?')) return;
-                                      try {
-                                        await deleteEpisodeComment(episodeId, reply.id);
-                                        await loadReplies(comment.id);
-                                      } catch (e) { console.log('대댓글 삭제 실패:', e); }
-                                    }} className={styles.replyDeleteButton}>삭제</button>
-                                  </>
+                                  <DropdownMenu
+                                    items={[
+                                      {
+                                        label: "수정",
+                                        onClick: () => setEditingReply(reply),
+                                        className: "edit"
+                                      },
+                                      {
+                                        label: "삭제",
+                                        onClick: async () => {
+                                          if (!confirm('정말로 이 대댓글을 삭제하시겠습니까?')) return;
+                                          try {
+                                            await deleteEpisodeComment(episodeId, reply.id);
+                                            await loadReplies(comment.id);
+                                          } catch (e) { console.log('대댓글 삭제 실패:', e); }
+                                        },
+                                        className: "delete"
+                                      }
+                                    ]}
+                                  >
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                                    </svg>
+                                  </DropdownMenu>
                                 )}
                               </div>
                             </div>
@@ -530,8 +568,6 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
           </div>
         ))}
       </div>
-
-
     </div>
   );
 }
