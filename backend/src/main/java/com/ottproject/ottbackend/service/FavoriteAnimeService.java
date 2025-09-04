@@ -51,11 +51,38 @@ public class FavoriteAnimeService { // 보고싶다 도메인 서비스
 
     @Transactional(readOnly = true) // 읽기 전용
     public PagedResponse<FavoriteAnimeDto> list(Long userId, int page, int size, String sort) { // 내 보고싶다 목록 조회
+        System.out.println("🔧 [SERVICE] FavoriteAnimeService.list 시작");
+        System.out.println("🔧 [SERVICE] 파라미터 - userId: " + userId + ", page: " + page + ", size: " + size + ", sort: " + sort);
+        
         int limit = size; // limit 계산
         int offset = Math.max(page, 0) * size; // offset 계산
+        System.out.println("🔧 [SERVICE] 계산된 limit: " + limit + ", offset: " + offset);
+        
+        System.out.println("🔧 [SERVICE] MyBatis 쿼리 호출 시작 - findFavoriteAnimesByUser");
         List<FavoriteAnimeDto> items = favoriteQueryMapper.findFavoriteAnimesByUser(userId, sort, limit, offset); // 항목 조회
+        System.out.println("🔧 [SERVICE] MyBatis 쿼리 호출 완료 - findFavoriteAnimesByUser");
+        
+        System.out.println("🔧 [SERVICE] MyBatis 카운트 쿼리 호출 시작 - countFavoriteAnimesByUser");
         long total = favoriteQueryMapper.countFavoriteAnimesByUser(userId); // 총 개수 조회
-        return new PagedResponse<>(items, total, page, size); // 페이지 응답 래핑
+        System.out.println("🔧 [SERVICE] MyBatis 카운트 쿼리 호출 완료 - countFavoriteAnimesByUser");
+        
+        System.out.println("🔧 [SERVICE] 조회 결과 - items 개수: " + items.size() + ", total: " + total);
+        if (!items.isEmpty()) {
+            System.out.println("🔧 [SERVICE] 첫 번째 아이템 상세:");
+            FavoriteAnimeDto first = items.get(0);
+            System.out.println("  - aniId: " + first.getAniId());
+            System.out.println("  - title: " + first.getTitle());
+            System.out.println("  - posterUrl: " + first.getPosterUrl());
+            System.out.println("  - rating: " + first.getRating());
+            System.out.println("  - favoritedAt: " + first.getFavoritedAt());
+        } else {
+            System.out.println("🔧 [SERVICE] 조회된 아이템이 없습니다.");
+        }
+        
+        PagedResponse<FavoriteAnimeDto> response = new PagedResponse<>(items, total, page, size); // 페이지 응답 래핑
+        System.out.println("🔧 [SERVICE] PagedResponse 생성 완료 - total: " + response.getTotal() + ", items: " + response.getItems().size());
+        
+        return response; // 페이지 응답 래핑
     }
 
     @Transactional(readOnly = true) // 읽기 전용
