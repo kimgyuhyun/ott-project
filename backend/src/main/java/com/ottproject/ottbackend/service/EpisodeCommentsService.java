@@ -85,13 +85,9 @@ public class EpisodeCommentsService {
             }
         }
 
-        EpisodeComment comment = EpisodeComment.builder() // 댓글 엔티티 생성
-                .user(user) // 연관: 작성자
-                .episode(episode) // 연관: 부모 에피소드
-                .parent(parent) // 연관: 부모 댓글(옵션)
-                .content(content) // 내용
-                .status(CommentStatus.ACTIVE) // 기본 상태: ACTIVE
-                .build();
+        EpisodeComment comment = (parent == null) 
+                ? EpisodeComment.createComment(user, episode, content)
+                : EpisodeComment.createReply(user, episode, parent, content);
 
         return commentRepository.save(comment).getId(); // 저장 후 ID 반환
     }
@@ -132,7 +128,7 @@ public class EpisodeCommentsService {
         EpisodeComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
         try {
-            commentLikeRepository.save(EpisodeCommentLike.builder().user(user).episodeComment(comment).build()); // on 시도
+            commentLikeRepository.save(EpisodeCommentLike.createLike(user, comment)); // on 시도
             return true; // on
         } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
             commentLikeRepository.deleteByUser_IdAndEpisodeComment_Id(userId, commentId);
@@ -154,13 +150,7 @@ public class EpisodeCommentsService {
                 .orElseThrow(() -> new IllegalArgumentException("parent comment not found: " + parentId)); // 없으면 예외
         Episode episode = parent.getEpisode(); // 부모 댓글이 속한 에피소드 엔티티 추출
 
-        EpisodeComment reply = EpisodeComment.builder() // 댓글 엔티티 빌드
-                .user(user) // 작성자 연관
-                .episode(episode) // 부모 댓글의 에피소드로 설정
-                .parent(parent) // 부모 댓글 연관
-                .content(content) // 내용
-                .status(CommentStatus.ACTIVE) // 기본 상태
-                .build(); // 엔티티 생성 완료
+        EpisodeComment reply = EpisodeComment.createReply(user, episode, parent, content); // 댓글 엔티티 생성
 
         return commentRepository.save(reply).getId(); // 저장 후 생성 PK 반환
     }

@@ -38,19 +38,21 @@ public class PaymentMethodService { // 결제수단 도메인 서비스
 	 * 결제수단 등록
 	 */
 	public void register(Long userId, PaymentMethodRegisterRequestDto dto) { // 결제수단 등록
-		PaymentMethod pm = PaymentMethod.builder()
-				.user(User.builder().id(userId).build())
-				.provider(com.ottproject.ottbackend.enums.PaymentProvider.IMPORT)
-				.type(dto.type)
-				.providerMethodId(dto.providerMethodId)
-				.brand(dto.brand)
-				.last4(dto.last4)
-				.expiryMonth(dto.expiryMonth)
-				.expiryYear(dto.expiryYear)
-				.isDefault(dto.isDefault)
-				.priority(dto.priority)
-				.label(dto.label)
-				.build();
+		User user = new User();
+		user.setId(userId);
+		PaymentMethod pm = PaymentMethod.createPaymentMethod(
+				user,
+				com.ottproject.ottbackend.enums.PaymentProvider.IMPORT,
+				dto.type,
+				dto.providerMethodId
+		);
+		pm.setBrand(dto.brand);
+		pm.setLast4(dto.last4);
+		pm.setExpiryMonth(dto.expiryMonth);
+		pm.setExpiryYear(dto.expiryYear);
+		pm.setDefault(dto.isDefault);
+		pm.setPriority(dto.priority);
+		pm.setLabel(dto.label);
 		paymentMethodRepository.save(pm);
 	}
 

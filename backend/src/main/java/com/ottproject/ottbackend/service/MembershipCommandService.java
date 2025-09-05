@@ -63,19 +63,15 @@ public class MembershipCommandService {
         }
         LocalDateTime end = start.plusMonths(plan.getPeriodMonths()); // 기간 산정
 
-        MembershipSubscription sub = MembershipSubscription.builder() // 엔티티 생성
-                .user(User.builder().id(userId).build()) // FK 바인딩(프록시)
-                .membershipPlan(plan) // 플랜 설정
-                .status(MembershipSubscriptionStatus.ACTIVE) // 활성(자동갱신 전제)
-                .startAt(start) // 시작
-                .endAt(end) // 종료
-                .autoRenew(true) // 자동갱신 ON
-                .cancelAtPeriodEnd(false) // 말일 해지 예약 해제
-                .canceledAt(null) // 해지 확정 시각 초기화
-                .nextBillingAt(end) // 다음 청구 앵커
-                .retryCount(0) // 재시도 초기화
-                .maxRetry(3) // 최대 재시도 3회
-                .build(); // 빌드
+        User user = new User();
+        user.setId(userId);
+        MembershipSubscription sub = MembershipSubscription.createSubscription( // 엔티티 생성
+                user, // FK 바인딩(프록시)
+                plan, // 플랜 설정
+                start, // 시작
+                end // 종료
+        );
+        sub.setNextBillingAt(end); // 다음 청구 앵커 // 빌드
 
         subscriptionRepository.save(sub); // 저장
     }
@@ -126,11 +122,11 @@ public class MembershipCommandService {
 
         // 멱등 키 저장
         if (req != null && req.idempotencyKey != null && !req.idempotencyKey.isBlank()) {
-            var key = IdempotencyKey.builder()
-                    .keyValue(req.idempotencyKey)
-                    .purpose("membership.cancel")
-                    .createdAt(now)
-                    .build();
+            var key = IdempotencyKey.createIdempotencyKey(
+                    req.idempotencyKey,
+                    "membership.cancel",
+                    null
+            );
             idempotencyKeyRepository.save(key);
         }
     }

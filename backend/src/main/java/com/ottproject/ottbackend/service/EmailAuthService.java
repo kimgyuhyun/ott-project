@@ -38,14 +38,11 @@ public class EmailAuthService {
 		if (userService.existsByEmail(requestDto.getEmail())) { // 이미 가입된 이메일인지 확인
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."); // 중복 시 409 반환
 		}
-		User user = User.builder() // 사용자 생성
-				.email(requestDto.getEmail())
-				.password(requestDto.getPassword()) // 암호화는 UserService 에서 처리
-				.name(requestDto.getName())
-				.authProvider(AuthProvider.LOCAL)
-				.role(UserRole.USER)
-				.enabled(true)
-				.build();
+		User user = User.createLocalUser( // 사용자 생성
+				requestDto.getEmail(),
+				requestDto.getPassword(), // 암호화는 UserService 에서 처리
+				requestDto.getName()
+		);
 
 		User saveUser = userService.saveUser(user); // 저장
 		return userMapper.toUserResponseDto(saveUser); // DTO 변환

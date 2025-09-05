@@ -64,12 +64,11 @@ public class ReviewsService {
         Anime animeList = animeListRepository.findById(aniListId) // NEW 애니 조회(필수)
                 .orElseThrow(() -> new IllegalArgumentException("animeList not found: " + aniListId));
 
-        Review review = Review.builder() // 리뷰 엔티티 생성
-                .user(user) // 연관: 작성자
-                .anime(animeList) // NEW 연관: 대상 애니
-                .content(content) // 내용(선택)
-                .status(ReviewStatus.ACTIVE) // 기본 상태: ACTIVE
-                .build();
+        Review review = Review.createReview( // 리뷰 엔티티 생성
+                user, // 연관: 작성자
+                animeList, // NEW 연관: 대상 애니
+                content // 내용(선택)
+        );
 
         return reviewRepository.save(review).getId(); // 저장 후 ID 반환
     }
@@ -109,7 +108,7 @@ public class ReviewsService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
         try {
-            reviewLikeRepository.save(ReviewLike.builder().user(user).review(review).build());
+            reviewLikeRepository.save(ReviewLike.createLike(user, review));
             return true;
         } catch (DataIntegrityViolationException e) {
             // 경합으로 이미 on -> 멱등성을 위해 off 로 수렴

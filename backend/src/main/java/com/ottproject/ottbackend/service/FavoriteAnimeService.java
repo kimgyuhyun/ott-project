@@ -44,7 +44,7 @@ public class FavoriteAnimeService { // 보고싶다 도메인 서비스
         } // 미추가 상태
         User user = userRepository.findById(userId).orElseThrow(); // 사용자 존재 확인
         Anime ani = animeListRepository.findById(aniId).orElseThrow(); // 통합 Anime 조회
-        AnimeFavorite entity = AnimeFavorite.builder().user(user).anime(ani).build(); // NEW 엔티티 구성
+        AnimeFavorite entity = AnimeFavorite.createFavorite(user, ani); // NEW 엔티티 구성
         favoriteRepository.save(entity); // 저장으로 on
         return true; // 현재 상태: on
     }

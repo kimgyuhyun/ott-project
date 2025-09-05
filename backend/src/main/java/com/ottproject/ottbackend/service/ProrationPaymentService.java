@@ -74,19 +74,20 @@ public class ProrationPaymentService {
 
         // 결제 엔티티 생성
         String providerSessionId = "proration_" + UUID.randomUUID().toString();
-        Payment payment = Payment.builder()
-                .user(User.builder().id(userId).build())
-                .membershipPlan(targetPlan)
-                .provider(com.ottproject.ottbackend.enums.PaymentProvider.IMPORT)
-                .price(new com.ottproject.ottbackend.entity.Money((long) prorationAmount, "KRW"))
-                .status(PaymentStatus.PENDING)
-                .providerSessionId(providerSessionId)
-                .description("플랜 업그레이드 차액 결제")
-                .metadata("{\"type\":\"proration\",\"currentPlanCode\":\"" + 
-                    currentSubscription.getMembershipPlan().getCode() + 
-                    "\",\"targetPlanCode\":\"" + targetPlan.getCode() + 
-                    "\",\"paymentService\":\"" + (request.getPaymentService() != null ? request.getPaymentService() : "kakaopay") + "\"}")
-                .build();
+        User user = new User();
+        user.setId(userId);
+        Payment payment = Payment.createPendingPayment(
+                user,
+                targetPlan,
+                com.ottproject.ottbackend.enums.PaymentProvider.IMPORT,
+                providerSessionId,
+                new com.ottproject.ottbackend.entity.Money((long) prorationAmount, "KRW")
+        );
+        payment.setDescription("플랜 업그레이드 차액 결제");
+        payment.setMetadata("{\"type\":\"proration\",\"currentPlanCode\":\"" + 
+            currentSubscription.getMembershipPlan().getCode() + 
+            "\",\"targetPlanCode\":\"" + targetPlan.getCode() + 
+            "\",\"paymentService\":\"" + (request.getPaymentService() != null ? request.getPaymentService() : "kakaopay") + "\"}");
 
         paymentRepository.save(payment);
 

@@ -47,16 +47,16 @@ public class AdminContentService { // 서비스 시작
     }
 
     public AdminContentResponseDto create(AdminContentRequestDto dto) { // 생성
-        AdminContent entity = AdminContent.builder() // 빌더 시작
-                .type(dto.getType()) // 유형
-                .locale(dto.getLocale()) // 언어 코드
-                .position(dto.getPosition() == null ? 0 : dto.getPosition()) // 순서 기본값 0
-                .published(Boolean.TRUE.equals(dto.getPublished())) // 공개 여부
-                .title(dto.getTitle()) // 제목
-                .content(dto.getContent()) // 본문
-                .actionText(dto.getActionText()) // CTA 텍스트
-                .actionUrl(dto.getActionUrl()) // CTA URL
-                .build(); // 엔티티 완성
+        AdminContent entity = AdminContent.createAdminContent( // 빌더 시작
+                dto.getTitle(), // 제목
+                dto.getContent(), // 본문
+                dto.getType(), // 유형
+                dto.getPosition() == null ? 0 : dto.getPosition() // 순서 기본값 0
+        );
+        entity.setLocale(dto.getLocale()); // 언어 코드
+        entity.setPublished(Boolean.TRUE.equals(dto.getPublished())); // 공개 여부
+        entity.setActionText(dto.getActionText()); // CTA 텍스트
+        entity.setActionUrl(dto.getActionUrl()); // CTA URL
         return toDto(repository.save(entity)); // 저장 후 DTO 반환
     }
 

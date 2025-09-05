@@ -89,16 +89,15 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 						"Subscription renewal" // 설명
 					);
 
-					Payment payment = Payment.builder() // 결제 레코드 생성
-						.user(sub.getUser()) // 사용자 FK
-						.membershipPlan(sub.getMembershipPlan()) // 플랜 FK
-						.provider(PaymentProvider.IMPORT) // 제공자(예시)
-						.price(new com.ottproject.ottbackend.entity.Money(amount, currency)) // 금액/통화 VO
-						.status(PaymentStatus.SUCCEEDED) // 성공 상태
-						.providerPaymentId(cr.providerPaymentId) // 외부 결제 ID
-						.receiptUrl(cr.receiptUrl) // 영수증 URL
-						.paidAt(cr.paidAt) // 결제 시각
-						.build();
+					Payment payment = Payment.createSucceededPayment( // 결제 레코드 생성
+						sub.getUser(), // 사용자 FK
+						sub.getMembershipPlan(), // 플랜 FK
+						PaymentProvider.IMPORT, // 제공자(예시)
+						cr.providerPaymentId, // 외부 결제 ID
+						new com.ottproject.ottbackend.entity.Money(amount, currency), // 금액/통화 VO
+						cr.paidAt // 결제 시각
+					);
+					payment.setReceiptUrl(cr.receiptUrl); // 영수증 URL 설정
 					paymentRepository.save(payment); // 결제 저장
 
 					LocalDateTime start = sub.getEndAt() != null && sub.getEndAt().isAfter(now) ? sub.getEndAt() : now; // 연장 시작점 계산

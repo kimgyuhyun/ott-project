@@ -49,9 +49,7 @@ public class SettingsService { // 사용자 재생 설정
                 .orElseGet(() -> {
                     User user = new User();
                     user.setId(userId);
-                    return UserSettings.builder()
-                            .user(user)
-                            .build();
+                    return UserSettings.createDefaultSettings(user);
                 });
 
         // 부분 갱신 (null이 아닌 값만 업데이트)

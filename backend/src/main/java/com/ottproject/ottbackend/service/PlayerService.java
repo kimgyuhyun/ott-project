@@ -86,12 +86,12 @@ public class PlayerService {
      */
     @Transactional
     public void trackUsage(Long userId, Long episodeId, SkipType type, Integer atSec) {
-        var usage = SkipUsage.builder()
-                .user(userId != null ? userRepository.findById(userId).orElse(null) : null)
-                .episode(episodeRepository.findById(episodeId).orElseThrow())
-                .type(type)
-                .atSec(atSec)
-                .build();
+        var usage = SkipUsage.createSkipUsage(
+                userId != null ? userRepository.findById(userId).orElse(null) : null,
+                episodeRepository.findById(episodeId).orElseThrow(),
+                type
+        );
+        usage.setSkipPosition(atSec);
         skipUsageRepository.save(usage);
     }
 
@@ -174,10 +174,7 @@ public class PlayerService {
                             throw new IllegalArgumentException("에피소드를 찾을 수 없습니다: " + episodeId);
                         }
                         
-                        return EpisodeProgress.builder()
-                                .user(user.get())
-                                .episode(episode.get())
-                                .positionSec(0).durationSec(0).build();
+                        return EpisodeProgress.createProgress(user.get(), episode.get(), 0);
                     });
             
             if (entity.getId() != null) {

@@ -33,7 +33,7 @@ public class RatingService {
         Anime anime = animeRepository.findById(aniId).orElseThrow();
 
         Rating rating = ratingRepository.findByUserIdAndAnimeId(userId, aniId)
-                .orElseGet(() -> Rating.builder().user(user).anime(anime).build());
+                .orElseGet(() -> Rating.createRating(user, anime, 0.0));
         rating.setScore(score);
         ratingRepository.save(rating);
 
