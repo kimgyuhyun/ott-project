@@ -32,7 +32,6 @@ import java.time.LocalDateTime;
 @Table(name = "admin_contents")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -73,6 +72,45 @@ public class AdminContent { // 엔티티 시작
     @LastModifiedDate
     @Column(nullable = false)
     private LocalDateTime updatedAt; // 수정 시각
+
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 관리자 콘텐츠 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param title 제목
+     * @param content 내용
+     * @param contentType 콘텐츠 유형
+     * @param priority 우선순위 (1-5)
+     * @return 생성된 AdminContent 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static AdminContent createAdminContent(String title, String content, String contentType, Integer priority) {
+        // 필수 필드 검증
+        if (title == null || title.trim().isEmpty()) {
+            throw new IllegalArgumentException("제목은 필수입니다.");
+        }
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("내용은 필수입니다.");
+        }
+        if (contentType == null || contentType.trim().isEmpty()) {
+            throw new IllegalArgumentException("콘텐츠 유형은 필수입니다.");
+        }
+        if (priority == null || priority < 1 || priority > 5) {
+            throw new IllegalArgumentException("우선순위는 1-5 범위 내여야 합니다.");
+        }
+
+        // AdminContent 엔티티 생성
+        AdminContent adminContent = new AdminContent();
+        adminContent.title = title.trim();
+        adminContent.content = content.trim();
+        adminContent.type = contentType.trim();
+        adminContent.position = priority;
+        adminContent.locale = "ko"; // 기본값
+        adminContent.published = false; // 기본값은 비공개
+
+        return adminContent;
+    }
 }
 
 

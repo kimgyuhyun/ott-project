@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 @Table(name = "skip_usage")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -57,8 +56,52 @@ public class SkipUsage { // 스킵 사용 로그
 
     @CreatedDate
     @Column(nullable = false)
-    @Builder.Default
-    private java.time.LocalDateTime createdAt = java.time.LocalDateTime.now(); // 생성 시각
+    private java.time.LocalDateTime createdAt; // 생성 시각
+
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 스킵 사용 로그 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 사용자 (null 허용)
+     * @param episode 에피소드
+     * @param skipType 스킵 유형
+     * @return 생성된 SkipUsage 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static SkipUsage createSkipUsage(User user, Episode episode, SkipType skipType) {
+        // 필수 필드 검증
+        if (episode == null) {
+            throw new IllegalArgumentException("에피소드는 필수입니다.");
+        }
+        if (skipType == null) {
+            throw new IllegalArgumentException("스킵 유형은 필수입니다.");
+        }
+
+        // SkipUsage 엔티티 생성
+        SkipUsage skipUsage = new SkipUsage();
+        skipUsage.user = user; // null 허용
+        skipUsage.episode = episode;
+        skipUsage.type = skipType;
+        skipUsage.atSec = 0; // 기본값, 나중에 업데이트
+
+        return skipUsage;
+    }
+
+    // ===== 비즈니스 메서드 =====
+
+    /**
+     * 스킵 시점 설정
+     * @param positionSec 스킵 시점 (초)
+     * @throws IllegalArgumentException 시점이 유효하지 않은 경우
+     */
+    public void setSkipPosition(Integer positionSec) {
+        if (positionSec == null || positionSec < 0) {
+            throw new IllegalArgumentException("스킵 시점은 0 이상이어야 합니다.");
+        }
+
+        this.atSec = positionSec;
+    }
 }
 
 

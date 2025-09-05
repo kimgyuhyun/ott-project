@@ -31,7 +31,6 @@ import java.time.LocalDateTime;
 @Table(name = "payment_methods")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class) // 생성 수정 일시 자동 기록
@@ -68,11 +67,9 @@ public class PaymentMethod { // 엔티티 시작
     private Integer expiryYear; // 만료 연도(카드)
 
     @Column(nullable = false)
-    @Builder.Default
     private boolean isDefault = false; // 기본 수단 여부
 
     @Column(nullable = false)
-    @Builder.Default
     private int priority = 100; // 낮을수록 우선
 
     @Column(length = 100)
@@ -89,4 +86,43 @@ public class PaymentMethod { // 엔티티 시작
     @Column(nullable = false)
     private LocalDateTime updatedAt; // 수정 시각
 
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 결제수단 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 사용자
+     * @param provider 결제 제공자
+     * @param type 결제수단 타입
+     * @param providerMethodId 제공자별 결제수단 ID
+     * @return 생성된 PaymentMethod 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static PaymentMethod createPaymentMethod(User user, PaymentProvider provider, 
+                                                   PaymentMethodType type, String providerMethodId) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (provider == null) {
+            throw new IllegalArgumentException("결제 제공자는 필수입니다.");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("결제수단 타입은 필수입니다.");
+        }
+        if (providerMethodId == null || providerMethodId.trim().isEmpty()) {
+            throw new IllegalArgumentException("제공자별 결제수단 ID는 필수입니다.");
+        }
+
+        // PaymentMethod 엔티티 생성
+        PaymentMethod paymentMethod = new PaymentMethod();
+        paymentMethod.user = user;
+        paymentMethod.provider = provider;
+        paymentMethod.type = type;
+        paymentMethod.providerMethodId = providerMethodId.trim();
+        paymentMethod.isDefault = false; // 기본값
+        paymentMethod.priority = 100; // 기본값
+
+        return paymentMethod;
+    }
 }

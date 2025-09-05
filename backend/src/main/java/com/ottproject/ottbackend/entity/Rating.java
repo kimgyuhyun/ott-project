@@ -24,7 +24,6 @@ import java.time.LocalDateTime;
 @Table(name = "ratings")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -45,14 +44,73 @@ public class Rating {
     @JoinColumn(name = "ani_id") // 통합 애니 FK
     private Anime anime; // 평점이 달린 애니
 
-    
     @CreatedDate
     @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now(); // 등록 일시
+    private LocalDateTime createdAt; // 등록 일시
 
     @LastModifiedDate
     @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now(); // 수정 일시
+    private LocalDateTime updatedAt; // 수정 일시
+
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 평점 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 평점 작성자
+     * @param anime 평점 대상 애니메이션
+     * @param score 평점 (1-10)
+     * @return 생성된 Rating 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static Rating createRating(User user, Anime anime, Double score) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (anime == null) {
+            throw new IllegalArgumentException("애니메이션은 필수입니다.");
+        }
+        if (score == null) {
+            throw new IllegalArgumentException("평점은 필수입니다.");
+        }
+        if (score < 1.0 || score > 10.0) {
+            throw new IllegalArgumentException("평점은 1-10 범위 내여야 합니다.");
+        }
+
+        // Rating 엔티티 생성
+        Rating rating = new Rating();
+        rating.user = user;
+        rating.anime = anime;
+        rating.score = score;
+
+        return rating;
+    }
+
+    // ===== 비즈니스 메서드 =====
+
+    /**
+     * 평점 수정 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 사용자
+     * @param anime 애니메이션
+     * @param score 새로운 평점 (1-10)
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public void updateRating(User user, Anime anime, Double score) {
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (anime == null) {
+            throw new IllegalArgumentException("애니메이션은 필수입니다.");
+        }
+        if (score == null) {
+            throw new IllegalArgumentException("평점은 필수입니다.");
+        }
+        if (score < 1.0 || score > 10.0) {
+            throw new IllegalArgumentException("평점은 1-10 범위 내여야 합니다.");
+        }
+
+        this.score = score;
+    }
 }

@@ -25,7 +25,6 @@ import java.time.LocalDateTime;
 ) // 유니크로 동일 사용자 중복 방지
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -37,8 +36,7 @@ public class CommentLike  {
 
     @CreatedDate // 생성 시간 자동 설정
     @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now(); // 좋아요 누른 시간
+    private LocalDateTime createdAt; // 좋아요 누른 시간
 
     @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계, 지연 로딩으로 성능 최적화
     @JoinColumn(name = "user_id", nullable = false) // 외래키 설정
@@ -47,4 +45,31 @@ public class CommentLike  {
     @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계, 지연 로딩으로 성능 최적화
     @JoinColumn(name = "comment_id", nullable = false) // 외래키 설정
     private Comment comment; // 좋아요가 달린 댓글 (다대일 관계 - 여러 좋아요 레코드가 하나의 댓글을 참조)
+
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 댓글 좋아요 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 좋아요를 누른 사용자
+     * @param comment 좋아요 대상 댓글
+     * @return 생성된 CommentLike 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null인 경우
+     */
+    public static CommentLike createLike(User user, Comment comment) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (comment == null) {
+            throw new IllegalArgumentException("댓글은 필수입니다.");
+        }
+
+        // CommentLike 엔티티 생성
+        CommentLike like = new CommentLike();
+        like.user = user;
+        like.comment = comment;
+
+        return like;
+    }
 }

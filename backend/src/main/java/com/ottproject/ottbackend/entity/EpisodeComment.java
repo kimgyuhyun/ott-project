@@ -24,7 +24,6 @@ import java.util.List;
 @Table(name = "episode_comments")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -38,7 +37,7 @@ public class EpisodeComment {
     private String content; // 댓글 내용
 
     @Enumerated(EnumType.STRING) // enum 을 문자열로 저장
-    private CommentStatus status; // 댓글 상태 (활성, 삭제됨, 신고됨)
+    private CommentStatus status = CommentStatus.ACTIVE; // 댓글 상태 (활성, 삭제됨, 신고됨)
 
     @ManyToOne(fetch = FetchType.LAZY)  // 다대일 관계 ,지연 로딩
     @JoinColumn(name = "user_id") // 외래키 설정
@@ -53,8 +52,98 @@ public class EpisodeComment {
     private EpisodeComment parent; // 부모 댓글(대댓글 구조)
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true) // 일대다 관계, cascade 로 연쇄 삭제, 고아 객체 제거
-    @Builder.Default
     private List<EpisodeComment> replies = new ArrayList<>(); // 대댓글 목록
+
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 에피소드 댓글 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 댓글 작성자
+     * @param episode 댓글 대상 에피소드
+     * @param content 댓글 내용 (1-500자)
+     * @return 생성된 EpisodeComment 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static EpisodeComment createComment(User user, Episode episode, String content) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (episode == null) {
+            throw new IllegalArgumentException("에피소드는 필수입니다.");
+        }
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("댓글 내용은 필수입니다.");
+        }
+        if (content.trim().length() < 1) {
+            throw new IllegalArgumentException("댓글 내용은 1자 이상이어야 합니다.");
+        }
+        if (content.trim().length() > 500) {
+            throw new IllegalArgumentException("댓글 내용은 500자 이하여야 합니다.");
+        }
+
+        // EpisodeComment 엔티티 생성
+        EpisodeComment comment = new EpisodeComment();
+        comment.user = user;
+        comment.episode = episode;
+        comment.content = content.trim();
+        comment.status = CommentStatus.ACTIVE;
+        comment.replies = new ArrayList<>();
+
+        return comment;
+    }
+
+    /**
+     * 에피소드 대댓글 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 댓글 작성자
+     * @param episode 댓글 대상 에피소드
+     * @param parentComment 부모 댓글
+     * @param content 댓글 내용 (1-500자)
+     * @return 생성된 EpisodeComment 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static EpisodeComment createReply(User user, Episode episode, EpisodeComment parentComment, String content) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (episode == null) {
+            throw new IllegalArgumentException("에피소드는 필수입니다.");
+        }
+        if (parentComment == null) {
+            throw new IllegalArgumentException("부모 댓글은 필수입니다.");
+        }
+        if (content == null || content.trim().isEmpty()) {
+            throw new IllegalArgumentException("댓글 내용은 필수입니다.");
+        }
+        if (content.trim().length() < 1) {
+            throw new IllegalArgumentException("댓글 내용은 1자 이상이어야 합니다.");
+        }
+        if (content.trim().length() > 500) {
+            throw new IllegalArgumentException("댓글 내용은 500자 이하여야 합니다.");
+        }
+
+        // 대댓글 깊이 검증 (3단계까지만 허용)
+        if (parentComment.parent != null) {
+            throw new IllegalArgumentException("대댓글은 3단계까지만 허용됩니다.");
+        }
+
+        // EpisodeComment 엔티티 생성
+        EpisodeComment comment = new EpisodeComment();
+        comment.user = user;
+        comment.episode = episode;
+        comment.parent = parentComment;
+        comment.content = content.trim();
+        comment.status = CommentStatus.ACTIVE;
+        comment.replies = new ArrayList<>();
+
+        // 양방향 관계 설정
+        parentComment.addReply(comment);
+
+        return comment;
+    }
     
     // ===== 편의 메서드 =====
 

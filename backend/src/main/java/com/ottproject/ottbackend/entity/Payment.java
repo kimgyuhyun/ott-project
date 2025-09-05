@@ -2,7 +2,6 @@ package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
-import com.ottproject.ottbackend.entity.PaymentMethod;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
@@ -32,7 +31,6 @@ import java.time.LocalDateTime;
 @Table(name = "payments")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor // 기본 생성자
 @AllArgsConstructor // 모든 필드 생성자
 @EntityListeners(AuditingEntityListener.class) // 생성/수정 일시 자동 기록(Auditing)
@@ -58,7 +56,6 @@ public class Payment { // 엔티티 시작
     
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    @Builder.Default // 빌더 사용 시 기본값 설정
     private PaymentStatus status = PaymentStatus.PENDING; // 초기 상태 PENDING
     
     @Column(length = 255)
@@ -104,4 +101,213 @@ public class Payment { // 엔티티 시작
     @LastModifiedDate // 수정 시각 자동 기록
     @Column(nullable = false)
     private LocalDateTime updatedAt; // 수정 시각
+
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 대기 중인 결제 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 결제 사용자
+     * @param membershipPlan 결제 대상 플랜
+     * @param provider 결제 제공자
+     * @param sessionId 세션 ID
+     * @param price 결제 금액
+     * @return 생성된 Payment 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static Payment createPendingPayment(User user, MembershipPlan membershipPlan, 
+                                              PaymentProvider provider, String sessionId, Money price) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (membershipPlan == null) {
+            throw new IllegalArgumentException("멤버십 플랜은 필수입니다.");
+        }
+        if (provider == null) {
+            throw new IllegalArgumentException("결제 제공자는 필수입니다.");
+        }
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            throw new IllegalArgumentException("세션 ID는 필수입니다.");
+        }
+        if (price == null || price.getAmount() <= 0) {
+            throw new IllegalArgumentException("결제 금액은 0보다 커야 합니다.");
+        }
+
+        // Payment 엔티티 생성
+        Payment payment = new Payment();
+        payment.user = user;
+        payment.membershipPlan = membershipPlan;
+        payment.provider = provider;
+        payment.providerSessionId = sessionId.trim();
+        payment.price = price;
+        payment.status = PaymentStatus.PENDING;
+
+        return payment;
+    }
+
+    /**
+     * 성공한 결제 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 결제 사용자
+     * @param membershipPlan 결제 대상 플랜
+     * @param provider 결제 제공자
+     * @param paymentId 결제 ID
+     * @param price 결제 금액
+     * @param paidAt 결제 완료 시각
+     * @return 생성된 Payment 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static Payment createSucceededPayment(User user, MembershipPlan membershipPlan, 
+                                                PaymentProvider provider, String paymentId, 
+                                                Money price, LocalDateTime paidAt) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (membershipPlan == null) {
+            throw new IllegalArgumentException("멤버십 플랜은 필수입니다.");
+        }
+        if (provider == null) {
+            throw new IllegalArgumentException("결제 제공자는 필수입니다.");
+        }
+        if (paymentId == null || paymentId.trim().isEmpty()) {
+            throw new IllegalArgumentException("결제 ID는 필수입니다.");
+        }
+        if (price == null || price.getAmount() <= 0) {
+            throw new IllegalArgumentException("결제 금액은 0보다 커야 합니다.");
+        }
+        if (paidAt == null) {
+            throw new IllegalArgumentException("결제 완료 시각은 필수입니다.");
+        }
+
+        // Payment 엔티티 생성
+        Payment payment = new Payment();
+        payment.user = user;
+        payment.membershipPlan = membershipPlan;
+        payment.provider = provider;
+        payment.providerPaymentId = paymentId.trim();
+        payment.price = price;
+        payment.status = PaymentStatus.SUCCEEDED;
+        payment.paidAt = paidAt;
+        payment.completedAt = paidAt;
+
+        return payment;
+    }
+
+    /**
+     * 실패한 결제 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 결제 사용자
+     * @param membershipPlan 결제 대상 플랜
+     * @param provider 결제 제공자
+     * @param sessionId 세션 ID
+     * @param price 결제 금액
+     * @param failedAt 실패 시각
+     * @return 생성된 Payment 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static Payment createFailedPayment(User user, MembershipPlan membershipPlan, 
+                                             PaymentProvider provider, String sessionId, 
+                                             Money price, LocalDateTime failedAt) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (membershipPlan == null) {
+            throw new IllegalArgumentException("멤버십 플랜은 필수입니다.");
+        }
+        if (provider == null) {
+            throw new IllegalArgumentException("결제 제공자는 필수입니다.");
+        }
+        if (sessionId == null || sessionId.trim().isEmpty()) {
+            throw new IllegalArgumentException("세션 ID는 필수입니다.");
+        }
+        if (price == null || price.getAmount() <= 0) {
+            throw new IllegalArgumentException("결제 금액은 0보다 커야 합니다.");
+        }
+        if (failedAt == null) {
+            throw new IllegalArgumentException("실패 시각은 필수입니다.");
+        }
+
+        // Payment 엔티티 생성
+        Payment payment = new Payment();
+        payment.user = user;
+        payment.membershipPlan = membershipPlan;
+        payment.provider = provider;
+        payment.providerSessionId = sessionId.trim();
+        payment.price = price;
+        payment.status = PaymentStatus.FAILED;
+        payment.failedAt = failedAt;
+
+        return payment;
+    }
+
+    // ===== 비즈니스 메서드 =====
+
+    /**
+     * 결제 상태를 성공으로 변경
+     * @param paymentId 결제 ID
+     * @param paidAt 결제 완료 시각
+     * @throws IllegalStateException 현재 상태에서 변경할 수 없는 경우
+     */
+    public void markAsSucceeded(String paymentId, LocalDateTime paidAt) {
+        if (this.status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("대기 중인 결제만 성공으로 변경할 수 있습니다.");
+        }
+        if (paymentId == null || paymentId.trim().isEmpty()) {
+            throw new IllegalArgumentException("결제 ID는 필수입니다.");
+        }
+        if (paidAt == null) {
+            throw new IllegalArgumentException("결제 완료 시각은 필수입니다.");
+        }
+
+        this.status = PaymentStatus.SUCCEEDED;
+        this.providerPaymentId = paymentId.trim();
+        this.paidAt = paidAt;
+        this.completedAt = paidAt;
+    }
+
+    /**
+     * 결제 상태를 실패로 변경
+     * @param failedAt 실패 시각
+     * @throws IllegalStateException 현재 상태에서 변경할 수 없는 경우
+     */
+    public void markAsFailed(LocalDateTime failedAt) {
+        if (this.status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("대기 중인 결제만 실패로 변경할 수 있습니다.");
+        }
+        if (failedAt == null) {
+            throw new IllegalArgumentException("실패 시각은 필수입니다.");
+        }
+
+        this.status = PaymentStatus.FAILED;
+        this.failedAt = failedAt;
+    }
+
+    /**
+     * 환불 처리
+     * @param refundedAmount 환불 금액
+     * @param refundedAt 환불 시각
+     * @throws IllegalStateException 환불할 수 없는 상태인 경우
+     * @throws IllegalArgumentException 환불 금액이 유효하지 않은 경우
+     */
+    public void processRefund(Long refundedAmount, LocalDateTime refundedAt) {
+        if (this.status != PaymentStatus.SUCCEEDED) {
+            throw new IllegalStateException("성공한 결제만 환불할 수 있습니다.");
+        }
+        if (refundedAmount == null || refundedAmount <= 0) {
+            throw new IllegalArgumentException("환불 금액은 0보다 커야 합니다.");
+        }
+        if (refundedAmount > this.price.getAmount()) {
+            throw new IllegalArgumentException("환불 금액은 결제 금액을 초과할 수 없습니다.");
+        }
+        if (refundedAt == null) {
+            throw new IllegalArgumentException("환불 시각은 필수입니다.");
+        }
+
+        this.refundedAmount = refundedAmount;
+        this.refundedAt = refundedAt;
+        this.status = PaymentStatus.REFUNDED;
+    }
 }

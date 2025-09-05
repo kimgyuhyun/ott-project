@@ -25,7 +25,6 @@ import java.time.LocalDateTime;
 ) // 엔티티 레벨에서 유니크 선언(중요)
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class) // 생성일시 자동 주입
@@ -36,8 +35,7 @@ public class ReviewLike {
 
     @CreatedDate // 생성 시간 자동 설정
     @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now(); // 좋아요 누른 시간
+    private LocalDateTime createdAt; // 좋아요 누른 시간
 
     @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계, 지연 로딩
     @JoinColumn(name = "user_id", nullable = false) // 외래키 설정
@@ -46,4 +44,31 @@ public class ReviewLike {
     @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계, 지연 로딩
     @JoinColumn(name = "review_id", nullable = false) // 외래키 설정
     private Review review; // 좋아요가 달린 리뷰 (다대일 관계 - 여러 좋아요 레코드가 하나의 리뷰를 참조)
+
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 리뷰 좋아요 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 좋아요를 누른 사용자
+     * @param review 좋아요 대상 리뷰
+     * @return 생성된 ReviewLike 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null인 경우
+     */
+    public static ReviewLike createLike(User user, Review review) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (review == null) {
+            throw new IllegalArgumentException("리뷰는 필수입니다.");
+        }
+
+        // ReviewLike 엔티티 생성
+        ReviewLike like = new ReviewLike();
+        like.user = user;
+        like.review = review;
+
+        return like;
+    }
 }

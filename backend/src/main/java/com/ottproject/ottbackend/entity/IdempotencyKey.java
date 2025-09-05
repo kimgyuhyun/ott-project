@@ -20,7 +20,6 @@ import java.time.LocalDateTime;
 })
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class IdempotencyKey {
@@ -35,6 +34,38 @@ public class IdempotencyKey {
 
     @Column(nullable = false)
     private LocalDateTime createdAt; // 생성 시각
+
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 멱등성 키 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param key 키 값
+     * @param requestType 요청 유형
+     * @param response 응답 데이터
+     * @return 생성된 IdempotencyKey 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static IdempotencyKey createIdempotencyKey(String key, String requestType, String response) {
+        // 필수 필드 검증
+        if (key == null || key.trim().isEmpty()) {
+            throw new IllegalArgumentException("키는 필수입니다.");
+        }
+        if (requestType == null || requestType.trim().isEmpty()) {
+            throw new IllegalArgumentException("요청 유형은 필수입니다.");
+        }
+        if (response == null || response.trim().isEmpty()) {
+            throw new IllegalArgumentException("응답 데이터는 필수입니다.");
+        }
+
+        // IdempotencyKey 엔티티 생성
+        IdempotencyKey idempotencyKey = new IdempotencyKey();
+        idempotencyKey.keyValue = key.trim();
+        idempotencyKey.purpose = requestType.trim();
+        idempotencyKey.createdAt = LocalDateTime.now();
+
+        return idempotencyKey;
+    }
 }
 
 
