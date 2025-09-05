@@ -27,6 +27,8 @@ public interface AnimeRepository extends JpaRepository<Anime, Long> { // 통합 
     @NonNull Optional<Anime> findById(@NonNull Long id); // 파생 메서드 + @Lock로 대체(문자열 JPQL 제거)
 
     boolean existsByTitle(String title); // 저장 전 유니크 체크
+    
+    Optional<Anime> findByTitle(String title); // 제목으로 조회
 }
 
 

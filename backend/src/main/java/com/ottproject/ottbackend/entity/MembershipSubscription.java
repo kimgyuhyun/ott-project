@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 })
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class MembershipSubscription { // 멤버쉽 구독
@@ -92,6 +91,49 @@ public class MembershipSubscription { // 멤버쉽 구독
     @Enumerated(EnumType.STRING)
     @Column(name = "change_type")
     private PlanChangeType changeType; // 변경 유형 (UPGRADE/DOWNGRADE)
+
+    // ===== 정적 팩토리 메서드 =====
+
+    /**
+     * 멤버십 구독 생성 (비즈니스 로직 캡슐화)
+     * 
+     * @param user 사용자
+     * @param membershipPlan 멤버십 플랜
+     * @param startAt 시작 시각
+     * @param endAt 종료 시각
+     * @return 생성된 MembershipSubscription 엔티티
+     * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
+     */
+    public static MembershipSubscription createSubscription(User user, MembershipPlan membershipPlan, 
+                                                           LocalDateTime startAt, LocalDateTime endAt) {
+        // 필수 필드 검증
+        if (user == null) {
+            throw new IllegalArgumentException("사용자는 필수입니다.");
+        }
+        if (membershipPlan == null) {
+            throw new IllegalArgumentException("멤버십 플랜은 필수입니다.");
+        }
+        if (startAt == null) {
+            throw new IllegalArgumentException("시작 시각은 필수입니다.");
+        }
+        if (endAt != null && endAt.isBefore(startAt)) {
+            throw new IllegalArgumentException("종료 시각은 시작 시각 이후여야 합니다.");
+        }
+
+        // MembershipSubscription 엔티티 생성
+        MembershipSubscription subscription = new MembershipSubscription();
+        subscription.user = user;
+        subscription.membershipPlan = membershipPlan;
+        subscription.status = MembershipSubscriptionStatus.ACTIVE;
+        subscription.startAt = startAt;
+        subscription.endAt = endAt;
+        subscription.autoRenew = true; // 기본값
+        subscription.cancelAtPeriodEnd = false; // 기본값
+        subscription.retryCount = 0; // 기본값
+        subscription.maxRetry = 3; // 기본값
+
+        return subscription;
+    }
 }
 
 

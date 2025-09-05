@@ -27,7 +27,6 @@ import java.util.Set;
 @Table(name = "genres")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -35,7 +34,7 @@ public class Genre {
 
     @Id // 기본키 지정
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가 전략
-    private Long id; // 장르 고유 ID
+    private Long id; // 장르 고유 ID (DB에서 자동 생성)
 
     @Column(nullable = false, unique = true) // null 불허, 고유값
     private String name; // 장르명 (예: 액션, 로맨스, 판타지등
@@ -51,13 +50,11 @@ public class Genre {
 
     @CreatedDate // 생성일시 자동 설정
     @Column(nullable = false)
-    @Builder.Default // 빌더 패턴에서 기본값 설정
-    private LocalDateTime createdAt = LocalDateTime.now(); // 생성일시
+    private LocalDateTime createdAt; // 생성일시
 
     @LastModifiedDate // 수정일시 자동 업데이트
     @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now(); // 수정일시
+    private LocalDateTime updatedAt; // 수정일시
 
     // ===== 연관관계 매핑
 
@@ -67,6 +64,33 @@ public class Genre {
      * mappedBy: Anime 엔티티에서 관리하는 관계 필드명
      */
     @ManyToMany(mappedBy = "genres", fetch = FetchType.LAZY) // 다대다 관계, 지연 로딩
-    @Builder.Default
     private Set<Anime> animes = new HashSet<>(); // 해당 장르를 가진 애니 목록
+    
+    // ===== 정적 팩토리 메서드 =====
+    /**
+     * 장르 생성
+     * 
+     * @param name 장르명 (필수)
+     * @param description 장르 설명 (선택)
+     * @param color 장르 색상 (필수)
+     * @return 생성된 Genre 엔티티
+     */
+    public static Genre createGenre(String name, String description, String color) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("장르명은 필수입니다.");
+        }
+        if (color == null || color.trim().isEmpty()) {
+            throw new IllegalArgumentException("장르 색상은 필수입니다.");
+        }
+        
+        Genre genre = new Genre();
+        genre.name = name.trim();
+        genre.description = description != null ? description.trim() : "";
+        genre.color = color.trim();
+        genre.isActive = true;
+        genre.createdAt = LocalDateTime.now();
+        genre.updatedAt = LocalDateTime.now();
+        
+        return genre;
+    }
 }

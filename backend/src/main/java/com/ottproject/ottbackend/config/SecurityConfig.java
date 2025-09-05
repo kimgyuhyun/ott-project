@@ -56,11 +56,11 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost",
-                "http://localhost:3000",
-                "https://finch-noted-entirely.ngrok-free.app"
-        ));
+        configuration.setAllowedOrigins(org.springframework.util.StringUtils.commaDelimitedListToSet(
+                System.getProperty("app.cors.allowed-origins",
+                        System.getenv().getOrDefault("APP_CORS_ALLOWED_ORIGINS",
+                                "http://localhost,http://localhost:3000"))
+        ).stream().toList());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
@@ -83,7 +83,15 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정 적용
-                .csrf(csrf -> csrf.disable()) // CSRF 보호 비활성화 (개발용)
+                .csrf(csrf -> {
+                    boolean csrfEnabled = Boolean.parseBoolean(System.getProperty("app.security.csrf.enabled",
+                            System.getenv().getOrDefault("APP_SECURITY_CSRF_ENABLED", "false")));
+                    if (csrfEnabled) {
+                        // 기본 CSRF 활성화: 필요시 ignoringRequestMatchers로 예외 등록 가능
+                    } else {
+                        csrf.disable();
+                    }
+                }) // 환경 변수/시스템 프로퍼티로 전환
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll() // 모든 인증 관련 경로 허용
                         .requestMatchers("/oauth2/**").permitAll() // OAuth2 관련 경로 허용 (소셜 로그인)

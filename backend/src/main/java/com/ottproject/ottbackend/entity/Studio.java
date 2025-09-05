@@ -28,7 +28,6 @@ import java.util.Set;
 @Table(name = "studios")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
@@ -36,7 +35,7 @@ public class Studio {
 
     @Id // 기본키 설정
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가 전략
-    private Long id; // 제작사 고유 ID
+    private Long id; // 제작사 고유 ID (DB에서 자동 생성)
 
     @Column(nullable = false, unique = true) // null 불허, 고유값
     private String name; // 제작사명
@@ -64,13 +63,11 @@ public class Studio {
 
     @CreatedDate // 생성일시 자동 설정
     @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime createdAt = LocalDateTime.now(); // 생성일시
+    private LocalDateTime createdAt; // 생성일시
 
     @LastModifiedDate // 수정일시 자동 업데이트
     @Column(nullable = false)
-    @Builder.Default
-    private LocalDateTime updatedAt = LocalDateTime.now(); // 수정 일시
+    private LocalDateTime updatedAt; // 수정 일시
 
     // ===== 연관관계 매핑 =====
 
@@ -80,7 +77,42 @@ public class Studio {
      * mappedBy : Anime 엔티티에서 관리하는 관계 필드명
      */
     @ManyToMany(mappedBy = "studios", fetch = FetchType.LAZY) // 다대다 관계, 지연로딩
-    @Builder.Default
     private Set<Anime> animes = new HashSet<>(); // 해당 제작사가 제작한 애니 목록
-
+    
+    // ===== 정적 팩토리 메서드 =====
+    /**
+     * 제작사 생성
+     * 
+     * @param name 제작사명 (필수)
+     * @param nameEn 영어명 (선택)
+     * @param nameJp 일본어명 (선택)
+     * @param description 설명 (선택)
+     * @param logoUrl 로고 URL (선택)
+     * @param websiteUrl 웹사이트 URL (선택)
+     * @param country 제작국 (필수)
+     * @return 생성된 Studio 엔티티
+     */
+    public static Studio createStudio(String name, String nameEn, String nameJp, 
+                                    String description, String logoUrl, String websiteUrl, String country) {
+        if (name == null || name.trim().isEmpty()) {
+            throw new IllegalArgumentException("제작사명은 필수입니다.");
+        }
+        if (country == null || country.trim().isEmpty()) {
+            throw new IllegalArgumentException("제작국은 필수입니다.");
+        }
+        
+        Studio studio = new Studio();
+        studio.name = name.trim();
+        studio.nameEn = nameEn != null ? nameEn.trim() : null;
+        studio.nameJp = nameJp != null ? nameJp.trim() : null;
+        studio.description = description != null ? description.trim() : "";
+        studio.logoUrl = logoUrl != null ? logoUrl.trim() : null;
+        studio.websiteUrl = websiteUrl != null ? websiteUrl.trim() : null;
+        studio.country = country.trim();
+        studio.isActive = true;
+        studio.createdAt = LocalDateTime.now();
+        studio.updatedAt = LocalDateTime.now();
+        
+        return studio;
+    }
 }

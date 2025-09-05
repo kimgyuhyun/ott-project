@@ -278,12 +278,12 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             User user = existingUserByEmail.get();
             // 연동 중복 방지 체크 후 추가
             if (!socialAccountRepository.existsByUserAndProvider(user, authProvider)) {
-                SocialAccount account = SocialAccount.builder()
-                        .user(user)
-                        .provider(authProvider)
-                        .providerId(providerId)
-                        .emailVerified(true)
-                        .build();
+                SocialAccount account = SocialAccount.createSocialAccount(
+                        user,
+                        authProvider,
+                        providerId,
+                        email
+                );
                 socialAccountRepository.save(account);
             }
             // 사용자 프로필 최소 업데이트(닉네임은 사용자 지정값 우선, 덮어쓰지 않음)
@@ -296,22 +296,20 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
         }
 
         // 3) 신규 사용자 + 연동 생성
-        User newUser = User.builder()
-                .email(email)
-                .name(name)
-                .authProvider(authProvider) // 기존 필드 유지(첫 연동값 보관)
-                .providerId(providerId)     // 기존 필드 유지(첫 연동값 보관)
-                .emailVerified(true)
-                .enabled(true)
-                .role(UserRole.USER)
-                .build();
+        User newUser = User.createSocialUser(
+                email,
+                name,
+                authProvider,
+                providerId,
+                null // profileImage는 null로 설정
+        );
         User saved = userRepository.save(newUser);
-        SocialAccount firstLink = SocialAccount.builder()
-                .user(saved)
-                .provider(authProvider)
-                .providerId(providerId)
-                .emailVerified(true)
-                .build();
+        SocialAccount firstLink = SocialAccount.createSocialAccount(
+                saved,
+                authProvider,
+                providerId,
+                email
+        );
         socialAccountRepository.save(firstLink);
         
         log.info("신규 소셜 사용자 생성됨 - ID: {}, 이메일: {}", saved.getId(), saved.getEmail());

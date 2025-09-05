@@ -36,7 +36,11 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	@Value("${iamport.rest.api-secret:}")
 	private String apiSecret; // REST API Secret (application-*.yml: iamport.rest.api-secret)
 
-	private final RestTemplate rest = new RestTemplate(); // REST 클라이언트
+	private final RestTemplate rest; // REST 클라이언트 (Bean 주입)
+
+	public ImportPaymentGateway(RestTemplate rest) {
+		this.rest = rest;
+	}
 
 	@Override // 인터페이스 구현
 	public CheckoutSession createCheckoutSession(User user, MembershipPlan plan, String successUrl, String cancelUrl, String paymentService, long amount) { // 세션 생성(prepare-only)

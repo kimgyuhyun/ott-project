@@ -369,20 +369,21 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			List<PaymentMethodResponseDto> methods = paymentMethodService.list(userId);
 			if (!methods.isEmpty()) {
 				PaymentMethodResponseDto latestMethod = methods.get(0);
-				paymentMethod = PaymentMethod.builder()
-					.id(latestMethod.id)
-					.build();
+				paymentMethod = new PaymentMethod();
+				paymentMethod.setId(latestMethod.id);
 			}
 		}
 
-		Payment payment = Payment.builder() // 결제 엔티티 생성
-				.user(User.builder().id(userId).build()) // 사용자 FK
-				.membershipPlan(plan) // 플랜 FK
-				.provider(PaymentProvider.IMPORT) // IMPORT 사용
-				.paymentMethod(paymentMethod) // 결제수단 연결
-				.price(new Money(chargeAmount, plan.getPrice().getCurrency())) // Money VO 사용
-				.status(PaymentStatus.PENDING) // 초기 상태
-				.build(); // 빌드
+		User user = new User();
+		user.setId(userId);
+		Payment payment = Payment.createPendingPayment(
+				user, // 사용자 FK
+				plan, // 플랜 FK
+				PaymentProvider.IMPORT, // IMPORT 사용
+				"", // 세션 ID (나중에 설정)
+				new Money(chargeAmount, plan.getPrice().getCurrency()) // Money VO 사용
+		);
+		payment.setPaymentMethod(paymentMethod); // 결제수단 연결
 		paymentRepository.save(payment); // 저장
 
 		PaymentGateway.CheckoutSession session = paymentGateway.createCheckoutSession( // 게이트웨이 세션 생성 (prepare-only)
@@ -398,11 +399,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		paymentRepository.save(payment); // 업데이트 반영
 
 		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank()) { // 멱등키 저장
-			idempotencyKeyRepository.save(IdempotencyKey.builder() // 멱등 엔티티 생성
-					.keyValue(req.idempotencyKey) // 키
-					.purpose("payment.checkout") // 용도
-					.createdAt(LocalDateTime.now()) // 생성 시각
-					.build()); // 빌드
+			idempotencyKeyRepository.save(IdempotencyKey.createIdempotencyKey(
+					req.idempotencyKey, // 키
+					"payment.checkout", // 용도
+					"" // 응답 데이터 (빈 값)
+			)); // 멱등 엔티티 생성
 		}
 
 		PaymentCheckoutCreateSuccessResponseDto res = new PaymentCheckoutCreateSuccessResponseDto(); // 응답 DTO
@@ -538,11 +539,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		}
 
 		if (event.eventId != null && !event.eventId.isBlank()) { // 이벤트 멱등 저장
-			idempotencyKeyRepository.save(IdempotencyKey.builder() // 엔티티
-					.keyValue(event.eventId) // 키
-					.purpose("payment.webhook") // 용도
-					.createdAt(LocalDateTime.now()) // 시각
-					.build()); // 빌드
+			idempotencyKeyRepository.save(IdempotencyKey.createIdempotencyKey(
+					event.eventId, // 키
+					"payment.webhook", // 용도
+					null // 응답
+			));
 		}
 	}
 
