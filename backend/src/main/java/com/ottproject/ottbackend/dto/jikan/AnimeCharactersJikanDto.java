@@ -14,6 +14,10 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AnimeCharactersJikanDto {
     private List<CharacterItem> data;
+    
+    // ===== Getter 메서드 =====
+    public List<CharacterItem> getData() { return data; }
+    public void setData(List<CharacterItem> data) { this.data = data; }
 
     @Getter
     @Setter

@@ -79,6 +79,11 @@ public class Studio {
     @ManyToMany(mappedBy = "studios", fetch = FetchType.LAZY) // 다대다 관계, 지연로딩
     private Set<Anime> animes = new HashSet<>(); // 해당 제작사가 제작한 애니 목록
     
+    // ===== Getter 메서드 =====
+    public String getName() {
+        return name;
+    }
+    
     // ===== 정적 팩토리 메서드 =====
     /**
      * 제작사 생성

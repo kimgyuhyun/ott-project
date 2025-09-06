@@ -22,4 +22,9 @@ public interface StudioRepository extends JpaRepository<Studio, Long> {
     Optional<Studio> findByName(String name); // 스튜디오명으로 조회
     
     boolean existsByName(String name); // 스튜디오명 중복 여부
+    
+    /**
+     * 이름 목록으로 스튜디오 조회 (배치 조회)
+     */
+    java.util.Set<Studio> findByNameIn(java.util.Collection<String> names);
 }

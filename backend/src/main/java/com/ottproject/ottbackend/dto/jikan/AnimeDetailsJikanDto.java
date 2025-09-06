@@ -14,6 +14,9 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class AnimeDetailsJikanDto {
     private Data data;
+    
+    // ===== Getter 메서드 =====
+    public Data getData() { return data; }
 
     @Getter
     @Setter
@@ -39,6 +42,28 @@ public class AnimeDetailsJikanDto {
         private List<NameOnly> themes;
         private List<NameOnly> demographics;
         private List<Staff> staff; // 옵션
+        
+        // ===== Getter 메서드 =====
+        public String getTitle() { return title; }
+        public String getTitle_english() { return title_english; }
+        public String getTitle_japanese() { return title_japanese; }
+        public String getSynopsis() { return synopsis; }
+        public Integer getEpisodes() { return episodes; }
+        public String getStatus() { return status; }
+        public String getType() { return type; }
+        public String getSource() { return source; }
+        public String getDuration() { return duration; }
+        public Double getScore() { return score; }
+        public Integer getScored_by() { return scored_by; }
+        public Aired getAired() { return aired; }
+        public Broadcast getBroadcast() { return broadcast; }
+        public Images getImages() { return images; }
+        public String getRating() { return rating; }
+        public List<NameOnly> getGenres() { return genres; }
+        public List<NameOnly> getStudios() { return studios; }
+        public List<NameOnly> getThemes() { return themes; }
+        public List<NameOnly> getDemographics() { return demographics; }
+        public List<Staff> getStaff() { return staff; }
     }
 
     @Getter

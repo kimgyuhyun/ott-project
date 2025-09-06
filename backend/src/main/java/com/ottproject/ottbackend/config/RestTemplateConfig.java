@@ -22,8 +22,8 @@ public class RestTemplateConfig {
     @Bean
     public RestTemplate restTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(10000); // 연결 타임아웃 10초
-        factory.setReadTimeout(30000); // 읽기 타임아웃 30초
+        factory.setConnectTimeout(10000); // 연결 타임아웃 10초 (개발 환경)
+        factory.setReadTimeout(30000); // 읽기 타임아웃 30초 (개발 환경)
         
         return new RestTemplate(factory);
     }

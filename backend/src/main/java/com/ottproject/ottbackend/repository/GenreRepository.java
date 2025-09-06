@@ -22,4 +22,9 @@ public interface GenreRepository extends JpaRepository<Genre, Long> {
     Optional<Genre> findByName(String name); // 장르명으로 조회
     
     boolean existsByName(String name); // 장르명 중복 여부
+    
+    /**
+     * 이름 목록으로 장르 조회 (배치 조회)
+     */
+    java.util.Set<Genre> findByNameIn(java.util.Collection<String> names);
 }

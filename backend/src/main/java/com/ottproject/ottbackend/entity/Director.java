@@ -77,6 +77,11 @@ public class Director {
         anime.getDirectors().remove(this);
     }
     
+    // ===== Getter 메서드 =====
+    public Set<Anime> getAnimes() {
+        return animes;
+    }
+    
     // ===== 정적 팩토리 메서드 =====
     /**
      * 감독 생성

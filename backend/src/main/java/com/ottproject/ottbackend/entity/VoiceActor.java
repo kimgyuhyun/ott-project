@@ -91,6 +91,15 @@ public class VoiceActor {
         character.getVoiceActors().remove(this);
     }
     
+    // ===== Getter 메서드 =====
+    public Set<Anime> getAnimes() {
+        return animes;
+    }
+    
+    public Set<Character> getCharacters() {
+        return characters;
+    }
+    
     // ===== 정적 팩토리 메서드 =====
     /**
      * 성우 생성

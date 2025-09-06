@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +45,9 @@ public class SimpleJikanDataMapper {
         String title = (String) jikanData.get("title");
         String titleEn = (String) jikanData.get("title_english");
         String titleJp = (String) jikanData.get("title_japanese");
+        
+        // 타이틀 우선순위: 일본어 > 영어 > 원제
+        String displayTitle = determineDisplayTitle(titleJp, titleEn, title);
         String synopsis = (String) jikanData.get("synopsis");
         Integer episodes = convertToInteger(jikanData.get("episodes"));
         String status = (String) jikanData.get("status");
@@ -88,7 +90,7 @@ public class SimpleJikanDataMapper {
         }
         
         return Anime.createAnime(
-            title != null ? title : "제목 없음",
+            displayTitle, // 한국어 제목이 없으면 null
             titleEn,
             titleJp,
             synopsis != null ? synopsis : "",
@@ -120,6 +122,15 @@ public class SimpleJikanDataMapper {
             extractQuarter(releaseDate), // releaseQuarter
             episodes != null ? episodes : 0 // currentEpisodes
         );
+    }
+    
+    /**
+     * 한국어 제목이 없으면 null 반환 (한국어 제목만 사용)
+     */
+    private String determineDisplayTitle(String titleJp, String titleEn, String title) {
+        // 한국어 제목이 없으면 null 반환
+        // title 필드는 한국어 제목을 의미하므로 한국어 제목이 없으면 null
+        return null;
     }
     
     /**
@@ -270,10 +281,16 @@ public class SimpleJikanDataMapper {
         
         if (jikanGenres != null) {
             for (Map<String, Object> jikanGenre : jikanGenres) {
-                String name = (String) jikanGenre.get("name");
-                if (name != null) {
-                    Genre genre = Genre.createGenre(name, "", generateRandomColor());
-                    genres.add(genre);
+                if (jikanGenre != null) {
+                    String name = (String) jikanGenre.get("name");
+                    if (name != null && !name.trim().isEmpty()) {
+                        try {
+                            Genre genre = Genre.createGenre(name.trim(), "", generateConsistentColor(name));
+                            genres.add(genre);
+                        } catch (Exception e) {
+                            log.warn("장르 생성 실패: {}", name, e);
+                        }
+                    }
                 }
             }
         }
@@ -289,10 +306,16 @@ public class SimpleJikanDataMapper {
         
         if (jikanStudios != null) {
             for (Map<String, Object> jikanStudio : jikanStudios) {
-                String name = (String) jikanStudio.get("name");
-                if (name != null) {
-                    Studio studio = Studio.createStudio(name, name, name, "", "", "", "일본");
-                    studios.add(studio);
+                if (jikanStudio != null) {
+                    String name = (String) jikanStudio.get("name");
+                    if (name != null && !name.trim().isEmpty()) {
+                        try {
+                            Studio studio = Studio.createStudio(name.trim(), name.trim(), name.trim(), "", "", "", "일본");
+                            studios.add(studio);
+                        } catch (Exception e) {
+                            log.warn("스튜디오 생성 실패: {}", name, e);
+                        }
+                    }
                 }
             }
         }
@@ -311,12 +334,18 @@ public class SimpleJikanDataMapper {
             List<Map<String, Object>> staff = (List<Map<String, Object>>) jikanData.get("staff");
             if (staff != null) {
                 for (Map<String, Object> staffMember : staff) {
-                    List<String> positions = (List<String>) staffMember.get("positions");
-                    if (positions != null && positions.contains("Director")) {
-                        String name = (String) staffMember.get("name");
-                        if (name != null) {
-                            Director director = Director.createDirector(name, name, name, "", "");
-                            directors.add(director);
+                    if (staffMember != null) {
+                        List<String> positions = (List<String>) staffMember.get("positions");
+                        if (positions != null && positions.contains("Director")) {
+                            String name = (String) staffMember.get("name");
+                            if (name != null && !name.trim().isEmpty()) {
+                                try {
+                                    Director director = Director.createDirector(name.trim(), name.trim(), name.trim(), "", "");
+                                    directors.add(director);
+                                } catch (Exception e) {
+                                    log.warn("감독 생성 실패: {}", name, e);
+                                }
+                            }
                         }
                     }
                 }
@@ -339,16 +368,26 @@ public class SimpleJikanDataMapper {
             List<Map<String, Object>> characters = (List<Map<String, Object>>) charactersData.get("characters");
             if (characters != null) {
                 for (Map<String, Object> character : characters) {
-                    List<Map<String, Object>> voiceActorsList = (List<Map<String, Object>>) character.get("voice_actors");
-                    if (voiceActorsList != null) {
-                        for (Map<String, Object> voiceActor : voiceActorsList) {
-                            String language = (String) voiceActor.get("language");
-                            if ("Japanese".equals(language)) {
-                                Map<String, Object> person = (Map<String, Object>) voiceActor.get("person");
-                                String name = (String) person.get("name");
-                                if (name != null) {
-                                    VoiceActor voiceActorEntity = VoiceActor.createVoiceActor(name, name, name, "", "");
-                                    voiceActors.add(voiceActorEntity);
+                    if (character != null) {
+                        List<Map<String, Object>> voiceActorsList = (List<Map<String, Object>>) character.get("voice_actors");
+                        if (voiceActorsList != null) {
+                            for (Map<String, Object> voiceActor : voiceActorsList) {
+                                if (voiceActor != null) {
+                                    String language = (String) voiceActor.get("language");
+                                    if ("Japanese".equals(language)) {
+                                        Map<String, Object> person = (Map<String, Object>) voiceActor.get("person");
+                                        if (person != null) {
+                                            String name = (String) person.get("name");
+                                            if (name != null && !name.trim().isEmpty()) {
+                                                try {
+                                                    VoiceActor voiceActorEntity = VoiceActor.createVoiceActor(name.trim(), name.trim(), name.trim(), "", "");
+                                                    voiceActors.add(voiceActorEntity);
+                                                } catch (Exception e) {
+                                                    log.warn("성우 생성 실패: {}", name, e);
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -373,22 +412,28 @@ public class SimpleJikanDataMapper {
             List<Map<String, Object>> charactersList = (List<Map<String, Object>>) charactersData.get("characters");
             if (charactersList != null) {
                 for (Map<String, Object> characterData : charactersList) {
-                    Map<String, Object> character = (Map<String, Object>) characterData.get("character");
-                    if (character != null) {
-                        String name = (String) character.get("name");
-                        if (name != null) {
-                            Map<String, Object> images = (Map<String, Object>) character.get("images");
-                            String imageUrl = "";
-                            if (images != null) {
-                                Map<String, Object> jpg = (Map<String, Object>) images.get("jpg");
-                                if (jpg != null) {
-                                    imageUrl = (String) jpg.get("image_url");
-                                    if (imageUrl == null) imageUrl = "";
+                    if (characterData != null) {
+                        Map<String, Object> character = (Map<String, Object>) characterData.get("character");
+                        if (character != null) {
+                            String name = (String) character.get("name");
+                            if (name != null && !name.trim().isEmpty()) {
+                                try {
+                                    Map<String, Object> images = (Map<String, Object>) character.get("images");
+                                    String imageUrl = "";
+                                    if (images != null) {
+                                        Map<String, Object> jpg = (Map<String, Object>) images.get("jpg");
+                                        if (jpg != null) {
+                                            imageUrl = (String) jpg.get("image_url");
+                                            if (imageUrl == null) imageUrl = "";
+                                        }
+                                    }
+                                    
+                                    Character characterEntity = Character.createCharacter(name.trim(), name.trim(), name.trim(), imageUrl, "");
+                                    characters.add(characterEntity);
+                                } catch (Exception e) {
+                                    log.warn("캐릭터 생성 실패: {}", name, e);
                                 }
                             }
-                            
-                            Character characterEntity = Character.createCharacter(name, name, name, imageUrl, "");
-                            characters.add(characterEntity);
                         }
                     }
                 }
@@ -423,6 +468,20 @@ public class SimpleJikanDataMapper {
     }
     
     /**
+     * 일관된 색상 생성 (태그 이름 기반)
+     */
+    private String generateConsistentColor(String name) {
+        String[] colors = {
+            "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
+            "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
+            "#F8BBD9", "#A8E6CF", "#FFD3A5", "#FD6C9E", "#4ECDC4"
+        };
+        int hash = Math.abs(name.hashCode());
+        int colorIndex = hash % colors.length;
+        return colors[colorIndex];
+    }
+    
+    /**
      * 안전한 Double 변환 (String 또는 Number 모두 처리)
      */
     private Double convertToDouble(Object value) {
@@ -444,15 +503,4 @@ public class SimpleJikanDataMapper {
         return 0.0;
     }
     
-    /**
-     * 랜덤 색상 생성 (장르용)
-     */
-    private String generateRandomColor() {
-        String[] colors = {
-            "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
-            "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9"
-        };
-        int randomIndex = (int) (Math.random() * colors.length);
-        return colors[randomIndex];
-    }
 }

@@ -24,9 +24,9 @@ import java.util.Map;
  * - onAuthenticationFailure: 실패 시 JSON 응답 또는 실패 전용 URL로 리다이렉트
  * - sendErrorResponse: 실패 정보를 JSON으로 응답
  */
-@Slf4j
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class OAuth2AuthFailureHandler extends SimpleUrlAuthenticationFailureHandler {
 
     private final ObjectMapper objectMapper;

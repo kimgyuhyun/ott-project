@@ -5,7 +5,7 @@ import WeeklySchedule from "@/components/home/WeeklySchedule";
 import { getAnimeDetail } from "@/lib/api/anime";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import { useAuth } from "@/lib/AuthContext";
-import { getAnimeList, getRecommendedAnime, getPopularAnime } from "@/lib/api/anime";
+import { getAnimeList, getRecommendedAnime, getPopularAnime, listAnime } from "@/lib/api/anime";
 import { api } from "@/lib/api/index";
 import styles from "./page.module.css";
 
@@ -135,9 +135,9 @@ export default function Home() {
         
         // 병렬로 여러 API 호출
         const [animeListData, recommendedData, popularData] = await Promise.all([
-          getAnimeList(0, 20),
-          getRecommendedAnime(),
-          getPopularAnime()
+          listAnime({ status: 'ONGOING', size: 50 }), // 방영중인 애니메이션만
+          listAnime({ isNew: true, size: 6 }), // 신작 애니메이션
+          listAnime({ isPopular: true, size: 6 }) // 인기 애니메이션
         ]);
         
         setAnimeList((animeListData as any).content || []);
@@ -278,7 +278,10 @@ export default function Home() {
         <section className={styles.contentSection}>
           {/* 요일별 스케줄 */}
           <div className={styles.contentContainer}>
-            <WeeklySchedule onAnimeClick={handleAnimeClick} />
+            <WeeklySchedule 
+              onAnimeClick={handleAnimeClick} 
+              animeData={animeList}
+            />
           </div>
           
           {/* 추천 애니메이션 */}
@@ -292,7 +295,14 @@ export default function Home() {
                     className={styles.animeGridItem}
                     onClick={() => handleAnimeClick(anime)}
                   >
-                    <div className={styles.animeGridPoster}></div>
+                    <div 
+                      className={styles.animeGridPoster}
+                      style={{
+                        backgroundImage: anime.posterUrl ? `url(${anime.posterUrl})` : 'url(/placeholder-anime.jpg)',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    ></div>
                     <div className={styles.animeGridTitle}>{anime.title}</div>
                   </div>
                 ))}
@@ -311,7 +321,14 @@ export default function Home() {
                     className={styles.animeGridItem}
                     onClick={() => handleAnimeClick(anime)}
                   >
-                    <div className={styles.animeGridPoster}></div>
+                    <div 
+                      className={styles.animeGridPoster}
+                      style={{
+                        backgroundImage: anime.posterUrl ? `url(${anime.posterUrl})` : 'url(/placeholder-anime.jpg)',
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center'
+                      }}
+                    ></div>
                     <div className={styles.animeGridTitle}>{anime.title}</div>
                   </div>
                 ))}
