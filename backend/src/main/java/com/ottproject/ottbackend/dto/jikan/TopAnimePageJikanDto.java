@@ -14,12 +14,18 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class TopAnimePageJikanDto {
     private List<AnimeSummary> data;
+    
+    // ===== Getter 메서드 =====
+    public List<AnimeSummary> getData() { return data; }
 
     @Getter
     @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class AnimeSummary {
         private Long mal_id;
+        
+        // ===== Getter 메서드 =====
+        public Long getMal_id() { return mal_id; }
     }
 }
 
