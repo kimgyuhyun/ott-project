@@ -44,6 +44,11 @@ public class Tag { // 태그 마스터
     @ManyToMany(mappedBy = "tags", fetch = FetchType.LAZY)
     private java.util.Set<Anime> animes = new HashSet<>(); // 역방향 참조
     
+    // ===== Getter 메서드 =====
+    public String getName() {
+        return name;
+    }
+    
     // ===== 정적 팩토리 메서드 =====
     /**
      * 태그 생성

@@ -37,7 +37,7 @@ public class Anime {
 	@GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가 전략
 	private Long id; // 애니 고유 ID (DB에서 자동 생성)
 
-	@Column(nullable = false, unique = true) // null 불허, 고유값
+	@Column(nullable = true, unique = true) // null 허용, 고유값
 	private String title; // 애니 제목 (한글)
 
 	@Column(nullable = true) // null 허용
@@ -155,7 +155,7 @@ public class Anime {
 	private java.util.List<Episode> episodes = new java.util.ArrayList<>(); // 에피소드 목록
 
 	// ===== 장르/태그/제작사 연관 =====
-	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 장르 다대다
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE}) // 장르 다대다
 	@JoinTable(
 			name = "anime_genres", // 조인 테이블
 			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK
@@ -163,7 +163,7 @@ public class Anime {
 	)
 	private java.util.Set<Genre> genres = new java.util.HashSet<>(); // 장르 집합
 
-	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 태그 다대다
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE}) // 태그 다대다
 	@JoinTable(
 			name = "anime_tags", // 조인 테이블
 			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK (Anime에 기본키)
@@ -171,7 +171,7 @@ public class Anime {
 	)
 	private java.util.Set<Tag> tags = new java.util.HashSet<>(); // 태그 집합
 
-	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 스튜디오 다대다
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE}) // 스튜디오 다대다
 	@JoinTable(
 			name = "anime_studios", // 조인 테이블
 			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK
@@ -179,7 +179,7 @@ public class Anime {
 	)
 	private java.util.Set<Studio> studios = new java.util.HashSet<>(); // 스튜디오 집합
 
-	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 감독 다대다
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE}) // 감독 다대다
 	@JoinTable(
 			name = "anime_directors", // 조인 테이블
 			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK
@@ -187,7 +187,7 @@ public class Anime {
 	)
 	private java.util.Set<Director> directors = new java.util.HashSet<>(); // 감독 집합
 
-	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 성우 다대다
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE}) // 성우 다대다
 	@JoinTable(
 			name = "anime_voice_actors", // 조인 테이블
 			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK
@@ -195,7 +195,7 @@ public class Anime {
 	)
 	private java.util.Set<VoiceActor> voiceActors = new java.util.HashSet<>(); // 성우 집합
 
-	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE}) // 캐릭터 다대다
+	@ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE}) // 캐릭터 다대다
 	@JoinTable(
 			name = "anime_characters", // 조인 테이블
 			joinColumns = @JoinColumn(name = "anime_id", referencedColumnName = "id"), // 현재 FK
@@ -213,6 +213,63 @@ public class Anime {
 		this.episodes.remove(episode); // NEW
 		episode.setAnime(null); // NEW
 	} // NEW
+	
+	// ===== Getter/Setter 메서드 =====
+	public java.util.List<Episode> getEpisodes() {
+		return episodes;
+	}
+	
+	public void setEpisodes(java.util.List<Episode> episodes) {
+		this.episodes = episodes;
+	}
+	
+	public java.util.Set<Genre> getGenres() {
+		return genres;
+	}
+	
+	public void setGenres(java.util.Set<Genre> genres) {
+		this.genres = genres;
+	}
+	
+	public java.util.Set<Tag> getTags() {
+		return tags;
+	}
+	
+	public void setTags(java.util.Set<Tag> tags) {
+		this.tags = tags;
+	}
+	
+	public java.util.Set<Studio> getStudios() {
+		return studios;
+	}
+	
+	public void setStudios(java.util.Set<Studio> studios) {
+		this.studios = studios;
+	}
+	
+	public java.util.Set<Director> getDirectors() {
+		return directors;
+	}
+	
+	public void setDirectors(java.util.Set<Director> directors) {
+		this.directors = directors;
+	}
+	
+	public java.util.Set<VoiceActor> getVoiceActors() {
+		return voiceActors;
+	}
+	
+	public void setVoiceActors(java.util.Set<VoiceActor> voiceActors) {
+		this.voiceActors = voiceActors;
+	}
+	
+	public java.util.Set<Character> getCharacters() {
+		return characters;
+	}
+	
+	public void setCharacters(java.util.Set<Character> characters) {
+		this.characters = characters;
+	}
 
 	public void addDirector(Director director) {
 		this.directors.add(director);
@@ -293,10 +350,8 @@ public class Anime {
 			String type, Integer duration, String source, String country, String language,
 			String releaseQuarter, Integer currentEpisodes) {
 		
-		// 필수 필드 검증
-		if (title == null || title.trim().isEmpty()) {
-			throw new IllegalArgumentException("애니메이션 제목은 필수입니다.");
-		}
+		// 필수 필드 검증 (title은 이제 선택사항)
+		// title이 null이거나 빈 문자열이면 null로 처리
 		if (status == null) {
 			throw new IllegalArgumentException("방영 상태는 필수입니다.");
 		}
@@ -312,7 +367,7 @@ public class Anime {
 		Anime anime = new Anime();
 		
 		// 기본 정보 설정
-		anime.title = title.trim();
+		anime.title = (title != null && !title.trim().isEmpty()) ? title.trim() : null;
 		anime.titleEn = titleEn != null ? titleEn.trim() : null;
 		anime.titleJp = titleJp != null ? titleJp.trim() : null;
 		anime.synopsis = synopsis != null ? synopsis.trim() : "";

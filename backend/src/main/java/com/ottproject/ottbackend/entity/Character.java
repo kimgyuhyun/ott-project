@@ -67,7 +67,7 @@ public class Character {
     private Set<Anime> animes = new HashSet<>(); // 캐릭터가 나온 애니메이션 목록
 
     // ===== 성우 연관 =====
-    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE})
     @JoinTable(
         name = "character_voice_actors", // 조인 테이블
         joinColumns = @JoinColumn(name = "character_id", referencedColumnName = "id"), // 현재 FK
@@ -94,6 +94,15 @@ public class Character {
     public void removeVoiceActor(VoiceActor voiceActor) {
         this.voiceActors.remove(voiceActor);
         voiceActor.getCharacters().remove(this);
+    }
+    
+    // ===== Getter 메서드 =====
+    public Set<Anime> getAnimes() {
+        return animes;
+    }
+    
+    public Set<VoiceActor> getVoiceActors() {
+        return voiceActors;
     }
     
     // ===== 정적 팩토리 메서드 =====
