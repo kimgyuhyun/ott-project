@@ -5,9 +5,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * 성우 Repository
+ * 
+ * 큰 흐름
+ * - 성우 엔티티의 기본 CRUD를 제공하는 JPA 리포지토리
+ * 
+ * 메서드 개요
+ * - findByName: 성우명으로 조회
+ * - existsByName: 성우명 중복 여부
+ * - findByNameIn: 이름 목록으로 배치 조회 (성능 최적화)
  */
 @Repository
 public interface VoiceActorRepository extends JpaRepository<VoiceActor, Long> {
@@ -18,12 +27,12 @@ public interface VoiceActorRepository extends JpaRepository<VoiceActor, Long> {
     Optional<VoiceActor> findByName(String name);
     
     /**
-     * 영어 이름으로 성우 조회
+     * 성우명 중복 여부
      */
-    Optional<VoiceActor> findByNameEn(String nameEn);
+    boolean existsByName(String name);
     
     /**
-     * 일본어 이름으로 성우 조회
+     * 이름 목록으로 성우 배치 조회 (N+1 쿼리 방지)
      */
-    Optional<VoiceActor> findByNameJp(String nameJp);
+    Set<VoiceActor> findByNameIn(Set<String> names);
 }

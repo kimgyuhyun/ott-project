@@ -8,6 +8,13 @@ import java.util.Optional;
 
 /**
  * 감독 Repository
+ * 
+ * 큰 흐름
+ * - 감독 엔티티의 기본 CRUD를 제공하는 JPA 리포지토리
+ * 
+ * 메서드 개요
+ * - findByName: 감독명으로 조회
+ * - existsByName: 감독명 중복 여부
  */
 @Repository
 public interface DirectorRepository extends JpaRepository<Director, Long> {
@@ -18,12 +25,12 @@ public interface DirectorRepository extends JpaRepository<Director, Long> {
     Optional<Director> findByName(String name);
     
     /**
-     * 영어 이름으로 감독 조회
+     * 감독명 중복 여부
      */
-    Optional<Director> findByNameEn(String nameEn);
+    boolean existsByName(String name);
     
     /**
-     * 일본어 이름으로 감독 조회
+     * 이름 목록으로 감독 조회 (배치 조회)
      */
-    Optional<Director> findByNameJp(String nameJp);
+    java.util.Set<Director> findByNameIn(java.util.Collection<String> names);
 }
