@@ -26,8 +26,8 @@ public class AnimeDataInitializer implements CommandLineRunner {
         log.info("🚀 애니메이션 데이터 자동 초기화 시작");
         
         try {
-            // 초기 수집 개수: 시스템 프로퍼티/환경변수 기반, 기본 30
-            int limit = 30;
+            // 초기 수집 개수: 시스템 프로퍼티/환경변수 기반, 기본 500
+            int limit = 500;
             try {
                 String prop = System.getProperty("anime.init.limit");
                 if (prop == null || prop.isBlank()) {
