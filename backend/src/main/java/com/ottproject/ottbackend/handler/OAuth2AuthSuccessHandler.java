@@ -24,9 +24,9 @@ import java.util.Map;
  * - onAuthenticationSuccess: 성공 시 신규 사용자 여부 확인 및 리다이렉트
  * - sendSuccessResponse: 성공 정보를 JSON으로 응답
  */
-@Slf4j
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final ObjectMapper objectMapper;
