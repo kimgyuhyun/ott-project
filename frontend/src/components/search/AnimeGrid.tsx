@@ -157,7 +157,9 @@ export default function AnimeGrid({
           
           console.log('[DEBUG] 최종 safeItems:', safeItems);
           
-          return safeItems.map((anime: any, index: number) => {
+          return safeItems
+            .filter((anime: any) => anime.title) // title이 있는 애니메이션만 필터링
+            .map((anime: any, index: number) => {
             const itemId = anime.aniId ?? anime.id ?? index;
             const key = `${itemId}-${anime.title}`;
             

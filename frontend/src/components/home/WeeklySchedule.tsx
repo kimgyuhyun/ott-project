@@ -34,7 +34,7 @@ export default function WeeklySchedule({ onAnimeClick, animeData = [] }: WeeklyS
   // animeData를 요일별로 분류 (broadcastDay 필드 기준)
   animeData.forEach((anime: any) => {
     const broadcastDay = anime.broadcastDay;
-    if (broadcastDay) {
+    if (broadcastDay && (anime.title || anime.titleEn || anime.titleJp)) { // 제목이 하나라도 있는 경우만 처리
       const dayIndex = days.indexOf(broadcastDay);
       if (dayIndex !== -1) {
         scheduleData[dayIndex].push({
