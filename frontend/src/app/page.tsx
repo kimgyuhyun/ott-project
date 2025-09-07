@@ -133,6 +133,8 @@ export default function Home() {
         setIsLoading(true);
         setError(null);
         
+        console.log('🚀 애니메이션 데이터 로드 시작...');
+        
         // 병렬로 여러 API 호출
         const [animeListData, recommendedData, popularData] = await Promise.all([
           listAnime({ status: 'ONGOING', size: 50 }), // 방영중인 애니메이션만
@@ -140,9 +142,45 @@ export default function Home() {
           listAnime({ isPopular: true, size: 6 }) // 인기 애니메이션
         ]);
         
-        setAnimeList((animeListData as any).content || []);
-        setRecommendedAnime((recommendedData as any) || []);
-        setPopularAnime((popularData as any) || []);
+        console.log('📊 API 응답 데이터:', { animeListData, recommendedData, popularData });
+        console.log('📊 API 응답 상세:', {
+          animeListDataKeys: Object.keys(animeListData || {}),
+          recommendedDataKeys: Object.keys(recommendedData || {}),
+          popularDataKeys: Object.keys(popularData || {})
+        });
+        
+        const ongoingAnime = (animeListData as any).items || (animeListData as any).content || [];
+        const newAnime = (recommendedData as any).items || (recommendedData as any).content || [];
+        const popularAnime = (popularData as any).items || (popularData as any).content || [];
+        
+        console.log('🔍 애니메이션 데이터 로드 결과:');
+        console.log('방영중인 애니메이션:', ongoingAnime.length, ongoingAnime.slice(0, 3));
+        console.log('신작 애니메이션:', newAnime.length, newAnime.slice(0, 3));
+        console.log('인기 애니메이션:', popularAnime.length, popularAnime.slice(0, 3));
+        
+        // 필터링 전후 비교
+        console.log('🔍 필터링 전후 비교:');
+        console.log('방영중인 애니메이션 필터링 전:', ongoingAnime.length);
+        console.log('방영중인 애니메이션 필터링 후:', ongoingAnime.filter((anime: any) => (anime.title && anime.title.trim()) || (anime.titleEn && anime.titleEn.trim())).length);
+        console.log('첫 번째 애니메이션 필드들:', ongoingAnime[0] ? Object.keys(ongoingAnime[0]) : '없음');
+        console.log('첫 번째 애니메이션 title/titleEn:', ongoingAnime[0] ? { title: ongoingAnime[0].title, titleEn: ongoingAnime[0].titleEn } : '없음');
+        
+        // title, titleEn, titleJp 중 하나라도 있는 애니메이션만 필터링
+        setAnimeList(ongoingAnime.filter((anime: any) => 
+          (anime.title && anime.title.trim()) || 
+          (anime.titleEn && anime.titleEn.trim()) || 
+          (anime.titleJp && anime.titleJp.trim())
+        ));
+        setRecommendedAnime(newAnime.filter((anime: any) => 
+          (anime.title && anime.title.trim()) || 
+          (anime.titleEn && anime.titleEn.trim()) || 
+          (anime.titleJp && anime.titleJp.trim())
+        ));
+        setPopularAnime(popularAnime.filter((anime: any) => 
+          (anime.title && anime.title.trim()) || 
+          (anime.titleEn && anime.titleEn.trim()) || 
+          (anime.titleJp && anime.titleJp.trim())
+        ));
       } catch (err: any) {
         console.error('애니메이션 데이터 로드 실패:', err);
         
@@ -295,15 +333,14 @@ export default function Home() {
                     className={styles.animeGridItem}
                     onClick={() => handleAnimeClick(anime)}
                   >
-                    <div 
+                    <img 
                       className={styles.animeGridPoster}
-                      style={{
-                        backgroundImage: anime.posterUrl ? `url(${anime.posterUrl})` : 'url(/placeholder-anime.jpg)',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center'
-                      }}
-                    ></div>
-                    <div className={styles.animeGridTitle}>{anime.title}</div>
+                      src={anime.posterUrl || '/placeholder-anime.jpg'}
+                      alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
+                    />
+                    <div className={styles.animeGridTitle}>
+                      {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -321,15 +358,14 @@ export default function Home() {
                     className={styles.animeGridItem}
                     onClick={() => handleAnimeClick(anime)}
                   >
-                    <div 
+                    <img 
                       className={styles.animeGridPoster}
-                      style={{
-                        backgroundImage: anime.posterUrl ? `url(${anime.posterUrl})` : 'url(/placeholder-anime.jpg)',
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center'
-                      }}
-                    ></div>
-                    <div className={styles.animeGridTitle}>{anime.title}</div>
+                      src={anime.posterUrl || '/placeholder-anime.jpg'}
+                      alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
+                    />
+                    <div className={styles.animeGridTitle}>
+                      {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -94,7 +94,7 @@
 /* 애니메 그리드 */
 .animeGrid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
 }
 
@@ -102,6 +102,9 @@
 .animeGridItem {
   cursor: pointer;
   transition: transform 0.2s;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .animeGridItem:hover {
@@ -111,10 +114,12 @@
 /* 애니메 그리드 포스터 */
 .animeGridPoster {
   width: 100%;
-  aspect-ratio: 3/4;
+  height: 280px;
   background-color: #323232;
   border-radius: 0.5rem;
   margin-bottom: 0.5rem;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 /* 애니메 그리드 제목 */
@@ -124,6 +129,9 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
 }
 
 /* 메인 배너 스타일 */
