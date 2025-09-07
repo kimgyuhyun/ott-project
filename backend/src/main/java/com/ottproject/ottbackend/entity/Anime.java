@@ -38,6 +38,9 @@ public class Anime {
 	private Long id; // 애니 고유 ID (DB에서 자동 생성)
 
 	@Column(nullable = true, unique = true) // null 허용, 고유값
+	private Long malId; // MyAnimeList ID (Jikan API 식별자)
+
+	@Column(nullable = true, unique = true) // null 허용, 고유값
 	private String title; // 애니 제목 (한글)
 
 	@Column(nullable = true) // null 허용
@@ -54,6 +57,9 @@ public class Anime {
 
 	@Column(nullable = true) // null 허용 (포스터가 없는 경우)
 	private String posterUrl; // 포스터 이미지 URL
+
+	@Column(nullable = true) // null 허용 (배경이미지가 없는 경우)
+	private String backdropUrl; // 배경 이미지 URL (TMDB에서 제공)
 
 	@Column(nullable = true) // null 허용 (방영 예정작은 에피소드 수를 모름)
 	private Integer totalEpisodes; // 총 에피소드 수
@@ -339,7 +345,7 @@ public class Anime {
 	 * @return 생성된 Anime 엔티티
 	 */
 	public static Anime createAnime(
-			String title, String titleEn, String titleJp,
+			Long malId, String title, String titleEn, String titleJp,
 			String synopsis, String fullSynopsis, String posterUrl, Integer totalEpisodes,
 			com.ottproject.ottbackend.enums.AnimeStatus status,
 			java.time.LocalDate releaseDate, java.time.LocalDate endDate,
@@ -367,6 +373,7 @@ public class Anime {
 		Anime anime = new Anime();
 		
 		// 기본 정보 설정
+		anime.malId = malId;
 		anime.title = (title != null && !title.trim().isEmpty()) ? title.trim() : null;
 		anime.titleEn = titleEn != null ? titleEn.trim() : null;
 		anime.titleJp = titleJp != null ? titleJp.trim() : null;
