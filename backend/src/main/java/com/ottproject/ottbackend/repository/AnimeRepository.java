@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Repository;
 import org.springframework.lang.NonNull;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -29,6 +30,8 @@ public interface AnimeRepository extends JpaRepository<Anime, Long> { // 통합 
     boolean existsByTitle(String title); // 저장 전 유니크 체크
     
     Optional<Anime> findByTitle(String title); // 제목으로 조회
+    
+    List<Anime> findByTitleIsNull(); // 한국어 제목이 없는 애니메이션 조회
 }
 
 
