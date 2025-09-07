@@ -298,6 +298,60 @@ public class SimpleJikanApiService {
     }
     
     /**
+     * 애니메이션 제목으로 검색 (상세 정보 조회)
+     * @deprecated malId로 직접 조회하는 방식으로 변경됨
+     */
+    @Deprecated
+    public AnimeDetailsJikanDto.Data searchAnimeByTitle(String title) {
+        // Circuit Breaker 체크
+        if (isCircuitOpen()) {
+            log.warn("🚫 Circuit Breaker 열림: 제목 검색 API 호출 차단됨 (제목: {})", title);
+            return null;
+        }
+        
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries) {
+            try {
+                String url = baseUrl + "/anime?q=" + java.net.URLEncoder.encode(title, "UTF-8") + "&limit=1";
+                log.info("Jikan API 제목 검색: {} (시도: {}/{})", title, retryCount + 1, maxRetries);
+                
+                ResponseEntity<AnimeDetailsJikanDto> response = restTemplate.getForEntity(url, AnimeDetailsJikanDto.class);
+                
+                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                    AnimeDetailsJikanDto dto = response.getBody();
+                    AnimeDetailsJikanDto.Data data = (dto == null ? null : dto.getData());
+                    if (data != null) {
+                        log.info("애니메이션 제목 검색 성공: {}", title);
+                        recordSuccess();
+                        return data;
+                    }
+                } else if (response.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
+                    log.warn("Rate limit 도달: 제목 {} (시도: {}/{})", title, retryCount + 1, maxRetries);
+                    handleRateLimitRetry();
+                    retryCount++;
+                    continue;
+                }
+                
+                log.warn("애니메이션 제목 검색 실패: {} (상태: {})", title, response.getStatusCode());
+                return null;
+                
+            } catch (Exception e) {
+                log.error("애니메이션 제목 검색 중 오류 발생: {} (시도: {}/{})", title, retryCount + 1, maxRetries, e);
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    handleRateLimitRetry();
+                }
+            }
+        }
+        
+        log.error("애니메이션 제목 검색 최종 실패: {}", title);
+        recordFailure();
+        return null;
+    }
+    
+    /**
      * 실패 기록 (스레드 안전) - 락 경합 최소화
      */
     private void recordFailure() {

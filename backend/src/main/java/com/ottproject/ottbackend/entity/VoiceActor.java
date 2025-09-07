@@ -36,7 +36,7 @@ public class VoiceActor {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // 성우 고유 ID (DB에서 자동 생성)
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name; // 성우 이름 (한글)
 
     @Column(nullable = true)

@@ -24,6 +24,8 @@ public class AnimeListDto {
 
 	private Long aniId; // 애니 ID (목록용 기본 식별자)
 	private String title; // 제목(한글)
+	private String titleEn; // 제목(영어)
+	private String titleJp; // 제목(일본어)
 	private String posterUrl; // 포스터 이미지 URL
 
 	private Double rating; // 평점 (0.5 ~ 5.0)

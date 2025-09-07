@@ -1,31 +1,24 @@
 package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.entity.Anime;
-import com.ottproject.ottbackend.entity.Genre;
-import com.ottproject.ottbackend.entity.Studio;
-import com.ottproject.ottbackend.entity.Tag;
-import com.ottproject.ottbackend.entity.Director;
 import com.ottproject.ottbackend.entity.VoiceActor;
 import com.ottproject.ottbackend.entity.Character;
 import com.ottproject.ottbackend.exception.AdultContentException;
 import com.ottproject.ottbackend.repository.AnimeRepository;
-import com.ottproject.ottbackend.repository.GenreRepository;
-import com.ottproject.ottbackend.repository.StudioRepository;
-import com.ottproject.ottbackend.repository.TagRepository;
-import com.ottproject.ottbackend.repository.DirectorRepository;
 import com.ottproject.ottbackend.repository.VoiceActorRepository;
 import com.ottproject.ottbackend.repository.CharacterRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Isolation;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
+import com.ottproject.ottbackend.dto.jikan.AnimeCharactersJikanDto;
 
 /**
  * 안전한 애니메이션 데이터 수집 서비스
@@ -45,18 +38,10 @@ public class SimpleAnimeDataCollectorService {
     private final SimpleJikanApiService jikanApiService;
     private final SimpleJikanDataMapper dataMapper;
     private final AnimeRepository animeRepository;
-    private final GenreRepository genreRepository;
-    private final StudioRepository studioRepository;
-    private final TagRepository tagRepository;
-    private final DirectorRepository directorRepository;
     private final VoiceActorRepository voiceActorRepository;
     private final CharacterRepository characterRepository;
+    private final AnimeBatchProcessor animeBatchProcessor;
     
-    // 캐시를 위한 Map (메모리 효율성) - 스레드 로컬로 변경
-    private final ThreadLocal<Map<String, Genre>> genreCache = ThreadLocal.withInitial(ConcurrentHashMap::new);
-    private final ThreadLocal<Map<String, Studio>> studioCache = ThreadLocal.withInitial(ConcurrentHashMap::new);
-    private final ThreadLocal<Map<String, Tag>> tagCache = ThreadLocal.withInitial(ConcurrentHashMap::new);
-    private final ThreadLocal<Map<String, Director>> directorCache = ThreadLocal.withInitial(ConcurrentHashMap::new);
     
     /**
      * 단일 애니메이션 수집 - 안전한 트랜잭션 처리
@@ -135,9 +120,9 @@ public class SimpleAnimeDataCollectorService {
                 return false; // finally 블록에서 ThreadLocal 정리됨
             }
             
-            // 7. 연관 엔티티 처리 (저장된 애니메이션 ID로 처리) - 실패 시 전체 롤백
+            // 7. 연관 엔티티 처리 (이미 가져온 jikanData 사용) - 실패 시 전체 롤백
             try {
-                processAssociatedEntities(anime, jikanData, malId);
+                animeBatchProcessor.processAnimeAssociationsWithData(anime.getId(), jikanData);
             } catch (Exception e) {
                 log.error("❌ 연관 엔티티 처리 실패: MAL ID {} (소요시간: {}ms) - {}", malId, System.currentTimeMillis() - startTime, e.getMessage(), e);
                 // ThreadLocal 정리를 위해 finally 블록에서 처리되도록 RuntimeException 전파
@@ -147,6 +132,7 @@ public class SimpleAnimeDataCollectorService {
             
             long duration = System.currentTimeMillis() - startTime;
             log.info("🎉 애니메이션 수집 완료: {} (MAL ID: {}, 소요시간: {}ms)", anime.getTitle(), malId, duration);
+            
             
             return true;
             
@@ -166,328 +152,10 @@ public class SimpleAnimeDataCollectorService {
             // 예상치 못한 오류는 롤백되어야 하므로 RuntimeException으로 전파
             // finally 블록은 RuntimeException 전파 전에 실행되므로 ThreadLocal 정리 보장됨
             throw new RuntimeException("애니메이션 수집 중 예상치 못한 오류 발생", e);
-        } finally {
-            // ThreadLocal 정리로 메모리 누수 방지 (모든 경우에 실행)
-            // RuntimeException 전파 시에도 이 블록이 실행됨
-            clearThreadLocalCaches();
         }
     }
     
-    /**
-     * 연관 엔티티들을 배치로 처리
-     */
-    private void processAssociatedEntities(Anime anime, Map<String, Object> jikanData, Long malId) {
-        // 1. 감독 처리 (안전한 처리)
-        try {
-            processDirectors(anime, jikanData);
-        } catch (Exception e) {
-            log.warn("감독 처리 실패: MAL ID {} - 기본 데이터만 저장", malId, e);
-        }
-        
-        // 2. 성우/캐릭터 처리 (안전한 처리)
-        try {
-            processVoiceActorsAndCharacters(anime, malId);
-        } catch (Exception e) {
-            log.warn("성우/캐릭터 처리 실패: MAL ID {} - 기본 데이터만 저장", malId, e);
-        }
-        
-        // 3. 장르 처리 (안전한 처리)
-        try {
-            processGenres(anime, jikanData);
-        } catch (Exception e) {
-            log.warn("장르 처리 실패: MAL ID {} - 기본 데이터만 저장", malId, e);
-        }
-        
-        // 4. 스튜디오 처리 (안전한 처리)
-        try {
-            processStudios(anime, jikanData);
-        } catch (Exception e) {
-            log.warn("스튜디오 처리 실패: MAL ID {} - 기본 데이터만 저장", malId, e);
-        }
-        
-        // 5. 태그 처리 (안전한 처리)
-        try {
-            processTags(anime, jikanData);
-        } catch (Exception e) {
-            log.warn("태그 처리 실패: MAL ID {} - 기본 데이터만 저장", malId, e);
-        }
-    }
     
-    /**
-     * 감독 처리 - 배치 최적화로 N+1 쿼리 방지
-     */
-    private void processDirectors(Anime anime, Map<String, Object> jikanData) {
-        Set<Director> directors = dataMapper.mapToDirectors(jikanData);
-        if (directors == null || directors.isEmpty()) {
-            anime.setDirectors(new java.util.HashSet<>());
-            return;
-        }
-        
-        // 모든 감독 이름 수집
-        Set<String> directorNames = directors.stream()
-            .map(Director::getName)
-            .filter(name -> name != null && !name.trim().isEmpty())
-            .collect(Collectors.toSet());
-        
-        if (directorNames.isEmpty()) {
-            anime.setDirectors(new java.util.HashSet<>());
-            return;
-        }
-        
-        // 배치로 기존 감독 조회 (N+1 쿼리 방지)
-        Set<Director> existingDirectors = directorRepository.findByNameIn(directorNames);
-        Map<String, Director> existingDirectorMap = existingDirectors.stream()
-            .collect(Collectors.toMap(Director::getName, director -> director));
-        
-        // 기존 감독과 새 감독 분리
-        Set<Director> managedDirectors = new java.util.HashSet<>(existingDirectors);
-        Set<String> newDirectorNames = directorNames.stream()
-            .filter(name -> !existingDirectorMap.containsKey(name))
-            .collect(Collectors.toSet());
-        
-        // 새 감독만 배치 생성
-        if (!newDirectorNames.isEmpty()) {
-            Set<Director> newDirectors = newDirectorNames.stream()
-                .map(name -> Director.createDirector(name, "", "", "", ""))
-                .collect(Collectors.toSet());
-            
-            // 배치 저장
-            Set<Director> savedDirectors = new java.util.HashSet<>(directorRepository.saveAll(newDirectors));
-            managedDirectors.addAll(savedDirectors);
-        }
-        
-        anime.setDirectors(managedDirectors);
-        log.info("🎬 감독 처리 완료: {}명 (기존: {}, 신규: {})", 
-            managedDirectors.size(), existingDirectors.size(), newDirectorNames.size());
-    }
-    
-    /**
-     * 성우/캐릭터 처리 - 배치 최적화로 N+1 쿼리 방지 (실패해도 전체 프로세스 중단하지 않음)
-     */
-    private void processVoiceActorsAndCharacters(Anime anime, Long malId) {
-        try {
-            var charactersDto = jikanApiService.getAnimeCharacters(malId);
-            if (charactersDto == null || charactersDto.getData() == null) {
-                log.warn("캐릭터 정보 없음: MAL ID {} - 기본 데이터만 저장", malId);
-                return;
-            }
-            
-            // 안전한 Map 변환 (NullPointerException 방지)
-            Map<String, Object> charactersData;
-            try {
-                charactersData = convertCharactersToMap(charactersDto);
-            } catch (Exception e) {
-                log.warn("캐릭터 데이터 변환 실패: MAL ID {} - 기본 데이터만 저장", malId, e);
-                return;
-            }
-            
-            // 성우 처리 - 배치 최적화
-            Set<VoiceActor> voiceActors;
-            try {
-                voiceActors = dataMapper.mapToVoiceActors(charactersData);
-                if (voiceActors == null) voiceActors = new java.util.HashSet<>();
-            } catch (Exception e) {
-                log.warn("성우 매핑 실패: MAL ID {} - 기본 데이터만 저장", malId, e);
-                voiceActors = new java.util.HashSet<>();
-            }
-            
-            Set<VoiceActor> managedVoiceActors = processVoiceActorsBatch(voiceActors);
-            anime.setVoiceActors(managedVoiceActors);
-            
-            // 캐릭터 처리 - 배치 최적화
-            Set<Character> characters;
-            try {
-                characters = dataMapper.mapToCharacters(charactersData);
-                if (characters == null) characters = new java.util.HashSet<>();
-            } catch (Exception e) {
-                log.warn("캐릭터 매핑 실패: MAL ID {} - 기본 데이터만 저장", malId, e);
-                characters = new java.util.HashSet<>();
-            }
-            
-            Set<Character> managedCharacters = processCharactersBatch(characters);
-            anime.setCharacters(managedCharacters);
-            
-            log.info("🎤 성우/캐릭터 처리 완료: 성우 {}명, 캐릭터 {}명", 
-                managedVoiceActors.size(), managedCharacters.size());
-                
-        } catch (Exception e) {
-            log.warn("성우/캐릭터 처리 실패: MAL ID {} - 기본 데이터만 저장", malId, e);
-            // 성우/캐릭터 실패는 전체 실패로 이어지지 않도록 처리
-        }
-    }
-    
-    /**
-     * 장르 처리 - 배치 최적화로 N+1 쿼리 방지
-     */
-    private void processGenres(Anime anime, Map<String, Object> jikanData) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> genresList = (List<Map<String, Object>>) jikanData.get("genres");
-        if (genresList == null || genresList.isEmpty()) {
-            anime.setGenres(new java.util.HashSet<>());
-            return;
-        }
-        
-        // 모든 장르 이름 수집
-        Set<String> genreNames = genresList.stream()
-            .map(genreMap -> (String) genreMap.get("name"))
-            .filter(name -> name != null && !name.trim().isEmpty())
-            .collect(Collectors.toSet());
-        
-        if (genreNames.isEmpty()) {
-            anime.setGenres(new java.util.HashSet<>());
-            return;
-        }
-        
-        // 배치로 기존 장르 조회 (N+1 쿼리 방지)
-        Set<Genre> existingGenres = genreRepository.findByNameIn(genreNames);
-        Map<String, Genre> existingGenreMap = existingGenres.stream()
-            .collect(Collectors.toMap(Genre::getName, genre -> genre));
-        
-        // 기존 장르와 새 장르 분리
-        Set<Genre> genres = new java.util.HashSet<>(existingGenres);
-        Set<String> newGenreNames = genreNames.stream()
-            .filter(name -> !existingGenreMap.containsKey(name))
-            .collect(Collectors.toSet());
-        
-        // 새 장르만 배치 생성
-        if (!newGenreNames.isEmpty()) {
-            Set<Genre> newGenres = newGenreNames.stream()
-                .map(name -> Genre.createGenre(name, "", generateConsistentColor(name)))
-                .collect(Collectors.toSet());
-            
-            // 배치 저장
-            Set<Genre> savedGenres = new java.util.HashSet<>(genreRepository.saveAll(newGenres));
-            genres.addAll(savedGenres);
-        }
-        
-        anime.setGenres(genres);
-        log.info("🎭 장르 처리 완료: {}개 (기존: {}, 신규: {})", 
-            genres.size(), existingGenres.size(), newGenreNames.size());
-    }
-    
-    /**
-     * 스튜디오 처리 - 배치 최적화로 N+1 쿼리 방지
-     */
-    private void processStudios(Anime anime, Map<String, Object> jikanData) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> studiosList = (List<Map<String, Object>>) jikanData.get("studios");
-        if (studiosList == null || studiosList.isEmpty()) {
-            anime.setStudios(new java.util.HashSet<>());
-            return;
-        }
-        
-        // 모든 스튜디오 이름 수집
-        Set<String> studioNames = studiosList.stream()
-            .map(studioMap -> (String) studioMap.get("name"))
-            .filter(name -> name != null && !name.trim().isEmpty())
-            .collect(Collectors.toSet());
-        
-        if (studioNames.isEmpty()) {
-            anime.setStudios(new java.util.HashSet<>());
-            return;
-        }
-        
-        // 배치로 기존 스튜디오 조회 (N+1 쿼리 방지)
-        Set<Studio> existingStudios = studioRepository.findByNameIn(studioNames);
-        Map<String, Studio> existingStudioMap = existingStudios.stream()
-            .collect(Collectors.toMap(Studio::getName, studio -> studio));
-        
-        // 기존 스튜디오와 새 스튜디오 분리
-        Set<Studio> studios = new java.util.HashSet<>(existingStudios);
-        Set<String> newStudioNames = studioNames.stream()
-            .filter(name -> !existingStudioMap.containsKey(name))
-            .collect(Collectors.toSet());
-        
-        // 새 스튜디오만 배치 생성
-        if (!newStudioNames.isEmpty()) {
-            Set<Studio> newStudios = newStudioNames.stream()
-                .map(name -> Studio.createStudio(name, "", "", "", "", "", ""))
-                .collect(Collectors.toSet());
-            
-            // 배치 저장
-            Set<Studio> savedStudios = new java.util.HashSet<>(studioRepository.saveAll(newStudios));
-            studios.addAll(savedStudios);
-        }
-        
-        anime.setStudios(studios);
-        log.info("🏢 스튜디오 처리 완료: {}개 (기존: {}, 신규: {})", 
-            studios.size(), existingStudios.size(), newStudioNames.size());
-    }
-    
-    /**
-     * 태그 처리 - 배치 최적화로 N+1 쿼리 방지
-     */
-    private void processTags(Anime anime, Map<String, Object> jikanData) {
-        // 안전한 타입 캐스팅
-        List<Map<String, Object>> themesList = null;
-        List<Map<String, Object>> demographicsList = null;
-        
-        try {
-            Object themesObj = jikanData.get("themes");
-            if (themesObj instanceof List) {
-                themesList = (List<Map<String, Object>>) themesObj;
-            }
-        } catch (ClassCastException e) {
-            log.warn("themes 타입 캐스팅 실패: {}", e.getMessage());
-        }
-        
-        try {
-            Object demographicsObj = jikanData.get("demographics");
-            if (demographicsObj instanceof List) {
-                demographicsList = (List<Map<String, Object>>) demographicsObj;
-            }
-        } catch (ClassCastException e) {
-            log.warn("demographics 타입 캐스팅 실패: {}", e.getMessage());
-        }
-        
-        // 모든 태그 이름 수집
-        Set<String> tagNames = new java.util.HashSet<>();
-        
-        if (themesList != null) {
-            themesList.stream()
-                .map(themeMap -> (String) themeMap.get("name"))
-                .filter(name -> name != null && !name.trim().isEmpty())
-                .forEach(tagNames::add);
-        }
-        
-        if (demographicsList != null) {
-            demographicsList.stream()
-                .map(demoMap -> (String) demoMap.get("name"))
-                .filter(name -> name != null && !name.trim().isEmpty())
-                .forEach(tagNames::add);
-        }
-        
-        if (tagNames.isEmpty()) {
-            anime.setTags(new java.util.HashSet<>());
-            return;
-        }
-        
-        // 배치로 기존 태그 조회 (N+1 쿼리 방지)
-        Set<Tag> existingTags = tagRepository.findByNameIn(tagNames);
-        Map<String, Tag> existingTagMap = existingTags.stream()
-            .collect(Collectors.toMap(Tag::getName, tag -> tag));
-        
-        // 기존 태그와 새 태그 분리
-        Set<Tag> tags = new java.util.HashSet<>(existingTags);
-        Set<String> newTagNames = tagNames.stream()
-            .filter(name -> !existingTagMap.containsKey(name))
-            .collect(Collectors.toSet());
-        
-        // 새 태그만 배치 생성
-        if (!newTagNames.isEmpty()) {
-            Set<Tag> newTags = newTagNames.stream()
-                .map(name -> Tag.createTag(name, generateConsistentColor(name)))
-                .collect(Collectors.toSet());
-            
-            // 배치 저장
-            Set<Tag> savedTags = new java.util.HashSet<>(tagRepository.saveAll(newTags));
-            tags.addAll(savedTags);
-        }
-        
-        anime.setTags(tags);
-        log.info("🏷️ 태그 처리 완료: {}개 (기존: {}, 신규: {})", 
-            tags.size(), existingTags.size(), newTagNames.size());
-    }
     
     /**
      * 성우 배치 처리 - N+1 쿼리 방지
@@ -509,19 +177,46 @@ public class SimpleAnimeDataCollectorService {
         
         // 배치로 기존 성우 조회 (N+1 쿼리 방지)
         Set<VoiceActor> existingVoiceActors = voiceActorRepository.findByNameIn(voiceActorNames);
-        Map<String, VoiceActor> existingVoiceActorMap = existingVoiceActors.stream()
-            .collect(Collectors.toMap(VoiceActor::getName, voiceActor -> voiceActor));
+        
+        // 기존 성우를 이름별로 그룹화 (같은 이름의 성우가 여러 개 있을 수 있음)
+        Map<String, List<VoiceActor>> existingVoiceActorMap = existingVoiceActors.stream()
+            .collect(Collectors.groupingBy(VoiceActor::getName));
         
         // 기존 성우와 새 성우 분리
         Set<VoiceActor> managedVoiceActors = new java.util.HashSet<>(existingVoiceActors);
-        Set<VoiceActor> newVoiceActors = voiceActors.stream()
-            .filter(voiceActor -> !existingVoiceActorMap.containsKey(voiceActor.getName()))
-            .collect(Collectors.toSet());
+        Set<VoiceActor> newVoiceActors = new java.util.HashSet<>();
+        
+        for (VoiceActor voiceActor : voiceActors) {
+            String name = voiceActor.getName();
+            if (name != null && !name.trim().isEmpty()) {
+                List<VoiceActor> existingWithSameName = existingVoiceActorMap.get(name);
+                if (existingWithSameName == null || existingWithSameName.isEmpty()) {
+                    // 같은 이름의 성우가 없으면 새로 추가
+                    newVoiceActors.add(voiceActor);
+                } else {
+                    // 같은 이름의 성우가 있으면 첫 번째 것을 사용
+                    managedVoiceActors.add(existingWithSameName.get(0));
+                }
+            }
+        }
         
         // 새 성우만 배치 생성
         if (!newVoiceActors.isEmpty()) {
-            Set<VoiceActor> savedVoiceActors = new java.util.HashSet<>(voiceActorRepository.saveAll(newVoiceActors));
-            managedVoiceActors.addAll(savedVoiceActors);
+            try {
+                Set<VoiceActor> savedVoiceActors = new java.util.HashSet<>(voiceActorRepository.saveAll(newVoiceActors));
+                managedVoiceActors.addAll(savedVoiceActors);
+            } catch (Exception e) {
+                log.warn("성우 저장 중 오류 발생, 개별 저장 시도: {}", e.getMessage());
+                // 개별 저장으로 fallback
+                for (VoiceActor voiceActor : newVoiceActors) {
+                    try {
+                        VoiceActor saved = voiceActorRepository.save(voiceActor);
+                        managedVoiceActors.add(saved);
+                    } catch (Exception ex) {
+                        log.warn("성우 개별 저장 실패: {} - {}", voiceActor.getName(), ex.getMessage());
+                    }
+                }
+            }
         }
         
         return managedVoiceActors;
@@ -547,75 +242,58 @@ public class SimpleAnimeDataCollectorService {
         
         // 배치로 기존 캐릭터 조회 (N+1 쿼리 방지)
         Set<Character> existingCharacters = characterRepository.findByNameIn(characterNames);
-        Map<String, Character> existingCharacterMap = existingCharacters.stream()
-            .collect(Collectors.toMap(Character::getName, character -> character));
+        
+        // 기존 캐릭터를 이름별로 그룹화 (같은 이름의 캐릭터가 여러 개 있을 수 있음)
+        Map<String, List<Character>> existingCharacterMap = existingCharacters.stream()
+            .collect(Collectors.groupingBy(Character::getName));
         
         // 기존 캐릭터와 새 캐릭터 분리
         Set<Character> managedCharacters = new java.util.HashSet<>(existingCharacters);
-        Set<Character> newCharacters = characters.stream()
-            .filter(character -> !existingCharacterMap.containsKey(character.getName()))
-            .collect(Collectors.toSet());
+        Set<Character> newCharacters = new java.util.HashSet<>();
+        
+        for (Character character : characters) {
+            String name = character.getName();
+            if (name != null && !name.trim().isEmpty()) {
+                List<Character> existingWithSameName = existingCharacterMap.get(name);
+                if (existingWithSameName == null || existingWithSameName.isEmpty()) {
+                    // 같은 이름의 캐릭터가 없으면 새로 추가
+                    newCharacters.add(character);
+                } else {
+                    // 같은 이름의 캐릭터가 있으면 첫 번째 것을 사용
+                    managedCharacters.add(existingWithSameName.get(0));
+                }
+            }
+        }
         
         // 새 캐릭터만 배치 생성
         if (!newCharacters.isEmpty()) {
-            Set<Character> savedCharacters = new java.util.HashSet<>(characterRepository.saveAll(newCharacters));
-            managedCharacters.addAll(savedCharacters);
+            try {
+                Set<Character> savedCharacters = new java.util.HashSet<>(characterRepository.saveAll(newCharacters));
+                managedCharacters.addAll(savedCharacters);
+            } catch (Exception e) {
+                log.warn("캐릭터 저장 중 오류 발생, 개별 저장 시도: {}", e.getMessage());
+                // 개별 저장으로 fallback
+                for (Character character : newCharacters) {
+                    try {
+                        Character saved = characterRepository.save(character);
+                        managedCharacters.add(saved);
+                    } catch (Exception ex) {
+                        log.warn("캐릭터 개별 저장 실패: {} - {}", character.getName(), ex.getMessage());
+                    }
+                }
+            }
         }
         
         return managedCharacters;
     }
     
-    /**
-     * 캐시에서 조회하거나 새로 생성
-     */
-    // getOrCreateGenre, getOrCreateStudio, getOrCreateTag는 배치 처리로 대체됨
-    
-    
-    /**
-     * ThreadLocal 캐시 정리 (메모리 누수 방지) - 개별 정리로 부분 실패 방지
-     */
-    private void clearThreadLocalCaches() {
-        // 각 ThreadLocal을 개별적으로 정리하여 부분 실패 시에도 최대한 정리
-        // 순서대로 정리하여 의존성 문제 방지
-        clearThreadLocal(genreCache, "genreCache");
-        clearThreadLocal(studioCache, "studioCache");
-        clearThreadLocal(tagCache, "tagCache");
-        clearThreadLocal(directorCache, "directorCache");
-        
-        // 정리 완료 로그 (개발 환경)
-        log.debug("🧹 ThreadLocal 캐시 정리 완료 (시간: {})", System.currentTimeMillis());
-    }
-    
-    /**
-     * 개별 ThreadLocal 정리 (안전한 정리)
-     */
-    private void clearThreadLocal(ThreadLocal<?> threadLocal, String name) {
-        try {
-            threadLocal.remove();
-        } catch (Exception e) {
-            log.warn("ThreadLocal {} 정리 중 오류 발생", name, e);
-        }
-    }
-    
-    /**
-     * 일관된 색상 생성 (태그 이름 기반)
-     */
-    private String generateConsistentColor(String name) {
-        String[] colors = {
-            "#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7",
-            "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
-            "#F8BBD9", "#A8E6CF", "#FFD3A5", "#FD6C9E", "#4ECDC4"
-        };
-        int hash = Math.abs(name.hashCode());
-        int colorIndex = hash % colors.length;
-        return colors[colorIndex];
-    }
     
     /**
      * DTO를 Map으로 변환
      */
     private Map<String, Object> convertToMap(com.ottproject.ottbackend.dto.jikan.AnimeDetailsJikanDto.Data details) {
             Map<String, Object> jikanData = new java.util.HashMap<>();
+            jikanData.put("mal_id", details.getMal_id());
             jikanData.put("title", details.getTitle());
             jikanData.put("title_english", details.getTitle_english());
             jikanData.put("title_japanese", details.getTitle_japanese());
@@ -702,51 +380,6 @@ public class SimpleAnimeDataCollectorService {
         return jikanData;
     }
     
-    /**
-     * 캐릭터 DTO를 Map으로 변환
-     */
-    private Map<String, Object> convertCharactersToMap(com.ottproject.ottbackend.dto.jikan.AnimeCharactersJikanDto charactersDto) {
-            Map<String, Object> charactersData = new java.util.HashMap<>();
-            List<Map<String, Object>> charactersList = new java.util.ArrayList<>();
-        
-        if (charactersDto.getData() != null) {
-                for (var item : charactersDto.getData()) {
-                    Map<String, Object> one = new java.util.HashMap<>();
-                
-                    // character
-                    Map<String, Object> character = new java.util.HashMap<>();
-                    if (item.getCharacter() != null) {
-                        character.put("name", item.getCharacter().getName());
-                        Map<String, Object> img = new java.util.HashMap<>();
-                        if (item.getCharacter().getImages() != null && item.getCharacter().getImages().getJpg() != null) {
-                            Map<String, Object> jpg = new java.util.HashMap<>();
-                            jpg.put("image_url", item.getCharacter().getImages().getJpg().getImage_url());
-                            img.put("jpg", jpg);
-                        }
-                        character.put("images", img);
-                    }
-                    one.put("character", character);
-                
-                    // voice_actors
-                    List<Map<String, Object>> vaList = new java.util.ArrayList<>();
-                    if (item.getVoice_actors() != null) {
-                        for (var va : item.getVoice_actors()) {
-                            Map<String, Object> vaMap = new java.util.HashMap<>();
-                            vaMap.put("language", va.getLanguage());
-                            Map<String, Object> person = new java.util.HashMap<>();
-                            if (va.getPerson() != null) person.put("name", va.getPerson().getName());
-                            vaMap.put("person", person);
-                            vaList.add(vaMap);
-                        }
-                    }
-                    one.put("voice_actors", vaList);
-                    charactersList.add(one);
-                }
-            }
-        
-            charactersData.put("characters", charactersList);
-        return charactersData;
-    }
     
     
     /**
@@ -805,16 +438,6 @@ public class SimpleAnimeDataCollectorService {
         }
     }
     
-    /**
-     * 캐시 초기화 (메모리 관리)
-     */
-    public void clearCache() {
-        genreCache.get().clear();
-        studioCache.get().clear();
-        tagCache.get().clear();
-        directorCache.get().clear();
-        log.info("🧹 캐시 초기화 완료");
-    }
     
     /**
      * 수집 결과 통계 클래스
@@ -840,5 +463,138 @@ public class SimpleAnimeDataCollectorService {
             return String.format("성공: %d, 19금 제외: %d, 오류: %d, 총 처리: %d", 
                 successCount, adultContentCount, errorCount, getTotalProcessed());
         }
+    }
+    
+    /**
+     * 성우/캐릭터 비동기 처리 시작
+     * - 메인 수집 속도에 영향 없도록 비동기로 처리
+     */
+    public void processVoiceActorsAndCharactersAsync(Long animeId, Long malId) {
+        // 비동기 처리를 위한 별도 메서드 호출
+        processVoiceActorsAndCharactersInBackground(animeId, malId);
+    }
+    
+    /**
+     * 성우/캐릭터 백그라운드 처리
+     * - 완전히 독립적인 트랜잭션에서 실행
+     * - 재시도 로직 포함
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void processVoiceActorsAndCharactersInBackground(Long animeId, Long malId) {
+        try {
+            // 저장된 애니메이션 조회
+            Anime anime = animeRepository.findById(animeId).orElse(null);
+            if (anime == null) {
+                log.warn("애니메이션을 찾을 수 없음: ID {}", animeId);
+                return;
+            }
+            
+            // Jikan API에서 캐릭터/성우 정보 조회
+            AnimeCharactersJikanDto charactersDto = jikanApiService.getAnimeCharacters(malId);
+            if (charactersDto == null || charactersDto.getData() == null) {
+                log.warn("캐릭터/성우 데이터 없음: MAL ID {}", malId);
+                return;
+            }
+            
+            // DTO를 Map으로 변환
+            Map<String, Object> charactersData = convertCharactersToMap(charactersDto);
+            
+            // 성우 처리
+            Set<VoiceActor> voiceActors = dataMapper.mapToVoiceActors(charactersData);
+            if (!voiceActors.isEmpty()) {
+                Set<VoiceActor> managedVoiceActors = processVoiceActorsBatch(voiceActors);
+                anime.setVoiceActors(managedVoiceActors);
+                log.info("성우 {}명 처리 완료: MAL ID {}", managedVoiceActors.size(), malId);
+            }
+            
+            // 캐릭터 처리
+            Set<Character> characters = dataMapper.mapToCharacters(charactersData);
+            if (!characters.isEmpty()) {
+                Set<Character> managedCharacters = processCharactersBatch(characters);
+                anime.setCharacters(managedCharacters);
+                log.info("캐릭터 {}명 처리 완료: MAL ID {}", managedCharacters.size(), malId);
+            }
+            
+            // 애니메이션 업데이트
+            animeRepository.save(anime);
+            
+        } catch (Exception e) {
+            log.error("성우/캐릭터 처리 실패: MAL ID {} - 재시도 예정", malId, e);
+            
+            // 재시도 로직 (최대 3회, 지수 백오프)
+            retryVoiceActorsAndCharacters(animeId, malId, 1);
+        }
+    }
+    
+    /**
+     * 성우/캐릭터 처리 재시도 로직
+     */
+    private void retryVoiceActorsAndCharacters(Long animeId, Long malId, int attempt) {
+        if (attempt > 3) {
+            log.error("성우/캐릭터 처리 최종 실패: MAL ID {} (재시도 3회 초과)", malId);
+            return;
+        }
+        
+        try {
+            // 지수 백오프: 2^attempt 초 대기
+            long delayMs = (long) Math.pow(2, attempt) * 1000;
+            Thread.sleep(delayMs);
+            
+            log.info("성우/캐릭터 처리 재시도: MAL ID {} (시도 {}/3)", malId, attempt);
+            processVoiceActorsAndCharactersInBackground(animeId, malId);
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("성우/캐릭터 재시도 중 인터럽트: MAL ID {}", malId);
+        } catch (Exception e) {
+            log.error("성우/캐릭터 재시도 실패: MAL ID {} (시도 {}/3)", malId, attempt, e);
+            retryVoiceActorsAndCharacters(animeId, malId, attempt + 1);
+        }
+    }
+    
+    /**
+     * 캐릭터 DTO를 Map으로 변환
+     */
+    private Map<String, Object> convertCharactersToMap(AnimeCharactersJikanDto charactersDto) {
+        Map<String, Object> charactersData = new java.util.HashMap<>();
+        List<Map<String, Object>> charactersList = new java.util.ArrayList<>();
+    
+        if (charactersDto.getData() != null) {
+            for (var item : charactersDto.getData()) {
+                Map<String, Object> one = new java.util.HashMap<>();
+            
+                // character
+                Map<String, Object> character = new java.util.HashMap<>();
+                if (item.getCharacter() != null) {
+                    character.put("name", item.getCharacter().getName());
+                    Map<String, Object> img = new java.util.HashMap<>();
+                    if (item.getCharacter().getImages() != null && item.getCharacter().getImages().getJpg() != null) {
+                        Map<String, Object> jpg = new java.util.HashMap<>();
+                        jpg.put("image_url", item.getCharacter().getImages().getJpg().getImage_url());
+                        img.put("jpg", jpg);
+                    }
+                    character.put("images", img);
+                }
+                one.put("character", character);
+            
+                // voice_actors
+                List<Map<String, Object>> vaList = new java.util.ArrayList<>();
+                if (item.getVoice_actors() != null) {
+                    for (var va : item.getVoice_actors()) {
+                        Map<String, Object> vaMap = new java.util.HashMap<>();
+                        vaMap.put("language", va.getLanguage());
+                        Map<String, Object> person = new java.util.HashMap<>();
+                        if (va.getPerson() != null) person.put("name", va.getPerson().getName());
+                        vaMap.put("person", person);
+                        vaList.add(vaMap);
+                    }
+                }
+                one.put("voice_actors", vaList);
+                charactersList.add(one);
+            }
+        }
+    
+        charactersData.put("characters", charactersList);
+        return charactersData;
     }
 }

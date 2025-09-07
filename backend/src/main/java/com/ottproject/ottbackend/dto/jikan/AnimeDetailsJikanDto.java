@@ -22,6 +22,7 @@ public class AnimeDetailsJikanDto {
     @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Data {
+        private Long mal_id;
         private String title;
         private String title_english;
         private String title_japanese;
@@ -44,6 +45,7 @@ public class AnimeDetailsJikanDto {
         private List<Staff> staff; // 옵션
         
         // ===== Getter 메서드 =====
+        public Long getMal_id() { return mal_id; }
         public String getTitle() { return title; }
         public String getTitle_english() { return title_english; }
         public String getTitle_japanese() { return title_japanese; }
