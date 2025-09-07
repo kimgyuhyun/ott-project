@@ -42,13 +42,20 @@ public class SimpleJikanDataMapper {
         }
         
         // 기본 정보 추출
+        Long malId = convertToLong(jikanData.get("mal_id"));
         String title = (String) jikanData.get("title");
         String titleEn = (String) jikanData.get("title_english");
         String titleJp = (String) jikanData.get("title_japanese");
         
-        // 타이틀 우선순위: 일본어 > 영어 > 원제
-        String displayTitle = determineDisplayTitle(titleJp, titleEn, title);
+        // 한국어 제목 조회 (없으면 null)
+        String koreanTitle = getKoreanAnimeTitle(title, titleEn, titleJp);
+        
+        // 타이틀 우선순위: 한국어 > 일본어 > 영어 > 원제
+        String displayTitle = determineDisplayTitle(koreanTitle, titleJp, titleEn, title);
         String synopsis = (String) jikanData.get("synopsis");
+        
+        // 한국어 시놉시스 조회 (없으면 null)
+        String koreanSynopsis = getKoreanAnimeSynopsis(synopsis);
         Integer episodes = convertToInteger(jikanData.get("episodes"));
         String status = (String) jikanData.get("status");
         String type = (String) jikanData.get("type");
@@ -90,11 +97,12 @@ public class SimpleJikanDataMapper {
         }
         
         return Anime.createAnime(
-            displayTitle, // 한국어 제목이 없으면 null
+            malId, // MyAnimeList ID
+            displayTitle, // 우선순위에 따른 제목 (한국어 > 일본어 > 영어 > 원제)
             titleEn,
             titleJp,
-            synopsis != null ? synopsis : "",
-            synopsis != null ? synopsis : "", // 동일한 내용 사용
+            koreanSynopsis != null ? koreanSynopsis : (synopsis != null ? synopsis : ""), // 한국어 시놉시스 우선
+            koreanSynopsis != null ? koreanSynopsis : (synopsis != null ? synopsis : ""), // 한국어 시놉시스 우선
             posterUrl, // null 허용
             episodes, // null 허용
             convertStatus(status),
@@ -125,11 +133,21 @@ public class SimpleJikanDataMapper {
     }
     
     /**
-     * 한국어 제목이 없으면 null 반환 (한국어 제목만 사용)
+     * 타이틀 우선순위 결정: 한국어 > 일본어 > 영어 > 원제
      */
-    private String determineDisplayTitle(String titleJp, String titleEn, String title) {
-        // 한국어 제목이 없으면 null 반환
-        // title 필드는 한국어 제목을 의미하므로 한국어 제목이 없으면 null
+    private String determineDisplayTitle(String koreanTitle, String titleJp, String titleEn, String title) {
+        if (koreanTitle != null && !koreanTitle.trim().isEmpty()) {
+            return koreanTitle;
+        }
+        if (titleJp != null && !titleJp.trim().isEmpty()) {
+            return titleJp;
+        }
+        if (titleEn != null && !titleEn.trim().isEmpty()) {
+            return titleEn;
+        }
+        if (title != null && !title.trim().isEmpty()) {
+            return title;
+        }
         return null;
     }
     
@@ -380,7 +398,14 @@ public class SimpleJikanDataMapper {
                                             String name = (String) person.get("name");
                                             if (name != null && !name.trim().isEmpty()) {
                                                 try {
-                                                    VoiceActor voiceActorEntity = VoiceActor.createVoiceActor(name.trim(), name.trim(), name.trim(), "", "");
+                                                    // 중복 체크 후 생성
+                                                    String koreanName = getKoreanCharacterName(name.trim());
+                                                    VoiceActor voiceActorEntity = VoiceActor.createVoiceActor(
+                                                        koreanName != null ? koreanName : name.trim(), // 한국어 우선
+                                                        name.trim(), // 영어
+                                                        name.trim(), // 일본어
+                                                        "", ""
+                                                    );
                                                     voiceActors.add(voiceActorEntity);
                                                 } catch (Exception e) {
                                                     log.warn("성우 생성 실패: {}", name, e);
@@ -428,7 +453,21 @@ public class SimpleJikanDataMapper {
                                         }
                                     }
                                     
-                                    Character characterEntity = Character.createCharacter(name.trim(), name.trim(), name.trim(), imageUrl, "");
+                                    // 한국어 이름 조회 (없으면 null)
+                                    String koreanName = getKoreanCharacterName(name.trim());
+                                    
+                                    // 캐릭터 이름이 null이면 건너뛰기
+                                    if (name == null || name.trim().isEmpty()) {
+                                        continue;
+                                    }
+                                    
+                                    Character characterEntity = Character.createCharacter(
+                                        koreanName != null ? koreanName : name.trim(),  // 한글 (한국어 없으면 원본)
+                                        name.trim(),       // 영어 (원본)
+                                        name.trim(),       // 일본어 (원본)
+                                        imageUrl, 
+                                        ""
+                                    );
                                     characters.add(characterEntity);
                                 } catch (Exception e) {
                                     log.warn("캐릭터 생성 실패: {}", name, e);
@@ -443,6 +482,64 @@ public class SimpleJikanDataMapper {
         }
         
         return characters;
+    }
+    
+    /**
+     * 한국어 애니메 제목 조회
+     * 
+     * @param title 원제
+     * @param titleEn 영어 제목
+     * @param titleJp 일본어 제목
+     * @return 한국어 제목 (없으면 null)
+     */
+    private String getKoreanAnimeTitle(String title, String titleEn, String titleJp) {
+        // TODO: 향후 한국어 매핑 로직 구현
+        // 1차: TMDB API에서 한국어 제목 조회
+        // 2차: 수동 매핑 테이블에서 조회
+        // 3차: null 반환 (한국어 없음)
+        
+        // 현재는 null 반환 (한국어 제목 없음)
+        return null;
+    }
+    
+    /**
+     * 한국어 애니메 시놉시스 조회
+     * 
+     * @param originalSynopsis 원본 시놉시스 (영어/일본어)
+     * @return 한국어 시놉시스 (없으면 null)
+     */
+    private String getKoreanAnimeSynopsis(String originalSynopsis) {
+        if (originalSynopsis == null || originalSynopsis.trim().isEmpty()) {
+            return null;
+        }
+        
+        // TODO: 향후 한국어 매핑 로직 구현
+        // 1차: TMDB API에서 한국어 시놉시스 조회
+        // 2차: 수동 매핑 테이블에서 조회
+        // 3차: null 반환 (한국어 없음)
+        
+        // 현재는 null 반환 (한국어 시놉시스 없음)
+        return null;
+    }
+    
+    /**
+     * 한국어 캐릭터 이름 조회
+     * 
+     * @param originalName 원본 캐릭터 이름 (영어/일본어)
+     * @return 한국어 이름 (없으면 null)
+     */
+    private String getKoreanCharacterName(String originalName) {
+        if (originalName == null || originalName.trim().isEmpty()) {
+            return null;
+        }
+        
+        // TODO: 향후 한국어 매핑 로직 구현
+        // 1차: TMDB API에서 한국어 이름 조회
+        // 2차: 수동 매핑 테이블에서 조회
+        // 3차: null 반환 (한국어 없음)
+        
+        // 현재는 null 반환 (한국어 이름 없음)
+        return null;
     }
     
     /**
@@ -479,6 +576,28 @@ public class SimpleJikanDataMapper {
         int hash = Math.abs(name.hashCode());
         int colorIndex = hash % colors.length;
         return colors[colorIndex];
+    }
+    
+    /**
+     * 안전한 Long 변환 (String 또는 Number 모두 처리)
+     */
+    private Long convertToLong(Object value) {
+        if (value == null) return null;
+        
+        if (value instanceof Long) {
+            return (Long) value;
+        } else if (value instanceof Number) {
+            return ((Number) value).longValue();
+        } else if (value instanceof String) {
+            try {
+                return Long.parseLong((String) value);
+            } catch (NumberFormatException e) {
+                log.warn("Long 변환 실패: {}", value);
+                return null;
+            }
+        }
+        
+        return null;
     }
     
     /**
