@@ -13,6 +13,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 
 import java.util.List;
 import java.util.Map;
@@ -41,6 +45,7 @@ public class SimpleAnimeDataCollectorService {
     private final VoiceActorRepository voiceActorRepository;
     private final CharacterRepository characterRepository;
     private final AnimeBatchProcessor animeBatchProcessor;
+    private final PlatformTransactionManager transactionManager;
     
     
     /**
@@ -499,24 +504,20 @@ public class SimpleAnimeDataCollectorService {
             // DTO를 Map으로 변환
             Map<String, Object> charactersData = convertCharactersToMap(charactersDto);
             
-            // 성우 처리
+            // 성우 처리 - 마스터만 upsert (조인/애니 매핑 금지)
             Set<VoiceActor> voiceActors = dataMapper.mapToVoiceActors(charactersData);
             if (!voiceActors.isEmpty()) {
                 Set<VoiceActor> managedVoiceActors = processVoiceActorsBatch(voiceActors);
-                anime.setVoiceActors(managedVoiceActors);
-                log.info("성우 {}명 처리 완료: MAL ID {}", managedVoiceActors.size(), malId);
+                log.info("성우 마스터 upsert 완료: {}명 (MAL ID {})", managedVoiceActors.size(), malId);
             }
             
-            // 캐릭터 처리
+            // 캐릭터 처리 - 마스터만 upsert (조인/애니 매핑 금지)
             Set<Character> characters = dataMapper.mapToCharacters(charactersData);
             if (!characters.isEmpty()) {
                 Set<Character> managedCharacters = processCharactersBatch(characters);
-                anime.setCharacters(managedCharacters);
-                log.info("캐릭터 {}명 처리 완료: MAL ID {}", managedCharacters.size(), malId);
+                log.info("캐릭터 마스터 upsert 완료: {}명 (MAL ID {})", managedCharacters.size(), malId);
             }
             
-            // 애니메이션 업데이트
-            animeRepository.save(anime);
             
         } catch (Exception e) {
             log.error("성우/캐릭터 처리 실패: MAL ID {} - 재시도 예정", malId, e);
@@ -555,7 +556,7 @@ public class SimpleAnimeDataCollectorService {
     /**
      * 캐릭터 DTO를 Map으로 변환
      */
-    private Map<String, Object> convertCharactersToMap(AnimeCharactersJikanDto charactersDto) {
+    public Map<String, Object> convertCharactersToMap(AnimeCharactersJikanDto charactersDto) {
         Map<String, Object> charactersData = new java.util.HashMap<>();
         List<Map<String, Object>> charactersList = new java.util.ArrayList<>();
     
@@ -596,5 +597,380 @@ public class SimpleAnimeDataCollectorService {
     
         charactersData.put("characters", charactersList);
         return charactersData;
+    }
+
+    /**
+     * 외부에서 안전하게 호출할 수 있도록 Jikan 캐릭터 조회를 노출
+     */
+    public AnimeCharactersJikanDto getAnimeCharactersFromJikan(Long malId) {
+        return jikanApiService.getAnimeCharacters(malId);
+    }
+
+    /**
+     * charactersData에서 캐릭터 이름들을 추출하여 기존 캐릭터 엔티티로 매핑
+     */
+    public Set<Character> mapToExistingCharacters(Map<String, Object> charactersData, CharacterRepository characterRepository) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> charactersList = (List<Map<String, Object>>) charactersData.getOrDefault("characters", java.util.List.of());
+        Set<String> names = charactersList.stream()
+            .map(m -> (Map<String, Object>) m.getOrDefault("character", java.util.Map.of()))
+            .map(cm -> (String) cm.getOrDefault("name", null))
+            .filter(n -> n != null && !n.isBlank())
+            .collect(Collectors.toSet());
+        if (names.isEmpty()) return java.util.Set.of();
+        return characterRepository.findByNameIn(names);
+    }
+
+    /**
+     * charactersData에서 성우 이름들을 추출하여 기존 성우 엔티티로 매핑
+     */
+    public Set<VoiceActor> mapToExistingVoiceActors(Map<String, Object> charactersData, VoiceActorRepository voiceActorRepository) {
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> charactersList = (List<Map<String, Object>>) charactersData.getOrDefault("characters", java.util.List.of());
+        Set<String> names = new java.util.HashSet<>();
+        for (Map<String, Object> item : charactersList) {
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> vaList = (List<Map<String, Object>>) item.getOrDefault("voice_actors", java.util.List.of());
+            for (Map<String, Object> va : vaList) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> person = (Map<String, Object>) va.getOrDefault("person", java.util.Map.of());
+                String name = (String) person.get("name");
+                if (name != null && !name.isBlank()) names.add(name);
+            }
+        }
+        if (names.isEmpty()) return java.util.Set.of();
+        return voiceActorRepository.findByNameIn(names);
+    }
+
+    /**
+     * 캐릭터-성우 조인 upsert (마스터는 이미 존재한다고 가정)
+     */
+    @Transactional
+    public void upsertCharacterVoiceActorJoins(Map<String, Object> charactersData,
+                                               CharacterRepository characterRepository,
+                                               VoiceActorRepository voiceActorRepository) {
+        Set<Character> existingCharacters = mapToExistingCharacters(charactersData, characterRepository);
+        Set<VoiceActor> existingVoiceActors = mapToExistingVoiceActors(charactersData, voiceActorRepository);
+
+        if (existingCharacters.isEmpty() || existingVoiceActors.isEmpty()) {
+            log.info("캐릭터-성우 조인 스킵: character={}, voiceActor={}", existingCharacters.size(), existingVoiceActors.size());
+            return;
+        }
+
+        // 이름 기준 빠른 조회 맵 구성 (트리밍/정규화)
+        java.util.Map<String, Character> nameToCharacter = existingCharacters.stream()
+            .filter(c -> c.getName() != null)
+            .collect(Collectors.toMap(c -> c.getName().trim(), c -> c, (a, b) -> a));
+        java.util.Map<String, VoiceActor> nameToVoice = existingVoiceActors.stream()
+            .filter(v -> v.getName() != null)
+            .collect(Collectors.toMap(v -> v.getName().trim(), v -> v, (a, b) -> a));
+
+        int savedCount = 0;
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> charactersList = (List<Map<String, Object>>) charactersData.getOrDefault("characters", java.util.List.of());
+        for (Map<String, Object> item : charactersList) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> cm = (Map<String, Object>) item.getOrDefault("character", java.util.Map.of());
+            String cnameRaw = (String) cm.getOrDefault("name", null);
+            String cname = cnameRaw == null ? null : cnameRaw.trim();
+            Character character = cname == null ? null : nameToCharacter.get(cname);
+            if (character == null) {
+                log.debug("캐릭터 매칭 실패: name={}", cname);
+                continue;
+            }
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> vaList = (List<Map<String, Object>>) item.getOrDefault("voice_actors", java.util.List.of());
+            if (vaList.isEmpty()) continue;
+
+            java.util.Set<VoiceActor> current = character.getVoiceActors() != null ? new java.util.HashSet<>(character.getVoiceActors()) : new java.util.HashSet<>();
+            int before = current.size();
+            for (Map<String, Object> va : vaList) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> person = (Map<String, Object>) va.getOrDefault("person", java.util.Map.of());
+                String vnameRaw = (String) person.get("name");
+                String vname = vnameRaw == null ? null : vnameRaw.trim();
+                if (vname == null || vname.isBlank()) continue;
+                VoiceActor exist = nameToVoice.get(vname);
+                if (exist == null) {
+                    log.debug("성우 매칭 실패: name={}", vname);
+                    continue;
+                }
+                current.add(exist);
+            }
+            if (current.size() > before) {
+                character.setVoiceActors(current);
+                characterRepository.save(character);
+                savedCount++;
+                log.debug("캐릭터-성우 조인 저장: characterId={}, before={}, after={}", character.getId(), before, current.size());
+            } else {
+                log.debug("조인 변화 없음: characterId={}, size={}", character.getId(), before);
+            }
+        }
+        log.info("캐릭터-성우 조인 upsert 결과: 저장 {}건", savedCount);
+    }
+
+    /**
+     * 애니-성우 조인 upsert (집계 반영)
+     */
+    @Transactional
+    public void upsertAnimeVoiceActorJoins(Long animeId, Set<Long> voiceActorIds) {
+        if (animeId == null || voiceActorIds == null || voiceActorIds.isEmpty()) return;
+        Anime anime = animeRepository.findById(animeId).orElse(null);
+        if (anime == null) return;
+
+        Set<VoiceActor> voices = new java.util.HashSet<>(voiceActorRepository.findAllById(voiceActorIds));
+        if (voices.isEmpty()) return;
+
+        java.util.Set<VoiceActor> current = anime.getVoiceActors() != null ? new java.util.HashSet<>(anime.getVoiceActors()) : new java.util.HashSet<>();
+        int before = current.size();
+        current.addAll(voices);
+        if (current.size() > before) {
+            anime.setVoiceActors(current);
+            animeRepository.save(anime);
+        }
+    }
+    
+    /**
+     * 성우 데이터만 처리 (비동기)
+     */
+    public void processVoiceActorsAsync(Long animeId, Long malId) {
+        processVoiceActorsInBackground(animeId, malId);
+    }
+    
+    /**
+     * 디렉터 데이터만 처리 (비동기)
+     * - 현재 Jikan API에 디렉터 정보가 없어 로그만 출력
+     */
+    public void processDirectorsAsync(Long animeId, Long malId) {
+        processDirectorsInBackground(animeId, malId);
+    }
+    
+    /**
+     * 캐릭터 데이터만 처리 (비동기)
+     * - Jikan API에서 캐릭터 정보를 조회하여 저장
+     */
+    public void processCharactersAsync(Long animeId, Long malId) {
+        processCharactersInBackground(animeId, malId);
+    }
+    
+    /**
+     * 성우 데이터 백그라운드 처리
+     */
+    public void processVoiceActorsInBackground(Long animeId, Long malId) {
+        // 새로운 쓰기 가능한 트랜잭션 생성
+        DefaultTransactionDefinition def = new DefaultTransactionDefinition();
+        def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        def.setReadOnly(false);
+        def.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        
+        TransactionStatus status = transactionManager.getTransaction(def);
+        
+        try {
+            // 저장된 애니메이션 조회
+            Anime anime = animeRepository.findById(animeId).orElse(null);
+            if (anime == null) {
+                log.warn("애니메이션을 찾을 수 없음: ID {}", animeId);
+                return;
+            }
+            
+            // Jikan API에서 캐릭터/성우 정보 조회
+            AnimeCharactersJikanDto charactersDto = jikanApiService.getAnimeCharacters(malId);
+            if (charactersDto == null || charactersDto.getData() == null) {
+                log.warn("캐릭터/성우 데이터 없음: MAL ID {}", malId);
+                return;
+            }
+            
+            // DTO를 Map으로 변환
+            Map<String, Object> charactersData = convertCharactersToMap(charactersDto);
+            
+            // 성우 처리 - 마스터만 upsert (조인/애니 매핑 금지)
+            Set<VoiceActor> voiceActors = dataMapper.mapToVoiceActors(charactersData);
+            if (!voiceActors.isEmpty()) {
+                Set<VoiceActor> managedVoiceActors = processVoiceActorsBatch(voiceActors);
+                log.info("성우 마스터 upsert 완료: {}명 (MAL ID {})", managedVoiceActors.size(), malId);
+            }
+            
+            // 애니메이션 업데이트
+            animeRepository.save(anime);
+            
+            // 트랜잭션 커밋
+            transactionManager.commit(status);
+            
+        } catch (Exception e) {
+            log.error("성우 처리 실패: MAL ID {} - 재시도 예정", malId, e);
+            transactionManager.rollback(status);
+            retryVoiceActors(animeId, malId, 1);
+        }
+    }
+    
+    /**
+     * 디렉터 데이터 백그라운드 처리
+     */
+    public void processDirectorsInBackground(Long animeId, Long malId) {
+        // 새로운 쓰기 가능한 트랜잭션 생성
+        DefaultTransactionDefinition def = new DefaultTransactionDefinition();
+        def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        def.setReadOnly(false);
+        def.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        
+        TransactionStatus status = transactionManager.getTransaction(def);
+        
+        try {
+            // 저장된 애니메이션 조회
+            Anime anime = animeRepository.findById(animeId).orElse(null);
+            if (anime == null) {
+                log.warn("애니메이션을 찾을 수 없음: ID {}", animeId);
+                return;
+            }
+            
+            // Jikan API에서 애니메이션 상세 정보 조회
+            var details = jikanApiService.getAnimeDetails(malId);
+            if (details == null) {
+                log.warn("애니메이션 상세 데이터 없음: MAL ID {}", malId);
+                return;
+            }
+            
+            // DTO를 Map으로 변환 (현재는 사용하지 않음)
+            // Map<String, Object> jikanData = convertToMap(details);
+            
+            // 디렉터 처리 (현재는 Jikan API에 디렉터 정보가 없으므로 로그만 출력)
+            log.info("디렉터 데이터 처리: MAL ID {} (현재 Jikan API에 디렉터 정보 없음)", malId);
+            
+            // 애니메이션 업데이트
+            animeRepository.save(anime);
+            
+            // 트랜잭션 커밋
+            transactionManager.commit(status);
+            
+        } catch (Exception e) {
+            log.error("디렉터 처리 실패: MAL ID {} - 재시도 예정", malId, e);
+            transactionManager.rollback(status);
+            retryDirectors(animeId, malId, 1);
+        }
+    }
+    
+    /**
+     * 캐릭터 데이터 백그라운드 처리
+     */
+    public void processCharactersInBackground(Long animeId, Long malId) {
+        // 새로운 쓰기 가능한 트랜잭션 생성
+        DefaultTransactionDefinition def = new DefaultTransactionDefinition();
+        def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        def.setReadOnly(false);
+        def.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+        
+        TransactionStatus status = transactionManager.getTransaction(def);
+        
+        try {
+            // 저장된 애니메이션 조회
+            Anime anime = animeRepository.findById(animeId).orElse(null);
+            if (anime == null) {
+                log.warn("애니메이션을 찾을 수 없음: ID {}", animeId);
+                return;
+            }
+            
+            // Jikan API에서 캐릭터/성우 정보 조회
+            AnimeCharactersJikanDto charactersDto = jikanApiService.getAnimeCharacters(malId);
+            if (charactersDto == null || charactersDto.getData() == null) {
+                log.warn("캐릭터/성우 데이터 없음: MAL ID {}", malId);
+                return;
+            }
+            
+            // DTO를 Map으로 변환
+            Map<String, Object> charactersData = convertCharactersToMap(charactersDto);
+            
+            // 캐릭터 처리 - 마스터만 upsert (조인/애니 매핑 금지)
+            Set<Character> characters = dataMapper.mapToCharacters(charactersData);
+            if (!characters.isEmpty()) {
+                Set<Character> managedCharacters = processCharactersBatch(characters);
+                log.info("캐릭터 마스터 upsert 완료: {}명 (MAL ID {})", managedCharacters.size(), malId);
+            }
+            
+            // 애니메이션 업데이트 제거(조인 금지)
+            
+            // 트랜잭션 커밋
+            transactionManager.commit(status);
+            
+        } catch (Exception e) {
+            log.error("캐릭터 처리 실패: MAL ID {} - 재시도 예정", malId, e);
+            transactionManager.rollback(status);
+            retryCharacters(animeId, malId, 1);
+        }
+    }
+    
+    /**
+     * 성우 처리 재시도 로직
+     */
+    private void retryVoiceActors(Long animeId, Long malId, int attempt) {
+        if (attempt > 3) {
+            log.error("성우 처리 최종 실패: MAL ID {} (재시도 3회 초과)", malId);
+            return;
+        }
+        
+        try {
+            long delayMs = (long) Math.pow(2, attempt) * 1000;
+            Thread.sleep(delayMs);
+            
+            log.info("성우 처리 재시도: MAL ID {} (시도 {}/3)", malId, attempt);
+            processVoiceActorsInBackground(animeId, malId);
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("성우 재시도 중 인터럽트: MAL ID {}", malId);
+        } catch (Exception e) {
+            log.error("성우 재시도 실패: MAL ID {} (시도 {}/3)", malId, attempt, e);
+            retryVoiceActors(animeId, malId, attempt + 1);
+        }
+    }
+    
+    /**
+     * 디렉터 처리 재시도 로직
+     */
+    private void retryDirectors(Long animeId, Long malId, int attempt) {
+        if (attempt > 3) {
+            log.error("디렉터 처리 최종 실패: MAL ID {} (재시도 3회 초과)", malId);
+            return;
+        }
+        
+        try {
+            long delayMs = (long) Math.pow(2, attempt) * 1000;
+            Thread.sleep(delayMs);
+            
+            log.info("디렉터 처리 재시도: MAL ID {} (시도 {}/3)", malId, attempt);
+            processDirectorsInBackground(animeId, malId);
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("디렉터 재시도 중 인터럽트: MAL ID {}", malId);
+        } catch (Exception e) {
+            log.error("디렉터 재시도 실패: MAL ID {} (시도 {}/3)", malId, attempt, e);
+            retryDirectors(animeId, malId, attempt + 1);
+        }
+    }
+    
+    /**
+     * 캐릭터 처리 재시도 로직
+     */
+    private void retryCharacters(Long animeId, Long malId, int attempt) {
+        if (attempt > 3) {
+            log.error("캐릭터 처리 최종 실패: MAL ID {} (재시도 3회 초과)", malId);
+            return;
+        }
+        
+        try {
+            long delayMs = (long) Math.pow(2, attempt) * 1000;
+            Thread.sleep(delayMs);
+            
+            log.info("캐릭터 처리 재시도: MAL ID {} (시도 {}/3)", malId, attempt);
+            processCharactersInBackground(animeId, malId);
+            
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.error("캐릭터 재시도 중 인터럽트: MAL ID {}", malId);
+        } catch (Exception e) {
+            log.error("캐릭터 재시도 실패: MAL ID {} (시도 {}/3)", malId, attempt, e);
+            retryCharacters(animeId, malId, attempt + 1);
+        }
     }
 }
