@@ -2,8 +2,8 @@
 
 // 애니메이션 관련 API 함수들
 
-// API 기본 설정: 항상 동일 오리진 프록시 사용
-const API_BASE = '';
+// API 기본 설정: 항상 동일 오리진 프록시 사용 (Nginx/Next rewrites 경유)
+const API_BASE = '/api';
 
 // 공통 fetch 함수
 async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -43,7 +43,7 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 // 애니메이션 목록 조회 (홈페이지 메인)
 export async function getAnimeList(page: number = 0, size: number = 20, sort: string = 'id') {
-  return apiCall(`/api/anime?page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`);
+  return apiCall(`/anime?page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`);
 }
 
 // 범용 목록 조회(필터/정렬/페이지) - 필터링 기능 유지, 응답 처리만 getAnimeList와 동일
@@ -82,54 +82,54 @@ export async function listAnime(params: {
   qp.append('size', String(params.size ?? 20));
   
   // getAnimeList와 동일한 응답 처리: 단순히 apiCall만 반환
-  return apiCall(`/api/anime?${qp.toString()}`);
+  return apiCall(`/anime?${qp.toString()}`);
 }
 
 // 애니메이션 상세 정보 조회
 export async function getAnimeDetail(animeId: number) {
-  return apiCall(`/api/anime/${animeId}`);
+  return apiCall(`/anime/${animeId}`);
 }
 
 // 요일별 신작 애니메이션 조회
 export async function getWeeklyAnime(dayOfWeek: string) {
-  return apiCall(`/api/anime/weekly/${dayOfWeek}`);
+  return apiCall(`/anime/weekly/${dayOfWeek}`);
 }
 
 // 장르별 애니메이션 검색
 export async function getAnimeByGenre(genre: string, page: number = 0, size: number = 20) {
-  return apiCall(`/api/anime/genre/${genre}?page=${page}&size=${size}`);
+  return apiCall(`/anime/genre/${genre}?page=${page}&size=${size}`);
 }
 
 // 태그별 애니메이션 검색
 export async function getAnimeByTag(tag: string, page: number = 0, size: number = 20) {
-  return apiCall(`/api/anime/tag/${tag}?page=${page}&size=${size}`);
+  return apiCall(`/anime/tag/${tag}?page=${page}&size=${size}`);
 }
 
 // 애니메이션 검색
 export async function searchAnime(query: string, page: number = 0, size: number = 20) {
-  return apiCall(`/api/anime/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`);
+  return apiCall(`/anime/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`);
 }
 
 // 추천 애니메이션 조회
 export async function getRecommendedAnime() {
-  return apiCall('/api/anime/recommended');
+  return apiCall('/anime/recommended');
 }
 
 // 인기 애니메이션 조회
 export async function getPopularAnime() {
-  return apiCall('/api/anime/popular');
+  return apiCall('/anime/popular');
 }
 
 // 최신 애니메이션 조회
 export async function getLatestAnime() {
-  return apiCall('/api/anime/latest');
+  return apiCall('/anime/latest');
 }
 
 // 마스터: 장르/태그 목록
 export async function getGenres() {
-  return apiCall('/api/anime/genres');
+  return apiCall('/anime/genres');
 }
 
 export async function getTags() {
-  return apiCall('/api/anime/tags');
+  return apiCall('/anime/tags');
 }
