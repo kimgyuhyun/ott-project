@@ -6,6 +6,7 @@ import { getAnimeDetail } from "@/lib/api/anime";
 import { getAnimeWatchHistory } from "@/lib/api/user";
 import { toggleFavorite, isFavorited } from "@/lib/api/favorites";
 import styles from "./AnimeDetailModal.module.css";
+import AnimeFullInfoModal from "@/components/anime/AnimeFullInfoModal";
 
 
 interface AnimeDetailModalProps {
@@ -27,6 +28,9 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   const [isFavoritedState, setIsFavoritedState] = useState<boolean>(false);
   const [isLoadingFavorite, setIsLoadingFavorite] = useState(false);
   const [currentRating, setCurrentRating] = useState<number | null>(null); // 실시간 평점 상태
+  const [showFullSynopsis, setShowFullSynopsis] = useState<boolean>(false);
+  const MAX_SYNOPSIS_CHARS = 180;
+  const [isFullInfoOpen, setIsFullInfoOpen] = useState<boolean>(false);
 
   // 평점 변경 콜백 함수
   const handleRatingChange = (newRating: number) => {
@@ -147,7 +151,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       />
       
       {/* 모달 컨테이너 */}
-      <div className={styles.animeDetailModalContainer}>
+      <div className={`${styles.animeDetailModalContainer} ${isFullInfoOpen ? styles.dimTabs : ''}`}>
         {/* 닫기 버튼 - 상단 오른쪽 */}
         <button
           onClick={onClose}
@@ -351,10 +355,36 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             {/* 시놉시스 */}
             <div className={styles.synopsisSection}>
               <h3 className={styles.synopsisTitle}>시놉시스</h3>
-              <p className={styles.synopsisText}>
-                {detail?.synopsis || detail?.fullSynopsis || "시놉시스 정보가 없습니다."}
-              </p>
+              {(() => {
+                const raw = (detail?.fullSynopsis ?? detail?.synopsis ?? "").toString().trim();
+                const isLong = raw.length > MAX_SYNOPSIS_CHARS;
+                const text = showFullSynopsis || !isLong ? raw : `${raw.slice(0, MAX_SYNOPSIS_CHARS)}…`;
+                return (
+                  <div className={styles.synopsisInlineRow}>
+                    <span className={styles.synopsisText}>{text || "시놉시스 정보가 없습니다."}</span>
+                    {isLong && (
+                      <button
+                        type="button"
+                        className={styles.synopsisToggle}
+                        onClick={() => {
+                          if (!showFullSynopsis) {
+                            // 처음 '더보기' 누르면 별도 전체 정보 모달을 띄움
+                            setIsFullInfoOpen(true);
+                          } else {
+                            setShowFullSynopsis(false);
+                          }
+                        }}
+                        aria-expanded={showFullSynopsis}
+                      >
+                        {showFullSynopsis ? '접기' : '더보기'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
+            {/* 전체 작품 정보 모달 */}
+            <AnimeFullInfoModal isOpen={isFullInfoOpen} onClose={() => setIsFullInfoOpen(false)} detail={detail} />
           </div>
         </div>
 

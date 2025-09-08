@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.service.AnimeQueryService;
+import com.ottproject.ottbackend.service.PersonalizedRecommendationService;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import jakarta.servlet.http.HttpSession;
@@ -32,6 +33,7 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
 
     private final AnimeQueryService queryService; // 조회 서비스 의존성
     private final SecurityUtil securityUtil; // 현재 사용자 ID 해석용(로그인 여부 반영)
+    private final PersonalizedRecommendationService personalizedRecommendationService; // 개인화 추천 서비스
 
     /**
      * 애니 목록 조회(페이지네이션)
@@ -79,30 +81,39 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
     }
 
     /**
-     * 추천 애니메이션 조회
+     * 추천 애니메이션 조회 (개인화)
      */
-    @Operation(summary = "추천 애니메이션 조회", description = "사용자 맞춤 추천 애니메이션 목록을 반환합니다.")
+    @Operation(summary = "개인화 추천 애니메이션 조회", description = "사용자 찜/시청/평점 기반 개인화 추천 애니메이션 목록을 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping("/recommended") // GET /api/anime/recommended -> 추천 애니메이션 조회
-    public List<AnimeListDto> getRecommended() {
-        // 임시로 최신 애니메이션 10개 반환 (실제로는 추천 알고리즘 구현 필요)
-        return queryService.list(
-                null, // status
-                null, // genreIds
-                null, // minRating
-                null, // year
-                null, // type
-                null, // isDub
-                null, // isSubtitle
-                null, // isExclusive
-                null, // isCompleted
-                null, // isNew
-                null, // isPopular
-                "id", // sort
-                0, // page
-                10, // size
-                null // tagIds
-        ).getItems();
+    @GetMapping("/recommended") // GET /api/anime/recommended -> 개인화 추천 애니메이션 조회
+    public List<AnimeListDto> getRecommended(
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        Long userId = securityUtil.getCurrentUserIdOrNull(null);
+        
+        if (userId != null) {
+            // 로그인 사용자: 개인화 추천
+            return personalizedRecommendationService.getPersonalizedRecommendations(userId, size);
+        } else {
+            // 비로그인 사용자: 기본 추천 (인기작)
+            return queryService.list(
+                    null, // status
+                    null, // genreIds
+                    null, // minRating
+                    null, // year
+                    null, // type
+                    null, // isDub
+                    null, // isSubtitle
+                    null, // isExclusive
+                    null, // isCompleted
+                    null, // isNew
+                    true, // isPopular
+                    "rating", // sort
+                    0, // page
+                    size, // size
+                    null // tagIds
+            ).getItems();
+        }
     }
 
     /**
@@ -160,5 +171,21 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
     @GetMapping("/tags")
     public List<com.ottproject.ottbackend.dto.TagSimpleDto> getTags() {
         return queryService.getAllTags();
+    }
+
+    /**
+     * 사용자 활동 기록 (개인화 추천용)
+     */
+    @Operation(summary = "사용자 활동 기록", description = "시청/찜/평점 활동을 기록하여 개인화 추천에 활용합니다.")
+    @ApiResponse(responseCode = "200", description = "기록 성공")
+    @PostMapping("/activity")
+    public void recordActivity(
+            @RequestParam Long animeId,
+            @RequestParam String activityType // view, favorite, rating
+    ) {
+        Long userId = securityUtil.getCurrentUserIdOrNull(null);
+        if (userId != null) {
+            personalizedRecommendationService.recordUserActivity(userId, animeId, activityType);
+        }
     }
 }

@@ -17,9 +17,10 @@
 // *
 // * 큰 흐름
 // * - 기본 애니메이션 데이터 수집 완료 후 연관 엔티티들을 처리한다.
-// * - 장르, 스튜디오, 태그, 감독 데이터를 수집한다.
+// * - 장르, 스튜디오, 태그 데이터를 수집한다.
+// * - 감독(디렉터)는 별도 config에서 처리한다.
 // */
-//// @Component
+//@Component
 //@RequiredArgsConstructor
 //@Slf4j
 //@ConditionalOnProperty(name = "anime.auto-sync.enabled", havingValue = "true", matchIfMissing = true)
@@ -46,7 +47,7 @@
 //
 //            for (Anime anime : savedAnimes) {
 //                try {
-//                    animeBatchProcessor.processAnimeAssociations(anime.getId());
+//                    animeBatchProcessor.processAnimeAssociationsWithoutDirectors(anime.getId());
 //                    successCount++;
 //                    log.info("✅ 연관 엔티티 처리 완료: {} (ID: {})", anime.getTitle(), anime.getId());
 //                } catch (Exception e) {

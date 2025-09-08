@@ -339,5 +339,42 @@
         WHERE a.id = #{aniId} <!-- 대상 aniId -->
     </select>
 
+    <!-- 개인화 추천용 쿼리들 -->
+    
+    <!-- 사용자 찜한 작품 ID 목록 -->
+    <select id="findFavoriteAnimeIds" resultType="long">
+        SELECT af.ani_id
+        FROM ani_favorites af
+        WHERE af.user_id = #{userId}
+        ORDER BY af.created_at DESC
+    </select>
+
+    <!-- 사용자 시청한 작품 ID 목록 (에피소드 진도 기준) -->
+    <select id="findWatchedAnimeIds" resultType="long">
+        SELECT DISTINCT e.anime_id
+        FROM episode_progress ep
+        JOIN episodes e ON e.id = ep.episode_id
+        WHERE ep.user_id = #{userId}
+        AND ep.position_sec > 0
+        ORDER BY ep.updated_at DESC
+    </select>
+
+    <!-- 사용자 높은 평점 작품 ID 목록 -->
+    <select id="findHighRatedAnimeIds" resultType="long">
+        SELECT r.ani_id
+        FROM ratings r
+        WHERE r.user_id = #{userId}
+        AND r.score >= #{minRating}
+        ORDER BY r.score DESC, r.created_at DESC
+    </select>
+
+    <!-- 작품의 태그 ID 목록 -->
+    <select id="findTagIdsByAnimeId" resultType="long">
+        SELECT alt.tag_id
+        FROM anime_tags alt
+        WHERE alt.anime_id = #{aniId}
+        ORDER BY alt.tag_id
+    </select>
+
 <!-- end of AnimeQueryMapper -->
 </mapper>

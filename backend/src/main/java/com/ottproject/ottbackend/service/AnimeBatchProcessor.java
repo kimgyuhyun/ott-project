@@ -69,21 +69,21 @@ public class AnimeBatchProcessor {
             log.warn("장르 처리 실패: 애니메이션 ID {} - {}", animeId, e.getMessage());
         }
         
-        // 4. 스튜디오 처리
+        // 5. 스튜디오 처리
         try {
             processStudios(anime, jikanData);
         } catch (Exception e) {
             log.warn("스튜디오 처리 실패: 애니메이션 ID {} - {}", animeId, e.getMessage());
         }
         
-        // 5. 태그 처리
+        // 6. 태그 처리
         try {
             processTags(anime, jikanData);
         } catch (Exception e) {
             log.warn("태그 처리 실패: 애니메이션 ID {} - {}", animeId, e.getMessage());
         }
         
-        // 6. 애니메이션 업데이트
+        // 7. 애니메이션 업데이트
         animeRepository.save(anime);
         
         log.info("✅ 애니메이션 연관 엔티티 처리 완료: {} (ID: {})", anime.getTitle(), animeId);
@@ -152,6 +152,64 @@ public class AnimeBatchProcessor {
         animeRepository.save(anime);
         
         log.info("✅ 애니메이션 연관 엔티티 처리 완료: {} (ID: {})", anime.getTitle(), animeId);
+    }
+    
+    /**
+     * 저장된 애니메이션의 연관 엔티티들을 배치로 처리 (감독 제외)
+     * - 장르, 스튜디오, 태그만 처리
+     */
+    @Transactional
+    public void processAnimeAssociationsWithoutDirectors(Long animeId) {
+        // 1. 저장된 애니메이션 조회
+        Anime anime = animeRepository.findById(animeId).orElse(null);
+        if (anime == null) {
+            log.warn("애니메이션을 찾을 수 없음: ID {}", animeId);
+            return;
+        }
+        
+        // 2. malId로 Jikan API 직접 조회해서 상세 정보 가져오기
+        Long malId = anime.getMalId();
+        log.info("🎬 애니메이션 연관 엔티티 처리 시작 (감독 제외): {} (ID: {}, MAL ID: {})", anime.getTitle(), animeId, malId);
+        if (malId == null) {
+            log.warn("MAL ID가 없어서 연관 엔티티 처리 불가: ID {}", animeId);
+            return;
+        }
+        
+        // Jikan API에서 상세 정보 조회 (MAL ID로 직접 조회)
+        var jikanDetails = jikanApiService.getAnimeDetails(malId);
+        if (jikanDetails == null) {
+            log.warn("Jikan API 조회 결과 없음: MAL ID {}", malId);
+            return;
+        }
+        
+        // DTO를 Map으로 변환
+        Map<String, Object> jikanData = convertToMap(jikanDetails);
+        
+        // 3. 장르 처리
+        try {
+            processGenres(anime, jikanData);
+        } catch (Exception e) {
+            log.warn("장르 처리 실패: 애니메이션 ID {} - {}", animeId, e.getMessage());
+        }
+        
+        // 4. 스튜디오 처리
+        try {
+            processStudios(anime, jikanData);
+        } catch (Exception e) {
+            log.warn("스튜디오 처리 실패: 애니메이션 ID {} - {}", animeId, e.getMessage());
+        }
+        
+        // 5. 태그 처리
+        try {
+            processTags(anime, jikanData);
+        } catch (Exception e) {
+            log.warn("태그 처리 실패: 애니메이션 ID {} - {}", animeId, e.getMessage());
+        }
+        
+        // 6. 애니메이션 업데이트
+        animeRepository.save(anime);
+        
+        log.info("✅ 애니메이션 연관 엔티티 처리 완료 (감독 제외): {} (ID: {})", anime.getTitle(), animeId);
     }
     
     /**

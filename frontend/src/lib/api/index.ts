@@ -4,7 +4,9 @@ import { backendOrigin } from "../config";
 async function apiCall<T>(endpoint: string, init?: RequestInit): Promise<T> {
 	try {
 		// 항상 동일 오리진으로 프록시(nginx) 경유
-		const url = endpoint.startsWith('http') ? endpoint : `/api${endpoint}`;
+		const url = endpoint.startsWith('http')
+			? endpoint
+			: (endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`);
 		
 		const res = await fetch(url, {
 			credentials: "include",

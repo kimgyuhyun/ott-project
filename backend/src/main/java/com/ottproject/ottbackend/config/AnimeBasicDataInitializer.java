@@ -15,7 +15,7 @@
 // * - 애플리케이션 시작 시 Jikan API를 호출하여 애니메이션 기본 정보를 수집한다.
 // * - 개발 환경에서만 실행되도록 설정한다.
 // */
-//// @Component
+//@Component
 //@RequiredArgsConstructor
 //@Slf4j
 //@ConditionalOnProperty(name = "anime.auto-sync.enabled", havingValue = "true", matchIfMissing = true)
