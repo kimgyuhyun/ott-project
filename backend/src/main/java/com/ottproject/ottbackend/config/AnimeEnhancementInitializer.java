@@ -22,7 +22,7 @@
 //@RequiredArgsConstructor
 //@Slf4j
 //// @ConditionalOnProperty(name = "anime.enhancement.auto-enabled", havingValue = "true", matchIfMissing = false)
-//// @Order(4) // 네 번째로 실행 (TMDB 한국어 정보 보완)
+//// @Order(7) // (TMDB 한국어 정보 보완)
 //// public class AnimeEnhancementInitializer implements CommandLineRunner {
 //public class AnimeEnhancementInitializer {
 //
