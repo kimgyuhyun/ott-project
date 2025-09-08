@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Header from "@/components/layout/Header";
 import WeeklySchedule from "@/components/home/WeeklySchedule";
 import { getAnimeDetail } from "@/lib/api/anime";
@@ -36,6 +36,40 @@ export default function Home() {
 
   
   const { user, isAuthenticated, login, logout } = useAuth();
+
+  // 캐러셀 참조
+  const recommendedRef = useRef<HTMLDivElement | null>(null);
+  const popularRef = useRef<HTMLDivElement | null>(null);
+
+  // 스크롤 가능 여부 상태
+  const [recommendedScrollable, setRecommendedScrollable] = useState(false);
+  const [popularScrollable, setPopularScrollable] = useState(false);
+
+  // 캐러셀 스크롤 함수 (카드 한 칸 기준)
+  const scrollByCard = (ref: React.RefObject<HTMLDivElement>, direction: number) => {
+    const container = ref.current;
+    if (!container) return;
+    const firstItem = container.querySelector(`.${styles.carouselItem}`) as HTMLElement | null;
+    const gapPx = 16; // CSS gap 1rem 가정
+    const scrollAmount = firstItem ? (firstItem.getBoundingClientRect().width + gapPx) : Math.max(240, container.clientWidth * 0.8);
+    container.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
+  };
+
+  // 스크롤 가능 여부 계산
+  useEffect(() => {
+    const updateScrollability = () => {
+      if (recommendedRef.current) {
+        setRecommendedScrollable(recommendedRef.current.scrollWidth > recommendedRef.current.clientWidth + 4);
+      }
+      if (popularRef.current) {
+        setPopularScrollable(popularRef.current.scrollWidth > popularRef.current.clientWidth + 4);
+      }
+    };
+
+    updateScrollability();
+    window.addEventListener('resize', updateScrollability);
+    return () => window.removeEventListener('resize', updateScrollability);
+  }, [recommendedAnime, popularAnime]);
 
   // 메인 페이지 테마 설정 (사용자 설정 연동)
   useEffect(() => {
@@ -138,8 +172,8 @@ export default function Home() {
         // 병렬로 여러 API 호출
         const [animeListData, recommendedData, popularData] = await Promise.all([
           listAnime({ status: 'ONGOING', size: 50 }), // 방영중인 애니메이션만
-          listAnime({ isNew: true, size: 6 }), // 신작 애니메이션
-          listAnime({ isPopular: true, size: 6 }) // 인기 애니메이션
+          api.get('/api/anime/recommended?size=20'), // 개인화 추천 애니메이션
+          listAnime({ isPopular: true, size: 20 }) // 인기 애니메이션
         ]);
         
         console.log('📊 API 응답 데이터:', { animeListData, recommendedData, popularData });
@@ -150,12 +184,12 @@ export default function Home() {
         });
         
         const ongoingAnime = (animeListData as any).items || (animeListData as any).content || [];
-        const newAnime = (recommendedData as any).items || (recommendedData as any).content || [];
+        const newAnime = recommendedData || []; // 개인화 추천은 직접 배열
         const popularAnime = (popularData as any).items || (popularData as any).content || [];
         
         console.log('🔍 애니메이션 데이터 로드 결과:');
         console.log('방영중인 애니메이션:', ongoingAnime.length, ongoingAnime.slice(0, 3));
-        console.log('신작 애니메이션:', newAnime.length, newAnime.slice(0, 3));
+        console.log('개인화 추천 애니메이션:', Array.isArray(newAnime) ? newAnime.length : 0, Array.isArray(newAnime) ? newAnime.slice(0, 3) : []);
         console.log('인기 애니메이션:', popularAnime.length, popularAnime.slice(0, 3));
         
         // 필터링 전후 비교
@@ -171,11 +205,11 @@ export default function Home() {
           (anime.titleEn && anime.titleEn.trim()) || 
           (anime.titleJp && anime.titleJp.trim())
         ));
-        setRecommendedAnime(newAnime.filter((anime: any) => 
+        setRecommendedAnime(Array.isArray(newAnime) ? newAnime.filter((anime: any) => 
           (anime.title && anime.title.trim()) || 
           (anime.titleEn && anime.titleEn.trim()) || 
           (anime.titleJp && anime.titleJp.trim())
-        ));
+        ) : []);
         setPopularAnime(popularAnime.filter((anime: any) => 
           (anime.title && anime.title.trim()) || 
           (anime.titleEn && anime.titleEn.trim()) || 
@@ -210,12 +244,28 @@ export default function Home() {
 
   // 테스트용 임시 로그인 제거
 
+  // 사용자 활동 기록
+  const recordUserActivity = async (animeId: number, activityType: string) => {
+    try {
+      const params = new URLSearchParams();
+      params.append('animeId', animeId.toString());
+      params.append('activityType', activityType);
+      
+      await api.post(`/api/anime/activity?${params.toString()}`);
+    } catch (error) {
+      console.warn('사용자 활동 기록 실패:', error);
+    }
+  };
+
   // 애니메이션 클릭 핸들러
   const handleAnimeClick = async (anime: any) => {
     try {
       // 목록 DTO에는 필드가 적으므로 상세 조회로 모달 데이터 보강
       const id = anime?.aniId ?? anime?.id;
       if (id) {
+        // 상세보기 활동 기록
+        recordUserActivity(id, 'view');
+        
         const detail = await getAnimeDetail(id);
         setSelectedAnime(detail);
       } else {
@@ -322,27 +372,49 @@ export default function Home() {
             />
           </div>
           
-          {/* 추천 애니메이션 */}
+          {/* 개인화 추천 애니메이션 */}
           {recommendedAnime.length > 0 && (
             <div className={styles.contentContainer}>
-              <h2 className={styles.sectionTitle}>추천 애니메이션</h2>
-              <div className={styles.animeGrid}>
-                {recommendedAnime.slice(0, 6).map((anime: any, idx: number) => (
-                  <div 
-                    key={anime.aniId ?? anime.id ?? idx} 
-                    className={styles.animeGridItem}
-                    onClick={() => handleAnimeClick(anime)}
+              <h2 className={styles.sectionTitle}>개인화 추천</h2>
+              <div className={styles.carouselWrapper}>
+                {recommendedScrollable && (
+                  <button
+                    className={`${styles.carouselButton} ${styles.carouselButtonLeft}`}
+                    aria-label="왼쪽으로"
+                    onClick={() => scrollByCard(recommendedRef, -1)}
                   >
-                    <img 
-                      className={styles.animeGridPoster}
-                      src={anime.posterUrl || '/placeholder-anime.jpg'}
-                      alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
-                    />
-                    <div className={styles.animeGridTitle}>
-                      {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
-                    </div>
+                    ‹
+                  </button>
+                )}
+                <div className={styles.carouselViewport}>
+                  <div className={styles.carouselTrack} ref={recommendedRef}>
+                    {recommendedAnime.map((anime: any, idx: number) => (
+                      <div
+                        key={anime.aniId ?? anime.id ?? idx}
+                        className={`${styles.animeGridItem} ${styles.carouselItem}`}
+                        onClick={() => handleAnimeClick(anime)}
+                      >
+                        <img
+                          className={styles.animeGridPoster}
+                          src={anime.posterUrl || '/placeholder-anime.jpg'}
+                          alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
+                        />
+                        <div className={styles.animeGridTitle}>
+                          {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+                {recommendedScrollable && (
+                  <button
+                    className={`${styles.carouselButton} ${styles.carouselButtonRight}`}
+                    aria-label="오른쪽으로"
+                    onClick={() => scrollByCard(recommendedRef, 1)}
+                  >
+                    ›
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -351,23 +423,45 @@ export default function Home() {
           {popularAnime.length > 0 && (
             <div className={styles.contentContainer}>
               <h2 className={styles.sectionTitle}>인기 애니메이션</h2>
-              <div className={styles.animeGrid}>
-                {popularAnime.slice(0, 6).map((anime: any, idx: number) => (
-                  <div 
-                    key={anime.aniId ?? anime.id ?? idx} 
-                    className={styles.animeGridItem}
-                    onClick={() => handleAnimeClick(anime)}
+              <div className={styles.carouselWrapper}>
+                {popularScrollable && (
+                  <button
+                    className={`${styles.carouselButton} ${styles.carouselButtonLeft}`}
+                    aria-label="왼쪽으로"
+                    onClick={() => scrollByCard(popularRef, -1)}
                   >
-                    <img 
-                      className={styles.animeGridPoster}
-                      src={anime.posterUrl || '/placeholder-anime.jpg'}
-                      alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
-                    />
-                    <div className={styles.animeGridTitle}>
-                      {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
-                    </div>
+                    ‹
+                  </button>
+                )}
+                <div className={styles.carouselViewport}>
+                  <div className={styles.carouselTrack} ref={popularRef}>
+                    {popularAnime.map((anime: any, idx: number) => (
+                      <div
+                        key={anime.aniId ?? anime.id ?? idx}
+                        className={`${styles.animeGridItem} ${styles.carouselItem}`}
+                        onClick={() => handleAnimeClick(anime)}
+                      >
+                        <img
+                          className={styles.animeGridPoster}
+                          src={anime.posterUrl || '/placeholder-anime.jpg'}
+                          alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
+                        />
+                        <div className={styles.animeGridTitle}>
+                          {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+                {popularScrollable && (
+                  <button
+                    className={`${styles.carouselButton} ${styles.carouselButtonRight}`}
+                    aria-label="오른쪽으로"
+                    onClick={() => scrollByCard(popularRef, 1)}
+                  >
+                    ›
+                  </button>
+                )}
               </div>
             </div>
           )}
