@@ -24,7 +24,7 @@
             s.next_billing_at AS nextBillingAt,
             s.auto_renew AS autoRenew,
             CASE 
-              WHEN s.cancel_at_period_end = TRUE AND s.end_at &lt; #{now} THEN 'CANCELED' 
+              WHEN s.cancel_at_period_end = TRUE AND s.end_at &lt;= #{now} THEN 'CANCELED' 
               ELSE s.status 
             END AS status,
             np.code AS nextPlanCode,
@@ -48,7 +48,7 @@
             s.next_billing_at AS nextBillingAt,
             s.auto_renew AS autoRenew,
             CASE 
-              WHEN s.cancel_at_period_end = TRUE AND s.end_at &lt; #{now} THEN 'CANCELED' 
+              WHEN s.cancel_at_period_end = TRUE AND s.end_at &lt;= #{now} THEN 'CANCELED' 
               ELSE s.status 
             END AS status,
             np.code AS nextPlanCode,
