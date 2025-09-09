@@ -55,7 +55,7 @@ export default function Header() {
           <div className={styles.headerLogoNavGroup}>
             {/* 로고 */}
             <Link href="/" className={styles.headerLogo}>
-              <span>LAFTEL</span>
+              <span>LAPUTA</span>
             </Link>
 
             {/* 네비게이션 */}
