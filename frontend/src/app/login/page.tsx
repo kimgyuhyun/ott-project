@@ -95,10 +95,12 @@ export default function LoginPage() {
 
       {/* 이메일 로그인/회원가입 폼 */}
       {showEmailForm && (
-        <EmailAuthForm 
-          onClose={handleEmailFormClose}
-          onSuccess={handleAuthSuccess}
-        />
+        <Modal open={showEmailForm} onClose={handleEmailFormClose}>
+          <EmailAuthForm 
+            onClose={handleEmailFormClose}
+            onSuccess={handleAuthSuccess}
+          />
+        </Modal>
       )}
     </main>
   );

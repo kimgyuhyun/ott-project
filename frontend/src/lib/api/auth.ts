@@ -49,9 +49,22 @@ export async function checkEmailDuplicate(email: string) {
 
 // 로그아웃 API
 export async function logout() {
-  return apiCall('/api/auth/logout', {
+  const response = await fetch('/api/auth/logout', {
     method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`API Error: ${response.status} ${errorText}`);
+  }
+
+  // 로그아웃 API는 JSON이 아닌 텍스트를 반환할 수 있으므로 text()로 처리
+  const text = await response.text();
+  return text;
 }
 
 // 현재 사용자 정보 가져오기
