@@ -10,7 +10,7 @@ import ProrationPaymentModal from "@/components/membership/ProrationPaymentModal
 import styles from "./guide.module.css";
 
 export default function MembershipGuidePage() {
-  const { membershipPlans, userMembership, isLoading, error, reloadUserMembership } = useMembershipData();
+  const { membershipPlans, userMembership, paymentHistory, isLoading, error, reloadUserMembership } = useMembershipData();
   
   // 확장된 플랜 (화살표로 접었다 펼쳤다)
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
@@ -149,6 +149,19 @@ export default function MembershipGuidePage() {
     }
   };
 
+  // 환불 상태 확인
+  const isRefunded = useMemo(() => {
+    if (!paymentHistory || paymentHistory.length === 0) return false;
+    // 최근 결제가 환불된 상태인지 확인
+    const latestPayment = paymentHistory[0];
+    return latestPayment.status === 'REFUNDED';
+  }, [paymentHistory]);
+
+  // 환불 + 해지 상태 확인
+  const isRefundedAndCancelled = useMemo(() => {
+    return isRefunded && userMembership?.status === 'CANCELED';
+  }, [isRefunded, userMembership?.status]);
+
 
 
 
@@ -245,20 +258,39 @@ export default function MembershipGuidePage() {
             </div>
           )}
 
+          {/* 환불 완료 안내 */}
+          {!isLoading && isRefundedAndCancelled && (
+            <div className={styles.refundNotice}>
+              <div className={styles.refundNoticeIcon}>💰</div>
+              <div className={styles.refundNoticeContent}>
+                <h3 className={styles.refundNoticeTitle}>환불이 완료되었습니다</h3>
+                <p className={styles.refundNoticeText}>
+                  멤버십 결제가 환불되었고, 멤버십이 해지되었습니다. 
+                  새로운 멤버십을 구독하시려면 아래 플랜을 선택해주세요.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* 요약 카드 or 로그인 유도 */}
-          {!isLoading && userMembership ? (
+          {!isLoading && userMembership && !isRefundedAndCancelled ? (
             summaryCard
-          ) : (
+          ) : !isLoading && !isRefundedAndCancelled ? (
             <div className={styles.loginCard}>
               <p className={styles.loginCardText}>로그인 후 멤버십 상태를 확인할 수 있습니다.</p>
               <Link href="/login" className={styles.loginButton}>로그인하고 멤버십 확인</Link>
             </div>
-          )}
+          ) : null}
 
           {/* 다른 멤버십 */}
           <div className={styles.otherMembershipSection}>
-            <h3 className={styles.otherMembershipTitle}>다른 멤버십</h3>
+            <h3 className={styles.otherMembershipTitle}>
+              {isRefundedAndCancelled ? '멤버십 플랜' : '다른 멤버십'}
+            </h3>
             {(membershipPlans.filter(p => {
+              // 환불 완료 상태일 때는 모든 플랜 표시
+              if (isRefundedAndCancelled) return true;
+              
               if (!userMembership) return true;
               const byCodeDifferent = (p as any).code && userMembership.planCode && String((p as any).code).toUpperCase() !== String(userMembership.planCode).toUpperCase();
               const byNameDifferent = p.name && userMembership.planName && String(p.name).toLowerCase() !== String(userMembership.planName).toLowerCase();
@@ -298,7 +330,17 @@ export default function MembershipGuidePage() {
                       </ul>
                     </div>
                     
-                    {userMembership?.nextPlanCode && (p as any).code && String((p as any).code).toUpperCase() === String(userMembership.nextPlanCode).toUpperCase() ? (
+                    {isRefundedAndCancelled ? (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
+                          window.location.href = '/membership';
+                        }}
+                        className={styles.changePlanButton}
+                      >
+                        멤버십 구독하기
+                      </button>
+                    ) : userMembership?.nextPlanCode && (p as any).code && String((p as any).code).toUpperCase() === String(userMembership.nextPlanCode).toUpperCase() ? (
                       <button 
                         onClick={(e) => { e.stopPropagation(); }}
                         className={styles.changePlanButton}
@@ -341,7 +383,7 @@ export default function MembershipGuidePage() {
                 <p>• 통신사 또는 카드 정보 변경, 잔액 부족 등의 사유로 인해 결제가 실패할 경우, 멤버십 정기 결제가 자동으로 해지될 수 있습니다.</p>
                 <p>• 결제 당일을 제외하고는 결제 수단은 언제든지 변경할 수 있으며, 변경된 결제 수단은 다음 정기 결제일부터 적용됩니다. (단, 휴대폰 결제로는 변경이 불가합니다.)</p>
                 <p>• 인앱 결제 또는 외부 제휴처를 통해 구독한 멤버십을 보유한 경우, 라프텔 웹 결제로 즉시 변경은 불가하며 기존 멤버십을 해지한 뒤 이용 기간이 종료된 후 새로운 멤버십으로 변경할 수 있습니다.</p>
-                <p>• 멤버십 결제 후 디지털 콘텐츠를 하나도 다운로드하지 않았고(다운로드 시작 포함), 스트리밍 서비스를 통해 전혀 재생하지 않은 경우에 한해, 결제일로부터 7일 이내 라프텔 고객센터에 요청하시면 환불 가능합니다. 단, 인앱 결제 또는 외부 제휴처를 통해 구독하신 경우, Google Play, App Store, LG U+등 제휴사 고객센터를 통해 환불 요청해 주시기 바랍니다.</p>
+                <p>• 멤버십 결제 후 서비스를 전혀 이용하지 않은 경우에 한해, 결제일로부터 7일 이내에 환불이 가능합니다. 단, 인앱 결제 또는 외부 제휴처를 통해 구독하신 경우, Google Play, App Store, LG U+등 제휴사 고객센터를 통해 환불 요청해 주시기 바랍니다.</p>
                 <p>• 멤버십 이용 중에는 남은 기간에 대한 금액 환불이 불가합니다.</p>
               </div>
             </div>
