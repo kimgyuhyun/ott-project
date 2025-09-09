@@ -1,39 +1,55 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Header from "@/components/layout/Header";
-import AnimeCard from "@/components/home/AnimeCard";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
-import { getWeeklyAnime } from "@/lib/api/anime";
+import { api } from "@/lib/api/index";
+import styles from "./weekly.module.css";
 
 /**
  * 요일별 신작 페이지
- * 서비스 업데이트 안내, 요일별 탭, 애니 작품 그리드 포함
+ * 7열 컬럼형 레이아웃으로 모든 요일을 동시에 표시
  */
 export default function WeeklyPage() {
-  const [activeDay, setActiveDay] = useState<'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday'>('friday');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAnime, setSelectedAnime] = useState<any>(null);
   const [weeklyAnimes, setWeeklyAnimes] = useState<Record<string, any[]>>({
-    monday: [],
-    tuesday: [],
-    wednesday: [],
-    thursday: [],
-    friday: [],
-    saturday: [],
-    sunday: []
+    '월': [],
+    '화': [],
+    '수': [],
+    '목': [],
+    '금': [],
+    '토': [],
+    '일': []
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeColumn, setActiveColumn] = useState<string>('');
+  
+  const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // 다크모드 적용
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }, []);
 
   const days = [
-    { id: 'monday' as const, label: '월요일' },
-    { id: 'tuesday' as const, label: '화요일' },
-    { id: 'wednesday' as const, label: '수요일' },
-    { id: 'thursday' as const, label: '목요일' },
-    { id: 'friday' as const, label: '금요일' },
-    { id: 'saturday' as const, label: '토요일' },
-    { id: 'sunday' as const, label: '일요일' }
+    { id: '월' as const, fullLabel: '월요일' },
+    { id: '화' as const, fullLabel: '화요일' },
+    { id: '수' as const, fullLabel: '수요일' },
+    { id: '목' as const, fullLabel: '목요일' },
+    { id: '금' as const, fullLabel: '금요일' },
+    { id: '토' as const, fullLabel: '토요일' },
+    { id: '일' as const, fullLabel: '일요일' }
   ];
+
+  // 현재 요일 가져오기
+  const getCurrentDay = () => {
+    const today = new Date().getDay();
+    const dayMap = ['일', '월', '화', '수', '목', '금', '토'];
+    return dayMap[today];
+  };
+
+  const currentDay = getCurrentDay();
 
   // 요일별 애니메이션 데이터 로드
   useEffect(() => {
@@ -45,23 +61,27 @@ export default function WeeklyPage() {
         // 모든 요일의 애니메이션 데이터를 병렬로 로드
         const dayPromises = days.map(async (day) => {
           try {
-            const data = await getWeeklyAnime(day.id);
-            return { day: day.id, data: (data as any) || [] };
+            const data = await api.get(`/api/anime/weekly/${day.id}?limit=20`);
+            const allAnime = Array.isArray(data) ? data : [];
+            // 신작만 필터링
+            const newAnime = allAnime.filter((anime: any) => anime.isNew === true);
+            console.log(`${day.fullLabel} 전체 애니메이션:`, allAnime.length, '개, 신작만:', newAnime.length, '개');
+            return { day: day.id, data: newAnime };
           } catch (err) {
-            console.error(`${day.label} 애니메이션 로드 실패:`, err);
+            console.error(`${day.fullLabel} 애니메이션 로드 실패:`, err);
             return { day: day.id, data: [] };
           }
         });
         
         const results = await Promise.all(dayPromises);
         const animeData: Record<string, any[]> = {
-          monday: [],
-          tuesday: [],
-          wednesday: [],
-          thursday: [],
-          friday: [],
-          saturday: [],
-          sunday: []
+          '월': [],
+          '화': [],
+          '수': [],
+          '목': [],
+          '금': [],
+          '토': [],
+          '일': []
         };
         
         results.forEach(({ day, data }) => {
@@ -80,8 +100,55 @@ export default function WeeklyPage() {
     loadWeeklyAnime();
   }, []);
 
-  // 현재 선택된 요일의 작품들
-  const currentAnimes = weeklyAnimes[activeDay] || [];
+  // 현재 요일로 자동 스크롤
+  useEffect(() => {
+    if (!isLoading && Object.keys(weeklyAnimes).length > 0) {
+      const currentDayColumn = columnRefs.current[currentDay];
+      
+      if (currentDayColumn) {
+        setTimeout(() => {
+          currentDayColumn.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start',
+            inline: 'center'
+          });
+          setActiveColumn(currentDay);
+        }, 100);
+      }
+    }
+  }, [isLoading, weeklyAnimes, currentDay]);
+
+  // 컬럼 가시성 감지 (IntersectionObserver)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const dayId = entry.target.getAttribute('data-day');
+            if (dayId) {
+              setActiveColumn(dayId);
+            }
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: '-20% 0px -20% 0px',
+        threshold: 0.5
+      }
+    );
+
+    Object.values(columnRefs.current).forEach((ref) => {
+      if (ref) {
+        observer.observe(ref);
+      }
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [weeklyAnimes]);
+
 
   // 애니 카드 클릭 시 모달 열기
   const handleAnimeClick = (anime: any) => {
@@ -89,99 +156,153 @@ export default function WeeklyPage() {
     setIsModalOpen(true);
   };
 
+  // 키보드 접근성
+  const handleKeyDown = (event: React.KeyboardEvent, anime: any) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleAnimeClick(anime);
+    }
+  };
+
+  // 배지 색상 매핑
+  const getBadgeClass = (badge: string) => {
+    switch (badge) {
+      case 'UP':
+        return styles.weeklyBadgeUp;
+      case 'ONLY':
+        return styles.weeklyBadgeOnly;
+      case '선독점':
+        return styles.weeklyBadgeExclusive;
+      default:
+        return styles.weeklyBadgeUp;
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-xl text-gray-300">로딩 중...</div>
+      <div className={styles.weeklyPageContainer}>
+        <Header />
+        <div className={styles.weeklyLoadingContainer}>
+          <div className={styles.weeklyLoadingText}>로딩 중...</div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-xl text-red-400">{error}</div>
+      <div className={styles.weeklyPageContainer}>
+        <Header />
+        <div className={styles.weeklyErrorContainer}>
+          <div className={styles.weeklyErrorText}>{error}</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className={styles.weeklyPageContainer}>
       <Header />
       
-      <main className="pt-16">
-        <div className="max-w-7xl mx-auto px-6 py-8">
+      <main className={styles.weeklyMain}>
+        <div className={styles.weeklyContent}>
           {/* 페이지 제목 */}
-          <h1 className="text-3xl font-bold text-white mb-6">요일별 신작</h1>
+          <h1 className={styles.weeklyPageTitle}>요일별 신작</h1>
 
           {/* 서비스 업데이트 안내 박스 */}
-          <div className="bg-gray-800 rounded-lg p-6 mb-8">
-            <div className="flex items-start space-x-3">
-              <div className="text-yellow-400 text-xl">🔔</div>
-              <div className="flex-1">
-                <div className="space-y-3 text-gray-300 text-sm">
-                  <p>
-                    8월 12일 서비스 예정이었던 <span className="font-medium">《가치아쿠타》 3화</span>는 
-                    판권사 사정으로 인해 4화와 함께 <span className="font-medium text-yellow-400">8월 28일 업데이트 예정</span>입니다.
-                  </p>
-                  <p>
-                    8월 21일 업데이트 예정이었던 <span className="font-medium">《앤 셜리 (Anne Shirley)》 19화</span>는 
-                    현지 휴방으로 인해 <span className="font-medium text-yellow-400">8월 28일 업데이트 예정</span>입니다.
-                  </p>
-                  <p>
-                    <span className="font-medium">《가라오케 가자!》 5화</span>는 
-                    현지 휴방으로 인해 <span className="font-medium text-yellow-400">9월 중 서비스 예정</span>입니다.
-                  </p>
+          <div className={styles.noticeBox}>
+            <div className={styles.noticeContent}>
+              <div className={styles.noticeIcon}>🔔</div>
+              <div className={styles.noticeText}>
+                <p>
+                  8월 12일 서비스 예정이었던 <span className={styles.noticeHighlight}>《가치아쿠타》 3화</span>는 
+                  판권사 사정으로 인해 4화와 함께 <span className={styles.noticeHighlight}>8월 28일 업데이트 예정</span>입니다.
+                </p>
+                <p>
+                  8월 21일 업데이트 예정이었던 <span className={styles.noticeHighlight}>《앤 셜리 (Anne Shirley)》 19화</span>는 
+                  현지 휴방으로 인해 <span className={styles.noticeHighlight}>8월 28일 업데이트 예정</span>입니다.
+                </p>
+                <p>
+                  <span className={styles.noticeHighlight}>《가라오케 가자!》 5화</span>는 
+                  현지 휴방으로 인해 <span className={styles.noticeHighlight}>9월 중 서비스 예정</span>입니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+
+          {/* 7열 컬럼 컨테이너 */}
+          <div className={styles.weeklyColumnsContainer}>
+            {days.map((day) => {
+              const dayAnimes = weeklyAnimes[day.id] || [];
+              return (
+                <div
+                  key={day.id}
+                  ref={(el) => (columnRefs.current[day.id] = el)}
+                  data-day={day.id}
+                  className={`${styles.weeklyColumn} ${day.id === currentDay ? styles.weeklyColumnToday : ''}`}
+                  aria-labelledby={`column-header-${day.id}`}
+                >
+                  {/* 컬럼 헤더 */}
+                  <div className={`${styles.weeklyColumnHeader} ${day.id === currentDay ? styles.weeklyColumnHeaderToday : ''}`}>
+                    <h2 
+                      id={`column-header-${day.id}`}
+                      className={`${styles.weeklyColumnTitle} ${day.id === currentDay ? styles.weeklyColumnTitleToday : ''}`}
+                    >
+                      {day.fullLabel}
+                      {day.id === currentDay && <span className={styles.weeklyTodayBadge}>TODAY</span>}
+                    </h2>
+                  </div>
+
+                  {/* 컬럼 콘텐츠 */}
+                  <div className={styles.weeklyColumnContent}>
+                    {dayAnimes.length > 0 ? (
+                      <div className={styles.weeklyAnimeGrid}>
+                        {dayAnimes.map((anime: any, index: number) => {
+                          const itemId = anime.id ?? anime.aniId ?? index;
+                          const key = `${itemId}-${anime.title ?? 'item'}`;
+                          const badge = anime.badges?.[0];
+                          return (
+                            <div
+                              key={key}
+                              className={styles.weeklyAnimeCard}
+                              onClick={() => handleAnimeClick(anime)}
+                              onKeyDown={(e) => handleKeyDown(e, anime)}
+                              tabIndex={0}
+                              role="button"
+                              aria-label={`${anime.title || '애니메이션'} 상세보기`}
+                            >
+                              <img
+                                className={styles.weeklyAnimePoster}
+                                src={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
+                                alt={anime.title || '애니메이션 포스터'}
+                                loading="lazy"
+                              />
+                              <div className={styles.weeklyAnimeTitle}>
+                                {anime.title || '제목 없음'}
+                              </div>
+                              {badge && (
+                                <div className={`${styles.weeklyAnimeBadge} ${getBadgeClass(badge)}`}>
+                                  {badge}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className={styles.weeklyEmptyState}>
+                        <div className={styles.weeklyEmptyStateIcon}>📺</div>
+                        <div className={styles.weeklyEmptyStateText}>
+                          {day.fullLabel} 신작이 없습니다
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
-
-          {/* 요일별 탭 */}
-          <div className="flex flex-wrap gap-2 mb-8">
-            {days.map((day) => (
-              <button
-                key={day.id}
-                onClick={() => setActiveDay(day.id)}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  activeDay === day.id
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                {day.label}
-              </button>
-            ))}
-          </div>
-
-          {/* 선택된 요일의 애니메이션 그리드 */}
-          {currentAnimes.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-              {currentAnimes.map((anime: any, index: number) => {
-                const itemId = anime.id ?? anime.aniId ?? index;
-                const key = `${itemId}-${anime.title ?? 'item'}`;
-                return (
-                  <AnimeCard
-                    key={key}
-                    aniId={Number(itemId)}
-                    title={anime.title}
-                    posterUrl={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
-                    rating={anime.rating}
-                    badge={anime.badges?.[0]}
-                    episode={anime.episode}
-                    onClick={() => handleAnimeClick(anime)}
-                  />
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <div className="text-gray-400 text-lg mb-2">
-                {days.find(d => d.id === activeDay)?.label} 신작이 없습니다
-              </div>
-              <p className="text-gray-500">다른 요일을 선택해보세요</p>
-            </div>
-          )}
         </div>
       </main>
 

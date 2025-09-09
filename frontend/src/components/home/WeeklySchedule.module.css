@@ -74,29 +74,116 @@
   background-color: var(--foreground-slight, #816BFF);
 }
 
-.weeklyGrid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+/* 캐러셀 래퍼 */
+.carouselWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
   gap: 1rem;
 }
 
-/* 반응형 그리드 - 추천/인기 애니와 동일한 패턴 */
-@media (min-width: 640px) {
-  .weeklyGrid {
-    grid-template-columns: repeat(3, 1fr);
-  }
+/* 캐러셀 버튼 */
+.carouselButton {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0;
+  visibility: hidden;
 }
 
-@media (min-width: 768px) {
-  .weeklyGrid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+.carouselWrapper:hover .carouselButton {
+  opacity: 1;
+  visibility: visible;
 }
 
-@media (min-width: 1024px) {
-  .weeklyGrid {
-    grid-template-columns: repeat(6, 1fr);
-  }
+.carouselButton:hover {
+  background: rgba(0, 0, 0, 0.9);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.carouselButtonLeft {
+  left: -1.5rem;
+}
+
+.carouselButtonRight {
+  right: -1.5rem;
+}
+
+/* 캐러셀 뷰포트 */
+.carouselViewport {
+  overflow: hidden;
+  width: 100%;
+}
+
+.carouselTrack {
+  display: flex;
+  gap: 1rem;
+  transition: transform 0.3s ease;
+  padding: 0.5rem 0;
+}
+
+/* 애니메이션 아이템 */
+.animeGridItem {
+  flex: 0 0 auto;
+  width: 12rem;
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.animeGridItem:hover {
+  transform: translateY(-2px);
+}
+
+.carouselItem {
+  /* 캐러셀 아이템 특별 스타일 */
+}
+
+.animeGridPoster {
+  width: 100%;
+  aspect-ratio: 3/4;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.animeGridTitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #F7F7F7;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 2.6rem;
+}
+
+.animeGridBadge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: #816BFF;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
 }
 
 .weeklyEmpty {
