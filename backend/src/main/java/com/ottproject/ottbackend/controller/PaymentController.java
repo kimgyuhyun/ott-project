@@ -144,7 +144,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 		return ResponseEntity.ok(list); // 200 OK + 목록 반환
 	}
 
-	@Operation(summary = "환불 요청", description = "결제 후 24시간 이내이며 누적 시청 5분 미만일 때만 환불합니다.") // Swagger 문서화
+	@Operation(summary = "환불 요청", description = "결제일로부터 7일 이내이며 전혀 시청하지 않았을 때만 환불합니다.") // Swagger 문서화
 	@ApiResponse(responseCode = "200", description = "환불 완료") // 200 문서화
 	@PostMapping("/payments/{paymentId}/refund") // HTTP POST 매핑: 환불 요청
 	public ResponseEntity<Void> refund(@PathVariable Long paymentId, HttpSession session) { // 환불 API

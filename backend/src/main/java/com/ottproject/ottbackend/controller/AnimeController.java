@@ -87,7 +87,7 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/recommended") // GET /api/anime/recommended -> 개인화 추천 애니메이션 조회
     public List<AnimeListDto> getRecommended(
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "6") int size
     ) {
         Long userId = securityUtil.getCurrentUserIdOrNull(null);
         
