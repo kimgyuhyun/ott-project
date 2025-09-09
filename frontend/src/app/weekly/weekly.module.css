@@ -1,0 +1,543 @@
+/* 요일별 신작 페이지 컨테이너 */
+.weeklyPageContainer {
+  min-height: 100vh;
+  background-color: #121212;
+  color: #F7F7F7;
+}
+
+/* 메인 콘텐츠 */
+.weeklyMain {
+  padding-top: 4rem;
+}
+
+.weeklyContent {
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* 페이지 제목 */
+.weeklyPageTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #F7F7F7;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* 공지사항 박스 */
+.noticeBox {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid #816BFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.noticeContent {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.noticeIcon {
+  font-size: 1.25rem;
+  color: #fbbf24;
+  margin-top: 0.25rem;
+  animation: notice-pulse 2s infinite;
+}
+
+.noticeText {
+  flex: 1;
+  color: #ABABAB;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.noticeText p {
+  margin-bottom: 0.75rem;
+}
+
+.noticeText p:last-child {
+  margin-bottom: 0;
+}
+
+.noticeHighlight {
+  color: #fbbf24;
+  font-weight: 500;
+}
+
+/* 요일 퀵내비 */
+.weeklyQuickNav {
+  position: sticky;
+  top: 4rem;
+  z-index: 10;
+  background: rgba(18, 18, 18, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #2a2a2a;
+  padding: 0.75rem 0;
+  margin-bottom: 1.5rem;
+}
+
+.weeklyQuickNavList {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.weeklyQuickNavItem {
+  position: relative;
+}
+
+.weeklyQuickNavButton {
+  padding: 0.5rem 1rem;
+  border: none;
+  background: transparent;
+  color: #ABABAB;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.weeklyQuickNavButton::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(129, 107, 255, 0.2), transparent);
+  transition: left 0.3s ease;
+}
+
+.weeklyQuickNavButton:hover::before {
+  left: 100%;
+}
+
+.weeklyQuickNavButton:hover {
+  color: #F7F7F7;
+  background: rgba(129, 107, 255, 0.1);
+}
+
+.weeklyQuickNavButton.active {
+  color: #816BFF;
+  background: rgba(129, 107, 255, 0.2);
+  font-weight: 600;
+}
+
+.weeklyQuickNavButton:focus-visible {
+  outline: 2px solid #816BFF;
+  outline-offset: 2px;
+}
+
+/* 컬럼 컨테이너 */
+.weeklyColumnsContainer {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1rem;
+  min-height: 60vh;
+}
+
+/* 요일 컬럼 */
+.weeklyColumn {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  scroll-snap-align: start;
+  transition: all 0.3s ease;
+}
+
+/* 오늘 요일 컬럼 효과 */
+.weeklyColumnToday {
+  position: relative;
+  transform: scale(1.02);
+  z-index: 2;
+}
+
+.weeklyColumnToday::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #816BFF, #a855f7, #816BFF);
+  border-radius: 12px;
+  z-index: -1;
+  animation: today-glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes today-glow {
+  0% {
+    opacity: 0.6;
+    box-shadow: 0 0 20px rgba(129, 107, 255, 0.3);
+  }
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 30px rgba(129, 107, 255, 0.6);
+  }
+}
+
+.weeklyColumnHeader {
+  position: sticky;
+  top: 5.5rem;
+  z-index: 5;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  border: 1px solid #2a2a2a;
+  border-radius: 8px 8px 0 0;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+}
+
+/* 오늘 요일 헤더 효과 */
+.weeklyColumnHeaderToday {
+  background: linear-gradient(135deg, #816BFF 0%, #a855f7 100%);
+  border: 1px solid #a855f7;
+  box-shadow: 0 4px 12px rgba(129, 107, 255, 0.4);
+}
+
+.weeklyColumnTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #F7F7F7;
+  margin: 0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+/* 오늘 요일 제목 효과 */
+.weeklyColumnTitleToday {
+  color: #FFFFFF;
+  font-weight: 700;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+/* TODAY 배지 */
+.weeklyTodayBadge {
+  display: inline-block;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #000000;
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  border-radius: 12px;
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
+  animation: today-badge-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes today-badge-pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(251, 191, 36, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(251, 191, 36, 0.5);
+  }
+}
+
+.weeklyColumnContent {
+  flex: 1;
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  border: 1px solid #2a2a2a;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  padding: 1rem;
+  min-height: 400px;
+}
+
+/* 애니메이션 카드 그리드 */
+.weeklyAnimeGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.weeklyAnimeCard {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+  border-radius: 8px;
+  padding: 0.75rem;
+  position: relative;
+  border: 1px solid #3a3a3a;
+  overflow: hidden;
+}
+
+.weeklyAnimeCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(129, 107, 255, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.weeklyAnimeCard:hover::before {
+  left: 100%;
+}
+
+.weeklyAnimeCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+  border-color: #816BFF;
+}
+
+.weeklyAnimeCard:focus-visible {
+  outline: 2px solid #816BFF;
+  outline-offset: 2px;
+}
+
+.weeklyAnimeCard:focus-visible::before {
+  display: none;
+}
+
+.weeklyAnimePoster {
+  width: 100%;
+  aspect-ratio: 3/4;
+  background-color: #2a2a2a;
+  border-radius: 6px;
+  object-fit: cover;
+  margin-bottom: 0.5rem;
+  filter: brightness(0.9) contrast(1.1);
+  transition: filter 0.3s ease;
+}
+
+.weeklyAnimeCard:hover .weeklyAnimePoster {
+  filter: brightness(1.1) contrast(1.2);
+}
+
+.weeklyAnimeTitle {
+  font-size: 0.875rem;
+  color: #F7F7F7;
+  font-weight: 500;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-height: 2.6rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  margin-bottom: 0.5rem;
+}
+
+.weeklyAnimeBadge {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 배지 색상 고정 */
+.weeklyBadgeUp {
+  background: linear-gradient(135deg, #816BFF 0%, #a855f7 100%);
+  box-shadow: 0 2px 4px rgba(129, 107, 255, 0.3);
+}
+
+.weeklyBadgeOnly {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.weeklyBadgeExclusive {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.3);
+}
+
+/* 빈 상태 */
+.weeklyEmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: #ABABAB;
+  text-align: center;
+}
+
+.weeklyEmptyStateIcon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.5;
+}
+
+.weeklyEmptyStateText {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #ABABAB;
+}
+
+/* 로딩 상태 */
+.weeklyLoadingContainer {
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weeklyLoadingText {
+  font-size: 1.125rem;
+  color: #ABABAB;
+  position: relative;
+}
+
+.weeklyLoadingText::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(129, 107, 255, 0.3), transparent);
+  animation: loading-shimmer 2s infinite;
+}
+
+/* 에러 상태 */
+.weeklyErrorContainer {
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.weeklyErrorText {
+  font-size: 1.125rem;
+  color: #ef4444;
+}
+
+/* 애니메이션 */
+@keyframes notice-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes loading-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 반응형 */
+@media (min-width: 1536px) {
+  .weeklyColumnsContainer {
+    grid-template-columns: repeat(7, 1fr);
+  }
+}
+
+@media (min-width: 1280px) and (max-width: 1535px) {
+  .weeklyColumnsContainer {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .weeklyColumnsContainer {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 1023px) {
+  .weeklyContent {
+    padding: 1rem;
+  }
+  
+  .weeklyPageTitle {
+    font-size: 1.5rem;
+  }
+  
+  .weeklyColumnsContainer {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding: 1rem;
+    gap: 1rem;
+    padding-bottom: 1rem;
+  }
+  
+  .weeklyColumn {
+    min-width: 280px;
+    flex-shrink: 0;
+  }
+  
+  .weeklyQuickNav {
+    top: 3.5rem;
+  }
+  
+  .weeklyColumnHeader {
+    top: 4.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .weeklyQuickNavList {
+    gap: 0.25rem;
+  }
+  
+  .weeklyQuickNavButton {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+  }
+  
+  .weeklyColumn {
+    min-width: 260px;
+  }
+}
+
+@media (max-width: 480px) {
+  .weeklyPageTitle {
+    font-size: 1.25rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  }
+  
+  .weeklyColumnTitle {
+    font-size: 1rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  }
+  
+  .weeklyAnimeTitle {
+    font-size: 0.8rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  }
+  
+  .weeklyColumn {
+    min-width: 240px;
+  }
+  
+  .noticeBox {
+    padding: 1rem;
+  }
+}
