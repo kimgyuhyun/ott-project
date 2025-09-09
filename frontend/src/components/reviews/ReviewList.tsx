@@ -649,20 +649,6 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
               <div className={styles.editForm}>
                 <div className={styles.editFormContent}>
                   <div className={styles.formField}>
-                    <label className={styles.formLabel}>평점</label>
-                    <div className={styles.starRating}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setEditingReview(prev => prev ? { ...prev, rating: star } : null)}
-                          className={`${styles.star} ${editingReview.rating >= star ? styles.starActive : styles.starInactive}`}
-                        >
-                          ★
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div className={styles.formField}>
                     <label className={styles.formLabel}>내용</label>
                     <textarea
                       value={editingReview.content}
