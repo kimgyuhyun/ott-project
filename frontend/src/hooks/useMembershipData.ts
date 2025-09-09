@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { getMembershipPlans, getUserMembership, getPaymentMethods, type MembershipPlan, type UserMembership, type PaymentMethodResponse } from "@/lib/api/membership";
+import { getMembershipPlans, getUserMembership, getPaymentMethods, getPaymentHistory, type MembershipPlan, type UserMembership, type PaymentMethodResponse, type PaymentHistoryItem } from "@/lib/api/membership";
 
 export function useMembershipData() {
   const { isAuthenticated, user, isInitialized } = useAuth();
   const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>([]);
   const [userMembership, setUserMembership] = useState<UserMembership | null>(null);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodResponse[]>([]);
+  const [paymentHistory, setPaymentHistory] = useState<PaymentHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,12 +22,14 @@ export function useMembershipData() {
 
         if (isInitialized && isAuthenticated === true && user) {
           try {
-            const [membership, methods] = await Promise.all([
+            const [membership, methods, history] = await Promise.all([
               getUserMembership(),
               getPaymentMethods(),
+              getPaymentHistory(),
             ]);
             setUserMembership(membership);
             setPaymentMethods(methods);
+            setPaymentHistory(history);
           } catch (e) {
             // 401 등은 무시
           }
@@ -45,6 +48,7 @@ export function useMembershipData() {
     membershipPlans,
     userMembership,
     paymentMethods,
+    paymentHistory,
     isLoading,
     error,
     reloadPaymentMethods: async () => {
@@ -61,6 +65,15 @@ export function useMembershipData() {
       try {
         const membership = await getUserMembership();
         setUserMembership(membership);
+      } catch {
+        // ignore
+      }
+    },
+    reloadPaymentHistory: async () => {
+      if (isAuthenticated !== true || !user) return;
+      try {
+        const history = await getPaymentHistory();
+        setPaymentHistory(history);
       } catch {
         // ignore
       }

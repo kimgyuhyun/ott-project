@@ -45,6 +45,7 @@ export default function MembershipPage() {
       if (userMembership.status === 'ACTIVE') {
         router.push('/membership/guide');
       }
+      // CANCELED 상태는 멤버십 페이지에 머물러야 함 (재시작 가능)
     }
   }, [isInitialized, isAuthenticated, userMembership, router]);
 

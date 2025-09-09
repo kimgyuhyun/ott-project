@@ -87,7 +87,7 @@ public class PersonalizedRecommendationService {
         // 3. 시청한 작품 제외하고 추천
         Set<Long> watchedAnime = getWatchedAnimeIds(userId);
         
-        // 4. 태그 기반 애니메이션 조회
+        // 4. 태그 기반 애니메이션 조회 (후보를 적절히 제한)
         List<AnimeListDto> candidates = animeQueryMapper.findAniList(
                 null, // status
                 null, // genreIds
@@ -103,7 +103,7 @@ public class PersonalizedRecommendationService {
                 null, // isNew
                 null, // isPopular
                 "rating", // sort
-                size * 3, // limit
+                Math.min(size * 2, 20), // limit: 최대 20개로 제한
                 0 // offset
         );
 

@@ -52,10 +52,14 @@ export default function PaymentModal({
   }, [error]);
 
   const handlePayment = async () => {
-    if (!agreed || !selectedPaymentService) return;
+    if (!agreed || !selectedPaymentService) {
+      console.log('PaymentModal - 결제 조건 미충족:', { agreed, selectedPaymentService });
+      return;
+    }
 
     console.log('PaymentModal - planInfo:', planInfo);
     console.log('PaymentModal - planCode:', planInfo.code);
+    console.log('PaymentModal - selectedPaymentService:', selectedPaymentService);
 
     try {
       const result = await processPayment({
@@ -65,6 +69,8 @@ export default function PaymentModal({
         cancelUrl: `${window.location.origin}/membership/cancel`
       });
 
+      console.log('PaymentModal - payment result:', result);
+
       if (result.success) {
         setShowSuccess(true);
       } else {
@@ -72,6 +78,7 @@ export default function PaymentModal({
         setShowError(true);
       }
     } catch (err) {
+      console.error('PaymentModal - payment error:', err);
       setErrorMessage('결제 처리 중 오류가 발생했습니다.');
       setShowError(true);
     }
@@ -170,7 +177,10 @@ export default function PaymentModal({
                 <div className={styles.otherPaymentGrid}>
                   <div 
                     className={`${styles.paymentMethodCard} ${selectedPaymentService === 'kakao' ? styles.paymentMethodCardSelected : ''}`}
-                    onClick={() => onSelectPaymentService('kakao')}
+                    onClick={() => {
+                      console.log('카카오페이 선택');
+                      onSelectPaymentService('kakao');
+                    }}
                   >
                     <div className={styles.paymentMethodIcon} style={{ backgroundColor: '#FEE500' }}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -252,7 +262,7 @@ export default function PaymentModal({
                 <p>• 멤버십 해지는 결제 예정일 최소 24시간 이전에 신청해야 합니다.</p>
                 <p>• 결제 실패 시 멤버십 정기 결제가 자동으로 해지될 수 있습니다.</p>
                 <p>• 결제 당일을 제외하고는 결제 수단은 언제든지 변경할 수 있습니다.</p>
-                <p>• 환불은 결제일로부터 7일 이내, 콘텐츠를 이용하지 않은 경우에만 가능합니다.</p>
+                <p>• 환불은 결제일로부터 7일 이내에 서비스를 전혀 이용하지 않았을 때만 가능합니다.</p>
               </div>
             </div>
 

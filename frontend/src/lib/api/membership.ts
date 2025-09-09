@@ -23,7 +23,18 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
 
-  return response.json();
+  // 응답이 비어있으면 null 반환 (환불 API 등)
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    return null;
+  }
+
+  const text = await response.text();
+  if (!text.trim()) {
+    return null;
+  }
+
+  return JSON.parse(text);
 }
 
 // 멤버십 플랜 목록 조회
@@ -123,6 +134,13 @@ export async function checkPaymentStatus(paymentId: number) {
   return apiCall<PaymentStatusResponse>(`/api/payments/${paymentId}/status`);
 }
 
+// 환불 요청
+export async function requestRefund(paymentId: number) {
+  return apiCall<void>(`/api/payments/${paymentId}/refund`, {
+    method: 'POST',
+  });
+}
+
 // 타입 정의
 export interface MembershipPlan {
   id: number;
@@ -175,12 +193,15 @@ export interface PaymentMethodRegisterRequest {
 }
 
 export interface PaymentHistoryItem {
-  id: number;
+  paymentId: number;
+  planCode: string;
+  planName: string;
   amount: number;
   currency: string;
   status: string;
-  createdAt: string;
-  description: string;
+  receiptUrl?: string;
+  paidAt?: string;
+  refundedAt?: string;
 }
 
 export interface PaymentCheckoutCreateSuccess {

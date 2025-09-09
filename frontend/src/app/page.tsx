@@ -31,6 +31,7 @@ export default function Home() {
   const [animeList, setAnimeList] = useState<any[]>([]);
   const [recommendedAnime, setRecommendedAnime] = useState<any[]>([]);
   const [popularAnime, setPopularAnime] = useState<any[]>([]);
+  const [weeklyAnime, setWeeklyAnime] = useState<Record<string, any[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -175,6 +176,26 @@ export default function Home() {
           api.get('/api/anime/recommended?size=20'), // 개인화 추천 애니메이션
           listAnime({ isPopular: true, size: 20 }) // 인기 애니메이션
         ]);
+        
+        // 요일별 신작 데이터 로드
+        const days = ['월', '화', '수', '목', '금', '토', '일'];
+        const weeklyData: Record<string, any[]> = {};
+        
+        for (const day of days) {
+          try {
+            const response = await api.get(`/api/anime/weekly/${day}?limit=20`);
+            const allAnime = Array.isArray(response) ? response : [];
+            // 임시로 신작만 필터링해서 확인
+            const newAnime = allAnime.filter((anime: any) => anime.isNew === true);
+            weeklyData[day] = newAnime;
+            console.log(`${day}요일 전체 애니메이션:`, allAnime.length, '개, 신작만:', newAnime.length, '개');
+          } catch (error) {
+            console.error(`${day}요일 애니메이션 로드 실패:`, error);
+            weeklyData[day] = [];
+          }
+        }
+        
+        setWeeklyAnime(weeklyData);
         
         console.log('📊 API 응답 데이터:', { animeListData, recommendedData, popularData });
         console.log('📊 API 응답 상세:', {
@@ -368,14 +389,14 @@ export default function Home() {
           <div className={styles.contentContainer}>
             <WeeklySchedule 
               onAnimeClick={handleAnimeClick} 
-              animeData={animeList}
+              animeData={weeklyAnime}
             />
           </div>
           
-          {/* 개인화 추천 애니메이션 */}
+          {/* 추천 애니메이션 */}
           {recommendedAnime.length > 0 && (
             <div className={styles.contentContainer}>
-              <h2 className={styles.sectionTitle}>개인화 추천</h2>
+              <h2 className={styles.sectionTitle}>추천 애니메이션</h2>
               <div className={styles.carouselWrapper}>
                 {recommendedScrollable && (
                   <button

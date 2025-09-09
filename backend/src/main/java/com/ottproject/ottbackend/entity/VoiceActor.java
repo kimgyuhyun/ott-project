@@ -40,6 +40,9 @@ public class VoiceActor {
     private String name; // 성우 이름 (한글)
 
     @Column(nullable = true)
+    private Long animeId; // 내 DB의 애니메이션 PK (이 성우가 더빙한 애니메이션)
+
+    @Column(nullable = true)
     private String nameEn; // 성우 이름 (영어)
 
     @Column(nullable = true)
@@ -113,6 +116,11 @@ public class VoiceActor {
      */
     public static VoiceActor createVoiceActor(String name, String nameEn, String nameJp, 
                                             String profileUrl, String description) {
+        return createVoiceActor(name, nameEn, nameJp, profileUrl, description, null);
+    }
+    
+    public static VoiceActor createVoiceActor(String name, String nameEn, String nameJp, 
+                                            String profileUrl, String description, Long animeId) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("성우 이름은 필수입니다.");
         }
@@ -123,6 +131,7 @@ public class VoiceActor {
         voiceActor.nameJp = nameJp != null ? nameJp.trim() : null;
         voiceActor.profileUrl = profileUrl != null ? profileUrl.trim() : null;
         voiceActor.description = description != null ? description.trim() : null;
+        voiceActor.animeId = animeId;
         voiceActor.isActive = true;
         voiceActor.createdAt = LocalDateTime.now();
         voiceActor.updatedAt = LocalDateTime.now();

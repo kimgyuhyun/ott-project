@@ -312,6 +312,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		} else {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 paymentService 입니다.");
 		}
+		
+		log.info("결제 서비스 매핑 - input: {}, mapped: {}", req.paymentService, mappedPg);
 		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank() // 멱등키 전달 시
 				&& idempotencyKeyRepository.findByKeyValue(req.idempotencyKey).isPresent()) { // 중복 확인
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다."); // 409
@@ -374,20 +376,12 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			}
 		}
 
+		// 먼저 게이트웨이에서 세션 생성
 		User user = new User();
 		user.setId(userId);
-		Payment payment = Payment.createPendingPayment(
-				user, // 사용자 FK
-				plan, // 플랜 FK
-				PaymentProvider.IMPORT, // IMPORT 사용
-				"", // 세션 ID (나중에 설정)
-				new Money(chargeAmount, plan.getPrice().getCurrency()) // Money VO 사용
-		);
-		payment.setPaymentMethod(paymentMethod); // 결제수단 연결
-		paymentRepository.save(payment); // 저장
-
+		
 		PaymentGateway.CheckoutSession session = paymentGateway.createCheckoutSession( // 게이트웨이 세션 생성 (prepare-only)
-				payment.getUser(), // 사용자 정보
+				user, // 사용자 정보
 				plan, // 플랜 정보
 				req.successUrl, // 성공 URL (웹훅/회계용 전달)
 				req.cancelUrl, // 취소 URL (웹훅/회계용 전달)
@@ -395,8 +389,16 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				chargeAmount // 실제 prepare 금액(테스트 시 1원 등)
 		); // 세션 반환
 
-		payment.setProviderSessionId(session.sessionId); // 세션 ID 저장
-		paymentRepository.save(payment); // 업데이트 반영
+		// 실제 세션 ID로 Payment 생성
+		Payment payment = Payment.createPendingPayment(
+				user, // 사용자 FK
+				plan, // 플랜 FK
+				PaymentProvider.IMPORT, // IMPORT 사용
+				session.sessionId, // 실제 세션 ID
+				new Money(chargeAmount, plan.getPrice().getCurrency()) // Money VO 사용
+		);
+		payment.setPaymentMethod(paymentMethod); // 결제수단 연결
+		paymentRepository.save(payment); // 저장
 
 		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank()) { // 멱등키 저장
 			idempotencyKeyRepository.save(IdempotencyKey.createIdempotencyKey(
@@ -549,7 +551,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 
 	/**
 	 * 환불 정책 검증 후 환불 실행
-	 * - 조건: 결제 24시간 이내 AND 누적 시청 < 300초
+	 * - 조건: 결제일로부터 7일 이내 AND 전혀 시청하지 않음
 	 */
 	public void refundIfEligible(Long userId, Long paymentId) { // 환불 엔드포인트 진입점
 		Payment payment = paymentRepository.findById(paymentId) // 결제 단건 조회
@@ -563,21 +565,39 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		if (payment.getPaidAt() == null) { // 안전체크
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 완료 시간이 없습니다."); // 400
 		}
-		// 시간 조건: 24시간 이내
-		if (payment.getPaidAt().plusHours(24).isBefore(LocalDateTime.now())) { // 24시간 초과
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "환불 가능 기간을 초과했습니다."); // 400
+		// 시간 조건: 7일 이내
+		if (payment.getPaidAt().plusDays(7).isBefore(LocalDateTime.now())) { // 7일 초과
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "환불 가능 기간을 초과했습니다. (7일 이내만 환불 가능)"); // 400
 		}
-		// 누적 시청 < 5분(300초) 조건: 결제 시각 이후 positionSec 합산(4화 이상만)
+		// 시청 조건: 전혀 시청하지 않음 (1초라도 시청하면 환불 불가)
 		int totalWatched = playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(userId, payment.getPaidAt()); // 4화 이상 누적 시청 초 합
-		if (totalWatched >= 300) { // 300초 이상 시청
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "시청 기록으로 환불 불가 정책입니다."); // 400
+		if (totalWatched > 0) { // 1초라도 시청했으면 환불 불가
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "콘텐츠를 시청한 경우 환불이 불가합니다."); // 400
 		}
 		// 게이트웨이 환불 실행(전액 환불)
-		PaymentGateway.RefundResult rr = paymentGateway.issueRefund(payment.getProviderPaymentId(), payment.getPrice().getAmount()); // 환불 호출
-		payment.setStatus(PaymentStatus.REFUNDED); // 상태 전환
-		payment.setRefundedAmount(payment.getPrice().getAmount()); // 전액 환불
-		payment.setRefundedAt(rr.refundedAt != null ? rr.refundedAt : LocalDateTime.now()); // 환불 시각 기록
-		paymentRepository.save(payment); // 저장
+		try {
+			PaymentGateway.RefundResult rr = paymentGateway.issueRefund(payment.getProviderPaymentId(), payment.getPrice().getAmount()); // 환불 호출
+			payment.setStatus(PaymentStatus.REFUNDED); // 상태 전환
+			payment.setRefundedAmount(payment.getPrice().getAmount()); // 전액 환불
+			payment.setRefundedAt(rr.refundedAt != null ? rr.refundedAt : LocalDateTime.now()); // 환불 시각 기록
+			paymentRepository.save(payment); // 저장
+			
+			// 환불 시 멤버십 구독 즉시 해지
+			LocalDateTime now = LocalDateTime.now();
+			subscriptionRepository.findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
+					.ifPresent(sub -> {
+						sub.setStatus(MembershipSubscriptionStatus.CANCELED); // 즉시 해지
+						sub.setAutoRenew(false); // 자동갱신 중단
+						sub.setCanceledAt(now); // 해지 확정 시각
+						subscriptionRepository.save(sub);
+						log.info("환불로 인한 멤버십 구독 해지 - userId: {}, subscriptionId: {}", userId, sub.getId());
+					});
+			
+			log.info("환불 성공 - paymentId: {}, imp_uid: {}", payment.getId(), payment.getProviderPaymentId());
+		} catch (Exception e) {
+			log.error("환불 실패 - paymentId: {}, imp_uid: {}", payment.getId(), payment.getProviderPaymentId(), e);
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "환불 처리 중 오류가 발생했습니다: " + e.getMessage());
+		}
 	}
 	
 	/**

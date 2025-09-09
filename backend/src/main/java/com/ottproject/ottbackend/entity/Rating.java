@@ -74,8 +74,8 @@ public class Rating {
         if (score == null) {
             throw new IllegalArgumentException("평점은 필수입니다.");
         }
-        if (score < 1.0 || score > 10.0) {
-            throw new IllegalArgumentException("평점은 1-10 범위 내여야 합니다.");
+        if (score < 0.0 || score > 5.0) {
+            throw new IllegalArgumentException("평점은 0-5 범위 내여야 합니다.");
         }
 
         // Rating 엔티티 생성
@@ -107,8 +107,8 @@ public class Rating {
         if (score == null) {
             throw new IllegalArgumentException("평점은 필수입니다.");
         }
-        if (score < 1.0 || score > 10.0) {
-            throw new IllegalArgumentException("평점은 1-10 범위 내여야 합니다.");
+        if (score < 1.0 || score > 5.0) {
+            throw new IllegalArgumentException("평점은 1-5 범위 내여야 합니다.");
         }
 
         this.score = score;

@@ -1,0 +1,131 @@
+.overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal {
+  background: rgba(20, 20, 20, 0.95);
+  border-radius: 8px;
+  padding: 40px;
+  max-width: 700px;
+  width: 90%;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header {
+  color: white;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.content {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.thumbnail {
+  width: 180px;
+  height: 102px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: #333;
+  flex-shrink: 0;
+}
+
+.episodeInfo {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.episodeTitle {
+  color: white;
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.countdown {
+  color: #ccc;
+  font-size: 16px;
+  margin-bottom: 0;
+}
+
+.countdownNumber {
+  color: #ff6b35;
+  font-weight: 600;
+}
+
+.countdownSection {
+  text-align: center;
+  margin: 24px 0 16px 0;
+}
+
+.countdownText {
+  color: #ccc;
+  font-size: 16px;
+}
+
+.countdownNumber {
+  color: #ff6b35;
+  font-weight: 600;
+}
+
+.actions {
+  display: flex;
+  gap: 16px;
+  justify-content: flex-end;
+}
+
+.cancelButton {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  padding: 12px 20px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.cancelButton:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.playButton {
+  background: white;
+  color: black;
+  border: none;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 12px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+}
+
+.playButton:hover {
+  background: #e0e0e0;
+}
+
+.playIcon {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}

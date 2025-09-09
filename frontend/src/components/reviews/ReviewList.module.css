@@ -398,6 +398,7 @@
   min-height: 6rem;
   background-color: #1a1a1a;
   color: #F7F7F7;
+  resize: none;
 }
 
 .editTextarea:focus {

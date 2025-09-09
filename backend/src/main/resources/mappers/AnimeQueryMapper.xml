@@ -90,7 +90,7 @@
         LIMIT #{limit} OFFSET #{offset} <!-- 페이지네이션 -->
     </select>
 
-    <!-- 요일별 신작 조회: broadcast_day = #{day} -->
+    <!-- 요일별 신작 조회: broadcast_day = #{day} AND is_new = TRUE -->
     <select id="findWeeklyByDay" resultType="com.ottproject.ottbackend.dto.AnimeListDto">
         SELECT
         a.id AS aniId,
@@ -112,6 +112,7 @@
         FROM anime a
         WHERE a.is_active = TRUE
           AND a.broadcast_day = #{day}
+          AND a.is_new = TRUE
         ORDER BY a.rating DESC, a.id DESC
         LIMIT #{limit}
     </select>

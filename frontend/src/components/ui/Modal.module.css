@@ -23,8 +23,9 @@
   width: 100%;
   max-width: 28rem;
   border-radius: 1rem;
-  background-color: #1a1a1a;
+  background-color: #222222;
   padding: 2rem;
   color: white;
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
 }

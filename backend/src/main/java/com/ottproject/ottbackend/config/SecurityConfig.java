@@ -59,7 +59,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(org.springframework.util.StringUtils.commaDelimitedListToSet(
                 System.getProperty("app.cors.allowed-origins",
                         System.getenv().getOrDefault("APP_CORS_ALLOWED_ORIGINS",
-                                "http://localhost,http://localhost:3000"))
+                                "http://localhost,http://localhost:3000,https://finch-noted-entirely.ngrok-free.app"))
         ).stream().toList());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

@@ -633,3 +633,259 @@
 .centerNoticeError {
   border-color: #8a2b2b;
 }
+
+/* 환불 섹션 */
+.refundSection {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid #333;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.refundNotice {
+  background: rgba(129, 107, 255, 0.1);
+  border: 1px solid rgba(129, 107, 255, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.refundNoticeText {
+  font-size: 0.875rem;
+  color: #e0e0e0;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.refundNoticeText:last-child {
+  margin-bottom: 0;
+}
+
+/* 결제 내역 리스트 */
+.paymentHistoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.paymentItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.paymentItem:hover {
+  border-color: #555;
+  background: #3d3d3d;
+}
+
+.paymentInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.paymentDescription {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.paymentAmount {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #816BFF;
+}
+
+.paymentDate {
+  font-size: 0.875rem;
+  color: #a0a0a0;
+}
+
+.paymentActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.refundButton {
+  background: linear-gradient(135deg, #816BFF 0%, #6B4BFF 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.refundButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(129, 107, 255, 0.3);
+}
+
+.refundButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.refundedBadge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.nonRefundableBadge {
+  background: rgba(107, 114, 128, 0.2);
+  color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.noPaymentHistory {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #a0a0a0;
+}
+
+.noPaymentHistory p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .refundSection {
+    padding: 1.5rem;
+  }
+  
+  .paymentItem {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+  
+  .paymentActions {
+    justify-content: center;
+  }
+  
+  .refundButton {
+    width: 100%;
+  }
+}
+
+/* 환불 완료 화면 */
+.refundedContainer {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  text-align: center;
+  border: 1px solid #333;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.refundedIcon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+}
+
+.refundedTitle {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 1rem 0;
+}
+
+.refundedDesc {
+  color: #a0a0a0;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 2rem 0;
+}
+
+.refundedActions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.subscribeButton {
+  background: linear-gradient(135deg, #8B7CFF 0%, #6B46C1 100%);
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.subscribeButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 124, 255, 0.3);
+}
+
+.guideButton {
+  background: transparent;
+  color: #8B7CFF;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #8B7CFF;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.guideButton:hover {
+  background: rgba(139, 124, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* 반응형 디자인 - 환불 완료 */
+@media (max-width: 768px) {
+  .refundedContainer {
+    padding: 2rem 1.5rem;
+  }
+  
+  .refundedIcon {
+    font-size: 3rem;
+  }
+  
+  .refundedTitle {
+    font-size: 1.5rem;
+  }
+  
+  .refundedActions {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .subscribeButton,
+  .guideButton {
+    width: 100%;
+    max-width: 300px;
+  }
+}

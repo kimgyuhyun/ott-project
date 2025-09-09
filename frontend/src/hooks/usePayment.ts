@@ -38,13 +38,21 @@ export const usePayment = () => {
         request.paymentService
       );
 
-      // 2. 아임포트 SDK 초기화
+      console.log('usePayment - checkoutResponse:', checkoutResponse);
+
+      // 2. 아임포트 SDK 초기화 및 결제 요청
       if (typeof window !== 'undefined' && window.IMP) {
-        window.IMP.init('imp45866522'); // 아임포트 가맹점 식별코드
+        try {
+          window.IMP.init('imp45866522'); // 아임포트 가맹점 식별코드
+          console.log('아임포트 SDK 초기화 완료');
+        } catch (initError) {
+          console.error('아임포트 SDK 초기화 실패:', initError);
+          throw new Error('아임포트 SDK 초기화에 실패했습니다.');
+        }
 
         // 3. 결제 요청
         return new Promise((resolve) => {
-          window.IMP.request_pay({
+          const paymentData = {
             pg: checkoutResponse.pg || 'kakaopay.TC0ONETIME',
             pay_method: 'card',
             merchant_uid: checkoutResponse.providerSessionId,
@@ -54,23 +62,32 @@ export const usePayment = () => {
             buyer_name: user?.name || '',
             m_redirect_url: window.location.origin + '/membership/success',
             popup: false
-          }, async (response) => {
+          };
+
+          console.log('usePayment - paymentData:', paymentData);
+
+          window.IMP.request_pay(paymentData, async (response) => {
+            console.log('usePayment - payment response:', response);
+            
             if (response.success) {
               // 결제 성공 시 백엔드에서 결제 상태 확인
               try {
                 const statusResponse = await checkPaymentStatus(checkoutResponse.paymentId);
+                console.log('usePayment - statusResponse:', statusResponse);
                 resolve({
                   success: true,
                   paymentId: checkoutResponse.paymentId,
                   redirectUrl: checkoutResponse.redirectUrl
                 });
               } catch (statusError) {
+                console.error('usePayment - status check error:', statusError);
                 resolve({
                   success: false,
                   errorMessage: '결제 상태 확인에 실패했습니다.'
                 });
               }
             } else {
+              console.error('usePayment - payment failed:', response.error_msg);
               resolve({
                 success: false,
                 errorMessage: response.error_msg || '결제에 실패했습니다.'
@@ -79,9 +96,11 @@ export const usePayment = () => {
           });
         });
       } else {
-        throw new Error('아임포트 SDK를 불러올 수 없습니다.');
+        console.error('아임포트 SDK가 로딩되지 않았습니다. window.IMP:', window.IMP);
+        throw new Error('아임포트 SDK를 불러올 수 없습니다. 페이지를 새로고침해주세요.');
       }
     } catch (err) {
+      console.error('usePayment - error:', err);
       const errorMessage = err instanceof Error ? err.message : '결제 처리 중 오류가 발생했습니다.';
       setError(errorMessage);
       return {
