@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ReviewList from "@/components/reviews/ReviewList";
-import { getAnimeDetail } from "@/lib/api/anime";
+import { getAnimeDetail, listAnime } from "@/lib/api/anime";
+import AnimeCard from "@/components/home/AnimeCard";
 import { getAnimeWatchHistory } from "@/lib/api/user";
 import { toggleFavorite, isFavorited } from "@/lib/api/favorites";
 import styles from "./AnimeDetailModal.module.css";
@@ -28,6 +29,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   const [isFavoritedState, setIsFavoritedState] = useState<boolean>(false);
   const [isLoadingFavorite, setIsLoadingFavorite] = useState(false);
   const [currentRating, setCurrentRating] = useState<number | null>(null); // 실시간 평점 상태
+  const [similarAnimes, setSimilarAnimes] = useState<any[]>([]);
+  const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const [showFullSynopsis, setShowFullSynopsis] = useState<boolean>(false);
   const MAX_SYNOPSIS_CHARS = 180;
   const [isFullInfoOpen, setIsFullInfoOpen] = useState<boolean>(false);
@@ -57,6 +60,57 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
         .catch(() => {});
     }
   }, [isOpen, anime]);
+
+  // 비슷한 작품 로드
+  useEffect(() => {
+    if (activeTab === 'similar' && similarAnimes.length === 0) {
+      loadSimilarAnimes();
+    }
+  }, [activeTab]);
+
+  const loadSimilarAnimes = async () => {
+    setIsLoadingSimilar(true);
+    try {
+      // 현재 작품과 장르가 겹치는 작품 목록을 조회
+      const genreIds: number[] = Array.isArray(detail?.genres)
+        ? (detail.genres as any[])
+            .map((g: any) => Number(g?.id ?? g))
+            .filter((v: any) => Number.isFinite(v))
+        : [];
+
+      if (genreIds.length === 0) {
+        console.log('⚠️ 비슷한 작품 로드: 장르 정보 없음');
+        setSimilarAnimes([]);
+        return;
+      }
+
+      const response: any = await listAnime({ genreIds, sort: 'rating', page: 0, size: 30 });
+      const rawItems: any[] = Array.isArray(response?.items)
+        ? response.items
+        : (Array.isArray(response) ? response : []);
+
+      const baseId = Number(detail?.aniId ?? detail?.id);
+      const filtered = rawItems.filter((a: any) => Number(a?.aniId ?? a?.id) !== baseId);
+
+      // 중복 제거 (aniId 기준)
+      const seen = new Set<number>();
+      const unique = filtered.filter((a: any) => {
+        const id = Number(a?.aniId ?? a?.id);
+        if (!Number.isFinite(id) || seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+
+      const limited = unique.slice(0, 6);
+      console.log('📦 비슷한 작품 로드 결과:', limited.length, '(장르 기반)');
+      setSimilarAnimes(limited);
+    } catch (error) {
+      console.error('비슷한 작품 로드 실패:', error);
+      setSimilarAnimes([]);
+    } finally {
+      setIsLoadingSimilar(false);
+    }
+  };
 
   // 사용자의 시청 기록 가져오기
   useEffect(() => {
@@ -165,12 +219,17 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
         {/* 상단 정보 섹션 */}
         <div className={styles.topInfoSection}>
-          {/* 배경 이미지 */}
+          {/* 배경 이미지: DB의 backdropUrl을 우선 사용, 없으면 다크 배경만 */}
           <div className={styles.backgroundImage}>
             <div className={styles.backgroundContainer}>
-              {/* 애니 캐릭터 이미지 (플레이스홀더) */}
-              <div className={styles.characterImage}>
-              </div>
+              {detail?.backdropUrl ? (
+                <div
+                  className={styles.characterImage}
+                  style={{ backgroundImage: `url(${detail.backdropUrl})` }}
+                />
+              ) : (
+                <div className={`${styles.characterImage} ${styles.noBackdrop}`} />
+              )}
             </div>
           </div>
 
@@ -179,7 +238,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             <div className={styles.posterContainer}>
               <img 
                 src={detail?.posterUrl || "https://placehold.co/96x128/ff69b4/ffffff?text=LAFTEL+ONLY"} 
-                alt={`${detail?.title || '애니메이션'} 포스터`}
+                alt={`${(detail?.title || detail?.titleEn || detail?.titleJp || '애니메이션')} 포스터`}
                 className={styles.posterImage}
               />
             </div>
@@ -202,7 +261,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
             {/* 애니메이션 제목 */}
             <h1 className={styles.animeTitle}>
-              {detail?.title || '제목 없음'}
+              {detail?.title || detail?.titleEn || detail?.titleJp || '제목 없음'}
             </h1>
 
             {/* 장르 및 정보 */}
@@ -480,7 +539,43 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
           {activeTab === 'similar' && (
             <div className={styles.similarSection}>
-              비슷한 작품 기능은 준비 중입니다
+              {isLoadingSimilar ? (
+                <div className={styles.loadingContainer}>
+                  비슷한 작품을 불러오는 중...
+                </div>
+              ) : similarAnimes.length > 0 ? (
+                <div className={styles.similarGrid}>
+                  {similarAnimes.map((anime: any, index: number) => {
+                    const itemId = Number(anime?.aniId ?? anime?.id ?? index);
+                    const title = anime?.title || anime?.titleEn || anime?.titleJp || '제목 없음';
+                    const posterUrl =
+                      anime?.posterUrl ||
+                      anime?.imageUrl ||
+                      anime?.thumbnail ||
+                      anime?.posterImage ||
+                      '/icons/default-avatar.svg';
+
+                    return (
+                      <AnimeCard
+                        key={`${itemId}-${title}`}
+                        aniId={itemId}
+                        title={title}
+                        posterUrl={posterUrl}
+                        rating={typeof anime?.rating === 'number' ? anime.rating : null}
+                        badge={Array.isArray(anime?.badges) ? anime.badges[0] : undefined}
+                        onClick={() => {
+                          onClose();
+                          router.push(`/player?animeId=${itemId}`);
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className={styles.emptyState}>
+                  추천할 작품이 없습니다.
+                </div>
+              )}
             </div>
           )}
         </div>

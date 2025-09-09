@@ -72,7 +72,7 @@
   height: 100%;
   border-top-left-radius: 16px;
   border-top-right-radius: 16px;
-  background-color: var(--background-highlight, #F0EDFF);
+  background-color: #1b2b45; /* Lighter Dark Navy */
 }
 
 .characterImage {
@@ -82,7 +82,11 @@
   background-position: center;
   background-repeat: no-repeat;
   opacity: 0.3;
-  background-image: url("https://placehold.co/800x400/ff69b4/ffffff?text=Anime+Character");
+}
+
+/* 백드롭 이미지가 없을 때 다크 배경 유지 */
+.noBackdrop {
+  background-color: #1b2b45; /* Lighter Dark Navy */
 }
 
 /* 작은 포스터 */
@@ -91,12 +95,12 @@
   top: 50%;
   right: 1.5rem;
   transform: translateY(-50%);
-  z-index: 10;
+  z-index: 15;
 }
 
 .posterContainer {
-  width: 96px;
-  height: 128px;
+  width: 150px !important;
+  height: 200px !important;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: var(--shadow-basic, rgba(0, 0, 0, 0.25));
@@ -416,8 +420,9 @@
 
 .synopsisText {
   line-height: 1.6;
-  color: var(--foreground-2, #ABABAB);
+  color: #FFFFFF;
   white-space: pre-wrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
 }
 
 .synopsisInlineRow {
@@ -763,4 +768,108 @@
   text-align: center;
   padding: 0.5rem;
   font-style: italic;
+}
+
+/* 비슷한 작품 섹션 */
+.similarSection {
+  padding: 1rem 0;
+}
+
+.similarGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.similarItem {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--background-2, #1a1a1a);
+  border: 1px solid var(--border-1, #333);
+}
+
+.similarItem:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.similarPoster {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  overflow: hidden;
+}
+
+.similarPoster img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s ease;
+}
+
+.similarItem:hover .similarPoster img {
+  transform: scale(1.05);
+}
+
+.similarInfo {
+  padding: 0.75rem;
+}
+
+.similarTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground-1, #F7F7F7);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.similarRating {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.ratingStar {
+  color: #F59E0B;
+  font-size: 0.75rem;
+}
+
+.ratingValue {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--foreground-2, #ABABAB);
+}
+
+.similarBadge {
+  display: inline-block;
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  color: #FFFFFF;
+  font-size: 0.625rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.loadingContainer {
+  text-align: center;
+  padding: 2rem;
+  color: var(--foreground-3, #ABABAB);
+  font-size: 0.875rem;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 2rem;
+  color: var(--foreground-3, #ABABAB);
+  font-size: 0.875rem;
 }
