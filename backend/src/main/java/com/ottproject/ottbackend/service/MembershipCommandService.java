@@ -57,7 +57,9 @@ public class MembershipCommandService {
         LocalDateTime start = now; // 시작 시각 기본값
         if (latestOpt.isPresent()) { // 최근 구독 존재
             LocalDateTime latestEnd = latestOpt.get().getEndAt(); // 최근 종료일
-            if (latestEnd != null && latestEnd.isAfter(now)) { // 잔여기간 존재
+            // 잔여기간이 있고, 현재 구독이 ACTIVE 상태인 경우에만 연장
+            if (latestEnd != null && latestEnd.isAfter(now) && 
+                latestOpt.get().getStatus() == MembershipSubscriptionStatus.ACTIVE) {
                 start = latestEnd; // 잔여 종료 직후부터
             }
         }
