@@ -85,13 +85,27 @@ export default function Header() {
           <div className={styles.headerActions}>
             {/* 검색 버튼 */}
             <button
-              className={styles.headerButton}
+              className={`${styles.headerButton} ${styles.searchToggleMobile}`}
               onClick={() => setIsSearchOpen(!isSearchOpen)}
             >
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </button>
+
+            {/* 검색 팝오버 */}
+            {isSearchOpen && (
+              <div className={styles.searchPopover}>
+                <SearchBar
+                  onSearch={handleSearch}
+                  placeholder="제목(초성), 제작사, 감독으로 검색"
+                  className={styles.headerSearchInline}
+                  align="right"
+                  autoShow={false}
+                  showSuggestions={isSearchOpen}
+                />
+              </div>
+            )}
 
             {/* 알림 버튼 */}
             <button className={styles.headerButton}>
@@ -219,24 +233,16 @@ export default function Header() {
           </div>
         </div>
 
-        {/* 검색바 */}
-        {isSearchOpen && (
-          <div className={styles.headerSearch}>
-            <div className={styles.headerSearchContainer}>
-              <SearchBar
-                onSearch={handleSearch}
-                placeholder="작품 제목을 검색해 보세요"
-              />
-            </div>
-          </div>
-        )}
       </div>
 
       {/* 프로필 드롭다운 외부 클릭 시 닫기 */}
-      {isProfileOpen && (
+      {(isProfileOpen || isSearchOpen) && (
         <div 
           className={styles.headerOverlay}
-          onClick={() => setIsProfileOpen(false)}
+          onClick={() => {
+            setIsProfileOpen(false);
+            setIsSearchOpen(false);
+          }}
         />
       )}
     </header>

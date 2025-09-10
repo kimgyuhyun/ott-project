@@ -4,11 +4,17 @@ import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.SearchSuggestTitleDto;
 import com.ottproject.ottbackend.service.SearchService;
+import com.ottproject.ottbackend.service.RecentSearchService;
+import com.ottproject.ottbackend.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import java.util.UUID;
+import java.util.Base64;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -32,6 +38,8 @@ import java.util.List;
 @RequestMapping("/api/search") // 공통 URL prefix
 public class SearchController {
     private final SearchService searchService; // 검색 서비스 의존성
+    private final RecentSearchService recentSearchService; // 최근 검색어 서비스 의존성
+    private final SecurityUtil securityUtil; // 보안 유틸 의존성
 
     @Operation(summary = "자동완성 검색", description = "제목 기반 자동완성 검색 결과를 반환합니다.")
     @ApiResponse(responseCode = "200", description = "검색 성공")
@@ -66,5 +74,125 @@ public class SearchController {
             @RequestParam(defaultValue = "20") int size // 페이지 크기
     ) {
         return searchService.search(query, genreIds, tagIds, sort, page, size); // 서비스 호출
+    }
+
+    @Operation(summary = "최근 검색어 조회", description = "사용자의 최근 검색어 목록을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/recent")
+    public ResponseEntity<List<String>> getRecentSearches(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        String subjectId = getSubjectId(request, response);
+        List<String> searches = recentSearchService.list(subjectId);
+        return ResponseEntity.ok(searches);
+    }
+
+    @Operation(summary = "최근 검색어 추가", description = "검색어를 최근 검색어 목록에 추가합니다.")
+    @ApiResponse(responseCode = "200", description = "추가 성공")
+    @PostMapping("/recent")
+    public ResponseEntity<List<String>> addRecentSearch(
+            @RequestBody AddRecentSearchRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse
+    ) {
+        String subjectId = getSubjectId(httpRequest, httpResponse);
+        List<String> searches = recentSearchService.add(subjectId, request.getTerm());
+        return ResponseEntity.ok(searches);
+    }
+
+    @Operation(summary = "최근 검색어 삭제", description = "특정 검색어를 삭제하거나 전체 검색어를 삭제합니다.")
+    @ApiResponse(responseCode = "200", description = "삭제 성공")
+    @DeleteMapping("/recent")
+    public ResponseEntity<?> deleteRecentSearch(
+            @RequestParam(required = false) String term,
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        String subjectId = getSubjectId(request, response);
+        
+        if (term != null && !term.trim().isEmpty()) {
+            // 특정 검색어 삭제
+            List<String> searches = recentSearchService.remove(subjectId, term);
+            return ResponseEntity.ok(searches);
+        } else {
+            // 전체 삭제
+            recentSearchService.clear(subjectId);
+            return ResponseEntity.noContent().build();
+        }
+    }
+
+    /**
+     * 주체 ID 생성 (로그인 사용자 또는 익명 사용자)
+     */
+    private String getSubjectId(HttpServletRequest request, HttpServletResponse response) {
+        // 로그인 사용자 확인
+        HttpSession session = request.getSession(false);
+        Long userId = securityUtil.getCurrentUserIdOrNull(session);
+        if (userId != null) {
+            return "user:" + userId;
+        }
+        
+        // 익명 사용자 - anonId 쿠키 확인/발급
+        String anonId = getAnonId(request, response);
+        return "anon:" + anonId;
+    }
+
+    /**
+     * 익명 사용자 ID 쿠키 처리
+     */
+    private String getAnonId(HttpServletRequest request, HttpServletResponse response) {
+        // 기존 쿠키 확인
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("anonId".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        
+        // 새 anonId 생성 및 쿠키 설정
+        String anonId = generateAnonId();
+        Cookie cookie = new Cookie("anonId", anonId);
+        cookie.setPath("/");
+        cookie.setMaxAge(365 * 24 * 60 * 60); // 365일
+        cookie.setHttpOnly(false); // 프론트에서 접근 가능
+        response.addCookie(cookie);
+        
+        return anonId;
+    }
+
+    /**
+     * 익명 사용자 ID 생성 (Base62 26자)
+     */
+    private String generateAnonId() {
+        UUID uuid = UUID.randomUUID();
+        byte[] bytes = new byte[16];
+        long mostSigBits = uuid.getMostSignificantBits();
+        long leastSigBits = uuid.getLeastSignificantBits();
+        
+        for (int i = 0; i < 8; i++) {
+            bytes[i] = (byte) (mostSigBits >>> 8 * (7 - i));
+            bytes[i + 8] = (byte) (leastSigBits >>> 8 * (7 - i));
+        }
+        
+        String base64 = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        return base64.substring(0, 26); // 26자로 제한
+    }
+
+    /**
+     * 최근 검색어 추가 요청 DTO
+     */
+    public static class AddRecentSearchRequest {
+        private String term;
+
+        public String getTerm() {
+            return term;
+        }
+
+        public void setTerm(String term) {
+            this.term = term;
+        }
     }
 }
