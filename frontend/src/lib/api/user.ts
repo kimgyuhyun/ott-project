@@ -20,6 +20,18 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     const errorText = await response.text();
+    if (response.status === 401) {
+      try {
+        if (typeof window !== 'undefined') {
+          const next = encodeURIComponent(window.location.pathname + window.location.search);
+          window.location.href = `/login?next=${next}`;
+        }
+      } catch {}
+      const err: any = new Error('UNAUTHORIZED');
+      err.status = 401;
+      err.body = errorText;
+      throw err;
+    }
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
 
@@ -57,6 +69,19 @@ export async function getUserWatchHistory(page: number = 0, size: number = 20) {
   // 캐시 방지를 위해 타임스탬프 추가
   const timestamp = Date.now();
   return apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}&t=${timestamp}`);
+}
+
+// 사용자 최근 본(애니별 최신 1건)
+export async function getUserRecentAnime(params?: { page?: number; size?: number; cursorUpdatedAt?: string; cursorAnimeId?: number }) {
+  const page = params?.page ?? 0;
+  const size = params?.size ?? 20;
+  const qp = new URLSearchParams();
+  qp.append('page', String(page));
+  qp.append('size', String(size));
+  if (params?.cursorUpdatedAt) qp.append('cursorUpdatedAt', params.cursorUpdatedAt);
+  if (params?.cursorAnimeId != null) qp.append('cursorAnimeId', String(params.cursorAnimeId));
+  qp.append('t', String(Date.now()));
+  return apiCall(`/api/episodes/mypage/recent-anime?${qp.toString()}`);
 }
 
 // 특정 애니메이션의 시청 기록 조회
