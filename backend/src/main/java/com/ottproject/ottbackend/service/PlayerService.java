@@ -1,13 +1,12 @@
 package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.SubtitleDto;
+import com.ottproject.ottbackend.dto.RecentAnimeWatchDto;
 import com.ottproject.ottbackend.dto.SkipMetaResponseDto;
-import com.ottproject.ottbackend.dto.SkipUsageRequestDto;
 import com.ottproject.ottbackend.dto.EpisodeProgressResponseDto;
 import com.ottproject.ottbackend.entity.Subtitle;
 import com.ottproject.ottbackend.entity.EpisodeSkipMeta;
 import com.ottproject.ottbackend.entity.SkipUsage;
-import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.entity.EpisodeProgress;
 import com.ottproject.ottbackend.enums.SkipType;
 import com.ottproject.ottbackend.repository.SubtitleRepository;
@@ -50,6 +49,7 @@ public class PlayerService {
     private final EpisodeRepository episodeRepository;
     private final EpisodeProgressRepository progressRepository;
     private final EpisodeMapper episodeMapper;
+    private final com.ottproject.ottbackend.mybatis.PlayerQueryMapper playerQueryMapper;
     private final PlaybackAuthService playbackAuthService;
 
     // === 자막 관련 기능 ===
@@ -245,9 +245,6 @@ public class PlayerService {
      * 사용자의 시청 기록 조회 (페이지네이션)
      */
     public Map<String, Object> getWatchHistory(Long userId, int page, int size) {
-        // 페이지네이션 계산
-        int offset = page * size;
-        
         // 사용자의 진행률이 있는 에피소드들을 조회
         var progressList = progressRepository.findByUser_IdOrderByUpdatedAtDesc(userId, 
             org.springframework.data.domain.PageRequest.of(page, size));
@@ -269,6 +266,29 @@ public class PlayerService {
         result.put("currentPage", page);
         result.put("size", size);
         
+        return result;
+    }
+
+    /**
+     * 애니별 최신 1건 시청 기록 (최신순)
+     */
+    public Map<String, Object> getRecentAnimeHistory(Long userId, int page, int size,
+                                                     java.time.LocalDateTime cursorUpdatedAt,
+                                                     Long cursorAnimeId) {
+        List<RecentAnimeWatchDto> items = playerQueryMapper.findRecentAnimeByUser(
+                userId, size, page * size, cursorUpdatedAt, cursorAnimeId);
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", items);
+        result.put("currentPage", page);
+        result.put("size", size);
+        // total 계산은 별도 쿼리를 추가할 수 있으나, 우선 items 길이로 대응
+        result.put("totalElements", items.size());
+        result.put("totalPages", items.isEmpty() ? 0 : (page + 1));
+        if (!items.isEmpty()) {
+            RecentAnimeWatchDto last = items.get(items.size() - 1);
+            result.put("nextCursorUpdatedAt", last.getUpdatedAt());
+            result.put("nextCursorAnimeId", last.getAnimeId());
+        }
         return result;
     }
 

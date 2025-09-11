@@ -149,4 +149,18 @@ public class EpisodeController {
         var watchHistory = playerService.getWatchHistory(userId, page, size);
         return ResponseEntity.ok(watchHistory);
     }
+
+    @Operation(summary = "마이페이지 최근 본(애니별 최신)", description = "사용자의 애니별 최신 1건 시청 기록을 최신순으로 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/mypage/recent-anime")
+    public ResponseEntity<Map<String, Object>> getRecentAnime(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) java.time.LocalDateTime cursorUpdatedAt,
+            @RequestParam(required = false) Long cursorAnimeId,
+            HttpSession session) {
+        Long userId = securityUtil.requireCurrentUserId(session);
+        var recent = playerService.getRecentAnimeHistory(userId, page, size, cursorUpdatedAt, cursorAnimeId);
+        return ResponseEntity.ok(recent);
+    }
 }

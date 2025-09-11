@@ -66,7 +66,8 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 
 		java.util.List<AnimeListDto> items = mapper.findAniList( // 목록 데이터 조회
 						status, distinctGenreIds, genreCount, distinctTagIds, minRating, year, type, isDub, isSubtitle, isExclusive,
-						isCompleted, isNew, isPopular, sort, limit, offset
+						isCompleted, isNew, isPopular, sort, limit, offset,
+						null, null, null
 		); // 조회된 목록 아이템들
 
 		long total = mapper.countAniList( // 총 개수 조회(페이지네이션 total)
@@ -108,5 +109,19 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 
 	public java.util.List<com.ottproject.ottbackend.dto.TagSimpleDto> getAllTags() {
 		return mapper.findAllTags();
+	}
+
+	/**
+	 * ID 목록으로 카드 리스트 조회 (입력 ID 순서 보존)
+	 */
+	public java.util.List<AnimeListDto> listByIds(java.util.List<Long> ids) {
+		if (ids == null || ids.isEmpty()) return java.util.List.of();
+		java.util.List<AnimeListDto> rows = mapper.findAniListByIds(ids);
+		if (rows == null || rows.isEmpty()) return java.util.List.of();
+		// 입력 순서 보존 정렬
+		java.util.Map<Long, Integer> order = new java.util.HashMap<>();
+		for (int i = 0; i < ids.size(); i++) order.put(ids.get(i), i);
+		rows.sort((a, b) -> Integer.compare(order.getOrDefault(a.getAniId(), Integer.MAX_VALUE), order.getOrDefault(b.getAniId(), Integer.MAX_VALUE)));
+		return rows;
 	}
 }
