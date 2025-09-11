@@ -563,11 +563,14 @@
   border: 1px solid #333;
   border-radius: 16px;
   padding: 2rem;
-  margin-bottom: 2rem;
+  margin: 0 auto 2rem auto;
   display: flex;
   align-items: flex-start;
   gap: 1rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .refundNoticeIcon {
@@ -590,6 +593,13 @@
   color: #a0a0a0;
   margin: 0;
   line-height: 1.6;
+}
+
+/* 환불 안내 오른쪽 정렬 링크 행 */
+.refundManageLinkRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.75rem;
 }
 
 /* 반응형 디자인 */

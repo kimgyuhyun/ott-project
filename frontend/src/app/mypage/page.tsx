@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
-import { getUserProfile, getUserWatchHistory, getUserWantList, getUserStats } from "@/lib/api/user";
+import { getUserProfile, getUserWatchHistory, getUserWantList, getUserStats, getUserRecentAnime } from "@/lib/api/user";
 import styles from "./mypage.module.css";
 
 type TabType = 'recent' | 'want' | 'purchased' | 'binge';
@@ -48,10 +48,10 @@ export default function MyPage() {
         
         // 병렬로 여러 API 호출
         const [profileData, historyData, wantListData, statsData] = await Promise.all([
-          getUserProfile(),
-          getUserWatchHistory(),
-          getUserWantList(),
-          getUserStats()
+          getUserProfile().catch(e => { if ((e as any)?.status === 401) return null; throw e; }),
+          getUserRecentAnime().catch(e => { if ((e as any)?.status === 401) return { items: [] }; throw e; }),
+          getUserWantList().catch(e => { if ((e as any)?.status === 401) return { items: [] }; throw e; }),
+          getUserStats().catch(e => { if ((e as any)?.status === 401) return null; throw e; })
         ]);
         
         console.log('🔍 마이페이지 데이터 로드 결과:');
@@ -63,7 +63,7 @@ export default function MyPage() {
         setUserProfile(profileData);
         
         // 시청 기록에 애니메이션 제목 추가
-        const watchHistoryList = ((historyData as any)?.content as any[]) || (Array.isArray(historyData) ? historyData : []) || [];
+        const watchHistoryList = ((historyData as any)?.items as any[]) || (Array.isArray(historyData) ? historyData : []) || [];
         const enrichedWatchHistory = await Promise.all(
           watchHistoryList.map(async (item: any) => {
             try {
@@ -110,18 +110,25 @@ export default function MyPage() {
 
   // 애니메이션 클릭 핸들러
   const handleAnimeClick = async (anime: any) => {
-    console.log('🔍 마이페이지에서 클릭한 애니메이션 데이터:', anime);
-    
+    // 애니별 최신 기록이므로 episodeId/positionSec 기반으로 바로 플레이어로 이동
+    const aniId = anime?.aniId ?? anime?.id ?? anime?.animeId;
+    const episodeId = anime?.episodeId;
+    const position = typeof anime?.positionSec === 'number' && anime.positionSec > 0 ? anime.positionSec : 0;
+
+    if (aniId && episodeId) {
+      const posQuery = position > 0 ? `&position=${position}` : '';
+      window.location.href = `/player?episodeId=${episodeId}&animeId=${aniId}${posQuery}`;
+      return;
+    }
+
+    // 폴백: 상세 모달 표시
     try {
-      // 목록 DTO에는 필드가 적으므로 상세 조회로 모달 데이터 보강
-      const id = anime?.aniId ?? anime?.id ?? anime?.animeId;
+      const id = aniId;
       if (id) {
         const { getAnimeDetail } = await import('@/lib/api/anime');
         const detail = await getAnimeDetail(id);
-        console.log('🔍 상세 조회 결과:', detail);
         setSelectedAnime(detail);
       } else {
-        // id가 없으면 목록 객체라도 표시
         setSelectedAnime(anime);
       }
     } catch (e) {

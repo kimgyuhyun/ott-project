@@ -801,6 +801,9 @@
   text-align: center;
   border: 1px solid #333;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .refundedIcon {
@@ -862,6 +865,14 @@
 .guideButton:hover {
   background: rgba(139, 124, 255, 0.1);
   transform: translateY(-2px);
+}
+
+/* 환불 완료 중앙 정렬 래퍼 */
+.refundedWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
 }
 
 /* 반응형 디자인 - 환불 완료 */

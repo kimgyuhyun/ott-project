@@ -285,21 +285,22 @@ export default function MembershipManagePage() {
           </div>
 
           {/* 환불 완료 화면 */}
-          <div className={styles.refundedContainer}>
-            <div className={styles.refundedIcon}>💰</div>
-            <h2 className={styles.refundedTitle}>환불이 완료되었습니다</h2>
-            <p className={styles.refundedDesc}>
-              멤버십 결제가 환불되었고, 멤버십이 해지되었습니다.<br/>
-              새로운 멤버십을 구독하시려면 멤버십 페이지에서 플랜을 선택해주세요.
-            </p>
-            
-            <div className={styles.refundedActions}>
-              <Link href="/membership" className={styles.subscribeButton}>
-                새로운 멤버십 구독하기
-              </Link>
-              <Link href="/membership/guide" className={styles.guideButton}>
-                멤버십 안내 보기
-              </Link>
+          <div className={styles.refundedWrapper}>
+            <div className={styles.refundedContainer}>
+              <h2 className={styles.refundedTitle}>환불이 완료되었습니다</h2>
+              <p className={styles.refundedDesc}>
+                멤버십 결제가 환불되었고, 멤버십이 해지되었습니다.<br/>
+                새로운 멤버십을 구독하시려면 멤버십 페이지에서 플랜을 선택해주세요.
+              </p>
+              
+              <div className={styles.refundedActions}>
+                <Link href="/membership" className={styles.subscribeButton}>
+                  새로운 멤버십 구독하기
+                </Link>
+                <Link href="/membership/guide" className={styles.guideButton}>
+                  멤버십 안내 보기
+                </Link>
+              </div>
             </div>
           </div>
         </div>

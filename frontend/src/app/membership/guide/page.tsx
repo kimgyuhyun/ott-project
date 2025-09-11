@@ -261,13 +261,15 @@ export default function MembershipGuidePage() {
           {/* 환불 완료 안내 */}
           {!isLoading && isRefundedAndCancelled && (
             <div className={styles.refundNotice}>
-              <div className={styles.refundNoticeIcon}>💰</div>
               <div className={styles.refundNoticeContent}>
                 <h3 className={styles.refundNoticeTitle}>환불이 완료되었습니다</h3>
                 <p className={styles.refundNoticeText}>
                   멤버십 결제가 환불되었고, 멤버십이 해지되었습니다. 
                   새로운 멤버십을 구독하시려면 아래 플랜을 선택해주세요.
                 </p>
+                <div className={styles.refundManageLinkRow}>
+                  <Link href="/membership/manage" className={styles.membershipManageLink}>내 멤버십 관리 &gt;</Link>
+                </div>
               </div>
             </div>
           )}

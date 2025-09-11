@@ -25,6 +25,8 @@ export default function TagsPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [cursorId, setCursorId] = useState<number | null>(null);
+  const [cursorRating, setCursorRating] = useState<number | null>(null);
   
   // 필터 상태
   const [filters, setFilters] = useState({
@@ -157,7 +159,9 @@ export default function TagsPage() {
           type: selectedType,
           sort: getSortValue(sortBy),
           page: page,
-          size: 10
+          size: 10,
+          cursorId: isLoadMore ? (cursorId ?? undefined) : undefined,
+          cursorRating: isLoadMore && sortBy === 'rating' ? (cursorRating ?? undefined) : undefined
         });
         console.log('[DEBUG] listAnime 응답:', list);
         console.log('[DEBUG] list.items:', (list as any)?.items);
@@ -193,13 +197,24 @@ export default function TagsPage() {
         uniqueResults = [];
       }
 
-      // 무한스크롤링 처리
+      // 무한스크롤링 처리 + 커서 업데이트
       if (isLoadMore) {
         setAnimes(prev => [...prev, ...uniqueResults]);
         setCurrentPage(page);
       } else {
         setAnimes(uniqueResults);
         setCurrentPage(0);
+        setCursorId(null);
+        setCursorRating(null);
+      }
+
+      // 다음 커서 계산
+      if (uniqueResults.length > 0) {
+        const last = uniqueResults[uniqueResults.length - 1];
+        const lastId = last?.aniId ?? last?.id;
+        const lastRating = last?.rating;
+        setCursorId(Number(lastId));
+        setCursorRating(typeof lastRating === 'number' ? lastRating : null);
       }
 
       // 더 불러올 데이터가 있는지 확인 (10개 미만이면 끝)
