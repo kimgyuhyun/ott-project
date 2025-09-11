@@ -7,12 +7,15 @@
   background-color: #000000;
   border-bottom: 1px solid #333333;
   backdrop-filter: blur(10px);
+  padding-left: 2rem;   /* 좌측 기준 */
+  padding-right: 1rem; /* 우측 살짝 축소로 균형 */
 }
 
 .headerWrapper {
-  max-width: 80rem;
-  margin: 0 auto;
-  padding: 0 1rem;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0; /* 패딩은 컨테이너에서 관리 */
 }
 
 .headerContent {
@@ -20,14 +23,14 @@
   grid-template-columns: auto 1fr auto;
   align-items: center;
   height: 4rem;
-  gap: 2rem;
+  gap: 0.75rem; /* 내부 갭 축소 */
 }
 
 .headerLogo {
   display: flex;
   align-items: center;
   cursor: pointer;
-  font-size: 1.5rem;
+  font-size: 12px;
   font-weight: 700;
   color: #ffffff;
   text-decoration: none;
@@ -35,7 +38,7 @@
 
 .headerNav {
   display: none;
-  margin-left: 2rem;
+  margin-left: 0; /* 로고와 간격 최소화 */
 }
 
 @media (min-width: 1024px) {
@@ -48,6 +51,7 @@
   display: inline-block;
   margin-right: 2.25rem;
   color: #ffffff;
+  font-size: 12px;
   text-decoration: none;
   transition: color 0.2s;
   font-weight: 400;
@@ -133,9 +137,9 @@
 
 .headerProfileName {
   display: none;
-  font-size: 0.875rem;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--foreground-1);
+  color: #F7F7F7;
 }
 
 @media (min-width: 768px) {
@@ -148,7 +152,7 @@
   width: 1rem;
   height: 1rem;
   transition: transform 0.2s;
-  color: var(--foreground-3);
+  color: #ABABAB;
   transform: rotate(0deg);
 }
 
@@ -163,9 +167,9 @@
   margin-top: 0.5rem;
   width: 12rem;
   border-radius: 0.5rem;
-  box-shadow: var(--shadow-dropdown);
-  background-color: var(--background-1);
-  border: 1px solid var(--border-1);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+  background-color: #121212;
+  border: 1px solid #323232;
   z-index: 1000;
 }
 
@@ -174,8 +178,8 @@
   width: 100%;
   text-align: left;
   padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  color: var(--foreground-1);
+  font-size: 12px;
+  color: #F7F7F7;
   text-decoration: none;
   transition: opacity 0.2s;
   background: none;
@@ -188,11 +192,11 @@
 }
 
 .headerDropdownItem.logout {
-  color: var(--foreground-3);
+  color: #ABABAB;
 }
 
 .headerDropdownDivider {
-  border-top: 1px solid var(--border-1);
+  border-top: 1px solid #323232;
   margin: 0.25rem 0;
 }
 
@@ -200,10 +204,11 @@
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
   font-weight: 500;
-  background-color: var(--foreground-slight);
-  color: var(--background-1);
+  font-size: 12px;
+  background-color: #816BFF; /* 보라색 버튼 */
+  color: #ffffff; /* 텍스트 흰색으로 고정 */
   text-decoration: none;
-  transition: background-color 0.2s;
+  transition: opacity 0.2s;
 }
 
 .headerLoginButton:hover {
@@ -226,7 +231,7 @@
 .headerLogoNavGroup {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1rem; /* 로고-네비 간격 살짝 */
   justify-self: start;
 }
 
@@ -272,11 +277,11 @@
 @media (max-width: 1024px) {
   .headerContent {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start; /* 모바일도 좌측 정렬 */
   }
   
   .headerLogo {
-    margin: 0 auto;
+    margin: 0; /* 왼쪽에 고정 */
   }
   
   .headerNav {
@@ -284,8 +289,8 @@
   }
   
   .headerActions {
-    position: absolute;
-    right: 1rem;
+    position: static;      /* 컨테이너 패딩 기준 정렬 */
+    margin-left: auto;     /* 우측으로 밀기 */
   }
   
   .headerInlineSearch {

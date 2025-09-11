@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { getSearchSuggestions } from "@/lib/api/search";
+import { getTrendingAnime24h } from "@/lib/api/anime";
 import { fetchRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } from "@/lib/api/recentSearch";
 import styles from "./SearchBar.module.css";
 
@@ -24,6 +25,7 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
   const searchTimeoutRef = useRef<NodeJS.Timeout>();
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const [hasLoadedRecent, setHasLoadedRecent] = useState(false);
+  const [trending, setTrending] = useState<string[]>([]);
 
   // 최근 검색어 로드 (초기 1회만)
   useEffect(() => {
@@ -32,6 +34,18 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
       setHasLoadedRecent(true);
     }
   }, [hasLoadedRecent]);
+
+  // 트렌딩 로드 (검색어 없을 때 표시)
+  useEffect(() => {
+    if (query.trim().length === 0) {
+      getTrendingAnime24h(10)
+        .then((items: any[]) => {
+          const titles = Array.isArray(items) ? items.map((i: any) => i.title).filter(Boolean) : [];
+          setTrending(titles);
+        })
+        .catch(() => setTrending([]));
+    }
+  }, [query]);
 
   // autoShow가 true일 때만 자동으로 드롭다운 표시
   useEffect(() => {
@@ -305,18 +319,7 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
               <div className={styles.popularSection}>
                 <h3 className={styles.popularTitle}>지금 사람들이 많이 보는 작품</h3>
                 <div className={styles.popularList}>
-                  {[
-                    "귀멸의 칼날 (자막)",
-                    "귀멸의 칼날 (무삭제)",
-                    "귀멸의 칼날 극장판",
-                    "귀멸의 칼날 시즌2",
-                    "귀멸의 칼날 시즌3",
-                    "귀멸의 칼날 시즌4",
-                    "귀멸의 칼날 시즌5",
-                    "귀멸의 칼날 시즌6",
-                    "귀멸의 칼날 시즌7",
-                    "귀멸의 칼날 시즌8"
-                  ].map((item, index) => (
+                  {(trending.length > 0 ? trending : []).map((item, index) => (
                     <div
                       key={index}
                       className={styles.popularItem}
