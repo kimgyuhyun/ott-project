@@ -139,7 +139,7 @@
 /* 애니메이션 아이템 */
 .animeGridItem {
   flex: 0 0 auto;
-  width: 12rem;
+  width: 12.5rem; /* 추천/인기 섹션과 동일: (80rem - 5rem) / 6 ≈ 12.5rem */
   position: relative;
   cursor: pointer;
   transition: transform 0.2s ease;

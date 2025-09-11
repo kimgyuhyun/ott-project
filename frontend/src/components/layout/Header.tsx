@@ -157,11 +157,11 @@ export default function Header() {
                   <div className={styles.headerDropdown}>
                     <div style={{ padding: '0.25rem 0' }}>
                       {/* 사용자 정보 표시 */}
-                      <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid var(--border-1)' }}>
-                        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--foreground-1)' }}>
+                      <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #323232' }}>
+                        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#F7F7F7' }}>
                           {user?.username || '사용자'}
                         </p>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--foreground-3)' }}>
+                        <p style={{ fontSize: '0.75rem', color: '#ABABAB' }}>
                           {user?.email || ''}
                         </p>
                       </div>

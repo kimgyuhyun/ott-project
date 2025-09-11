@@ -104,7 +104,10 @@ public class PersonalizedRecommendationService {
                 null, // isPopular
                 "rating", // sort
                 Math.min(size * 2, 20), // limit: 최대 20개로 제한
-                0 // offset
+                0, // offset
+                null, // cursorId
+                null, // cursorRating
+                null // cursorIsPopular
         );
 
         // 5. 시청한 작품 제외 및 태그 가중치로 정렬
@@ -292,7 +295,10 @@ public class PersonalizedRecommendationService {
                     true, // isPopular
                     "rating", // sort
                     size, // limit
-                    0 // offset
+                    0, // offset
+                    null, // cursorId
+                    null, // cursorRating
+                    null // cursorIsPopular
             );
         } catch (Exception e) {
             log.error("기본 추천 조회 실패", e);

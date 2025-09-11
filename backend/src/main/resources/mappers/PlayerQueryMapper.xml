@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+  Mapper: PlayerQueryMapper
+  - 마이페이지 최근 본(애니별 최신 1건) 조회 전용 매퍼
+-->
+<mapper namespace="com.ottproject.ottbackend.mybatis.PlayerQueryMapper">
+
+    <!-- 애니별 최신 1건: 윈도우 함수 사용 버전 -->
+    <select id="findRecentAnimeByUser" resultType="com.ottproject.ottbackend.dto.RecentAnimeWatchDto">
+        SELECT
+            t.anime_id   AS animeId,
+            t.episode_id AS episodeId,
+            t.episode_number AS episodeNumber,
+            t.position_sec AS positionSec,
+            t.duration_sec AS durationSec,
+            t.updated_at  AS updatedAt
+        FROM (
+            SELECT
+                e.anime_id,
+                ep.episode_id,
+                e.episode_number,
+                ep.position_sec,
+                ep.duration_sec,
+                ep.updated_at,
+                ROW_NUMBER() OVER (PARTITION BY e.anime_id ORDER BY ep.updated_at DESC) AS rn
+            FROM episode_progress ep
+            JOIN episodes e ON e.id = ep.episode_id
+            WHERE ep.user_id = #{userId}
+        ) t
+        WHERE t.rn = 1
+        <if test="cursorUpdatedAt != null and cursorAnimeId != null">
+            AND (t.updated_at &lt; #{cursorUpdatedAt}
+                OR (t.updated_at = #{cursorUpdatedAt} AND t.anime_id &lt; #{cursorAnimeId}))
+        </if>
+        ORDER BY t.updated_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+</mapper>
+
+

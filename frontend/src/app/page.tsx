@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Header from "@/components/layout/Header";
+import Footer from "@/components/layout/Footer";
 import WeeklySchedule from "@/components/home/WeeklySchedule";
 import { getAnimeDetail } from "@/lib/api/anime";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
@@ -500,6 +501,8 @@ export default function Home() {
         />
       )}
 
+      {/* 푸터 */}
+      <Footer />
 
     </div>
   );

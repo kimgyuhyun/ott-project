@@ -80,6 +80,21 @@
         a.type AS type <!-- DTO.type -->
         <include refid="base_list_from"/> <!-- FROM anime a (+ 장르 AND / 태그 OR 서브쿼리 조인) -->
         <include refid="base_list_where"/> <!-- WHERE 활성 + 전달된 필터 조건들 결합 -->
+        <!-- 커서 기반 조건 -->
+        <choose>
+            <!-- 평점 정렬 커서: (rating < cursorRating) OR (rating = cursorRating AND id < cursorId) -->
+            <when test="sort == 'rating' and cursorRating != null and cursorId != null">
+                AND (a.rating &lt; #{cursorRating} OR (a.rating = #{cursorRating} AND a.id &lt; #{cursorId}))
+            </when>
+            <!-- 인기 정렬 커서: 보조키 id 기반 커서 -->
+            <when test="sort == 'popular' and cursorId != null">
+                AND a.id &lt; #{cursorId}
+            </when>
+            <!-- 최신 정렬 커서: id 기반 커서 -->
+            <when test="sort != 'rating' and sort != 'popular' and cursorId != null">
+                AND a.id &lt; #{cursorId}
+            </when>
+        </choose>
         ORDER BY
         <choose> <!-- 정렬 분기: sort 파라미터가 rating/year/popular 인지에 따라 주요 키 선택, 보조키는 최신순(id DESC) -->
             <when test="sort == 'rating'"> a.rating DESC, a.id DESC </when> <!-- 평점 높은 순 → 같은 평점이면 최신순 -->
@@ -115,6 +130,33 @@
           AND a.is_new = TRUE
         ORDER BY a.rating DESC, a.id DESC
         LIMIT #{limit}
+    </select>
+
+    <!-- 트렌딩: ID 목록으로 카드 리스트 조회 -->
+    <select id="findAniListByIds" resultType="com.ottproject.ottbackend.dto.AnimeListDto">
+        SELECT
+        a.id AS aniId,
+        a.title AS title,
+        a.title_en AS titleEn,
+        a.title_jp AS titleJp,
+        a.poster_url AS posterUrl,
+        a.rating AS rating,
+        a.rating_count AS ratingCount,
+        a.is_dub AS isDub,
+        a.is_subtitle AS isSubtitle,
+        a.is_exclusive AS isExclusive,
+        a.is_new AS isNew,
+        a.is_popular AS isPopular,
+        a.is_completed AS isCompleted,
+        a.status AS animeStatus,
+        a.year AS year,
+        a.type AS type
+        FROM anime a
+        WHERE a.is_active = TRUE
+          AND a.id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
     </select>
 
     <!--

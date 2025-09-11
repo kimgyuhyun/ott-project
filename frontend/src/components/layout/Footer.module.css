@@ -1,0 +1,68 @@
+.footer {
+  background: #101010;
+  color: #bdbdbd;
+}
+
+.container {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding-top: 28px;
+  padding-bottom: 40px;
+  padding-left: 2rem;  /* 헤더와 동일 좌측 여백 */
+  padding-right: 1rem; /* 헤더와 동일 우측 여백 */
+}
+
+.brand {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #e5e5e5;
+  margin-bottom: 12px;
+}
+
+.companyBlock {
+  margin-bottom: 20px;
+  line-height: 1.7;
+}
+
+.blockTitle {
+  color: #cfcfcf;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.infoList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.infoList li {
+  font-size: 12px;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  border-top: 1px solid #242424;
+  padding-top: 14px;
+}
+
+.links a {
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 12px;
+}
+
+.links a:hover {
+  color: #ffffff;
+}
+
+.emphasis {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+

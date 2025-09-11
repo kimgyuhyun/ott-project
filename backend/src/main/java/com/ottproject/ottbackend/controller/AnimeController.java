@@ -5,6 +5,8 @@ import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.service.AnimeQueryService;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import com.ottproject.ottbackend.service.PersonalizedRecommendationService;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
     private final AnimeQueryService queryService; // 조회 서비스 의존성
     private final SecurityUtil securityUtil; // 현재 사용자 ID 해석용(로그인 여부 반영)
     private final PersonalizedRecommendationService personalizedRecommendationService; // 개인화 추천 서비스
+    private final RedisTemplate<String, Object> redisTemplate; // 트렌드 조회용
 
     /**
      * 애니 목록 조회(페이지네이션)
@@ -141,6 +144,30 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
                 10, // size
                 null // tagIds
         ).getItems();
+    }
+
+    /**
+     * 실시간 트렌딩(24h) 상위 작품 조회
+     */
+    @Operation(summary = "실시간 트렌딩(24h)", description = "최근 24시간 누적 활동 기반 상위 작품을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/trending-24h")
+    public List<AnimeListDto> getTrending24h(@RequestParam(defaultValue = "10") int limit) {
+        ZSetOperations<String, Object> zset = redisTemplate.opsForZSet();
+        var tuples = zset.reverseRangeWithScores("trend:24h", 0, Math.max(0, limit - 1));
+        if (tuples == null || tuples.isEmpty()) {
+            return List.of();
+        }
+        List<Long> ids = tuples.stream()
+                .filter(t -> t.getValue() != null)
+                .map(t -> t.getValue().toString())
+                .filter(s -> {
+                    try { Long.parseLong(s); return true; } catch (Exception e) { return false; }
+                })
+                .map(Long::valueOf)
+                .toList();
+        // ID 목록으로 상세 카드 조회 (입력 순서 보존)
+        return queryService.listByIds(ids);
     }
 
     /**

@@ -63,6 +63,8 @@ export async function listAnime(params: {
   sort?: string;
   page?: number;
   size?: number;
+  cursorId?: number;
+  cursorRating?: number;
 } = {}) {
   const qp = new URLSearchParams();
   if (params.status) qp.append('status', params.status);
@@ -80,6 +82,8 @@ export async function listAnime(params: {
   qp.append('sort', params.sort ?? 'id');
   qp.append('page', String(params.page ?? 0));
   qp.append('size', String(params.size ?? 20));
+  if (params.cursorId != null) qp.append('cursorId', String(params.cursorId));
+  if (params.cursorRating != null) qp.append('cursorRating', String(params.cursorRating));
   
   // getAnimeList와 동일한 응답 처리: 단순히 apiCall만 반환
   return apiCall(`/anime?${qp.toString()}`);
@@ -123,6 +127,11 @@ export async function getPopularAnime() {
 // 최신 애니메이션 조회
 export async function getLatestAnime() {
   return apiCall('/anime/latest');
+}
+
+// 실시간 트렌딩(24h) 조회
+export async function getTrendingAnime24h(limit: number = 10) {
+  return apiCall(`/anime/trending-24h?limit=${limit}`);
 }
 
 // 마스터: 장르/태그 목록

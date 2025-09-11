@@ -39,7 +39,10 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
             @Param("isPopular") Boolean isPopular, // 인기 여부
             @Param("sort") String sort, // 정렬 키(rating/year/popular/id)
             @Param("limit") int limit, // 페이지 크기
-            @Param("offset") int offset // 오프셋
+            @Param("offset") int offset, // 오프셋
+            @Param("cursorId") Long cursorId,
+            @Param("cursorRating") Double cursorRating,
+            @Param("cursorIsPopular") Boolean cursorIsPopular
     );
 
     long countAniList( // 목록 총 개수 // 페이지네이션용
@@ -86,6 +89,9 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
     List<Long> findWatchedAnimeIds(@Param("userId") Long userId); // 사용자 시청한 작품 ID 목록
     List<Long> findHighRatedAnimeIds(@Param("userId") Long userId, @Param("minRating") Double minRating); // 사용자 높은 평점 작품 ID 목록
     List<Long> findTagIdsByAnimeId(@Param("aniId") Long aniId); // 작품의 태그 ID 목록
+
+    // 트렌딩: ID 목록으로 카드 리스트 조회
+    List<AnimeListDto> findAniListByIds(@Param("ids") List<Long> ids);
 }
 
 
