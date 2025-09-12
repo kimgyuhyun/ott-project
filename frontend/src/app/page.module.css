@@ -238,14 +238,14 @@
 .mainBanner {
   position: relative;
   width: 100%;
-  height: 24rem;
+  height: 40rem; /* 와이드 이미지에 맞게 높이 증가 */
   overflow: hidden;
 }
 
 .bannerBackground {
   position: absolute;
   inset: 0;
-  background-size: cover;
+  background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
   opacity: 0.8;

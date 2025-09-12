@@ -615,4 +615,45 @@
   }
 }
 
+/* 업그레이드 성공 알림창 */
+.upgradeSuccessAlert {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: #121212;
+  border: 1px solid #323232;
+  border-radius: 8px;
+  padding: 24px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  min-width: 320px;
+  text-align: center;
+}
+
+.upgradeSuccessContent h3 {
+  color: #FFFFFF;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 0 0 20px 0;
+  text-align: center;
+}
+
+.upgradeSuccessButton {
+  background-color: #816BFF;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  float: right;
+  transition: background-color 0.2s;
+}
+
+.upgradeSuccessButton:hover {
+  background-color: #6B5BC7;
+}
+
 

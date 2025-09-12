@@ -47,6 +47,11 @@
   border-bottom: 1px solid #333;
 }
 
+/* 해지 예약 알림이 있을 때 멤버십 섹션 간격 조정 */
+.currentMembershipCard .membershipSection:first-of-type {
+  margin-top: 3rem;
+}
+
 .membershipSection:last-child {
   border-bottom: none;
   margin-bottom: 0;
@@ -899,4 +904,65 @@
     width: 100%;
     max-width: 300px;
   }
+}
+
+/* 정기결제 다시 시작 버튼 */
+.resumeButton {
+  background: linear-gradient(135deg, #816BFF 0%, #6B5BC7 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(129, 107, 255, 0.3);
+}
+
+.resumeButton:hover {
+  background: linear-gradient(135deg, #6B5BC7 0%, #5A4BB5 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(129, 107, 255, 0.4);
+}
+
+.resumeButton:disabled {
+  background: #666666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+/* 해지 예약 알림 */
+.cancellationNotice {
+  margin-bottom: 3rem;
+}
+
+.cancellationNoticeText {
+  width: 100%;
+}
+
+.cancellationNoticeText strong {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.cancellationNoticeText p {
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* 결제수단 아이콘 이미지 */
+.paymentMethodIconImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
 }

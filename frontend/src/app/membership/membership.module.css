@@ -12,11 +12,44 @@
   justify-content: center;
   padding: 0 1.5rem;
   background-color: #121212;
+  position: relative;
+  overflow: hidden;
+  padding-top: 4rem;
+}
+
+/* 배경 영상 */
+.heroVideo {
+  position: absolute;
+  top: 6rem;
+  left: 2rem;
+  width: calc(100% - 4rem);
+  height: calc(100% - 8rem);
+  object-fit: cover;
+  z-index: 1;
+  border-radius: 0.5rem;
+}
+
+/* 배경 오버레이 */
+.heroOverlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.6) 50%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  z-index: 2;
 }
 
 /* 텍스트 콘텐츠 */
 .textContent {
   text-align: center;
+  position: relative;
+  z-index: 3;
 }
 
 /* 메인 제목 */
@@ -53,6 +86,28 @@
 
 .startButtonText {
   color: #F7F7F7;
+}
+
+/* 멤버십 페이지 이미지 섹션 */
+.membershipImageSection {
+  padding: 3rem 1.5rem;
+  background-color: #121212;
+  display: flex;
+  justify-content: center;
+}
+
+.membershipImageContainer {
+  max-width: 80rem;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.membershipImage {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
 }
 
 /* 멤버십 설명 구간 */
@@ -245,7 +300,9 @@
   top: 1rem;
   right: 1rem;
   font-size: 1.5rem;
-  color: #ABABAB;
+  color: #FFFFFF;
+  background: none;
+  border: none;
   transition: opacity 0.2s ease;
 }
 
