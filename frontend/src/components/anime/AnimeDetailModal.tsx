@@ -174,6 +174,11 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   console.log('🔍 AnimeDetailModal - anime 객체:', detail);
   console.log('🔍 AnimeDetailModal - anime.aniId:', detail?.aniId);
   console.log('🔍 AnimeDetailModal - anime 타입:', typeof detail);
+  console.log('🔍 장르 정보:', detail?.genres);
+  console.log('🔍 평점 정보:', detail?.rating);
+  console.log('🔍 관람등급:', detail?.ageRating);
+  console.log('🔍 줄거리:', detail?.fullSynopsis || detail?.synopsis);
+  console.log('🔍 에피소드:', detail?.episodes);
   console.log('🔍 시청 기록 상태:', {
     watchHistory,
     isLoadingHistory,
@@ -246,202 +251,242 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
           {/* 상단 정보 오버레이 */}
           <div className={styles.topInfoOverlay}>
-            {/* 평점 및 배지 - 왼쪽 상단 */}
-            <div className={styles.ratingSection}>
-              <div className={styles.ratingContainer}>
-                <span className={styles.ratingStar}>★</span>
-                <span className={styles.ratingValue}>
-                  {typeof currentRating === 'number' ? currentRating.toFixed(1) : 'N/A'}
+              {/* 평점 및 배지 - 왼쪽 상단 */}
+              <div className={styles.ratingSection}>
+                <div className={styles.ratingContainer}>
+                  <span className={styles.ratingStar}>★</span>
+                  <span className={styles.ratingValue}>
+                    {typeof currentRating === 'number' ? currentRating.toFixed(1) : 'N/A'}
+                  </span>
+                </div>
+                <span className={styles.ratingBadge}>
+                  {detail?.badges?.[0] || 'ONLY'}
                 </span>
               </div>
-              <span className={styles.ratingBadge}>
-                {detail?.badges?.[0] || 'ONLY'}
-              </span>
-            </div>
 
-            {/* 애니메이션 제목 */}
-            <h1 className={styles.animeTitle}>
-              {detail?.title || detail?.titleEn || detail?.titleJp || '제목 없음'}
-            </h1>
+              {/* 애니메이션 제목 */}
+              <h1 className={styles.animeTitle}>
+                {(() => {
+                  // 더빙과 자막 여부 확인
+                  const isDub = detail?.isDub === true;
+                  const isSubtitle = detail?.isSubtitle === true;
+                  
+                  let prefix = '';
+                  if (isDub && isSubtitle) {
+                    // 둘 다 true인 경우 자막으로 표시
+                    prefix = '(자막) ';
+                  } else if (isDub) {
+                    prefix = '(더빙) ';
+                  } else if (isSubtitle) {
+                    prefix = '(자막) ';
+                  }
+                  
+                  const title = detail?.title || detail?.titleEn || detail?.titleJp || '제목 없음';
+                  return `${prefix}${title}`;
+                })()}
+              </h1>
 
-            {/* 장르 및 정보 */}
-            <div className={styles.genreSection}>
-              {Array.isArray(detail?.genres) && detail.genres.length > 0 ? (
-                detail.genres.slice(0, 6).map((g: any, idx: number) => (
-                  <span key={idx} className={styles.genreTag}>
-                    {g?.name || g}
-                  </span>
-                ))
-              ) : (
-                <span className={styles.genreTag}>장르 정보 없음</span>
-              )}
-              <span className={styles.episodeCount}>
-                {(detail?.totalEpisodes ?? detail?.episodeCount ?? '정보 없음')}화
-              </span>
-            </div>
-
-                    {/* 액션 버튼들 */}
-        <div className={styles.animeDetailModalActionButtons}>
-              {/* 로딩 중일 때 */}
-              {isLoadingHistory && (
-                <div className={styles.loadingMessage}>시청 기록을 불러오는 중...</div>
-              )}
-              
-              {/* 이어보기 버튼 - 시청 기록이 있고 완료되지 않은 경우 */}
-              {!isLoadingHistory && watchHistory && !watchHistory.completed && (
-                <div className={styles.playButtonContainer}>
-                  <button 
-                    onClick={() => {
-                      console.log('🎬 이어보기 버튼 클릭:', {
-                        episodeId: watchHistory.episodeId,
-                        animeId: detail?.aniId,
-                        positionSec: watchHistory.positionSec,
-                        episodeNumber: watchHistory.episodeNumber
-                      });
-                      // 이어보기: 마지막으로 본 에피소드부터 재생
-                      const position = watchHistory.positionSec > 0 ? `&position=${watchHistory.positionSec}` : '';
-                      const url = `/player?episodeId=${watchHistory.episodeId}&animeId=${detail?.aniId}${position}`;
-                      console.log('🔗 이동할 URL:', url);
-                      router.push(url);
-                      onClose();
-                    }}
-                    className={styles.playButton}
-                  >
-                    <div className={styles.playButtonIcon}>
-                      <svg fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    </div>
-                    <span className={styles.playButtonText}>{watchHistory.episodeNumber}화 이어보기</span>
-                  </button>
-                </div>
-              )}
-              
-              {/* 처음보기 또는 완료된 경우 보러가기 버튼 */}
-              {!isLoadingHistory && (!watchHistory || watchHistory.completed) && (
-                <div className={styles.playButtonContainer}>
-                  <button 
-                    onClick={() => {
-                      console.log('🎬 재생하기 버튼 클릭:', {
-                        watchHistory,
-                        hasWatchHistory: !!watchHistory,
-                        isCompleted: watchHistory?.completed,
-                        animeId: detail?.aniId
-                      });
-                      
-                      // 시청 기록이 있지만 완료된 경우: 다음 에피소드부터 시작
-                      // 시청 기록이 없는 경우: 1화부터 시작
-                      let nextEpisodeId = 1;
-                      if (watchHistory && watchHistory.completed) {
-                        // 완료된 경우 다음 에피소드
-                        nextEpisodeId = watchHistory.episodeNumber + 1;
-                      }
-                      
-                      const url = `/player?episodeId=${nextEpisodeId}&animeId=${detail?.aniId}`;
-                      console.log('🔗 이동할 URL:', url);
-                      router.push(url);
-                      onClose();
-                    }}
-                    className={styles.playButton}
-                  >
-                    <div className={styles.playButtonIcon}>
-                      <svg fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    </div>
-                    <span className={styles.playButtonText}>
-                      {watchHistory && watchHistory.completed 
-                        ? `${watchHistory.episodeNumber + 1}화 재생하기`
-                        : '1화 재생하기'
-                      }
+              {/* 장르 및 정보 */}
+              <div className={styles.genreSection}>
+                {Array.isArray(detail?.genres) && detail.genres.length > 0 ? (
+                  detail.genres.slice(0, 6).map((g: any, idx: number) => (
+                    <span key={idx} className={styles.genreTag}>
+                      {g?.name || g}
                     </span>
-                  </button>
+                  ))
+                ) : (
+                  <span className={styles.genreTag}>장르 정보 없음</span>
+                )}
+                
+                {/* 애니메이션 타입·상태 */}
+                <span className={styles.typeStatusBadge}>
+                  {detail?.type || 'TV'}·{detail?.animeStatus === 'COMPLETED' ? '완결' : 
+                   detail?.animeStatus === 'ONGOING' ? '방영중' : 
+                   detail?.animeStatus === 'UPCOMING' ? '예정' : 
+                   detail?.animeStatus === 'CANCELLED' ? '중단' : '완결'}
+                </span>
+                
+                {/* 관람등급 */}
+                <div className={styles.ageRatingBadge}>
+                  <svg width="36" height="36" viewBox="0 0 126 126" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0 63C0 28.2061 28.2061 0 63 0C97.7939 0 126 28.2061 126 63C126 97.7939 97.7939 126 63 126C28.2061 126 0 97.7939 0 63Z" fill="#E9B62F" stroke="#FFFFFF" strokeWidth="10"/>
+                    <text x="63" y="85" textAnchor="middle" fill="#000" fontSize="10" fontWeight="bold">
+                      {(() => {
+                        const rating = detail?.ageRating;
+                        if (rating === '전체 이용가') return 'ALL';
+                        if (rating === '15세이상') return '15';
+                        if (rating === '12세이상') return '12';
+                        if (rating === '19세이상') return '19';
+                        if (rating === 'ALL') return 'ALL';
+                        return 'ALL';
+                      })()}
+                    </text>
+                  </svg>
                 </div>
-              )}
-              
-              {/* 보고싶다 버튼 */}
-              <div className={styles.favoriteButtonContainer}>
-                <button 
-                  onClick={async () => {
-                    if (isLoadingFavorite) return;
-                    
-                    try {
-                      setIsLoadingFavorite(true);
-                      const newState = await toggleFavorite(detail?.aniId);
-                      setIsFavoritedState(newState);
-                      console.log('보고싶다 토글 완료:', newState);
-                    } catch (error) {
-                      console.error('보고싶다 토글 실패:', error);
-                      alert('보고싶다 기능을 사용할 수 없습니다.');
-                    } finally {
-                      setIsLoadingFavorite(false);
-                    }
-                  }}
-                  disabled={isLoadingFavorite}
-                  className={`${styles.favoriteButton} ${isFavoritedState ? styles.favorited : ''}`}
-                >
-                  <div className={styles.favoriteButtonContent}>
-                    {isFavoritedState ? (
-                      <svg 
-                        className={styles.checkIcon} 
-                        fill="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                      </svg>
-                    ) : (
-                      <span className={styles.plusIcon}>+</span>
-                    )}
-                    <span className={styles.favoriteButtonText}>
-                      {isFavoritedState ? '보관중' : '보고싶다'}
-                    </span>
-                  </div>
-                </button>
-                <div className={styles.favoriteTooltip}>
-                  {isFavoritedState ? '보관함에서 제거' : '보관함에 추가'}
-                </div>
+                
               </div>
-              
-              {/* 공유 버튼 */}
-              <button className={`${styles.animeDetailModalActionButton} ${styles.animeDetailModalActionButtonSecondary}`}>
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                </svg>
-                <span>공유</span>
-              </button>
-            </div>
 
-            {/* 시놉시스 */}
-            <div className={styles.synopsisSection}>
-              <h3 className={styles.synopsisTitle}>시놉시스</h3>
-              {(() => {
-                const raw = (detail?.fullSynopsis ?? detail?.synopsis ?? "").toString().trim();
-                const isLong = raw.length > MAX_SYNOPSIS_CHARS;
-                const text = showFullSynopsis || !isLong ? raw : `${raw.slice(0, MAX_SYNOPSIS_CHARS)}…`;
-                return (
-                  <div className={styles.synopsisInlineRow}>
-                    <span className={styles.synopsisText}>{text || "시놉시스 정보가 없습니다."}</span>
-                    {isLong && (
-                      <button
-                        type="button"
-                        className={styles.synopsisToggle}
-                        onClick={() => {
-                          if (!showFullSynopsis) {
-                            // 처음 '더보기' 누르면 별도 전체 정보 모달을 띄움
-                            setIsFullInfoOpen(true);
-                          } else {
-                            setShowFullSynopsis(false);
-                          }
-                        }}
-                        aria-expanded={showFullSynopsis}
-                      >
-                        {showFullSynopsis ? '접기' : '더보기'}
-                      </button>
-                    )}
+              {/* 액션 버튼들 */}
+              <div className={styles.animeDetailModalActionButtons}>
+                {/* 로딩 중일 때 */}
+                {isLoadingHistory && (
+                  <div className={styles.loadingMessage}>시청 기록을 불러오는 중...</div>
+                )}
+                
+                {/* 이어보기 버튼 - 시청 기록이 있고 완료되지 않은 경우 */}
+                {!isLoadingHistory && watchHistory && !watchHistory.completed && (
+                  <div className={styles.playButtonContainer}>
+                    <button 
+                      onClick={() => {
+                        console.log('🎬 이어보기 버튼 클릭:', {
+                          episodeId: watchHistory.episodeId,
+                          animeId: detail?.aniId,
+                          positionSec: watchHistory.positionSec,
+                          episodeNumber: watchHistory.episodeNumber
+                        });
+                        // 이어보기: 마지막으로 본 에피소드부터 재생
+                        const position = watchHistory.positionSec > 0 ? `&position=${watchHistory.positionSec}` : '';
+                        const url = `/player?episodeId=${watchHistory.episodeId}&animeId=${detail?.aniId}${position}`;
+                        console.log('🔗 이동할 URL:', url);
+                        router.push(url);
+                        onClose();
+                      }}
+                      className={styles.playButton}
+                    >
+                      <div className={styles.playButtonIcon}>
+                        <svg fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </div>
+                      <span className={styles.playButtonText}>{watchHistory.episodeNumber}화 이어보기</span>
+                    </button>
                   </div>
-                );
-              })()}
-            </div>
+                )}
+                
+                {/* 처음보기 또는 완료된 경우 보러가기 버튼 */}
+                {!isLoadingHistory && (!watchHistory || watchHistory.completed) && (
+                  <div className={styles.playButtonContainer}>
+                    <button 
+                      onClick={() => {
+                        console.log('🎬 재생하기 버튼 클릭:', {
+                          watchHistory,
+                          hasWatchHistory: !!watchHistory,
+                          isCompleted: watchHistory?.completed,
+                          animeId: detail?.aniId
+                        });
+                        
+                        // 시청 기록이 있지만 완료된 경우: 다음 에피소드부터 시작
+                        // 시청 기록이 없는 경우: 1화부터 시작
+                        let nextEpisodeId = 1;
+                        if (watchHistory && watchHistory.completed) {
+                          // 완료된 경우 다음 에피소드
+                          nextEpisodeId = watchHistory.episodeNumber + 1;
+                        }
+                        
+                        const url = `/player?episodeId=${nextEpisodeId}&animeId=${detail?.aniId}`;
+                        console.log('🔗 이동할 URL:', url);
+                        router.push(url);
+                        onClose();
+                      }}
+                      className={styles.playButton}
+                    >
+                      <div className={styles.playButtonIcon}>
+                        <svg fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </div>
+                      <span className={styles.playButtonText}>
+                        {watchHistory && watchHistory.completed 
+                          ? `${watchHistory.episodeNumber + 1}화 재생하기`
+                          : '1화 재생하기'
+                        }
+                      </span>
+                    </button>
+                  </div>
+                )}
+                
+                {/* 보고싶다 버튼 */}
+                <div className={styles.favoriteButtonContainer}>
+                  <button 
+                    onClick={async () => {
+                      if (isLoadingFavorite) return;
+                      
+                      try {
+                        setIsLoadingFavorite(true);
+                        const newState = await toggleFavorite(detail?.aniId);
+                        setIsFavoritedState(newState);
+                        console.log('보고싶다 토글 완료:', newState);
+                      } catch (error) {
+                        console.error('보고싶다 토글 실패:', error);
+                        alert('보고싶다 기능을 사용할 수 없습니다.');
+                      } finally {
+                        setIsLoadingFavorite(false);
+                      }
+                    }}
+                    disabled={isLoadingFavorite}
+                    className={`${styles.favoriteButton} ${isFavoritedState ? styles.favorited : ''}`}
+                  >
+                    <div className={styles.favoriteButtonContent}>
+                      {isFavoritedState ? (
+                        <svg 
+                          className={styles.checkIcon} 
+                          fill="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                      ) : (
+                        <span className={styles.plusIcon}>+</span>
+                      )}
+                      <span className={styles.favoriteButtonText}>
+                        {isFavoritedState ? '보관중' : '보고싶다'}
+                      </span>
+                    </div>
+                  </button>
+                  <div className={styles.favoriteTooltip}>
+                    {isFavoritedState ? '보관함에서 제거' : '보관함에 추가'}
+                  </div>
+                </div>
+                
+                {/* 공유 버튼 */}
+                <button className={`${styles.animeDetailModalActionButton} ${styles.animeDetailModalActionButtonSecondary}`}>
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+                  </svg>
+                  <span>공유</span>
+                </button>
+              </div>
+
+              {/* 줄거리 */}
+              <div className={styles.synopsisSection}>
+                {(() => {
+                  const raw = (detail?.fullSynopsis ?? detail?.synopsis ?? "").toString().trim();
+                  const isLong = raw.length > MAX_SYNOPSIS_CHARS;
+                  const text = showFullSynopsis || !isLong ? raw : `${raw.slice(0, MAX_SYNOPSIS_CHARS)}…`;
+                  return (
+                    <div className={styles.synopsisInlineRow}>
+                      <span className={styles.synopsisText}>{text || "줄거리 정보가 없습니다."}</span>
+                      {isLong && (
+                        <button
+                          type="button"
+                          className={styles.synopsisToggle}
+                          onClick={() => {
+                            if (!showFullSynopsis) {
+                              // 처음 '더보기' 누르면 별도 전체 정보 모달을 띄움
+                              setIsFullInfoOpen(true);
+                            } else {
+                              setShowFullSynopsis(false);
+                            }
+                          }}
+                          aria-expanded={showFullSynopsis}
+                        >
+                          {showFullSynopsis ? '접기' : '더보기'}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
             {/* 전체 작품 정보 모달 */}
             <AnimeFullInfoModal isOpen={isFullInfoOpen} onClose={() => setIsFullInfoOpen(false)} detail={detail} />
           </div>
@@ -493,7 +538,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                     <div className={styles.episodeInfo}>
                       <div className={styles.episodeHeader}>
                         <h4 className={styles.episodeTitle}>
-                          {episode.title}
+                          {episode.episodeNumber}화
                         </h4>
                         <div className={styles.episodeMeta}>
                           <span>{episode.duration ? `${episode.duration}분` : ''}</span>

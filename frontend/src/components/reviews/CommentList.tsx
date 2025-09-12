@@ -39,9 +39,9 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
   const formatRelativeTime = (iso?: string, updatedIso?: string) => {
     if (!iso) return '';
     try {
-      // UTC 시간을 로컬 시간으로 변환
-      const created = new Date(iso + 'Z'); // Z를 추가해서 UTC로 명시
-      const updated = updatedIso ? new Date(updatedIso + 'Z') : null;
+      // 백엔드에서 한국 시간대로 저장된 시간을 그대로 사용
+      const created = new Date(iso); // Z를 추가하지 않음
+      const updated = updatedIso ? new Date(updatedIso) : null;
       const diff = Date.now() - created.getTime();
       const minutes = Math.floor(diff / 60000);
       const hours = Math.floor(minutes / 60);

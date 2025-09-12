@@ -33,7 +33,7 @@ export default function NextEpisodeOverlay({
           
           <div className={styles.episodeInfo}>
             <div className={styles.episodeTitle}>
-              {nextEpisode.episodeNumber}화 {nextEpisode.title}
+              {nextEpisode.episodeNumber}화
             </div>
           </div>
         </div>

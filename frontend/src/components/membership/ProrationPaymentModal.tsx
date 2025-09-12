@@ -176,11 +176,12 @@ export default function ProrationPaymentModal({
                     className={`${styles.paymentMethodCard} ${selectedPaymentService === 'kakao' ? styles.paymentMethodCardSelected : ''}`}
                     onClick={() => onSelectPaymentService('kakao')}
                   >
-                    <div className={styles.paymentMethodIcon} style={{ backgroundColor: '#FEE500' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <rect width="24" height="24" rx="4" fill="#FEE500"/>
-                        <path d="M12 7c-3.59 0-6.5 1.94-6.5 4.33 0 1.58 1.15 2.95 2.9 3.74l-.46 2.76 3.05-2.07h1.01c3.59 0 6.5-1.94 6.5-4.33S15.59 7 12 7z" fill="#000000"/>
-                      </svg>
+                    <div className={styles.paymentMethodIcon}>
+                      <img 
+                        src="/images/logos/kakao.svg" 
+                        alt="카카오페이" 
+                        className={styles.paymentMethodLogo}
+                      />
                     </div>
                     <div className={styles.paymentMethodLabel}>카카오페이</div>
                   </div>
@@ -189,12 +190,12 @@ export default function ProrationPaymentModal({
                     className={`${styles.paymentMethodCard} ${selectedPaymentService === 'toss' ? styles.paymentMethodCardSelected : ''}`}
                     onClick={() => onSelectPaymentService('toss')}
                   >
-                    <div className={styles.paymentMethodIcon} style={{ backgroundColor: '#FFFFFF' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <rect width="24" height="24" rx="4" fill="#FFFFFF"/>
-                        <path d="M12 5c4.418 0 8 3.134 8 7-5.2-.1-8 3.8-12 0 0-3.866 3.134-7 8-7z" fill="#0064FF"/>
-                        <circle cx="10.4" cy="9.2" r="1.6" fill="#FFFFFF"/>
-                      </svg>
+                    <div className={styles.paymentMethodIcon}>
+                      <img 
+                        src="/images/logos/tosspaylogo.jpg" 
+                        alt="토스페이" 
+                        className={styles.paymentMethodLogo}
+                      />
                     </div>
                     <div className={styles.paymentMethodLabel}>토스페이</div>
                   </div>
@@ -203,11 +204,12 @@ export default function ProrationPaymentModal({
                     className={`${styles.paymentMethodCard} ${selectedPaymentService === 'nice' ? styles.paymentMethodCardSelected : ''}`}
                     onClick={() => onSelectPaymentService('nice')}
                   >
-                    <div className={styles.paymentMethodIcon} style={{ backgroundColor: '#0A68F5' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <rect width="24" height="24" rx="4" fill="#0A68F5"/>
-                        <text x="12" y="15" textAnchor="middle" fontSize="11" fill="#FFFFFF" fontWeight="bold">NP</text>
-                      </svg>
+                    <div className={styles.paymentMethodIcon}>
+                      <img 
+                        src="/images/logos/nicepay.png" 
+                        alt="나이스페이먼츠" 
+                        className={styles.paymentMethodLogo}
+                      />
                     </div>
                     <div className={styles.paymentMethodLabel}>나이스페이먼츠</div>
                   </div>
@@ -271,7 +273,7 @@ export default function ProrationPaymentModal({
       {showSuccess && (
         <div className={styles.successModal}>
           <div className={styles.successContent}>
-            <h3>차액 결제가 완료되었습니다!</h3>
+            <h3>플랜 업그레이드가 완료되었습니다.</h3>
             <p>플랜이 즉시 업그레이드되었습니다.</p>
             <div className={styles.successButtonGroup}>
               <button 
