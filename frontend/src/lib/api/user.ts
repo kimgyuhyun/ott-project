@@ -21,12 +21,7 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
   if (!response.ok) {
     const errorText = await response.text();
     if (response.status === 401) {
-      try {
-        if (typeof window !== 'undefined') {
-          const next = encodeURIComponent(window.location.pathname + window.location.search);
-          window.location.href = `/login?next=${next}`;
-        }
-      } catch {}
+      // 401 에러는 리다이렉트하지 않고 에러로만 처리
       const err: any = new Error('UNAUTHORIZED');
       err.status = 401;
       err.body = errorText;
@@ -66,22 +61,42 @@ export async function updateUserSettings(settings: any) {
 
 // 사용자 시청 기록 조회
 export async function getUserWatchHistory(page: number = 0, size: number = 20) {
-  // 캐시 방지를 위해 타임스탬프 추가
-  const timestamp = Date.now();
-  return apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}&t=${timestamp}`);
+  try {
+    // 캐시 방지를 위해 타임스탬프 추가
+    const timestamp = Date.now();
+    return await apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}&t=${timestamp}`);
+  } catch (error: any) {
+    // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
+    if (error?.status === 401) {
+      console.log('🔍 시청 기록 조회 실패: 로그인 필요 (401)');
+      return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+    }
+    throw error;
+  }
 }
 
 // 사용자 최근 본(애니별 최신 1건)
 export async function getUserRecentAnime(params?: { page?: number; size?: number; cursorUpdatedAt?: string; cursorAnimeId?: number }) {
-  const page = params?.page ?? 0;
-  const size = params?.size ?? 20;
-  const qp = new URLSearchParams();
-  qp.append('page', String(page));
-  qp.append('size', String(size));
-  if (params?.cursorUpdatedAt) qp.append('cursorUpdatedAt', params.cursorUpdatedAt);
-  if (params?.cursorAnimeId != null) qp.append('cursorAnimeId', String(params.cursorAnimeId));
-  qp.append('t', String(Date.now()));
-  return apiCall(`/api/episodes/mypage/recent-anime?${qp.toString()}`);
+  try {
+    const page = params?.page ?? 0;
+    const size = params?.size ?? 20;
+    const qp = new URLSearchParams();
+    qp.append('page', String(page));
+    qp.append('size', String(size));
+    if (params?.cursorUpdatedAt) qp.append('cursorUpdatedAt', params.cursorUpdatedAt);
+    if (params?.cursorAnimeId != null) qp.append('cursorAnimeId', String(params.cursorAnimeId));
+    qp.append('t', String(Date.now()));
+    return await apiCall(`/api/episodes/mypage/recent-anime?${qp.toString()}`);
+  } catch (error: any) {
+    // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
+    if (error?.status === 401) {
+      console.log('🔍 최근 본 목록 조회 실패: 로그인 필요 (401)');
+      const page = params?.page ?? 0;
+      const size = params?.size ?? 20;
+      return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+    }
+    throw error;
+  }
 }
 
 // 특정 애니메이션의 시청 기록 조회
@@ -156,7 +171,12 @@ export async function getAnimeWatchHistory(animeId: number) {
     
     console.log('🔍 반환할 시청 기록:', result);
     return result;
-  } catch (error) {
+  } catch (error: any) {
+    // 401 에러인 경우 로그인하지 않은 상태로 간주하고 null 반환
+    if (error?.status === 401) {
+      console.log('🔍 시청 기록 조회 실패: 로그인 필요 (401)');
+      return null;
+    }
     console.error('애니메이션 시청 기록 조회 중 오류:', error);
     return null;
   }
@@ -170,7 +190,12 @@ export async function getUserWantList(page: number = 0, size: number = 20) {
     const result = await apiCall(`/api/mypage/favorites/anime?page=${page}&size=${size}`);
     console.log('🌐 [FRONTEND] getUserWantList 응답:', result);
     return result;
-  } catch (error) {
+  } catch (error: any) {
+    // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
+    if (error?.status === 401) {
+      console.log('🔍 보고싶다 목록 조회 실패: 로그인 필요 (401)');
+      return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+    }
     console.error('🌐 [FRONTEND] getUserWantList 에러:', error);
     throw error;
   }
@@ -178,8 +203,17 @@ export async function getUserWantList(page: number = 0, size: number = 20) {
 
 // 사용자 활동 통계 조회
 export async function getUserStats() {
-  // 백엔드 집계 API 호출
-  return apiCall('/api/mypage/stats');
+  try {
+    // 백엔드 집계 API 호출
+    return await apiCall('/api/mypage/stats');
+  } catch (error: any) {
+    // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 통계 반환
+    if (error?.status === 401) {
+      console.log('🔍 사용자 통계 조회 실패: 로그인 필요 (401)');
+      return { totalWatchTime: 0, totalEpisodes: 0, favoriteCount: 0, recentCount: 0 };
+    }
+    throw error;
+  }
 }
 
 // 비밀번호 변경
