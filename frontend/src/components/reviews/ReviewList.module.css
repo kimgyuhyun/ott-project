@@ -244,6 +244,14 @@
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
 
+.characterCount {
+  font-size: 0.75rem;
+  color: #ABABAB;
+  text-align: right;
+  margin-top: 0.25rem;
+  padding-right: 0.5rem;
+}
+
 /* 폼 버튼 */
 .formButtons {
   display: flex;

@@ -500,11 +500,16 @@ export default function PlayerPage() {
     
     try {
       const data = await getAnimeDetail(parseInt(animeId));
+      console.log('🔍 애니메이션 상세 데이터:', data);
+      console.log('🔍 isDub 값:', data?.isDub, typeof data?.isDub);
+      console.log('🔍 isSubtitle 값:', data?.isSubtitle, typeof data?.isSubtitle);
+      console.log('🔍 title 값:', data?.title);
       setAnimeInfo(data);
       
       // 현재 에피소드 정보 찾기
       if ((data as any)?.episodes && episodeId) {
         const episode = (data as any).episodes.find((ep: any) => ep.id == episodeId);
+        console.log('🔍 현재 에피소드 데이터:', episode);
         setEpisodeInfo(episode);
       }
     } catch (error) {
@@ -801,17 +806,6 @@ export default function PlayerPage() {
         <div className={`${styles.playerLayout} ${isWideMode ? styles.wideLayout : ''}`}>
           {/* 왼쪽: 메인 비디오 플레이어 */}
           <div className={styles.videoSection}>
-            {/* 애니메이션 정보 */}
-            {animeInfo && (
-              <div className={styles.animeInfo}>
-                <h1 className={styles.animeTitle}>{animeInfo.title}</h1>
-                {episodeInfo && (
-                  <p className={styles.episodeInfo}>
-                    {episodeInfo.title} - {episodeInfo.episodeNumber || '에피소드'}
-                  </p>
-                )}
-              </div>
-            )}
 
             {/* 비디오 플레이어 - 로그인 상태 및 스트림 URL 유무에 따라 조건부 렌더링 */}
             {isLoggedIn && streamUrl ? (
@@ -831,7 +825,7 @@ export default function PlayerPage() {
                         
                         <div className={styles.nextEpisodeInfo}>
                           <div className={styles.nextEpisodeTitle}>
-                            {nextEpisode.episodeNumber}화 {nextEpisode.title}
+                            {nextEpisode.episodeNumber}화
                           </div>
                         </div>
                       </div>
@@ -1118,7 +1112,49 @@ export default function PlayerPage() {
               </div>
             )}
 
-
+            {/* 에피소드 정보 - 비디오 플레이어 바로 밑 */}
+            {episodeInfo && (
+              <div className={styles.episodeDetails}>
+                {animeInfo && (
+                  <div className={styles.animeTitle}>
+                    {(() => {
+                      console.log('🔍 애니메이션 표시 데이터:', {
+                        isDub: animeInfo.isDub,
+                        isSubtitle: animeInfo.isSubtitle,
+                        title: animeInfo.title,
+                        animeInfo: animeInfo
+                      });
+                      
+                      // 더빙과 자막 여부 확인
+                      const isDub = animeInfo.isDub === true;
+                      const isSubtitle = animeInfo.isSubtitle === true;
+                      
+                      let prefix = '';
+                      if (isDub && isSubtitle) {
+                        // 둘 다 true인 경우 자막으로 표시
+                        prefix = '(자막) ';
+                      } else if (isDub) {
+                        prefix = '(더빙) ';
+                      } else if (isSubtitle) {
+                        prefix = '(자막) ';
+                      }
+                      
+                      return `${prefix}${animeInfo.title}`;
+                    })()}
+                  </div>
+                )}
+                <div className={styles.episodeTitle}>
+                  {(() => {
+                    console.log('🔍 에피소드 표시 데이터:', {
+                      episodeNumber: episodeInfo.episodeNumber,
+                      title: episodeInfo.title,
+                      episodeInfo: episodeInfo
+                    });
+                    return `${episodeInfo.episodeNumber || '에피소드'}화`;
+                  })()}
+                </div>
+              </div>
+            )}
 
             {/* 와이드모드일 때 댓글과 에피소드 목록을 나란히 배치 */}
             {isWideMode ? (
@@ -1128,43 +1164,69 @@ export default function PlayerPage() {
                     <EpisodeCommentList episodeId={parseInt(episodeId)} />
                   )}
                 </div>
-                <div className={styles.episodeSidebar}>
-                  <h3 className={styles.sidebarTitle}>{animeInfo?.title || '애니메이션'}</h3>
-                  <div className={styles.episodeList}>
-                    {animeInfo?.episodes ? (
-                      animeInfo.episodes.map((episode: any, idx: number) => (
-                        <div 
-                          key={episode.id} 
-                          className={`${styles.episodeItem} ${episode.id == episodeId ? styles.activeEpisode : ''}`}
-                          onClick={() => router.push(`/player?episodeId=${episode.id}&animeId=${animeId}`)}
-                        >
-                          <div className={styles.episodeThumbnail}>
-                            <img 
-                              src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
-                              alt={episode.title}
-                              className={styles.thumbnail}
-                            />
-                            {(() => {
-                              const epNum = Number(episode?.episodeNumber ?? (idx + 1));
-                              return (!isLoggedIn || (isLoggedIn && !hasMembership)) && epNum > 3 ? (
-                                <div className={styles.membershipBadge}>
-                                  <span className={styles.membershipText}>멤버십</span>
-                                </div>
-                              ) : null;
-                            })()}
-                          </div>
-                          <div className={styles.episodeInfo}>
-                            <h4 className={styles.episodeTitle}>{episode.title}</h4>
-                            <span className={styles.episodeDuration}>
-                              {episode.duration ? `${episode.duration}분` : '24분'}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className={styles.noEpisodes}>에피소드 정보가 없습니다.</div>
-                    )}
+                {/* 와이드 모드 에피소드 컨테이너 */}
+                <div className={styles.episodeSidebarContainer}>
+                  {/* 와이드 모드 에피소드 헤더 */}
+                  <header className={styles.episodeHeader}>
+                  <div className={styles.episodeHeaderContent}>
+                    <span className={styles.episodeHeaderTitle}>
+                      {animeInfo ? (() => {
+                        // 더빙과 자막 여부 확인
+                        const isDub = animeInfo.isDub === true;
+                        const isSubtitle = animeInfo.isSubtitle === true;
+                        
+                        let prefix = '';
+                        if (isDub && isSubtitle) {
+                          // 둘 다 true인 경우 자막으로 표시
+                          prefix = '(자막) ';
+                        } else if (isDub) {
+                          prefix = '(더빙) ';
+                        } else if (isSubtitle) {
+                          prefix = '(자막) ';
+                        }
+                        
+                        return `${prefix}${animeInfo.title}`;
+                      })() : '애니메이션'}
+                    </span>
                   </div>
+                </header>
+
+                {/* 와이드 모드 에피소드 목록 */}
+                <div className={styles.episodeScrollContainer}>
+                  {animeInfo?.episodes ? (
+                    animeInfo.episodes.map((episode: any, idx: number) => (
+                      <div 
+                        key={episode.id} 
+                        className={`${styles.episodeItem} ${episode.id == episodeId ? styles.activeEpisode : ''}`}
+                        onClick={() => router.push(`/player?episodeId=${episode.id}&animeId=${animeId}`)}
+                      >
+                        <div className={styles.episodeThumbnail}>
+                          <img 
+                            src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
+                            alt={episode.title}
+                            className={styles.thumbnail}
+                          />
+                          {(() => {
+                            const epNum = Number(episode?.episodeNumber ?? (idx + 1));
+                            return (!isLoggedIn || (isLoggedIn && !hasMembership)) && epNum > 3 ? (
+                              <div className={styles.membershipBadge}>
+                                <span className={styles.membershipText}>멤버십</span>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                        <div className={styles.episodeInfo}>
+                          <h4 className={styles.episodeTitle}>{episode.episodeNumber}화</h4>
+                          <span className={styles.episodeDuration}>
+                            {episode.duration ? `${episode.duration}분` : '24분'}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className={styles.noEpisodes}>에피소드 정보가 없습니다.</div>
+                  )}
+                </div>
                 </div>
               </div>
             ) : (
@@ -1179,44 +1241,69 @@ export default function PlayerPage() {
 
           {/* 오른쪽: 에피소드 목록 사이드바 (일반 모드일 때만) */}
           {!isWideMode && (
-            <div className={styles.episodeSidebar}>
-            <h3 className={styles.sidebarTitle}>{animeInfo?.title || '애니메이션'}</h3>
-            <div className={styles.episodeList}>
-              {animeInfo?.episodes ? (
-                animeInfo.episodes.map((episode: any, idx: number) => (
-                  <div 
-                    key={episode.id} 
-                    className={`${styles.episodeItem} ${episode.id == episodeId ? styles.activeEpisode : ''}`}
-                    onClick={() => router.push(`/player?episodeId=${episode.id}&animeId=${animeId}`)}
-                  >
-                    <div className={styles.episodeThumbnail}>
-                      <img 
-                        src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
-                        alt={episode.title}
-                        className={styles.thumbnail}
-                      />
-                      {(() => {
-                        const epNum = Number(episode?.episodeNumber ?? (idx + 1));
-                        return (!isLoggedIn || (isLoggedIn && !hasMembership)) && epNum > 3 ? (
-                          <div className={styles.membershipBadge}>
-                            <span className={styles.membershipText}>멤버십</span>
-                          </div>
-                        ) : null;
-                      })()}
+            <div className={styles.episodeSidebarContainer}>
+              {/* 에피소드 헤더 */}
+              <header className={styles.episodeHeader}>
+                <div className={styles.episodeHeaderContent}>
+                  <span className={styles.episodeHeaderTitle}>
+                    {animeInfo ? (() => {
+                      // 더빙과 자막 여부 확인
+                      const isDub = animeInfo.isDub === true;
+                      const isSubtitle = animeInfo.isSubtitle === true;
+                      
+                      let prefix = '';
+                      if (isDub && isSubtitle) {
+                        // 둘 다 true인 경우 자막으로 표시
+                        prefix = '(자막) ';
+                      } else if (isDub) {
+                        prefix = '(더빙) ';
+                      } else if (isSubtitle) {
+                        prefix = '(자막) ';
+                      }
+                      
+                      return `${prefix}${animeInfo.title}`;
+                    })() : '애니메이션'}
+                  </span>
+                </div>
+              </header>
+
+              {/* 에피소드 목록 */}
+              <div className={styles.episodeListContainer}>
+                {animeInfo?.episodes ? (
+                  animeInfo.episodes.map((episode: any, idx: number) => (
+                    <div 
+                      key={episode.id} 
+                      className={`${styles.episodeItem} ${episode.id == episodeId ? styles.activeEpisode : ''}`}
+                      onClick={() => router.push(`/player?episodeId=${episode.id}&animeId=${animeId}`)}
+                    >
+                      <div className={styles.episodeThumbnail}>
+                        <img 
+                          src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
+                          alt={episode.title}
+                          className={styles.thumbnail}
+                        />
+                        {(() => {
+                          const epNum = Number(episode?.episodeNumber ?? (idx + 1));
+                          return (!isLoggedIn || (isLoggedIn && !hasMembership)) && epNum > 3 ? (
+                            <div className={styles.membershipBadge}>
+                              <span className={styles.membershipText}>멤버십</span>
+                            </div>
+                          ) : null;
+                        })()}
+                      </div>
+                      <div className={styles.episodeInfo}>
+                        <h4 className={styles.episodeTitle}>{episode.episodeNumber}화</h4>
+                        <span className={styles.episodeDuration}>
+                          {episode.duration ? `${episode.duration}분` : '24분'}
+                        </span>
+                      </div>
                     </div>
-                    <div className={styles.episodeInfo}>
-                      <h4 className={styles.episodeTitle}>{episode.title}</h4>
-                      <span className={styles.episodeDuration}>
-                        {episode.duration ? `${episode.duration}분` : '24분'}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className={styles.noEpisodes}>에피소드 정보가 없습니다.</div>
-              )}
+                  ))
+                ) : (
+                  <div className={styles.noEpisodes}>에피소드 정보가 없습니다.</div>
+                )}
+              </div>
             </div>
-          </div>
           )}
         </div>
        </div>

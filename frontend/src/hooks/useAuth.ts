@@ -18,6 +18,7 @@ export const useAuth = () => {
       });
       
       console.log('🔍 useAuth - API 응답 상태:', response.status, response.statusText);
+      console.log('🔍 useAuth - API 응답 헤더:', Object.fromEntries(response.headers.entries()));
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

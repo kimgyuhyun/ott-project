@@ -46,77 +46,115 @@ export default function AnimeFullInfoModal({ isOpen, onClose, detail }: AnimeFul
   }, [isOpen, full?.aniId, full?.id]);
 
   const synopsis = useMemo(() => (full?.fullSynopsis ?? full?.synopsis ?? "").toString().trim(), [full]);
-  const tags: string[] = useMemo(() => (Array.isArray(full?.tags) ? full.tags : []), [full]);
+  const tags: string[] = useMemo(() => {
+    if (Array.isArray(full?.tags)) return full.tags;
+    if (typeof full?.tags === 'string') {
+      try {
+        return JSON.parse(full.tags);
+      } catch {
+        return full.tags.split(',').map(t => t.trim()).filter(Boolean);
+      }
+    }
+    return [];
+  }, [full]);
   const studios: any[] = useMemo(() => (Array.isArray(full?.studios) ? full.studios : []), [full]);
   const genres: any[] = useMemo(() => (Array.isArray(full?.genres) ? full.genres : []), [full]);
-  const voiceList = useMemo(() => parseVoiceActors(full?.voiceActors), [full?.voiceActors]);
+  const voiceList = useMemo(() => {
+    const voices = parseVoiceActors(full?.voiceActors);
+    return voices.slice(0, 3); // 상위 3개만 표시
+  }, [full?.voiceActors]);
+
+  // 디버깅용 콘솔 로그
+  console.log('🔍 AnimeFullInfoModal - full 객체:', full);
+  console.log('🔍 synopsis:', synopsis);
+  console.log('🔍 tags:', tags);
+  console.log('🔍 voiceList:', voiceList);
+  console.log('🔍 director:', full?.director);
+  console.log('🔍 studios:', studios);
+
+  if (!isOpen) return null;
 
   return (
-    <Modal open={isOpen} onClose={onClose}>
-      <div className={styles.container}>
+    <div className={styles.overlay}>
+      <div className={styles.modalWrapper}>
         <div className={styles.headerRow}>
-          <h2 className={styles.title}>작품 정보</h2>
-          <button className={styles.closeBtn} aria-label="닫기" onClick={onClose}>×</button>
+          <span className={styles.title}>작품 정보</span>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className={styles.closeIcon} onClick={onClose}>
+            <path d="M6.052 4.352a1.202 1.202 0 1 0-1.7 1.7L10.3 12l-5.948 5.948a1.202 1.202 0 0 0 1.7 1.7L12 13.7l5.948 5.948a1.202 1.202 0 0 0 1.7-1.7L13.7 12l5.948-5.948a1.202 1.202 0 0 0-1.7-1.7L12 10.3 6.052 4.352Z" fill="currentColor"/>
+          </svg>
         </div>
-
-        {/* 줄거리 */}
-        <section className={styles.section}>
-          <h3 className={styles.sectionTitle}>줄거리</h3>
-          <p className={styles.paragraph}>{loading ? '불러오는 중…' : (synopsis || "시놉시스 정보가 없습니다.")}</p>
-        </section>
-
-        {/* 태그 */}
-        {tags.length > 0 && (
+        
+        <div className={styles.modalContainer}>
+          <div className={styles.content}>
+          {/* 줄거리 */}
           <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>태그</h3>
-            <div className={styles.tagsRow}>
-              {tags.map((tag, idx) => (
-                <span key={idx} className={styles.tagItem}>#{String(tag)}</span>
-              ))}
-            </div>
+            <span className={styles.sectionTitle}>줄거리</span>
+            <span className={styles.paragraph}>{loading ? '불러오는 중…' : (synopsis || "줄거리 정보가 없습니다.")}</span>
           </section>
-        )}
 
-        {/* 성우 정보 */}
-        {voiceList.length > 0 && (
-          <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>성우 정보</h3>
-            <ul className={styles.voiceList}>
-              {voiceList.map((name, i) => (
-                <li key={i} className={styles.voiceItem}>{name}</li>
-              ))}
-            </ul>
-          </section>
-        )}
+          {/* 태그 */}
+          {tags.length > 0 && (
+            <section className={styles.section}>
+              <span className={styles.sectionTitle}>태그</span>
+              <div className={styles.tagsRow}>
+                {tags.map((tag, idx) => (
+                  <li key={idx} className={styles.tagItem}>
+                    <a className={styles.tagLink} href={`/tag/${String(tag)}`}>#{String(tag)}</a>
+                  </li>
+                ))}
+              </div>
+            </section>
+          )}
 
-        {/* 제작 정보 */}
-        {(studios.length > 0 || full?.director || full?.year || full?.releaseQuarter) && (
-          <section className={styles.section}>
-            <h3 className={styles.sectionTitle}>제작 정보</h3>
-            <dl className={styles.dl}>
-              {studios.length > 0 && (
-                <div className={styles.dlRow}>
-                  <dt className={styles.dt}>제작</dt>
-                  <dd className={styles.dd}>{studios.map(s => s?.name ?? s).join(", ")}</dd>
+          {/* 성우 정보 */}
+          {voiceList.length > 0 && (
+            <section className={styles.section}>
+              <span className={styles.sectionTitle}>성우 정보</span>
+              <section className={styles.voiceSection}>
+                <div className={styles.voiceRow}>
+                  {voiceList.map((name, i) => (
+                    <div key={i} className={styles.voiceItem}>
+                      <span className={styles.voiceRole}>{name} 역</span>
+                      <span className={styles.voiceName}>{name}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
-              {full?.director && (
-                <div className={styles.dlRow}>
-                  <dt className={styles.dt}>감독</dt>
-                  <dd className={styles.dd}>{full.director}</dd>
+              </section>
+            </section>
+          )}
+
+          {/* 제작 정보 */}
+          {(studios.length > 0 || full?.director || full?.year || full?.releaseQuarter) && (
+            <section className={styles.section}>
+              <span className={styles.sectionTitle}>제작 정보</span>
+              <section className={styles.productionSection}>
+                <div className={styles.productionRow}>
+                  {studios.length > 0 && (
+                    <div className={styles.productionItem}>
+                      <span className={styles.productionLabel}>제작</span>
+                      <span className={styles.productionValue}>{studios.map(s => s?.name ?? s).join(", ")}</span>
+                    </div>
+                  )}
+                  {full?.director && (
+                    <div className={styles.productionItem}>
+                      <span className={styles.productionLabel}>감독</span>
+                      <span className={styles.productionValue}>{full.director}</span>
+                    </div>
+                  )}
+                  {(full?.year || full?.releaseQuarter) && (
+                    <div className={styles.productionItem}>
+                      <span className={styles.productionLabel}>출시</span>
+                      <span className={styles.productionValue}>{full.releaseQuarter ?? (full.year ? `${full.year}년` : "")}</span>
+                    </div>
+                  )}
                 </div>
-              )}
-              {(full?.year || full?.releaseQuarter) && (
-                <div className={styles.dlRow}>
-                  <dt className={styles.dt}>출시</dt>
-                  <dd className={styles.dd}>{full.releaseQuarter ?? (full.year ? `${full.year}년` : "")}</dd>
-                </div>
-              )}
-            </dl>
-          </section>
-        )}
+              </section>
+            </section>
+          )}
+          </div>
+        </div>
       </div>
-    </Modal>
+    </div>
   );
 }
 

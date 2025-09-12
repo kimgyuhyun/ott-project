@@ -234,6 +234,20 @@ export default function MembershipPage() {
       <main className="relative pt-16">
         {/* 히어로 섹션 */}
         <div className={styles.heroSection}>
+          {/* 배경 영상 */}
+          <video
+            className={styles.heroVideo}
+            autoPlay
+            muted
+            loop
+            playsInline
+          >
+            <source src="/videos/membership-video-8c63a66100d0e1ca81c56fe752365cbc.mp4" type="video/mp4" />
+          </video>
+          
+          {/* 배경 오버레이 */}
+          <div className={styles.heroOverlay}></div>
+          
           {/* 텍스트 콘텐츠 */}
           <div className={styles.textContent}>
             <h1 className={styles.mainTitle}>
@@ -252,6 +266,17 @@ export default function MembershipPage() {
             </button>
             
             {/* 로그인 안내 메시지 제거 */}
+          </div>
+        </div>
+
+        {/* 멤버십 페이지 이미지 섹션 */}
+        <div className={styles.membershipImageSection}>
+          <div className={styles.membershipImageContainer}>
+            <img 
+              src="/images/animations/membership_page.png" 
+              alt="멤버십 페이지" 
+              className={styles.membershipImage}
+            />
           </div>
         </div>
 

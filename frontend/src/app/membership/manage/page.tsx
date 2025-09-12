@@ -51,13 +51,13 @@ export default function MembershipManagePage() {
   // 결제수단 아이콘 매핑
   const getPaymentMethodIcon = (type: string) => {
     const map: Record<string, string> = {
-      'CARD': '💳',
-      'KAKAO_PAY': '🟡',
-      'TOSS_PAY': '🔵',
-      'NICE_PAY': '🟢',
-      'BANK_TRANSFER': '🏦',
+      'CARD': '/images/logos/card.png',
+      'KAKAO_PAY': '/images/logos/kakao.svg',
+      'TOSS_PAY': '/images/logos/tosspaylogo.jpg',
+      'NICE_PAY': '/images/logos/nicepay.png',
+      'BANK_TRANSFER': '/images/logos/bank.png',
     };
-    return map[type] || '📱';
+    return map[type] || '/images/logos/default.png';
   };
 
   // 사용자의 현재 플랜 정보
@@ -392,10 +392,9 @@ export default function MembershipManagePage() {
           {/* 해지 예약 알림 */}
           {isCancellationScheduled && (
             <div className={styles.cancellationNotice}>
-              <div className={styles.cancellationNoticeIcon}>⚠️</div>
               <div className={styles.cancellationNoticeText}>
                 <strong>멤버십 해지 예약됨</strong>
-                <p>다음 결제일({nextBillingDate})에 멤버십이 해지됩니다. 정기결제를 다시 시작하려면 아래 버튼을 클릭하세요.</p>
+                <p>다음 결제일({nextBillingDate})에 멤버십이 해지됩니다.<br />정기결제를 다시 시작하려면 아래 버튼을 클릭하세요.</p>
                 <button 
                   className={styles.resumeButton}
                   onClick={handleResumeMembership}
@@ -436,9 +435,11 @@ export default function MembershipManagePage() {
               {paymentMethods.length > 0 ? (
                 <div className={styles.currentPaymentMethod}>
                   <div className={styles.paymentMethodIcon}>
-                    <span className={styles.paymentMethodIconText}>
-                      {getPaymentMethodIcon(paymentMethods[0].type)}
-                    </span>
+                    <img 
+                      src={getPaymentMethodIcon(paymentMethods[0].type)}
+                      alt={translatePaymentMethodType(paymentMethods[0].type)}
+                      className={styles.paymentMethodIconImage}
+                    />
                   </div>
                   <span className={styles.paymentMethodText}>
                     {paymentMethods[0].type === 'CARD' 
@@ -509,7 +510,7 @@ export default function MembershipManagePage() {
                 <div key={payment.paymentId} className={styles.paymentItem}>
                   <div className={styles.paymentInfo}>
                     <div className={styles.paymentDescription}>
-                      {payment.planName || '멤버십 결제'}
+                      {payment.planName ? translatePlanName(payment.planName) : '멤버십 결제'}
                     </div>
                     <div className={styles.paymentAmount}>
                       {payment.amount.toLocaleString()}원

@@ -51,7 +51,10 @@
 
 .closeButton {
   font-size: 1.5rem;
-  color: #ABABAB;
+  color: #FFFFFF;
+  background: none;
+  border: none;
+  cursor: pointer;
   transition: color 0.2s ease;
 }
 
@@ -301,6 +304,13 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
+.paymentMethodLogo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0.75rem;
+}
+
 .paymentMethodLabel {
   font-size: 0.8rem;
   color: #F7F7F7;
@@ -401,8 +411,8 @@
 }
 
 .successContent {
-  background-color: var(--background-1, #121212);
-  border: 1px solid var(--border-1, #323232);
+  background-color: #121212;
+  border: 1px solid #323232;
   border-radius: 12px;
   padding: 32px;
   text-align: center;
@@ -411,20 +421,27 @@
 }
 
 .successContent h3 {
-  color: var(--foreground-1, #F7F7F7);
+  color: #F7F7F7;
   font-size: 24px;
   font-weight: bold;
   margin-bottom: 16px;
 }
 
 .successContent p {
-  color: var(--foreground-2, #CCCCCC);
+  color: #CCCCCC;
   font-size: 16px;
   line-height: 1.5;
+  margin-bottom: 24px;
 }
 
-.successContent button {
-  background-color: var(--foreground-slight, #816BFF);
+.successButtonGroup {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.successButton {
+  background-color: #816BFF;
   color: white;
   border: none;
   border-radius: 8px;
@@ -433,11 +450,26 @@
   font-weight: 500;
   cursor: pointer;
   transition: background-color 0.2s;
-  margin-top: 16px;
 }
 
-.successContent button:hover {
+.successButton:hover {
   background-color: #6B5BC7;
+}
+
+.cancelButton {
+  background-color: #333;
+  color: #CCC;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.cancelButton:hover {
+  background-color: #444;
 }
 
 /* 에러 모달 */

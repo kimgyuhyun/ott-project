@@ -33,6 +33,7 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [newReview, setNewReview] = useState({ content: '' });
+  const [newComment, setNewComment] = useState({ content: '' });
   const [sortBy, setSortBy] = useState('latest');
   const [expandedReviews, setExpandedReviews] = useState<Set<number>>(new Set());
   const [myRating, setMyRating] = useState<number | null>(null);
@@ -213,10 +214,31 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
   const formatRelativeTime = (iso?: string, updatedIso?: string) => {
     if (!iso) return '';
     try {
-      // UTC 시간을 로컬 시간으로 변환
-      const created = new Date(iso + 'Z'); // Z를 추가해서 UTC로 명시
-      const updated = updatedIso ? new Date(updatedIso + 'Z') : null;
-      const diff = Date.now() - created.getTime();
+      console.log('🕐 formatRelativeTime 입력:', { iso, updatedIso });
+      
+      // 여러 방법으로 시간 파싱 시도
+      let created: Date;
+      let updated: Date | null = null;
+      
+      // 백엔드에서 한국 시간대로 저장된 시간을 그대로 사용
+      created = new Date(iso);
+      console.log('🕐 한국 시간대로 해석한 시간:', created.toISOString(), '로컬:', created.toLocaleString());
+      
+      if (updatedIso) {
+        updated = new Date(updatedIso);
+      }
+      
+      const now = new Date();
+      const diff = now.getTime() - created.getTime();
+      console.log('🕐 시간 차이 계산:', {
+        now: now.toISOString(),
+        created: created.toISOString(),
+        diffMs: diff,
+        diffMinutes: Math.floor(diff / 60000),
+        diffHours: Math.floor(diff / (60000 * 60)),
+        diffDays: Math.floor(diff / (60000 * 60 * 24))
+      });
+      
       const minutes = Math.floor(diff / 60000);
       const hours = Math.floor(minutes / 60);
       const days = Math.floor(hours / 24);
@@ -238,11 +260,14 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
         base = '방금 전';
       }
       
+      console.log('🕐 최종 결과:', base);
+      
       if (updated && Math.abs(updated.getTime() - created.getTime()) > 60_000) {
         base += ' (수정됨)';
       }
       return base;
-    } catch {
+    } catch (error) {
+      console.error('🕐 formatRelativeTime 에러:', error);
       return '';
     }
   };
@@ -256,12 +281,25 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
     
     if (!newReview.content.trim()) return;
     
+    // 최소 길이 검증 (10자 이상)
+    if (newReview.content.trim().length < 10) {
+      alert('리뷰는 10자 이상 작성해주세요.');
+      return;
+    }
+    
+    // 최대 길이 검증 (1000자 이하)
+    if (newReview.content.trim().length > 1000) {
+      alert('리뷰는 1000자 이하로 작성해주세요.');
+      return;
+    }
+    
     try {
       await createReview(animeId, { content: newReview.content });
       setNewReview({ content: '' });
       await loadReviews();
     } catch (error) {
       console.error('리뷰 작성 실패:', error);
+      alert('리뷰 작성에 실패했습니다. 다시 시도해주세요.');
     }
   };
 
@@ -588,10 +626,13 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
               // 포커스를 잃을 때 약간의 지연을 두어 버튼 클릭이 가능하도록 함
               setTimeout(() => setIsReviewFocused(false), 200);
             }}
-            placeholder="이 작품에 대한 내 평가를 남겨보세요!"
+            placeholder="이 작품에 대한 내 평가를 남겨보세요! (10자 이상)"
             className={styles.reviewTextarea}
             rows={4}
           />
+          <div className={styles.characterCount}>
+            {newReview.content.length}/1000자 (최소 10자)
+          </div>
           {isReviewFocused && (
             <div className={styles.formButtons}>
               <button
@@ -792,8 +833,8 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
                 {showCommentForm === review.id && (
                   <div className={styles.reviewCommentForm}>
                     <textarea
-                      value={newReview.content}
-                      onChange={(e) => setNewReview(prev => ({ ...prev, content: e.target.value }))}
+                      value={newComment.content}
+                      onChange={(e) => setNewComment(prev => ({ ...prev, content: e.target.value }))}
                       placeholder="댓글을 작성해주세요..."
                       className={styles.reviewCommentTextarea}
                       rows={3}
@@ -802,7 +843,7 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
                       <button
                         onClick={() => {
                           setShowCommentForm(null);
-                          setNewReview({ content: '' });
+                          setNewComment({ content: '' });
                         }}
                         className={styles.cancelButton}
                       >
@@ -810,11 +851,11 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
                       </button>
                       <button
                         onClick={async () => {
-                          if (!newReview.content.trim()) return;
+                          if (!newComment.content.trim()) return;
                           try {
                             saveScroll();
-                            await createComment(review.id, { content: newReview.content });
-                            setNewReview({ content: '' });
+                            await createComment(review.id, { content: newComment.content });
+                            setNewComment({ content: '' });
                             setShowCommentForm(null);
                             // 해당 리뷰의 댓글만 새로고침
                             setCommentRefreshTrigger(prev => prev + 1);
@@ -824,7 +865,7 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
                             setTimeout(() => restoreScroll(), 0);
                           }
                         }}
-                        disabled={!newReview.content.trim()}
+                        disabled={!newComment.content.trim()}
                         className={styles.saveButton}
                       >
                         작성

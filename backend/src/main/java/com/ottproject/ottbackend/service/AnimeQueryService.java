@@ -84,6 +84,12 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 		dto.setEpisodes(mapper.findEpisodesByAniId(aniId)); // 에피소드 리스트 채우기
 		dto.setGenres(mapper.findGenresByAniId(aniId)); // 장르 리스트 채우기
 		dto.setStudios(mapper.findStudiosByAniId(aniId)); // 제작사 리스트 채우기
+		
+		// 추가 정보 조회 (더보기 모달용)
+		dto.setTags(mapper.findTagNamesByAniId(aniId)); // 태그 리스트 채우기
+		dto.setVoiceActors(mapper.findVoiceActorsByAniId(aniId)); // 성우 리스트 채우기
+		dto.setDirector(mapper.findDirectorsByAniId(aniId)); // 감독 리스트 채우기
+		
 		return dto; // 완성된 DTO 반환
 	}
 
@@ -93,9 +99,33 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 						currentUserId // 현재 사용자 ID(비로그인 시 null)
 		); // DB 조회 실행
 		if (dto == null) return null; // 대상 없으면 null 반환
-		dto.setEpisodes(mapper.findEpisodesByAniId(aniId)); // 에피소드 리스트 채우기
+		
+		// 디버깅 로그 추가
+		System.out.println("🔍 [BACKEND] 애니메이션 상세 데이터 조회 결과:");
+		System.out.println("  - aniId: " + dto.getAniId());
+		System.out.println("  - title: " + dto.getTitle());
+		System.out.println("  - isDub: " + dto.getIsDub() + " (type: " + (dto.getIsDub() != null ? dto.getIsDub().getClass().getSimpleName() : "null") + ")");
+		System.out.println("  - isSubtitle: " + dto.getIsSubtitle() + " (type: " + (dto.getIsSubtitle() != null ? dto.getIsSubtitle().getClass().getSimpleName() : "null") + ")");
+		
+		// 에피소드 리스트 조회 및 디버깅
+		var episodes = mapper.findEpisodesByAniId(aniId);
+		System.out.println("🔍 [BACKEND] 에피소드 데이터 조회 결과:");
+		if (episodes != null && !episodes.isEmpty()) {
+			episodes.forEach(ep -> {
+				System.out.println("  - episodeId: " + ep.getId() + ", episodeNumber: " + ep.getEpisodeNumber() + ", title: " + ep.getTitle());
+			});
+		} else {
+			System.out.println("  - 에피소드 데이터 없음");
+		}
+		dto.setEpisodes(episodes); // 에피소드 리스트 채우기
 		dto.setGenres(mapper.findGenresByAniId(aniId)); // 장르 리스트 채우기
 		dto.setStudios(mapper.findStudiosByAniId(aniId)); // 제작사 리스트 채우기
+		
+		// 추가 정보 조회 (더보기 모달용)
+		dto.setTags(mapper.findTagNamesByAniId(aniId)); // 태그 리스트 채우기
+		dto.setVoiceActors(mapper.findVoiceActorsByAniId(aniId)); // 성우 리스트 채우기
+		dto.setDirector(mapper.findDirectorsByAniId(aniId)); // 감독 리스트 채우기
+		
 		return dto; // 완성된 DTO 반환
 	}
 

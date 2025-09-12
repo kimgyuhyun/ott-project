@@ -63,7 +63,7 @@
     <select id="findAniList" resultType="com.ottproject.ottbackend.dto.AnimeListDto"> <!-- DTO 로 자동 매핑 -->
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
-        a.title AS title, <!-- DTO.title -->
+        COALESCE(a.title, a.title_en) AS title, <!-- DTO.title -->
         a.title_en AS titleEn, <!-- DTO.titleEn -->
         a.title_jp AS titleJp, <!-- DTO.titleJp -->
         a.poster_url AS posterUrl, <!-- DTO.posterUrl (snake→camel alias) -->
@@ -109,7 +109,7 @@
     <select id="findWeeklyByDay" resultType="com.ottproject.ottbackend.dto.AnimeListDto">
         SELECT
         a.id AS aniId,
-        a.title AS title,
+        COALESCE(a.title, a.title_en) AS title,
         a.title_en AS titleEn,
         a.title_jp AS titleJp,
         a.poster_url AS posterUrl,
@@ -136,7 +136,7 @@
     <select id="findAniListByIds" resultType="com.ottproject.ottbackend.dto.AnimeListDto">
         SELECT
         a.id AS aniId,
-        a.title AS title,
+        COALESCE(a.title, a.title_en) AS title,
         a.title_en AS titleEn,
         a.title_jp AS titleJp,
         a.poster_url AS posterUrl,
@@ -170,16 +170,36 @@
         <include refid="base_list_where"/> <!-- 동일 WHERE -->
     </select>
 
-    <!-- 상세: 태그 리스트 (aniId 기준) -->
-    <select id="findTagsByAniId" resultType="com.ottproject.ottbackend.dto.TagSimpleDto">
-        SELECT
-        t.id AS id,
-        t.name AS name,
-        t.color AS color
+    <!-- 상세: 태그 리스트 (aniId 기준) - List<String>으로 반환 -->
+    <select id="findTagNamesByAniId" resultType="String">
+        SELECT t.name
         FROM tags t
         JOIN anime_tags alt ON alt.tag_id = t.id
         WHERE alt.anime_id = #{aniId}
         ORDER BY t.name ASC
+    </select>
+
+    <!-- 상세: 성우 리스트 (aniId 기준) - 상위 3개만 콤마로 구분된 단일 문자열로 반환 -->
+    <select id="findVoiceActorsByAniId" resultType="String">
+        SELECT STRING_AGG(va.name, ', ' ORDER BY va.name ASC)
+        FROM (
+            SELECT va.name
+            FROM voice_actors va
+            JOIN anime_voice_actors ava ON ava.voice_actor_id = va.id
+            WHERE ava.anime_id = #{aniId}
+            AND va.is_active = TRUE
+            ORDER BY va.name ASC
+            LIMIT 3
+        ) va
+    </select>
+
+    <!-- 상세: 감독 리스트 (aniId 기준) - 콤마로 구분된 단일 문자열로 반환 -->
+    <select id="findDirectorsByAniId" resultType="String">
+        SELECT STRING_AGG(d.name, ', ' ORDER BY d.name ASC)
+        FROM directors d
+        JOIN anime_directors ad ON ad.director_id = d.id
+        WHERE ad.anime_id = #{aniId}
+        AND d.is_active = TRUE
     </select>
 
     <!--
@@ -192,7 +212,7 @@
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
         a.id AS detailId, <!-- DTO.detailId: 통합 엔티티 동일 ID 사용 -->
-        a.title AS title, <!-- DTO.title -->
+        COALESCE(a.title, a.title_en) AS title, <!-- DTO.title -->
         a.title_en AS titleEn, <!-- DTO.titleEn -->
         a.title_jp AS titleJp, <!-- DTO.titleJp -->
         a.poster_url AS posterUrl, <!-- DTO.posterUrl -->
@@ -211,8 +231,8 @@
         a.is_simulcast AS isSimulcast, <!-- DTO.isSimulcast -->
         a.is_active AS isActive, <!-- DTO.isActive -->
 
-        a.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis -->
-        a.voice_actors AS voiceActors, <!-- DTO.voiceActors -->
+                a.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis -->
+                NULL AS voiceActors, <!-- DTO.voiceActors: 별도 쿼리로 조회 -->
 
         a.release_date AS releaseDate, <!-- DTO.releaseDate -->
         a.end_date AS endDate, <!-- DTO.endDate -->
@@ -226,7 +246,7 @@
         a.source AS source, <!-- DTO.source -->
         a.country AS country, <!-- DTO.country -->
         a.language AS language, <!-- DTO.language -->
-        a.director AS director, <!-- DTO.director -->
+        NULL AS director, <!-- DTO.director: 중간테이블로 조회 -->
 
         a.total_episodes AS totalEpisodes, <!-- DTO.totalEpisodes -->
         a.current_episodes AS currentEpisodes, <!-- DTO.currentEpisodes -->
@@ -326,7 +346,7 @@
         SELECT /* 헤더 기본 컬럼들 */
         a.id AS aniId, <!-- DTO.aniId -->
         a.id AS detailId, <!-- DTO.detailId: 통합 엔티티 동일 ID 사용 -->
-        a.title AS title, <!-- DTO.title -->
+        COALESCE(a.title, a.title_en) AS title, <!-- DTO.title -->
         a.title_en AS titleEn, <!-- DTO.titleEn -->
         a.title_jp AS titleJp, <!-- DTO.titleJp -->
         a.poster_url AS posterUrl, <!-- DTO.posterUrl -->
@@ -345,8 +365,8 @@
         a.is_simulcast AS isSimulcast, <!-- DTO.isSimulcast -->
         a.is_active AS isActive, <!-- DTO.isActive -->
 
-        a.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis -->
-        a.voice_actors AS voiceActors, <!-- DTO.voiceActors -->
+                a.full_synopsis AS fullSynopsis, <!-- DTO.fullSynopsis -->
+                NULL AS voiceActors, <!-- DTO.voiceActors: 별도 쿼리로 조회 -->
 
         a.release_date AS releaseDate, <!-- DTO.releaseDate -->
         a.end_date AS endDate, <!-- DTO.endDate -->
@@ -360,7 +380,7 @@
         a.source AS source, <!-- DTO.source -->
         a.country AS country, <!-- DTO.country -->
         a.language AS language, <!-- DTO.language -->
-        a.director AS director, <!-- DTO.director -->
+        NULL AS director, <!-- DTO.director: 중간테이블로 조회 -->
 
         a.total_episodes AS totalEpisodes, <!-- DTO.totalEpisodes -->
         a.current_episodes AS currentEpisodes, <!-- DTO.currentEpisodes -->

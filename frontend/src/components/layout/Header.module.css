@@ -231,7 +231,7 @@
 .headerLogoNavGroup {
   display: flex;
   align-items: center;
-  gap: 1rem; /* 로고-네비 간격 살짝 */
+  gap: 3rem; /* 로고-네비 간격 넓게 */
   justify-self: start;
 }
 

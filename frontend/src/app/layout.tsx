@@ -25,7 +25,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <head></head>
+      <head>
+        <script type="text/javascript" src="https://cdn.iamport.kr/js/iamport.payment-1.2.0.js"></script>
+      </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>
           {children}

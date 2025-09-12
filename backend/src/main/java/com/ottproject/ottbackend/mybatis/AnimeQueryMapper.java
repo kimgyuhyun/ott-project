@@ -69,6 +69,11 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
 
     // 상세: 태그 목록 조회(선택)
     java.util.List<TagSimpleDto> findTagsByAniId(@Param("aniId") Long aniId);
+    
+    // 상세: 태그/성우/감독 조회 (더보기 모달용)
+    List<String> findTagNamesByAniId(@Param("aniId") Long aniId); // 태그 이름 리스트
+    String findVoiceActorsByAniId(@Param("aniId") Long aniId); // 성우 이름 (콤마 구분)
+    String findDirectorsByAniId(@Param("aniId") Long aniId); // 감독 이름 (콤마 구분)
 
     AnimeDetailDto findAniDetailByAniId(@Param("aniId") Long aniId); // 상세 헤더/더보기 영역 조회(aniId 기준, anime 기준)
     AnimeDetailDto findAniDetailByAniIdWithUser( // 사용자 포함 상세 조회 메서드 시그니처

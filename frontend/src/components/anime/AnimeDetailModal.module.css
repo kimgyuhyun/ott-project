@@ -2,7 +2,7 @@
 .animeDetailModalOverlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 1001;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -95,7 +95,7 @@
   top: 50%;
   right: 1.5rem;
   transform: translateY(-50%);
-  z-index: 15;
+  z-index: 5;
 }
 
 .posterContainer {
@@ -120,6 +120,7 @@
   position: relative;
   z-index: 10;
   color: var(--foreground-1, #F7F7F7);
+  padding-bottom: 0.5rem;
 }
 
 /* 평점 및 배지 */
@@ -177,13 +178,47 @@
   padding: 0.25rem 0.75rem;
   border-radius: 9999px;
   font-size: 0.875rem;
-  background-color: var(--background-3, #323232);
+  background-color: transparent;
   color: var(--foreground-2, #ABABAB);
+  border: none;
 }
 
 .episodeCount {
   font-size: 0.875rem;
   color: var(--foreground-3, #ABABAB);
+}
+
+/* 애니메이션 타입·상태 배지 */
+.typeStatusBadge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: transparent;
+  color: var(--foreground-2, #ABABAB);
+  border: none;
+}
+
+/* 관람등급 텍스트 */
+.ageRatingText {
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background-color: transparent;
+  color: var(--foreground-2, #ABABAB);
+  border: none;
+}
+
+/* 이용등급 배지 */
+.ageRatingBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  overflow: hidden;
 }
 
 /* 애니상세모달 액션 버튼들 */

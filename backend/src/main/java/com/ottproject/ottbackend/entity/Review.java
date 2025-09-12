@@ -3,7 +3,11 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.ReviewStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
+import java.time.LocalDateTime;
 
 /**
  * 리뷰 엔티티
@@ -42,6 +46,14 @@ public class Review {
     @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계, 지연 로딩
     @JoinColumn(name = "ani_id") // 통합 애니 FK
     private Anime anime; // 리뷰가 달린 애니
+
+    @CreatedDate
+    @Column(nullable = false)
+    private LocalDateTime createdAt; // 생성일시 (자동 생성)
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    private LocalDateTime updatedAt; // 수정일시 (자동 업데이트)
 
     // ===== 정적 팩토리 메서드 =====
 

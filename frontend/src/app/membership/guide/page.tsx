@@ -13,7 +13,7 @@ export default function MembershipGuidePage() {
   const { membershipPlans, userMembership, paymentHistory, isLoading, error, reloadUserMembership } = useMembershipData();
   
   // 확장된 플랜 (화살표로 접었다 펼쳤다)
-  const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
+  const [expandedPlans, setExpandedPlans] = useState<string[]>([]);
   
   // 멤버십 변경 모달 상태
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
@@ -28,6 +28,9 @@ export default function MembershipGuidePage() {
   // 멤버십 재시작 상태
   const [isResuming, setIsResuming] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error', title: string, message: string } | null>(null);
+  
+  // 업그레이드 성공 알림창 상태
+  const [showUpgradeSuccessAlert, setShowUpgradeSuccessAlert] = useState(false);
 
   // 플랜 이름 한국어 매핑
   const translatePlanName = (name?: string | null) => {
@@ -129,7 +132,8 @@ export default function MembershipGuidePage() {
   const handleProrationPaymentSuccess = async () => {
     setShowProrationPaymentModal(false);
     reloadUserMembership();
-    alert('플랜 업그레이드가 완료되었습니다.');
+    // 커스텀 알림창 표시
+    setShowUpgradeSuccessAlert(true);
   };
 
   // 멤버십 정기결제 재시작 핸들러
@@ -240,7 +244,7 @@ export default function MembershipGuidePage() {
             />
             {/* 텍스트 오버레이 */}
             <div className={styles.heroTextOverlay}>
-              <h1 className={styles.heroTitle}>라프텔 멤버십으로 스마트한 덕질!</h1>
+              <h1 className={styles.heroTitle}>라퓨타 멤버십으로 스마트한 덕질!</h1>
               <p className={styles.heroDescription}>동시방영 신작부터 역대 인기 애니까지 멤버십으로 최애 애니를 마음껏 감상하세요</p>
             </div>
           </div>
@@ -302,7 +306,14 @@ export default function MembershipGuidePage() {
               <div 
                 key={(p as any).code || p.name} 
                 className={styles.otherMembershipCard}
-                onClick={() => setExpandedPlan(expandedPlan === p.name ? null : p.name)}
+                onClick={() => {
+                  const planName = p.name;
+                  setExpandedPlans(prev => 
+                    prev.includes(planName) 
+                      ? prev.filter(name => name !== planName)
+                      : [...prev, planName]
+                  );
+                }}
               >
                 {/* 카드 헤더 (항상 보임) */}
                 <div className={styles.otherMembershipCardContent}>
@@ -310,7 +321,7 @@ export default function MembershipGuidePage() {
                     <h3 className={styles.otherMembershipName}>{translatePlanName(p.name)}</h3>
                   </div>
                   <svg 
-                    className={`${styles.arrowIcon} ${expandedPlan === p.name ? styles.arrowIconExpanded : ''}`} 
+                    className={`${styles.arrowIcon} ${expandedPlans.includes(p.name) ? styles.arrowIconExpanded : ''}`} 
                     fill="none" 
                     stroke="currentColor" 
                     viewBox="0 0 24 24"
@@ -320,7 +331,7 @@ export default function MembershipGuidePage() {
                 </div>
                 
                 {/* 카드 확장 내용 (클릭 시 보임) */}
-                {expandedPlan === p.name && (
+                {expandedPlans.includes(p.name) && (
                   <div className={styles.cardExpandedContent}>
                     <p className={styles.expandedPlanPrice}>월 {p.monthlyPrice.toLocaleString()}원</p>
                     
@@ -470,6 +481,21 @@ export default function MembershipGuidePage() {
           onOpenCardRegistration={() => {}}
           onPay={handleProrationPaymentSuccess}
         />
+      )}
+
+      {/* 업그레이드 성공 알림창 */}
+      {showUpgradeSuccessAlert && (
+        <div className={styles.upgradeSuccessAlert}>
+          <div className={styles.upgradeSuccessContent}>
+            <h3>플랜 업그레이드가 완료되었습니다.</h3>
+            <button 
+              onClick={() => setShowUpgradeSuccessAlert(false)}
+              className={styles.upgradeSuccessButton}
+            >
+              확인
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
