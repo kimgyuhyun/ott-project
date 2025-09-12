@@ -63,7 +63,7 @@ export default function LoginPage() {
 
       <Modal open={open} onClose={() => setOpen(false)}>
         <div className={styles.loginModal}>
-          <div className={styles.loginLogo}>LAFTEL</div>
+          <div className={styles.loginLogo}>LAPUTA</div>
           <div className={styles.loginDescription}>
             동시방영 신작부터 역대 인기작까지
             <br />한 곳에서 편-안하게!

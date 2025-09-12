@@ -35,8 +35,26 @@ export default function Home() {
   const [weeklyAnime, setWeeklyAnime] = useState<Record<string, any[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
 
-  
+  // 배너 데이터
+  const bannerData = [
+    {
+      image: "/banners/Mainbanner1.png",
+      badge: "신작",
+      title: "새로운 애니메이션",
+      subtitle: "지금 만나보세요",
+      description: "최신 인기 작품들을 확인하세요"
+    },
+    {
+      image: "/banners/Mainbanner2.png",
+      badge: "인기작",
+      title: "추천 애니메이션",
+      subtitle: "놓치지 마세요",
+      description: "많은 사람들이 사랑하는 작품들"
+    }
+  ];
+
   const { user, isAuthenticated, login, logout } = useAuth();
 
   // 캐러셀 참조
@@ -56,6 +74,14 @@ export default function Home() {
     const scrollAmount = firstItem ? (firstItem.getBoundingClientRect().width + gapPx) : Math.max(240, container.clientWidth * 0.8);
     container.scrollBy({ left: direction * scrollAmount, behavior: 'smooth' });
   };
+
+  // 배너 자동 슬라이드
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % bannerData.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [bannerData.length]);
 
   // 스크롤 가능 여부 계산
   useEffect(() => {
@@ -343,45 +369,24 @@ export default function Home() {
       <main className={styles.homeMain}>
         {/* 상단 애니 이미지 배너 - 적절한 비율로 */}
         <div className={styles.mainBanner}>
-          {/* 배경 이미지 (귀멸의 칼날 탄지로) */}
+          {/* 배경 이미지 */}
           <div className={styles.bannerBackground}
                style={{
-                 backgroundImage: 'url("https://placehold.co/1920x768/4a5568/ffffff?text=귀멸의+칼날+탄지로")'
+                 backgroundImage: `url('${bannerData[currentBannerIndex].image}')`
                }}>
           </div>
           
           {/* 배너 내비게이션 점들 */}
           <div className={styles.bannerDots}>
-            <div className={`${styles.bannerDot} ${styles.active}`}></div>
-            <div className={styles.bannerDot}></div>
-            <div className={styles.bannerDot}></div>
-            <div className={styles.bannerDot}></div>
-            <div className={styles.bannerDot}></div>
+            {bannerData.map((_, index) => (
+              <div
+                key={index}
+                className={`${styles.bannerDot} ${index === currentBannerIndex ? styles.active : ''}`}
+                onClick={() => setCurrentBannerIndex(index)}
+              />
+            ))}
           </div>
           
-          {/* 저작권 정보 */}
-          <div className={styles.bannerCopyright}>
-            ©Koyoharu Gotoge / SHUEISHA, Aniplex, ufotable
-          </div>
-          
-          {/* 좌측 정보 패널 */}
-          <div className={styles.bannerInfo}>
-            <div className={styles.bannerContent}>
-              <div className={styles.bannerBadge}>
-                극장판
-              </div>
-              <div className={styles.bannerTitle}>
-                귀멸의 칼날<br />
-                <span className={styles.bannerTitleHighlight}>무한성원</span>
-              </div>
-              <div className={styles.bannerSubtitle}>
-                8월 22일, 전국 극장 대개봉
-              </div>
-              <button className={styles.bannerButton}>
-                보러가기 &gt;
-              </button>
-            </div>
-          </div>
         </div>
         
         {/* 하단 하얀색 배경 영역 */}
