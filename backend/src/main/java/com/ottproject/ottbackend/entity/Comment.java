@@ -3,8 +3,11 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.CommentStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -52,6 +55,14 @@ public class Comment {
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true) // 일대다 관계, cascade 로 연쇄 삭제, 고아 객체 제거
     private List<Comment> replies = new ArrayList<>(); // 대댓글 목록
+
+    @CreatedDate
+    @Column(nullable = false)
+    private LocalDateTime createdAt; // 생성일시 (자동 생성)
+
+    @LastModifiedDate
+    @Column(nullable = false)
+    private LocalDateTime updatedAt; // 수정일시 (자동 업데이트)
 
     // ===== 정적 팩토리 메서드 =====
 
