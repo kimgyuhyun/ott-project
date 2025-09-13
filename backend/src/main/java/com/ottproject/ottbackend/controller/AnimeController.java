@@ -200,6 +200,27 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
         return queryService.getAllTags();
     }
 
+    @Operation(summary = "시즌 목록", description = "애니메이션에 존재하는 시즌 목록을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/seasons")
+    public List<String> getSeasons() {
+        return queryService.getAllSeasons();
+    }
+
+    @Operation(summary = "상태 목록", description = "애니메이션 방영 상태 목록을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/statuses")
+    public List<com.ottproject.ottbackend.dto.StatusOptionDto> getStatuses() {
+        return queryService.getAllStatuses();
+    }
+
+    @Operation(summary = "타입 목록", description = "애니메이션 출시 타입 목록을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/types")
+    public List<com.ottproject.ottbackend.dto.TypeOptionDto> getTypes() {
+        return queryService.getAllTypes();
+    }
+
     /**
      * 사용자 활동 기록 (개인화 추천용)
      */

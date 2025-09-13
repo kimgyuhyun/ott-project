@@ -315,7 +315,42 @@
         t.name AS name,
         t.color AS color
         FROM tags t
+        WHERE t.is_active = TRUE
         ORDER BY t.name ASC
+    </select>
+
+    <!-- 마스터: 전체 시즌 목록 -->
+    <select id="findAllSeasons" resultType="java.lang.String">
+        SELECT DISTINCT season
+        FROM anime
+        WHERE is_active = TRUE AND season IS NOT NULL
+        ORDER BY season DESC
+    </select>
+
+    <!-- 마스터: 전체 상태 목록 -->
+    <select id="findAllStatuses" resultType="com.ottproject.ottbackend.dto.StatusOptionDto">
+        SELECT DISTINCT 
+            status AS key,
+            CASE 
+                WHEN status = 'ONGOING' THEN '방영중'
+                WHEN status = 'COMPLETED' THEN '완결'
+                WHEN status = 'UPCOMING' THEN '방영예정'
+                WHEN status = 'HIATUS' THEN '방영중단'
+                ELSE status
+            END AS label
+        FROM anime
+        WHERE is_active = TRUE AND status IS NOT NULL
+        ORDER BY status ASC
+    </select>
+
+    <!-- 마스터: 전체 타입 목록 -->
+    <select id="findAllTypes" resultType="com.ottproject.ottbackend.dto.TypeOptionDto">
+        SELECT DISTINCT 
+            type AS key,
+            type AS label
+        FROM anime
+        WHERE is_active = TRUE AND type IS NOT NULL
+        ORDER BY type ASC
     </select>
 
     <!--

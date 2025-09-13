@@ -141,6 +141,18 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 		return mapper.findAllTags();
 	}
 
+	public java.util.List<String> getAllSeasons() {
+		return mapper.findAllSeasons();
+	}
+
+	public java.util.List<com.ottproject.ottbackend.dto.StatusOptionDto> getAllStatuses() {
+		return mapper.findAllStatuses();
+	}
+
+	public java.util.List<com.ottproject.ottbackend.dto.TypeOptionDto> getAllTypes() {
+		return mapper.findAllTypes();
+	}
+
 	/**
 	 * ID 목록으로 카드 리스트 조회 (입력 ID 순서 보존)
 	 */
