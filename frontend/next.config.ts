@@ -6,6 +6,12 @@ const nextConfig: NextConfig = {
     forceSwcTransforms: true,
     esmExternals: 'loose',
   },
+  // 개발 모드에서 콘솔 로그 활성화
+  logging: {
+    fetches: {
+      fullUrl: true,
+    },
+  },
   compiler: {
     styledComponents: true,
   },

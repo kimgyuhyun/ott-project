@@ -1,10 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import styles from "./FilterSidebar.module.css";
+import FilterModal from "./FilterModal";
 
 interface FilterSidebarProps {
   selectedGenreIds: number[];
   selectedTagIds: number[];
+  selectedSeasons: string[];
+  selectedStatuses: string[];
+  selectedTypes: string[];
   filters: {
     watchable: boolean;
     membership: boolean;
@@ -15,12 +20,15 @@ interface FilterSidebarProps {
   selectedType?: string | null;
   genreOptions: { id: number; name: string; color?: string }[];
   tagOptions: { id: number; name: string; color?: string }[];
+  seasonOptions: string[];
+  statusOptions: {key: string; label: string}[];
+  typeOptions: {key: string; label: string}[];
   onGenreChange: (genreId: number) => void;
   onTagChange: (tagId: number) => void;
+  onSeasonChange: (season: string) => void;
+  onStatusChange: (status: string) => void;
+  onTypeChange: (type: string) => void;
   onFilterChange: (key: string, value: boolean) => void;
-  onYearChange?: (year: number | null) => void;
-  onStatusChange?: (status: string | null) => void;
-  onTypeChange?: (type: string | null) => void;
   onResetFilters: () => void;
 }
 
@@ -31,6 +39,9 @@ interface FilterSidebarProps {
 export default function FilterSidebar({
   selectedGenreIds,
   selectedTagIds,
+  selectedSeasons,
+  selectedStatuses,
+  selectedTypes,
   filters,
   searchQuery,
   selectedYear,
@@ -38,24 +49,30 @@ export default function FilterSidebar({
   selectedType,
   genreOptions,
   tagOptions,
+  seasonOptions,
+  statusOptions,
+  typeOptions,
   onGenreChange,
   onTagChange,
-  onFilterChange,
-  onYearChange,
+  onSeasonChange,
   onStatusChange,
   onTypeChange,
+  onFilterChange,
   onResetFilters
 }: FilterSidebarProps) {
+  // 백엔드에서 이미 번역된 데이터 사용
   const genres = genreOptions ?? [];
   const tags = tagOptions ?? [];
+  const seasons = seasonOptions ?? [];
+  const statuses = statusOptions ?? [];
+  const types = typeOptions ?? [];
 
-  const years = Array.from({length: 6}, (_, i) => new Date().getFullYear() - i);
-  const statuses = [
-    { key: 'ONGOING', label: '방영중' },
-    { key: 'COMPLETED', label: '완결' },
-    { key: 'UPCOMING', label: '방영예정' },
-    { key: 'HIATUS', label: '방영중단' },
-  ];
+  // 더보기 상태 관리
+  const [showMoreGenres, setShowMoreGenres] = useState(false);
+  const [showMoreTags, setShowMoreTags] = useState(false);
+  const [showMoreSeasons, setShowMoreSeasons] = useState(false);
+  const [showMoreStatuses, setShowMoreStatuses] = useState(false);
+  const [showMoreTypes, setShowMoreTypes] = useState(false);
 
   return (
     <div className={styles.filterSidebar}>
@@ -79,16 +96,17 @@ export default function FilterSidebar({
       <div className={styles.filterSection}>
         <div className={styles.filterSectionHeader}>
           <h3 className={styles.filterSectionTitle}>
-            장르 {selectedGenreIds.length > 0 && (
-              <span className={styles.filterCount}>({selectedGenreIds.length}개 선택)</span>
-            )}
+            장르
           </h3>
-          <button className={styles.moreButton}>
+          <button 
+            className={styles.moreButton}
+            onClick={() => setShowMoreGenres(true)}
+          >
             더 보기 &gt;
           </button>
         </div>
         <div className={styles.checkboxList}>
-          {genres.map((genre) => (
+          {genres.slice(0, 5).map((genre) => (
             <label key={genre.id} className={styles.checkboxItem}>
               <input
                 type="checkbox"
@@ -106,16 +124,17 @@ export default function FilterSidebar({
       <div className={styles.filterSection}>
         <div className={styles.filterSectionHeader}>
           <h3 className={styles.filterSectionTitle}>
-            태그 {selectedTagIds.length > 0 && (
-              <span className={styles.filterCount}>({selectedTagIds.length}개 선택)</span>
-            )}
+            태그
           </h3>
-          <button className={styles.moreButton}>
+          <button 
+            className={styles.moreButton}
+            onClick={() => setShowMoreTags(true)}
+          >
             더 보기 &gt;
           </button>
         </div>
         <div className={styles.checkboxList}>
-          {tags.map((tag) => (
+          {tags.slice(0, 5).map((tag) => (
             <label key={tag.id} className={styles.checkboxItem}>
               <input
                 type="checkbox"
@@ -129,52 +148,159 @@ export default function FilterSidebar({
         </div>
       </div>
 
-      {/* 연도 필터 */}
-      <div className={styles.selectContainer}>
-        <div className={styles.selectLabel}>연도</div>
-        <select
-          value={selectedYear ?? ''}
-          onChange={(e) => onYearChange?.(e.target.value ? Number(e.target.value) : null)}
-          className={styles.select}
-        >
-          <option value="">전체</option>
-          {years.map(y => (
-            <option key={y} value={y}>{y}</option>
+      {/* 시즌 필터 */}
+      <div className={styles.filterSection}>
+        <div className={styles.filterSectionHeader}>
+          <h3 className={styles.filterSectionTitle}>
+            년도
+          </h3>
+          <button 
+            className={styles.moreButton}
+            onClick={() => setShowMoreSeasons(true)}
+          >
+            더 보기 &gt;
+          </button>
+        </div>
+        <div className={styles.checkboxList}>
+          {seasons.slice(0, 5).map((season) => (
+            <label key={season} className={styles.checkboxItem}>
+              <input
+                type="checkbox"
+                checked={selectedSeasons.includes(season)}
+                onChange={() => onSeasonChange(season)}
+                className={`${styles.checkbox} ${styles.yearCheckbox}`}
+              />
+              <span className={styles.checkboxLabel}>{season}</span>
+            </label>
           ))}
-        </select>
+        </div>
       </div>
 
       {/* 방영 상태 필터 */}
-      <div className={styles.selectContainer}>
-        <div className={styles.selectLabel}>방영 상태</div>
-        <select
-          value={selectedStatus ?? ''}
-          onChange={(e) => onStatusChange?.(e.target.value ? e.target.value : null)}
-          className={styles.select}
-        >
-          <option value="">전체</option>
-          {statuses.map(s => (
-            <option key={s.key} value={s.key}>{s.label}</option>
+      <div className={styles.filterSection}>
+        <div className={styles.filterSectionHeader}>
+          <h3 className={styles.filterSectionTitle}>
+            방영
+          </h3>
+          <button 
+            className={styles.moreButton}
+            onClick={() => setShowMoreStatuses(true)}
+          >
+            더 보기 &gt;
+          </button>
+        </div>
+        <div className={styles.checkboxList}>
+          {statuses.slice(0, 5).map((status) => (
+            <label key={status.key} className={styles.checkboxItem}>
+              <input
+                type="checkbox"
+                checked={selectedStatuses.includes(status.key)}
+                onChange={() => onStatusChange(status.key)}
+                className={`${styles.checkbox} ${styles.statusCheckbox}`}
+              />
+              <span className={styles.checkboxLabel}>{status.label}</span>
+            </label>
           ))}
-        </select>
+        </div>
       </div>
 
       {/* 출시 타입 필터 */}
-      <div className={styles.selectContainer}>
-        <div className={styles.selectLabel}>출시 타입</div>
-        <select
-          value={selectedType ?? ''}
-          onChange={(e) => onTypeChange?.(e.target.value ? e.target.value : null)}
-          className={styles.select}
-        >
-          <option value="">전체</option>
-          <option value="TV">TV</option>
-          <option value="MOVIE">MOVIE</option>
-          <option value="OVA">OVA</option>
-          <option value="SPECIAL">SPECIAL</option>
-          <option value="WEB">WEB</option>
-        </select>
+      <div className={styles.filterSection}>
+        <div className={styles.filterSectionHeader}>
+          <h3 className={styles.filterSectionTitle}>
+            출시타입
+          </h3>
+          <button 
+            className={styles.moreButton}
+            onClick={() => setShowMoreTypes(true)}
+          >
+            더 보기 &gt;
+          </button>
+        </div>
+        <div className={styles.checkboxList}>
+          {types.slice(0, 5).map((type) => (
+            <label key={type.key} className={styles.checkboxItem}>
+              <input
+                type="checkbox"
+                checked={selectedTypes.includes(type.key)}
+                onChange={() => onTypeChange(type.key)}
+                className={`${styles.checkbox} ${styles.typeCheckbox}`}
+              />
+              <span className={styles.checkboxLabel}>{type.label}</span>
+            </label>
+          ))}
+        </div>
       </div>
+
+      {/* 장르 모달 */}
+      <FilterModal
+        isOpen={showMoreGenres}
+        onClose={() => setShowMoreGenres(false)}
+        title="장르 전체"
+        items={genres}
+        selectedItems={selectedGenreIds}
+        onItemToggle={onGenreChange}
+        onResetAll={() => {
+          selectedGenreIds.forEach(id => onGenreChange(id));
+        }}
+        type="genre"
+      />
+
+      {/* 태그 모달 */}
+      <FilterModal
+        isOpen={showMoreTags}
+        onClose={() => setShowMoreTags(false)}
+        title="태그 전체"
+        items={tags}
+        selectedItems={selectedTagIds}
+        onItemToggle={onTagChange}
+        onResetAll={() => {
+          selectedTagIds.forEach(id => onTagChange(id));
+        }}
+        type="tag"
+      />
+
+      {/* 시즌 모달 */}
+      <FilterModal
+        isOpen={showMoreSeasons}
+        onClose={() => setShowMoreSeasons(false)}
+        title="년도 전체"
+        items={seasons.map(season => ({ key: season, name: season }))}
+        selectedItems={selectedSeasons}
+        onItemToggle={onSeasonChange}
+        onResetAll={() => {
+          selectedSeasons.forEach(season => onSeasonChange(season));
+        }}
+        type="season"
+      />
+
+      {/* 상태 모달 */}
+      <FilterModal
+        isOpen={showMoreStatuses}
+        onClose={() => setShowMoreStatuses(false)}
+        title="방영 전체"
+        items={statuses}
+        selectedItems={selectedStatuses}
+        onItemToggle={onStatusChange}
+        onResetAll={() => {
+          selectedStatuses.forEach(status => onStatusChange(status));
+        }}
+        type="status"
+      />
+
+      {/* 타입 모달 */}
+      <FilterModal
+        isOpen={showMoreTypes}
+        onClose={() => setShowMoreTypes(false)}
+        title="출시타입 전체"
+        items={types}
+        selectedItems={selectedTypes}
+        onItemToggle={onTypeChange}
+        onResetAll={() => {
+          selectedTypes.forEach(type => onTypeChange(type));
+        }}
+        type="type"
+      />
     </div>
   );
 }

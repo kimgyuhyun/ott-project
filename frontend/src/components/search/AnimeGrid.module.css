@@ -142,21 +142,9 @@
   border-radius: 9999px;
   font-size: 0.875rem;
   font-weight: 500;
-}
-
-.searchCriteriaTagSearch {
-  background-color: #f3e8ff;
-  color: #7c3aed;
-}
-
-.searchCriteriaTagGenre {
-  background-color: #dbeafe;
-  color: #2563eb;
-}
-
-.searchCriteriaTagTag {
-  background-color: #dcfce7;
-  color: #16a34a;
+  background-color: #000000;
+  color: #ffffff;
+  border: 1px solid #666666;
 }
 
 /* 애니메 그리드 */
