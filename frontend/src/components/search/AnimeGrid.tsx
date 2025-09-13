@@ -9,6 +9,9 @@ interface AnimeGridProps {
   searchQuery: string;
   selectedGenres: string[];
   selectedTags: string[];
+  selectedSeasons: string[];
+  selectedStatuses: string[];
+  selectedTypes: string[];
   sortBy: string;
   onSortChange: (sort: string) => void;
   onAnimeClick: (anime: any) => void;
@@ -25,12 +28,15 @@ export default function AnimeGrid({
   searchQuery,
   selectedGenres,
   selectedTags,
+  selectedSeasons,
+  selectedStatuses,
+  selectedTypes,
   sortBy,
   onSortChange,
   onAnimeClick
 }: AnimeGridProps) {
   // 검색 조건이 있는지 확인
-  const hasSearchCriteria = searchQuery.trim() || selectedGenres.length > 0 || selectedTags.length > 0 || animes.length > 0;
+  const hasSearchCriteria = searchQuery.trim() || selectedGenres.length > 0 || selectedTags.length > 0 || selectedSeasons.length > 0 || selectedStatuses.length > 0 || selectedTypes.length > 0 || animes.length > 0;
 
   if (isLoading) {
     return (
@@ -111,21 +117,36 @@ export default function AnimeGrid({
         </div>
         
         {/* 검색 조건 표시 */}
-        {(searchQuery.trim() || selectedGenres.length > 0 || selectedTags.length > 0) && (
+        {(searchQuery.trim() || selectedGenres.length > 0 || selectedTags.length > 0 || selectedSeasons.length > 0 || selectedStatuses.length > 0 || selectedTypes.length > 0) && (
           <div className={styles.searchCriteria}>
             {searchQuery.trim() && (
-              <span className={`${styles.searchCriteriaTag} ${styles.searchCriteriaTagSearch}`}>
-                검색어: {searchQuery}
+              <span className={styles.searchCriteriaTag}>
+                {searchQuery}
               </span>
             )}
             {selectedGenres.map((genre) => (
-              <span key={genre} className={`${styles.searchCriteriaTag} ${styles.searchCriteriaTagGenre}`}>
-                장르: {genre}
+              <span key={genre} className={styles.searchCriteriaTag}>
+                {genre}
               </span>
             ))}
             {selectedTags.map((tag) => (
-              <span key={tag} className={`${styles.searchCriteriaTag} ${styles.searchCriteriaTagTag}`}>
-                태그: {tag}
+              <span key={tag} className={styles.searchCriteriaTag}>
+                {tag}
+              </span>
+            ))}
+            {selectedSeasons.map((season) => (
+              <span key={season} className={styles.searchCriteriaTag}>
+                {season}
+              </span>
+            ))}
+            {selectedStatuses.map((status) => (
+              <span key={status} className={styles.searchCriteriaTag}>
+                {status === 'ONGOING' ? '방영중' : status === 'COMPLETED' ? '완결' : status === 'UPCOMING' ? '방영예정' : '방영중단'}
+              </span>
+            ))}
+            {selectedTypes.map((type) => (
+              <span key={type} className={styles.searchCriteriaTag}>
+                {type}
               </span>
             ))}
           </div>

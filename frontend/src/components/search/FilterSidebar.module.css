@@ -112,10 +112,12 @@
   width: 1rem;
   height: 1rem;
   color: #7c3aed;
-  background-color: #323232;
-  border: 1px solid #404040;
+  background-color: #1a1a1a;
+  border: 2px solid #404040;
   border-radius: 0.25rem;
   cursor: pointer;
+  appearance: none;
+  position: relative;
 }
 
 .checkbox:focus {
@@ -123,27 +125,62 @@
   outline-offset: 2px;
 }
 
+.checkbox:hover {
+  outline: none;
+  border-color: #7c3aed;
+}
+
+.checkbox:checked {
+  background-color: #1a1a1a;
+  border-color: #7c3aed;
+  outline: none;
+}
+
+.checkbox:checked:hover {
+  outline: none;
+  border-color: #7c3aed;
+}
+
+.checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #7c3aed;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
 .checkboxLabel {
   color: #ABABAB;
   font-size: 0.875rem;
 }
 
-/* 장르 체크박스 특별 스타일 */
-.genreCheckbox {
+/* 모든 체크박스 통일된 스타일 */
+.genreCheckbox,
+.tagCheckbox,
+.yearCheckbox,
+.statusCheckbox,
+.typeCheckbox {
   color: #7c3aed;
 }
 
-.genreCheckbox:focus {
+.genreCheckbox:focus,
+.tagCheckbox:focus,
+.yearCheckbox:focus,
+.statusCheckbox:focus,
+.typeCheckbox:focus {
   outline-color: #7c3aed;
 }
 
-/* 태그 체크박스 특별 스타일 */
-.tagCheckbox {
-  color: #2563eb;
-}
-
-.tagCheckbox:focus {
-  outline-color: #2563eb;
+.genreCheckbox:checked,
+.tagCheckbox:checked,
+.yearCheckbox:checked,
+.statusCheckbox:checked,
+.typeCheckbox:checked {
+  background-color: #1a1a1a;
+  border-color: #7c3aed;
 }
 
 /* 셀렉트 박스 */

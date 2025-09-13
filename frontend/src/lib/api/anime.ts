@@ -142,3 +142,16 @@ export async function getGenres() {
 export async function getTags() {
   return apiCall('/anime/tags');
 }
+
+// 필터 옵션 목록
+export async function getSeasons() {
+  return apiCall('/anime/seasons');
+}
+
+export async function getStatuses() {
+  return apiCall('/anime/statuses');
+}
+
+export async function getTypes() {
+  return apiCall('/anime/types');
+}
