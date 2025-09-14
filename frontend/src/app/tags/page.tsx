@@ -6,7 +6,7 @@ import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import FilterSidebar from "@/components/search/FilterSidebar";
 import AnimeGrid from "@/components/search/AnimeGrid";
 import { searchContent } from "@/lib/api/search";
-import { getGenres, getTags, getSeasons, getStatuses, getTypes, getAnimeList, listAnime } from "@/lib/api/anime";
+import { getGenres, getTags, getSeasons, getYearOptions, getStatuses, getTypes, getAnimeList, listAnime } from "@/lib/api/anime";
 import styles from "./TagsPage.module.css";
 
 /**
@@ -14,6 +14,7 @@ import styles from "./TagsPage.module.css";
  * 2단 레이아웃: 좌측 필터 사이드바 + 우측 애니메이션 그리드
  */
 export default function TagsPage() {
+  console.log('[DEBUG] TagsPage 컴포넌트 렌더링');
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAnime, setSelectedAnime] = useState<any>(null);
@@ -47,6 +48,7 @@ export default function TagsPage() {
   const [genreOptions, setGenreOptions] = useState<{id:number; name:string; color?:string}[]>([]);
   const [tagOptions, setTagOptions] = useState<{id:number; name:string; color?:string}[]>([]);
   const [seasonOptions, setSeasonOptions] = useState<string[]>([]);
+  const [yearOptions, setYearOptions] = useState<{value: string; label: string; type: string}[]>([]);
   const [statusOptions, setStatusOptions] = useState<{key: string; label: string}[]>([]);
   const [typeOptions, setTypeOptions] = useState<{key: string; label: string}[]>([]);
 
@@ -65,10 +67,11 @@ export default function TagsPage() {
         try {
           setIsLoading(true);
           setError(null);
-          const [gs, ts, ss, sts, tps, listRaw] = await Promise.all([
+          const [gs, ts, ss, yos, sts, tps, listRaw] = await Promise.all([
             getGenres(),
             getTags(),
             getSeasons(),
+            getYearOptions(),
             getStatuses(),
             getTypes(),
             getAnimeList(0, 20, 'popular')
@@ -78,6 +81,7 @@ export default function TagsPage() {
             genres: Array.isArray(gs) ? gs.length : 0,
             tags: Array.isArray(ts) ? ts.length : 0,
             seasons: Array.isArray(ss) ? ss.length : 0,
+            yearOptions: Array.isArray(yos) ? yos.length : 0,
             statuses: Array.isArray(sts) ? sts.length : 0,
             types: Array.isArray(tps) ? tps.length : 0,
             animeList: (listRaw as any)?.items?.length || 0
@@ -93,6 +97,7 @@ export default function TagsPage() {
           setGenreOptions(Array.isArray(gs) ? gs : []);
           setTagOptions(Array.isArray(ts) ? ts : []);
           setSeasonOptions(Array.isArray(ss) ? ss : []);
+          setYearOptions(Array.isArray(yos) ? yos : []);
           setStatusOptions(Array.isArray(sts) ? sts : []);
           setTypeOptions(Array.isArray(tps) ? tps : []);
 
@@ -127,9 +132,16 @@ export default function TagsPage() {
 
   // 필터 변경 시 자동 검색 실행 (searchQuery 제외)
   useEffect(() => {
+    console.log('[DEBUG] 필터 변경 감지:', {
+      selectedSeasons,
+      selectedStatuses,
+      selectedTypes,
+      selectedGenreIds,
+      selectedTagIds
+    });
     // 필터가 있으면 필터링된 결과, 없으면 초기 목록
     executeSearch();
-  }, [selectedGenreIds, selectedTagIds, selectedYear, selectedStatus, selectedType, filters, sortBy]);
+  }, [selectedSeasons, selectedStatuses, selectedTypes, selectedGenreIds, selectedTagIds, selectedYear, selectedStatus, selectedType, filters, sortBy]);
 
   // searchQuery 변경 시 자동 검색 실행
   useEffect(() => {
@@ -179,13 +191,41 @@ export default function TagsPage() {
         const raw = await searchContent(searchQuery.trim(), undefined, undefined, getSortValue(sortBy), page, 10);
         collected = normalizeToArray(raw);
       } else {
+        // selectedSeasons에서 년도와 분기 추출 (2025-Q3 -> year: 2025, quarter: 3)
+        let yearFromSeasons = null;
+        let quarterFromSeasons = null;
+        
+        if (selectedSeasons.length > 0) {
+          const season = selectedSeasons[0]; // 첫 번째 선택된 시즌 사용
+          if (season.includes('-Q')) {
+            const [year, quarter] = season.split('-Q');
+            yearFromSeasons = parseInt(year);
+            quarterFromSeasons = parseInt(quarter);
+          } else {
+            yearFromSeasons = parseInt(season);
+          }
+        }
+
+        console.log('[DEBUG] 필터 값들:', {
+          selectedSeasons,
+          selectedStatuses,
+          selectedTypes,
+          yearFromSeasons,
+          quarterFromSeasons,
+          selectedYear,
+          selectedStatus,
+          selectedType
+        });
+        console.log('[DEBUG] selectedSeasons 상세:', selectedSeasons);
+
         // listAnime 사용하여 모든 필터링을 백엔드에서 처리
         const list = await listAnime({
           genreIds: selectedGenreIds.length > 0 ? selectedGenreIds : null,
           tagIds: selectedTagIds.length > 0 ? selectedTagIds : null,
-          year: selectedYear,
-          status: selectedStatus,
-          type: selectedType,
+          year: yearFromSeasons || selectedYear,
+          quarter: quarterFromSeasons,
+          status: selectedStatuses.length > 0 ? selectedStatuses[0] : selectedStatus,
+          type: selectedTypes.length > 0 ? selectedTypes[0] : selectedType,
           sort: getSortValue(sortBy),
           page: page,
           size: 10,
@@ -411,6 +451,7 @@ export default function TagsPage() {
             genreOptions={genreOptions}
             tagOptions={tagOptions}
             seasonOptions={seasonOptions}
+            yearOptions={yearOptions}
             statusOptions={statusOptions}
             typeOptions={typeOptions}
             onGenreChange={toggleGenre}
@@ -430,7 +471,7 @@ export default function TagsPage() {
             searchQuery={searchQuery}
             selectedGenres={selectedGenreIds.map(id => genreOptions.find(g=>g.id===id)?.name ?? String(id))}
             selectedTags={selectedTagIds.map(id => tagOptions.find(t=>t.id===id)?.name ?? String(id))}
-            selectedSeasons={selectedSeasons}
+            selectedSeasons={selectedSeasons.map(season => yearOptions.find(y=>y.value===season)?.label ?? season)}
             selectedStatuses={selectedStatuses}
             selectedTypes={selectedTypes}
             sortBy={sortBy}

@@ -98,15 +98,12 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  cursor: pointer;
   padding: 0.5rem;
   border-radius: 0.25rem;
   transition: background-color 0.2s;
 }
 
-.checkboxItem:hover {
-  background-color: #1a1a1a;
-}
+/* 호버 효과 제거 */
 
 .checkbox {
   width: 1rem;
@@ -125,13 +122,9 @@
   outline-offset: 2px;
 }
 
-.checkbox:hover {
-  outline: none;
-  border-color: #7c3aed;
-}
+/* 체크박스 호버 효과 제거 */
 
 .checkbox:checked {
-  background-color: #1a1a1a;
   border-color: #7c3aed;
   outline: none;
 }
@@ -179,7 +172,6 @@
 .yearCheckbox:checked,
 .statusCheckbox:checked,
 .typeCheckbox:checked {
-  background-color: #1a1a1a;
   border-color: #7c3aed;
 }
 
