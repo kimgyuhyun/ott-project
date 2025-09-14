@@ -73,7 +73,7 @@
 
 /* 모달 바디 */
 .modalBody {
-  padding: 0 0.25rem 1.5rem 0.25rem;
+  padding: 0 1rem 1.5rem 1.5rem;
   overflow-y: auto;
   flex: 1;
 }
@@ -82,24 +82,19 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
 }
 
 .checkboxItem {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  cursor: pointer;
   padding: 0.25rem;
   border-radius: 0.25rem;
 }
 
-.checkboxItem:hover {
-  background-color: #2a2a2a;
-}
-
-.checkboxItem:hover .checkbox {
-  border-color: #7c3aed;
-}
+/* 체크박스 아이템 호버 효과 제거 */
 
 .checkbox {
   width: 1rem;
@@ -118,13 +113,9 @@
   outline-offset: 2px;
 }
 
-.checkbox:hover {
-  outline: none;
-  border-color: #7c3aed;
-}
+/* 체크박스 호버 효과 제거 */
 
 .checkbox:checked {
-  background-color: #1a1a1a;
   border-color: #7c3aed;
   outline: none;
 }
@@ -172,7 +163,6 @@
 .seasonCheckbox:checked,
 .statusCheckbox:checked,
 .typeCheckbox:checked {
-  background-color: #1a1a1a;
   border-color: #7c3aed;
 }
 

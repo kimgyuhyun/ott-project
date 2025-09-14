@@ -22,6 +22,8 @@ export default function MyPage() {
   const [userStats, setUserStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDeleteMode, setIsDeleteMode] = useState(false);
+  const [selectedAnimeIds, setSelectedAnimeIds] = useState<Set<number>>(new Set());
 
   // 멤버십 상태
   const { userMembership, isLoading: isLoadingMembership } = useMembershipData();
@@ -64,6 +66,15 @@ export default function MyPage() {
         
         // 시청 기록에 애니메이션 제목 추가
         const watchHistoryList = ((historyData as any)?.items as any[]) || (Array.isArray(historyData) ? historyData : []) || [];
+        
+        // 시청 기록 상세 로그
+        console.log('🔍 시청 기록 상세:', watchHistoryList.map((item: any) => ({
+          animeId: item.animeId,
+          episodeNumber: item.episodeNumber,
+          episodeId: item.episodeId,
+          positionSec: item.positionSec,
+          updatedAt: item.updatedAt
+        })));
         const enrichedWatchHistory = await Promise.all(
           watchHistoryList.map(async (item: any) => {
             try {
@@ -73,7 +84,8 @@ export default function MyPage() {
                 ...item,
                 aniId: item.animeId,
                 title: (animeDetail as any)?.title || '제목 없음',
-                posterUrl: (animeDetail as any)?.posterUrl
+                posterUrl: (animeDetail as any)?.posterUrl,
+                episodeNumber: item.episodeNumber // 에피소드 번호 추가
               };
             } catch (e) {
               console.warn('애니메이션 상세 조회 실패:', e);
@@ -81,19 +93,46 @@ export default function MyPage() {
                 ...item,
                 aniId: item.animeId,
                 title: '제목 없음',
-                posterUrl: null
+                posterUrl: null,
+                episodeNumber: item.episodeNumber // 에피소드 번호 추가
               };
             }
           })
         );
         
         setWatchHistory(enrichedWatchHistory);
-        setWantList(((wantListData as any)?.items as any[]) || (Array.isArray(wantListData) ? wantListData : []) || []);
+        
+        // 보고싶다 목록에 애니메이션 상세 정보 추가
+        const wantListItems = ((wantListData as any)?.items as any[]) || (Array.isArray(wantListData) ? wantListData : []) || [];
+        const enrichedWantList = await Promise.all(
+          wantListItems.map(async (item: any) => {
+            try {
+              const { getAnimeDetail } = await import('@/lib/api/anime');
+              const animeDetail = await getAnimeDetail(item.animeId || item.id);
+              return {
+                ...item,
+                aniId: item.animeId || item.id,
+                title: (animeDetail as any)?.title || item.title || '제목 없음',
+                posterUrl: (animeDetail as any)?.posterUrl || item.posterUrl
+              };
+            } catch (e) {
+              console.warn('애니메이션 상세 조회 실패:', e);
+              return {
+                ...item,
+                aniId: item.animeId || item.id,
+                title: item.title || '제목 없음',
+                posterUrl: item.posterUrl || null
+              };
+            }
+          })
+        );
+        
+        setWantList(enrichedWantList);
         setUserStats(statsData);
         
         // 탭별 카운트 업데이트
         tabs[0].count = enrichedWatchHistory.length;
-        tabs[1].count = (((wantListData as any)?.items as any[])?.length) || (Array.isArray(wantListData) ? wantListData.length : 0);
+        tabs[1].count = enrichedWantList.length;
         tabs[2].count = 0; // 구매한 작품은 별도 API 필요
         tabs[3].count = 0; // 정주행은 별도 API 필요
         
@@ -108,10 +147,69 @@ export default function MyPage() {
     loadUserData();
   }, []);
 
+  // 삭제 모드 토글
+  const toggleDeleteMode = () => {
+    setIsDeleteMode(!isDeleteMode);
+    setSelectedAnimeIds(new Set());
+  };
+
+  // 애니메이션 선택/해제
+  const toggleAnimeSelection = (animeId: number) => {
+    setSelectedAnimeIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(animeId)) {
+        newSet.delete(animeId);
+      } else {
+        newSet.add(animeId);
+      }
+      return newSet;
+    });
+  };
+
+  // 전체선택/해제
+  const handleSelectAll = () => {
+    if (activeTab === 'recent') {
+      if (selectedAnimeIds.size === watchHistory.length) {
+        setSelectedAnimeIds(new Set());
+      } else {
+        const allIds = new Set(watchHistory.map(anime => anime.aniId));
+        setSelectedAnimeIds(allIds);
+      }
+    } else if (activeTab === 'want') {
+      if (selectedAnimeIds.size === wantList.length) {
+        setSelectedAnimeIds(new Set());
+      } else {
+        const allIds = new Set(wantList.map(anime => anime.aniId));
+        setSelectedAnimeIds(allIds);
+      }
+    }
+  };
+
+  // 선택된 애니메이션들 삭제
+  const deleteSelectedAnime = () => {
+    if (selectedAnimeIds.size === 0) return;
+    
+    if (activeTab === 'recent') {
+      setWatchHistory(prev => prev.filter(anime => !selectedAnimeIds.has(anime.aniId)));
+    } else if (activeTab === 'want') {
+      setWantList(prev => prev.filter(anime => !selectedAnimeIds.has(anime.aniId)));
+    }
+    
+    setIsDeleteMode(false);
+    setSelectedAnimeIds(new Set());
+  };
+
   // 애니메이션 클릭 핸들러
   const handleAnimeClick = async (anime: any) => {
-    // 애니별 최신 기록이므로 episodeId/positionSec 기반으로 바로 플레이어로 이동
     const aniId = anime?.aniId ?? anime?.id ?? anime?.animeId;
+    
+    // 삭제 모드일 때는 선택/해제만
+    if (isDeleteMode) {
+      toggleAnimeSelection(aniId);
+      return;
+    }
+    
+    // 일반 모드일 때는 플레이어로 이동
     const episodeId = anime?.episodeId;
     const position = typeof anime?.positionSec === 'number' && anime.positionSec > 0 ? anime.positionSec : 0;
 
@@ -258,49 +356,143 @@ export default function MyPage() {
               {/* 탭 메뉴 */}
               <div className={styles.tabContainer}>
                 <div className={styles.tabMenu}>
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`${styles.tabButton} ${
-                        activeTab === tab.id ? styles.tabButtonActive : ''
-                      }`}
-                    >
-                      {tab.label}
-                      {tab.count > 0 && (
-                        <span className={styles.tabCount}>
-                          {tab.count}
-                        </span>
+                  <div className={styles.tabButtons}>
+                    {tabs.map((tab) => (
+                      <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`${styles.tabButton} ${
+                          activeTab === tab.id ? styles.tabButtonActive : ''
+                        }`}
+                      >
+                        {tab.label}
+                        {tab.count > 0 && (
+                          <span className={styles.tabCount}>
+                            {tab.count}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* 삭제 버튼 - 애니메이션이 있을 때만 표시 */}
+                  {activeTab === 'recent' && watchHistory.length > 0 && (
+                    <div className={styles.deleteButtonGroup}>
+                      {!isDeleteMode ? (
+                        <button 
+                          className={styles.deleteButton}
+                          onClick={toggleDeleteMode}
+                        >
+                          <svg className={styles.deleteIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          <span>삭제</span>
+                        </button>
+                      ) : (
+                        <>
+                          <button 
+                            className={styles.cancelButton}
+                            onClick={toggleDeleteMode}
+                          >
+                            <span>취소</span>
+                          </button>
+                          <button 
+                            className={styles.confirmDeleteButton}
+                            onClick={deleteSelectedAnime}
+                            disabled={selectedAnimeIds.size === 0}
+                          >
+                            <span>삭제 ({selectedAnimeIds.size})</span>
+                          </button>
+                        </>
                       )}
-                    </button>
-                  ))}
+                    </div>
+                  )}
+                  
+                  {activeTab === 'want' && wantList.length > 0 && (
+                    <div className={styles.deleteButtonGroup}>
+                      {!isDeleteMode ? (
+                        <button 
+                          className={styles.deleteButton}
+                          onClick={toggleDeleteMode}
+                        >
+                          <svg className={styles.deleteIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          <span>삭제</span>
+                        </button>
+                      ) : (
+                        <>
+                          <button 
+                            className={styles.cancelButton}
+                            onClick={toggleDeleteMode}
+                          >
+                            <span>취소</span>
+                          </button>
+                          <button 
+                            className={styles.confirmDeleteButton}
+                            onClick={deleteSelectedAnime}
+                            disabled={selectedAnimeIds.size === 0}
+                          >
+                            <span>삭제 ({selectedAnimeIds.size})</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* 탭별 콘텐츠 */}
                 <div className={styles.tabContent}>
                   {activeTab === 'recent' && (
                     <div>
-                      <h3 className={styles.tabTitle}>작품 ({watchHistory.length})</h3>
+                      {!isDeleteMode ? (
+                        <h3 className={styles.tabTitle}>작품 ({watchHistory.length})</h3>
+                      ) : (
+                        <div className={styles.selectAllContainer}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedAnimeIds.size === watchHistory.length && watchHistory.length > 0}
+                            onChange={handleSelectAll}
+                            className={styles.selectAllCheckbox}
+                          />
+                          <label className={styles.selectAllLabel}>
+                            전체선택 ({selectedAnimeIds.size})
+                          </label>
+                        </div>
+                      )}
                       {Array.isArray(watchHistory) && watchHistory.length > 0 ? (
                         <div className={styles.animeGrid}>
-                          {watchHistory.map((anime: any, idx: number) => (
-                            <div 
-                              key={`${anime?.aniId ?? anime?.id ?? anime?.animeId ?? 'item'}-${idx}`}
-                              className={styles.animeItem}
-                              onClick={() => handleAnimeClick(anime)}
-                            >
+                          {watchHistory.map((anime: any, idx: number) => {
+                            const aniId = anime?.aniId ?? anime?.id ?? anime?.animeId;
+                            const isSelected = selectedAnimeIds.has(aniId);
+                            
+                            return (
                               <div 
-                                className={styles.animePoster}
-                                style={{
-                                  backgroundImage: anime.posterUrl ? `url(${anime.posterUrl})` : 'none',
-                                  backgroundSize: 'cover',
-                                  backgroundPosition: 'center',
-                                  backgroundColor: anime.posterUrl ? 'transparent' : '#323232'
-                                }}
-                              ></div>
-                              <p className={styles.animeTitle}>{anime.title}</p>
-                            </div>
-                          ))}
+                                key={`${aniId ?? 'item'}-${idx}`}
+                                className={`${styles.animeItem} ${isDeleteMode ? styles.selectable : ''} ${isSelected ? styles.selected : ''}`}
+                                onClick={() => handleAnimeClick(anime)}
+                              >
+                                {isDeleteMode && isSelected && (
+                                  <div className={styles.selectionIndicator}>
+                                    ✓
+                                  </div>
+                                )}
+                                <div 
+                                  className={styles.animePoster}
+                                  style={{
+                                    backgroundImage: anime.posterUrl ? `url(${anime.posterUrl})` : 'none',
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                    backgroundColor: anime.posterUrl ? 'transparent' : '#323232'
+                                  }}
+                                ></div>
+                                <p className={styles.animeTitle}>{anime.title}</p>
+                                {anime.episodeNumber && (
+                                  <p className={styles.animeEpisode}>{anime.episodeNumber}화</p>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className={styles.emptyState}>
@@ -312,19 +504,51 @@ export default function MyPage() {
 
                   {activeTab === 'want' && (
                     <div>
-                      <h3 className={styles.tabTitle}>작품 ({wantList.length})</h3>
+                      {!isDeleteMode ? (
+                        <h3 className={styles.tabTitle}>작품 ({wantList.length})</h3>
+                      ) : (
+                        <div className={styles.selectAllContainer}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedAnimeIds.size === wantList.length && wantList.length > 0}
+                            onChange={handleSelectAll}
+                            className={styles.selectAllCheckbox}
+                          />
+                          <label className={styles.selectAllLabel}>
+                            전체선택 ({selectedAnimeIds.size})
+                          </label>
+                        </div>
+                      )}
                       {Array.isArray(wantList) && wantList.length > 0 ? (
                         <div className={styles.animeGrid}>
-                          {wantList.map((anime: any, idx: number) => (
-                            <div 
-                              key={`${anime?.aniId ?? anime?.id ?? 'item'}-${idx}`}
-                              className={styles.animeItem}
-                              onClick={() => handleAnimeClick(anime)}
-                            >
-                              <div className={styles.animePoster}></div>
-                              <p className={styles.animeTitle}>{anime.title}</p>
-                            </div>
-                          ))}
+                          {wantList.map((anime: any, idx: number) => {
+                            const aniId = anime?.aniId ?? anime?.id ?? anime?.animeId;
+                            const isSelected = selectedAnimeIds.has(aniId);
+                            
+                            return (
+                              <div 
+                                key={`${aniId ?? 'item'}-${idx}`}
+                                className={`${styles.animeItem} ${isDeleteMode ? styles.selectable : ''} ${isSelected ? styles.selected : ''}`}
+                                onClick={() => handleAnimeClick(anime)}
+                              >
+                                {isDeleteMode && isSelected && (
+                                  <div className={styles.selectionIndicator}>
+                                    ✓
+                                  </div>
+                                )}
+                                <div 
+                                  className={styles.animePoster}
+                                  style={{
+                                    backgroundImage: anime.posterUrl ? `url(${anime.posterUrl})` : 'none',
+                                    backgroundSize: 'cover',
+                                    backgroundPosition: 'center',
+                                    backgroundColor: anime.posterUrl ? 'transparent' : '#323232'
+                                  }}
+                                ></div>
+                                <p className={styles.animeTitle}>{anime.title}</p>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className={styles.emptyState}>

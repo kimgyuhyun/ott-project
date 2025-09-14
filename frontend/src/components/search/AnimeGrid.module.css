@@ -100,7 +100,7 @@
 .searchTitle {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1f2937;
+  color: #F7F7F7;
 }
 
 /* 정렬 옵션 */
@@ -108,25 +108,97 @@
   display: flex;
   align-items: center;
   gap: 1rem;
+  position: relative;
 }
 
 .sortLabel {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: #ABABAB;
 }
 
-.sortSelect {
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
+/* 커스텀 셀렉트 */
+.customSelect {
+  position: relative;
+  display: inline-block;
+}
+
+.selectTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 0.5rem;
+  background-color: transparent;
+  color: #F7F7F7;
+  border: none;
   border-radius: 0.5rem;
   font-size: 0.875rem;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  gap: 0.25rem;
 }
 
-.sortSelect:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2);
+/* 호버 효과 제거 */
+
+.selectValue {
+  /* 중앙정렬을 위해 flex 제거 */
+}
+
+.selectArrow {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.2s;
+  color: #ABABAB;
+  transform: rotate(0deg);
+}
+
+.selectArrow.open {
+  transform: rotate(180deg);
+}
+
+.selectOptions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background-color: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  min-width: 120px;
+}
+
+.selectOption {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  color: #F7F7F7;
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+
+.selectOption:hover {
+  background-color: #2a2a2a;
+}
+
+.selectOption.selected {
+  background-color: #7c3aed;
+}
+
+.checkIcon {
+  width: 1rem;
+  margin-right: 0.5rem;
+  text-align: center;
+  font-weight: bold;
+  color: #7c3aed;
+}
+
+.selectOption.selected .checkIcon {
+  color: #F7F7F7;
 }
 
 /* 검색 조건 표시 */

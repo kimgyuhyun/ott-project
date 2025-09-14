@@ -30,7 +30,7 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 
 	// 단일 genreId → 다중 genreIds 지원 + AND 개수(genreCount) 계산 후 전달, 태그 OR 필터(tagIds) 지원
 	public PagedResponse<AnimeListDto> list( // 목록 조회 + 페이징 응답
-											 AnimeStatus status, List<Long> genreIds, Double minRating, Integer year, // 상태/장르/최소평점/연도 필터
+											 AnimeStatus status, List<Long> genreIds, Double minRating, Integer year, Integer quarter, // 상태/장르/최소평점/연도/분기 필터
 											 String type, // 출시 타입 필터
 											 Boolean isDub, Boolean isSubtitle, Boolean isExclusive, Boolean isCompleted, // 옵션 배지 필터
 											 Boolean isNew, Boolean isPopular, String sort, int page, int size, // 정렬/페이지 파라미터
@@ -65,13 +65,13 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 		}
 
 		java.util.List<AnimeListDto> items = mapper.findAniList( // 목록 데이터 조회
-						status, distinctGenreIds, genreCount, distinctTagIds, minRating, year, type, isDub, isSubtitle, isExclusive,
+						status, distinctGenreIds, genreCount, distinctTagIds, minRating, year, quarter, type, isDub, isSubtitle, isExclusive,
 						isCompleted, isNew, isPopular, sort, limit, offset,
 						null, null, null
 		); // 조회된 목록 아이템들
 
 		long total = mapper.countAniList( // 총 개수 조회(페이지네이션 total)
-						status, distinctGenreIds, genreCount, distinctTagIds, minRating, year, type, isDub, isSubtitle, isExclusive,
+						status, distinctGenreIds, genreCount, distinctTagIds, minRating, year, quarter, type, isDub, isSubtitle, isExclusive,
 						isCompleted, isNew, isPopular
 		); // 조건 동일한 COUNT(1)
 
@@ -151,6 +151,10 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 
 	public java.util.List<com.ottproject.ottbackend.dto.TypeOptionDto> getAllTypes() {
 		return mapper.findAllTypes();
+	}
+
+	public java.util.List<com.ottproject.ottbackend.dto.YearOptionDto> getYearOptions() {
+		return mapper.findYearOptions();
 	}
 
 	/**

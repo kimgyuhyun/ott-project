@@ -53,6 +53,7 @@ export async function listAnime(params: {
   tagIds?: number[] | null;
   minRating?: number | null;
   year?: number | null;
+  quarter?: number | null;
   type?: string | null;
   isDub?: boolean | null;
   isSubtitle?: boolean | null;
@@ -72,6 +73,7 @@ export async function listAnime(params: {
   if (params.tagIds && params.tagIds.length) params.tagIds.forEach(id => qp.append('tagIds', String(id)));
   if (params.minRating != null) qp.append('minRating', String(params.minRating));
   if (params.year != null) qp.append('year', String(params.year));
+  if (params.quarter != null) qp.append('quarter', String(params.quarter));
   if (params.type) qp.append('type', params.type);
   if (params.isDub != null) qp.append('isDub', String(params.isDub));
   if (params.isSubtitle != null) qp.append('isSubtitle', String(params.isSubtitle));
@@ -86,7 +88,9 @@ export async function listAnime(params: {
   if (params.cursorRating != null) qp.append('cursorRating', String(params.cursorRating));
   
   // getAnimeList와 동일한 응답 처리: 단순히 apiCall만 반환
-  return apiCall(`/anime?${qp.toString()}`);
+  const url = `/anime?${qp.toString()}`;
+  console.log('[DEBUG] listAnime API 호출 URL:', url);
+  return apiCall(url);
 }
 
 // 애니메이션 상세 정보 조회
@@ -146,6 +150,10 @@ export async function getTags() {
 // 필터 옵션 목록
 export async function getSeasons() {
   return apiCall('/anime/seasons');
+}
+
+export async function getYearOptions() {
+  return apiCall('/anime/year-options');
 }
 
 export async function getStatuses() {

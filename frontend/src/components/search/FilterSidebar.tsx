@@ -21,6 +21,7 @@ interface FilterSidebarProps {
   genreOptions: { id: number; name: string; color?: string }[];
   tagOptions: { id: number; name: string; color?: string }[];
   seasonOptions: string[];
+  yearOptions: {value: string; label: string; type: string}[];
   statusOptions: {key: string; label: string}[];
   typeOptions: {key: string; label: string}[];
   onGenreChange: (genreId: number) => void;
@@ -50,6 +51,7 @@ export default function FilterSidebar({
   genreOptions,
   tagOptions,
   seasonOptions,
+  yearOptions,
   statusOptions,
   typeOptions,
   onGenreChange,
@@ -64,6 +66,7 @@ export default function FilterSidebar({
   const genres = genreOptions ?? [];
   const tags = tagOptions ?? [];
   const seasons = seasonOptions ?? [];
+  const years = yearOptions ?? [];
   const statuses = statusOptions ?? [];
   const types = typeOptions ?? [];
 
@@ -148,7 +151,7 @@ export default function FilterSidebar({
         </div>
       </div>
 
-      {/* 시즌 필터 */}
+      {/* 년도 필터 */}
       <div className={styles.filterSection}>
         <div className={styles.filterSectionHeader}>
           <h3 className={styles.filterSectionTitle}>
@@ -162,15 +165,15 @@ export default function FilterSidebar({
           </button>
         </div>
         <div className={styles.checkboxList}>
-          {seasons.slice(0, 5).map((season) => (
-            <label key={season} className={styles.checkboxItem}>
+          {years.slice(0, 5).map((year) => (
+            <label key={year.value} className={styles.checkboxItem}>
               <input
                 type="checkbox"
-                checked={selectedSeasons.includes(season)}
-                onChange={() => onSeasonChange(season)}
+                checked={selectedSeasons.includes(year.value)}
+                onChange={() => onSeasonChange(year.value)}
                 className={`${styles.checkbox} ${styles.yearCheckbox}`}
               />
-              <span className={styles.checkboxLabel}>{season}</span>
+              <span className={styles.checkboxLabel}>{year.label}</span>
             </label>
           ))}
         </div>
@@ -260,12 +263,12 @@ export default function FilterSidebar({
         type="tag"
       />
 
-      {/* 시즌 모달 */}
+      {/* 년도 모달 */}
       <FilterModal
         isOpen={showMoreSeasons}
         onClose={() => setShowMoreSeasons(false)}
         title="년도 전체"
-        items={seasons.map(season => ({ key: season, name: season }))}
+        items={years.map(year => ({ key: year.value, name: year.label }))}
         selectedItems={selectedSeasons}
         onItemToggle={onSeasonChange}
         onResetAll={() => {

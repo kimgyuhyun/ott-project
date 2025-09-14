@@ -42,6 +42,7 @@
         <if test="status != null"> AND a.status = #{status} </if> <!-- 상태 필터: ONGOING/COMPLETED/UPCOMING/HIATUS 중 선택 -->
         <if test="minRating != null"> AND a.rating &gt;= #{minRating}</if>  <!-- 평점 하한: #{minRating} 이상 -->
         <if test="year != null"> AND a.year = #{year}</if> <!-- 방영 연도: 정확히 일치 -->
+        <if test="quarter != null"> AND EXTRACT(QUARTER FROM a.release_date) = #{quarter}</if> <!-- 분기: 1-4 -->
         <if test="type != null and type.trim().length() &gt; 0"> AND a.type = #{type}</if> <!-- 출시 타입: TV/MOVIE/OVA 등 -->
         <if test="isDub != null"> AND a.is_dub = #{isDub}</if> <!-- 더빙 제공 여부: true/false 매칭 -->
         <if test="isSubtitle != null"> AND a.is_subtitle = #{isSubtitle}</if> <!-- 자막 제공 여부: true/false 매칭 -->
@@ -325,6 +326,78 @@
         FROM anime
         WHERE is_active = TRUE AND season IS NOT NULL
         ORDER BY season DESC
+    </select>
+
+    <!-- 년도/분기 옵션 조회 -->
+    <select id="findYearOptions" resultType="com.ottproject.ottbackend.dto.YearOptionDto">
+        <![CDATA[
+        SELECT value, label, type FROM (
+            WITH recent_years AS (
+                SELECT DISTINCT 
+                    EXTRACT(YEAR FROM release_date) as year
+                FROM anime 
+                WHERE is_active = TRUE 
+                    AND release_date IS NOT NULL
+                    AND EXTRACT(YEAR FROM release_date) >= 2010
+            ),
+            recent_quarters AS (
+                SELECT DISTINCT 
+                    EXTRACT(YEAR FROM release_date) as year,
+                    EXTRACT(QUARTER FROM release_date) as quarter
+                FROM anime 
+                WHERE is_active = TRUE 
+                    AND release_date IS NOT NULL
+                    AND EXTRACT(YEAR FROM release_date) >= 2020
+            )
+            -- 최근 분기들 (2020년 이후)
+            SELECT 
+                year || '-Q' || quarter as value,
+                year || '년 ' || quarter || '분기' as label,
+                'quarter' as type
+            FROM recent_quarters
+            WHERE year >= 2020
+            UNION ALL
+            -- 최근 년도들 (2010년 이후, 2020년 미만)
+            SELECT 
+                year::text as value,
+                year || '년' as label,
+                'year' as type
+            FROM recent_years
+            WHERE year >= 2010 AND year < 2020
+            UNION ALL
+            -- 2000년대
+            SELECT 
+                '2000s' as value,
+                '2000년대' as label,
+                'decade' as type
+            WHERE EXISTS (
+                SELECT 1 FROM anime 
+                WHERE is_active = TRUE 
+                    AND release_date IS NOT NULL
+                    AND EXTRACT(YEAR FROM release_date) BETWEEN 2000 AND 2009
+            )
+            UNION ALL
+            -- 2000년대 이전
+            SELECT 
+                'before-2000' as value,
+                '2000년대 이전' as label,
+                'before' as type
+            WHERE EXISTS (
+                SELECT 1 FROM anime 
+                WHERE is_active = TRUE 
+                    AND release_date IS NOT NULL
+                    AND EXTRACT(YEAR FROM release_date) < 2000
+            )
+        ) AS year_options
+        ORDER BY 
+            CASE type 
+                WHEN 'quarter' THEN 1
+                WHEN 'year' THEN 2
+                WHEN 'decade' THEN 3
+                WHEN 'before' THEN 4
+            END,
+            value DESC
+        ]]>
     </select>
 
     <!-- 마스터: 전체 상태 목록 -->

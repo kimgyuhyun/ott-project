@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import AnimeCard from "@/components/home/AnimeCard";
 import styles from "./AnimeGrid.module.css";
 
@@ -35,6 +36,8 @@ export default function AnimeGrid({
   onSortChange,
   onAnimeClick
 }: AnimeGridProps) {
+  const [isSelectOpen, setIsSelectOpen] = useState(false);
+  
   // 검색 조건이 있는지 확인
   const hasSearchCriteria = searchQuery.trim() || selectedGenres.length > 0 || selectedTags.length > 0 || selectedSeasons.length > 0 || selectedStatuses.length > 0 || selectedTypes.length > 0 || animes.length > 0;
 
@@ -103,16 +106,58 @@ export default function AnimeGrid({
           
           {/* 정렬 옵션 */}
           <div className={styles.sortContainer}>
-            <span className={styles.sortLabel}>정렬:</span>
-            <select 
-              value={sortBy}
-              onChange={(e) => onSortChange(e.target.value)}
-              className={styles.sortSelect}
-            >
-              <option value="latest">최신순</option>
-              <option value="popular">인기순</option>
-              <option value="rating">평점순</option>
-            </select>
+            <div className={styles.customSelect}>
+              <div 
+                className={styles.selectTrigger}
+                onClick={() => setIsSelectOpen(!isSelectOpen)}
+              >
+                <span className={styles.selectValue}>
+                  {sortBy === 'latest' ? '최신순' : sortBy === 'popular' ? '인기순' : '평점순'}
+                </span>
+                <svg 
+                  className={`${styles.selectArrow} ${isSelectOpen ? styles.open : ''}`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              {isSelectOpen && (
+                <div className={styles.selectOptions}>
+                  <div 
+                    className={`${styles.selectOption} ${sortBy === 'latest' ? styles.selected : ''}`}
+                    onClick={() => {
+                      onSortChange('latest');
+                      setIsSelectOpen(false);
+                    }}
+                  >
+                    <span className={styles.checkIcon}>{sortBy === 'latest' ? '✓' : ''}</span>
+                    <span>최신순</span>
+                  </div>
+                  <div 
+                    className={`${styles.selectOption} ${sortBy === 'popular' ? styles.selected : ''}`}
+                    onClick={() => {
+                      onSortChange('popular');
+                      setIsSelectOpen(false);
+                    }}
+                  >
+                    <span className={styles.checkIcon}>{sortBy === 'popular' ? '✓' : ''}</span>
+                    <span>인기순</span>
+                  </div>
+                  <div 
+                    className={`${styles.selectOption} ${sortBy === 'rating' ? styles.selected : ''}`}
+                    onClick={() => {
+                      onSortChange('rating');
+                      setIsSelectOpen(false);
+                    }}
+                  >
+                    <span className={styles.checkIcon}>{sortBy === 'rating' ? '✓' : ''}</span>
+                    <span>평점순</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
