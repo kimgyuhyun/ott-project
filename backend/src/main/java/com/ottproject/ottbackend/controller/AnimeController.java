@@ -49,6 +49,7 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
             @RequestParam(required = false, name = "genreIds") List<Long> genreIds, // ?genreIds=1%genreIds=2 ...
             @RequestParam(required = false) Double minRating, // ?minRating=4.0 최소 평점 필터(옵션)
             @RequestParam(required = false) Integer year, // ?year=2024 방영 연도 필터(옵션)
+            @RequestParam(required = false) Integer quarter, // ?quarter=3 분기 필터(옵션)
             @RequestParam(required = false) String type, // 출시 타입 필터(옵션)
             @RequestParam(required = false) Boolean isDub, // ?isDub=true 더빙 여부(옵션)
             @RequestParam(required = false) Boolean isSubtitle, // ?isSubtitle=true 자막 여부(옵션)
@@ -63,7 +64,7 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
     ) {
         // 위 필터/정렬/페이지 정보를 서비스에 위임하여 MyBatis 쿼리 실행 후 페이지 응답으로 반환
         return queryService.list(
-            status, genreIds, minRating, year, type,
+            status, genreIds, minRating, year, quarter, type,
             isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular,
             sort, page, size, tagIds
         );
@@ -104,6 +105,7 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
                     null, // genreIds
                     null, // minRating
                     null, // year
+                    null, // quarter
                     null, // type
                     null, // isDub
                     null, // isSubtitle
@@ -132,6 +134,7 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
                 null, // genreIds
                 null, // minRating
                 null, // year
+                null, // quarter
                 null, // type
                 null, // isDub
                 null, // isSubtitle
@@ -205,6 +208,13 @@ public class AnimeController { // 애니 목록/상세 조회 컨트롤러
     @GetMapping("/seasons")
     public List<String> getSeasons() {
         return queryService.getAllSeasons();
+    }
+
+    @Operation(summary = "년도/분기 옵션", description = "년도별 및 분기별 필터링 옵션을 반환합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @GetMapping("/year-options")
+    public List<com.ottproject.ottbackend.dto.YearOptionDto> getYearOptions() {
+        return queryService.getYearOptions();
     }
 
     @Operation(summary = "상태 목록", description = "애니메이션 방영 상태 목록을 반환합니다.")

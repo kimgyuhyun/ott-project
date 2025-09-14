@@ -30,6 +30,7 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
             @Param("tagIds") List<Long> tagIds, // 태그 OR 필터
             @Param("minRating") Double minRating, // 최소 평점
             @Param("year") Integer year, // 방영 연도
+            @Param("quarter") Integer quarter, // 분기 (1-4)
             @Param("type") String type, // 출시 타입(TV/MOVIE/OVA/SPECIAL/WEB 등)
             @Param("isDub") Boolean isDub, // 더빙 여부
             @Param("isSubtitle") Boolean isSubtitle, // 자막 여부
@@ -52,6 +53,7 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
             @Param("tagIds") List<Long> tagIds, // 태그 OR 필터
             @Param("minRating") Double minRating,
             @Param("year") Integer year,
+            @Param("quarter") Integer quarter,
             @Param("type") String type,
             @Param("isDub") Boolean isDub,
             @Param("isSubtitle") Boolean isSubtitle,
@@ -102,6 +104,9 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
 
     // 트렌딩: ID 목록으로 카드 리스트 조회
     List<AnimeListDto> findAniListByIds(@Param("ids") List<Long> ids);
+    
+    // 년도/분기 옵션 조회
+    List<com.ottproject.ottbackend.dto.YearOptionDto> findYearOptions();
 }
 
 

@@ -95,6 +95,7 @@ public class PersonalizedRecommendationService {
                 topTags, // tagIds
                 null, // minRating
                 null, // year
+                null, // quarter
                 null, // type
                 null, // isDub
                 null, // isSubtitle
@@ -286,6 +287,7 @@ public class PersonalizedRecommendationService {
                     null, // tagIds
                     null, // minRating
                     null, // year
+                    null, // quarter
                     null, // type
                     null, // isDub
                     null, // isSubtitle
