@@ -2,6 +2,9 @@ package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.EpisodeProgress;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
@@ -29,4 +32,14 @@ public interface EpisodeProgressRepository extends JpaRepository<EpisodeProgress
 	
 	// 마이페이지용 시청 기록 목록 조회 (페이지네이션 지원)
 	org.springframework.data.domain.Page<EpisodeProgress> findByUser_IdOrderByUpdatedAtDesc(Long userId, org.springframework.data.domain.Pageable pageable);
+	
+	// 사용자의 특정 에피소드들의 hidden_in_recent 필드 업데이트
+	@Modifying
+	@Query("UPDATE EpisodeProgress ep SET ep.hiddenInRecent = :hidden WHERE ep.user.id = :userId AND ep.episode.id IN :episodeIds")
+	int updateHiddenInRecentByUserAndEpisodes(@Param("userId") Long userId, @Param("episodeIds") List<Long> episodeIds, @Param("hidden") Boolean hidden);
+	
+	// 사용자의 특정 에피소드들의 진행률 완전 삭제
+	@Modifying
+	@Query("DELETE FROM EpisodeProgress ep WHERE ep.user.id = :userId AND ep.episode.id IN :episodeIds")
+	int deleteByUser_IdAndEpisode_IdIn(@Param("userId") Long userId, @Param("episodeIds") List<Long> episodeIds);
 }
