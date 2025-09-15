@@ -20,7 +20,7 @@
     <select id="findFavoriteAnimesByUser" resultType="com.ottproject.ottbackend.dto.FavoriteAnimeDto"> <!-- 유저별 찜 목록 -->
         SELECT
         a.id AS aniId, <!-- DTO.aniId -->
-        a.title AS title, <!-- DTO.title -->
+        COALESCE(a.title, a.title_en, a.title_jp, '제목 없음') AS title, <!-- DTO.title - null인 경우 대체 제목 사용 -->
         a.poster_url AS posterUrl, <!-- DTO.posterUrl -->
         a.rating AS rating, <!-- DTO.rating -->
         a.rating_count AS ratingCount, <!-- DTO.ratingCount -->
