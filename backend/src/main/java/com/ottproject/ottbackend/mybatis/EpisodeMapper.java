@@ -4,7 +4,7 @@ import com.ottproject.ottbackend.dto.EpisodeDto;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.util.Optional;
+import java.util.List;
 
 /**
  * EpisodeMapper
@@ -34,4 +34,11 @@ public interface EpisodeMapper {
      * @return 다음 에피소드 정보 (없으면 null)
      */
     EpisodeDto findNextEpisode(@Param("animeId") Long animeId, @Param("episodeNumber") Integer episodeNumber);
+
+    /**
+     * 애니메이션 ID로 에피소드 목록 조회
+     * @param animeId 애니메이션 ID
+     * @return 에피소드 목록
+     */
+    List<EpisodeDto> findEpisodesByAnimeId(@Param("animeId") Long animeId);
 }
