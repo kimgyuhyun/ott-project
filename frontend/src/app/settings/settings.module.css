@@ -27,18 +27,18 @@
 
 /* 설정 섹션 */
 .settingsSection {
-  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  background: none;
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1.5rem;
-  border: 1px solid #2a2a2a;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  border: none;
+  box-shadow: none;
   transition: all 0.3s ease;
 }
 
 .settingsSection:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  border-color: #3a3a3a;
+  box-shadow: none;
+  border-color: none;
 }
 
 /* 섹션 제목 */
@@ -56,7 +56,6 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 1rem 0;
-  border-bottom: 1px solid #2a2a2a;
 }
 
 .accountItem:last-child {
@@ -68,6 +67,41 @@
   flex-direction: column;
   gap: 0.25rem;
   flex: 1;
+}
+
+.accountContent {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.passwordValue {
+  font-size: 0.875rem;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.passwordChangeButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #F7F7F7;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.passwordChangeButton:hover {
+  background: rgba(129, 107, 255, 0.1);
+  border-color: #816BFF;
+  color: #816BFF;
+  text-decoration: none;
 }
 
 .accountLabel {
@@ -190,10 +224,31 @@
 
 /* 체크박스 */
 .checkbox {
-  width: 1.25rem;
-  height: 1.25rem;
-  accent-color: #816BFF;
+  width: 1rem;
+  height: 1rem;
+  background: none;
+  border: 2px solid #ABABAB;
+  border-radius: 4px;
   cursor: pointer;
+  appearance: none;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.checkbox:checked {
+  background: #816BFF;
+  border-color: #816BFF;
+}
+
+.checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
 }
 
 .checkboxLabel {

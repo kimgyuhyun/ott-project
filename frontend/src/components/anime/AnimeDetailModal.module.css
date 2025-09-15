@@ -30,6 +30,63 @@
   background-color: var(--background-1, #121212);
 }
 
+/* 메뉴 버튼 컨테이너 */
+.menuButtonContainer {
+  position: absolute;
+  top: 1rem;
+  right: 3.5rem;
+  z-index: 20;
+}
+
+/* 점3개 메뉴 버튼 */
+.menuButton {
+  color: var(--foreground-3, #ABABAB);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s;
+}
+
+.menuButton:hover {
+  color: var(--foreground-2, #ABABAB);
+}
+
+.menuButton svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* 드롭다운 메뉴 */
+.dropdownMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--background-1, #121212);
+  border: 1px solid var(--border-1, #333);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 30;
+  min-width: 160px;
+  overflow: hidden;
+}
+
+.dropdownItem {
+  display: block;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  color: var(--foreground-1, #ffffff);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.dropdownItem:hover {
+  background-color: var(--background-2, #1a1a1a);
+}
+
 /* 애니상세모달 닫기 버튼 */
 .animeDetailModalCloseButton {
   position: absolute;
@@ -51,6 +108,74 @@
 .animeDetailModalCloseButton svg {
   width: 24px;
   height: 24px;
+}
+
+/* 시청 기록 초기화 확인 모달 */
+.confirmModalOverlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.confirmModal {
+  background: var(--background-1, #121212);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+.confirmModalTitle {
+  color: var(--foreground-1, #ffffff);
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1rem 0;
+}
+
+.confirmModalMessage {
+  color: var(--foreground-2, #ABABAB);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin: 0 0 1.5rem 0;
+}
+
+.confirmModalButtons {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+}
+
+.confirmModalCancel {
+  padding: 0.75rem 1.5rem;
+  background: var(--background-2, #1a1a1a);
+  color: var(--foreground-1, #ffffff);
+  border: 1px solid var(--border-1, #333);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.confirmModalCancel:hover {
+  background: var(--background-3, #2a2a2a);
+}
+
+.confirmModalConfirm {
+  padding: 0.75rem 1.5rem;
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.confirmModalConfirm:hover {
+  background: #c82333;
 }
 
 /* 상단 정보 섹션 */

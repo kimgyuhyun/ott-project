@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.stereotype.Repository;
 import org.springframework.lang.NonNull;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -30,4 +31,7 @@ public interface EpisodeRepository extends JpaRepository<Episode, Long> { // 에
 
 	@Modifying(clearAutomatically = true, flushAutomatically = true) // DML + 동기화
 	int deleteByAnime_Id(Long aniId); // 파생 삭제 메서드로 대체
+	
+	// 애니메이션 ID로 에피소드 목록 조회
+	List<Episode> findByAnime_Id(Long aniId);
 }

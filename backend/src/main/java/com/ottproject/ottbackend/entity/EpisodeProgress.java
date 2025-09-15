@@ -55,6 +55,10 @@ public class EpisodeProgress { // 시청 진행률
 	@Column(nullable = false) // 수정 시각
 	private LocalDateTime updatedAt; // 갱신 시각
 
+	// 최근본 목록에서 숨김 여부
+	@Column(nullable = false) // 숨김 여부
+	private Boolean hiddenInRecent = false; // 최근본 목록 숨김 (기본값: false)
+
 	// ===== 정적 팩토리 메서드 =====
 
 	/**

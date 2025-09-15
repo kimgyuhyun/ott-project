@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { getUserSettings, updateUserSettings, changePassword, changeEmail } from "@/lib/api/user";
 import { useAuth } from "@/lib/AuthContext";
@@ -177,15 +178,19 @@ export default function SettingsPage() {
             
             <div className={styles.accountItem}>
               <div className={styles.accountInfo}>
-                <span className={styles.accountLabel}>비밀번호</span>
-                <span className={styles.accountValue}>*********</span>
+                <div className={styles.passwordRow}>
+                  <span className={styles.accountLabel}>비밀번호</span>
+                  <div className={styles.passwordContent}>
+                    <div className={styles.passwordValue}>*********</div>
+                  <Link
+                    href="/settings/password"
+                    className={styles.passwordChangeButton}
+                  >
+                    비밀번호 변경
+                  </Link>
+                  </div>
+                </div>
               </div>
-              <button
-                onClick={() => {/* 비밀번호 변경 모달 열기 */}}
-                className={styles.accountButton}
-              >
-                비밀번호 변경
-              </button>
             </div>
             
             <div className={styles.accountItem}>
@@ -276,36 +281,6 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* 테마 섹션 */}
-          <div className={styles.settingsSection}>
-            <h2 className={styles.settingsSectionTitle}>테마</h2>
-            
-            <div className={styles.themeGroup}>
-              <button
-                onClick={() => handleThemeChange('light')}
-                className={`${styles.themeButton} ${settingsForm.theme === 'light' ? styles.themeButtonActive : ''}`}
-              >
-                <div className={styles.themeIcon}>☀️</div>
-                <span className={styles.themeLabel}>라이트</span>
-              </button>
-              
-              <button
-                onClick={() => handleThemeChange('dark')}
-                className={`${styles.themeButton} ${settingsForm.theme === 'dark' ? styles.themeButtonActive : ''}`}
-              >
-                <div className={styles.themeIcon}>🌙</div>
-                <span className={styles.themeLabel}>다크</span>
-              </button>
-              
-              <button
-                onClick={() => handleThemeChange('system')}
-                className={`${styles.themeButton} ${settingsForm.theme === 'system' ? styles.themeButtonActive : ''}`}
-              >
-                <div className={styles.themeIcon}>⚙️</div>
-                <span className={styles.themeLabel}>시스템</span>
-              </button>
-            </div>
-          </div>
         </div>
       </main>
     </div>
