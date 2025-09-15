@@ -6,6 +6,7 @@ import { getAnimeDetail, listAnime } from "@/lib/api/anime";
 import AnimeCard from "@/components/home/AnimeCard";
 import { getAnimeWatchHistory } from "@/lib/api/user";
 import { toggleFavorite, isFavorited } from "@/lib/api/favorites";
+import { deleteFromBinge } from "@/lib/api/user";
 import styles from "./AnimeDetailModal.module.css";
 import AnimeFullInfoModal from "@/components/anime/AnimeFullInfoModal";
 
@@ -34,12 +35,33 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   const [showFullSynopsis, setShowFullSynopsis] = useState<boolean>(false);
   const MAX_SYNOPSIS_CHARS = 180;
   const [isFullInfoOpen, setIsFullInfoOpen] = useState<boolean>(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState<boolean>(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false);
 
   // 평점 변경 콜백 함수
   const handleRatingChange = (newRating: number) => {
     setCurrentRating(newRating);
     // detail 객체의 rating도 업데이트
     setDetail((prev: any) => ({ ...prev, rating: newRating }));
+  };
+
+  // 시청 기록 초기화 핸들러
+  const handleDeleteWatchHistory = async () => {
+    try {
+      console.log('🗑️ 시청 기록 초기화 시작 - aniId:', detail?.aniId);
+      await deleteFromBinge(detail?.aniId);
+      console.log('🗑️ 시청 기록 초기화 완료');
+      
+      // 시청 기록 상태 초기화
+      setWatchHistory(null);
+      setShowDeleteConfirm(false);
+      setIsDropdownOpen(false);
+      
+      alert('시청 기록이 초기화되었습니다.');
+    } catch (error) {
+      console.error('시청 기록 초기화 실패:', error);
+      alert('시청 기록 초기화에 실패했습니다.');
+    }
   };
 
   useEffect(() => {
@@ -211,6 +233,34 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       
       {/* 모달 컨테이너 */}
       <div className={`${styles.animeDetailModalContainer} ${isFullInfoOpen ? styles.dimTabs : ''}`}>
+        {/* 점3개 메뉴 버튼 - X버튼 왼쪽 */}
+        <div className={styles.menuButtonContainer}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className={styles.menuButton}
+            aria-label="메뉴"
+          >
+            <svg fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+            </svg>
+          </button>
+          
+          {/* 드롭다운 메뉴 */}
+          {isDropdownOpen && (
+            <div className={styles.dropdownMenu}>
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(true);
+                  setIsDropdownOpen(false);
+                }}
+                className={styles.dropdownItem}
+              >
+                시청 기록 초기화
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* 닫기 버튼 - 상단 오른쪽 */}
         <button
           onClick={onClose}
@@ -491,6 +541,33 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             <AnimeFullInfoModal isOpen={isFullInfoOpen} onClose={() => setIsFullInfoOpen(false)} detail={detail} />
           </div>
         </div>
+
+        {/* 시청 기록 초기화 확인 모달 */}
+        {showDeleteConfirm && (
+          <div className={styles.confirmModalOverlay}>
+            <div className={styles.confirmModal}>
+              <h3 className={styles.confirmModalTitle}>시청 기록 초기화</h3>
+              <p className={styles.confirmModalMessage}>
+                이 작품의 모든 시청 기록이 완전히 삭제됩니다.<br/>
+                정말로 초기화하시겠습니까?
+              </p>
+              <div className={styles.confirmModalButtons}>
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className={styles.confirmModalCancel}
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleDeleteWatchHistory}
+                  className={styles.confirmModalConfirm}
+                >
+                  확인
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 탭 메뉴 */}
         <div className={styles.tabMenu}>
