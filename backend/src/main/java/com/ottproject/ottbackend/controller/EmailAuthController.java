@@ -146,13 +146,13 @@ public class EmailAuthController {
         return ResponseEntity.ok("회원탈퇴가 완료되었습니다."); // 200 OK 상태코드와 함께 탈퇴 완료 메시지 반환
     }
 
-    // 비밀번호 변경 API 엔드포인트 - PUT /api/auth/change-password
+    // 비밀번호 변경 API 엔드포인트 - PUT /api/settings/change-password
     @Operation(summary = "비밀번호 변경", description = "세션 사용자 비밀번호 변경")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "변경 완료"),
             @ApiResponse(responseCode = "400", description = "로그인 필요")
     })
-    @PutMapping("/change-password")
+    @PutMapping("/settings/change-password")
     public ResponseEntity<String> changePassword(HttpSession session, @RequestBody ChangePasswordRequestDto requestDto) {
         //@RequestBody 로 JSON 형태의 비밀번호 변경 요청 데이터를 DTO 객체로 변환
         String userEmail = (String) session.getAttribute("userEmail"); // 세션에서 사용자 이메일 가져오기
