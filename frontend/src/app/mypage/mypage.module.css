@@ -463,22 +463,23 @@
 /* 애니메이션 그리드 */
 .animeGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* 반응형 그리드 */
+  grid-template-columns: repeat(auto-fill, minmax(180px, 200px)); /* 고정 크기 그리드 */
   gap: 1.5rem 1rem; /* 세로/가로 간격 더 넉넉하게 */
   padding: 0 0.5rem; /* 좌우 여백 추가 */
   min-height: 12rem; /* 목록이 적어도 영역 유지 */
+  justify-content: start; /* 왼쪽 정렬 */
   justify-items: center; /* 카드 중앙 정렬 */
 }
 
 @media (min-width: 768px) {
   .animeGrid {
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 220px));
   }
 }
 
 @media (min-width: 1024px) {
   .animeGrid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 240px));
   }
 }
 
