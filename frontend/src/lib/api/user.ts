@@ -218,8 +218,8 @@ export async function getUserStats() {
 
 // 비밀번호 변경
 export async function changePassword(passwordData: any) {
-  return apiCall('/api/user/change-password', {
-    method: 'POST',
+  return apiCall('/api/settings/change-password', {
+    method: 'PUT',
     body: JSON.stringify(passwordData),
   });
 }
@@ -230,4 +230,68 @@ export async function changeEmail(emailData: any) {
     method: 'POST',
     body: JSON.stringify(emailData),
   });
+}
+
+// 사용자 정주행 완료 작품 조회
+export async function getUserBingeList() {
+  console.log('🌐 [FRONTEND] getUserBingeList 호출');
+  
+  try {
+    const result = await apiCall('/api/mypage/binge');
+    console.log('🌐 [FRONTEND] getUserBingeList 응답:', result);
+    return result;
+  } catch (error: any) {
+    // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
+    if (error?.status === 401) {
+      console.log('🔍 정주행 목록 조회 실패: 로그인 필요 (401)');
+      return [];
+    }
+    console.error('🌐 [FRONTEND] getUserBingeList 에러:', error);
+    throw error;
+  }
+}
+
+// 최근본 목록에서 숨김 처리
+export async function hideFromRecent(aniId: number) {
+  console.log('🌐 [FRONTEND] hideFromRecent 호출 - aniId:', aniId);
+  
+  try {
+    await apiCall(`/api/mypage/recent/anime/${aniId}`, {
+      method: 'DELETE'
+    });
+    console.log('🌐 [FRONTEND] hideFromRecent 성공');
+  } catch (error: any) {
+    console.error('🌐 [FRONTEND] hideFromRecent 에러:', error);
+    throw error;
+  }
+}
+
+// 찜 취소 (보고싶다 목록에서 삭제)
+export async function removeFromWantList(aniId: number) {
+  console.log('🌐 [FRONTEND] removeFromWantList 호출 - aniId:', aniId);
+  
+  try {
+    await apiCall(`/api/anime/${aniId}/favorite`, {
+      method: 'POST'
+    });
+    console.log('🌐 [FRONTEND] removeFromWantList 성공');
+  } catch (error: any) {
+    console.error('🌐 [FRONTEND] removeFromWantList 에러:', error);
+    throw error;
+  }
+}
+
+// 정주행 목록에서 완전 삭제 (시청 기록 완전 삭제)
+export async function deleteFromBinge(aniId: number) {
+  console.log('🌐 [FRONTEND] deleteFromBinge 호출 - aniId:', aniId);
+  
+  try {
+    await apiCall(`/api/mypage/binge/anime/${aniId}`, {
+      method: 'DELETE'
+    });
+    console.log('🌐 [FRONTEND] deleteFromBinge 성공');
+  } catch (error: any) {
+    console.error('🌐 [FRONTEND] deleteFromBinge 에러:', error);
+    throw error;
+  }
 }
