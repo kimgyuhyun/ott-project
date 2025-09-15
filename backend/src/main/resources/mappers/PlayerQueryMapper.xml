@@ -28,6 +28,7 @@
             FROM episode_progress ep
             JOIN episodes e ON e.id = ep.episode_id
             WHERE ep.user_id = #{userId}
+            AND (ep.hidden_in_recent IS NULL OR ep.hidden_in_recent = false)
         ) t
         WHERE t.rn = 1
         <if test="cursorUpdatedAt != null and cursorAnimeId != null">
