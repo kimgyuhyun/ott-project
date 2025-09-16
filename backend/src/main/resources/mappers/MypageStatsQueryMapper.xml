@@ -4,14 +4,14 @@
 <!-- 마이페이지 집계 전용 매퍼 -->
 <mapper namespace="com.ottproject.ottbackend.mybatis.MypageStatsQueryMapper">
 
-    <!-- 유저별 보고싶다/리뷰/댓글 집계 -->
+    <!-- 유저별 별점/리뷰/댓글 집계 -->
     <select id="findMypageStatsByUserId" resultType="com.ottproject.ottbackend.dto.MypageStatsDto">
         SELECT
-            -- 보고싶다 개수
+            -- 별점 개수
             (SELECT COUNT(1)
-             FROM ani_favorites f
-             WHERE f.user_id = #{userId}
-            ) AS wantCount,
+             FROM ratings rt
+             WHERE rt.user_id = #{userId}
+            ) AS ratingCount,
 
             -- 리뷰 개수
             (SELECT COUNT(1)
