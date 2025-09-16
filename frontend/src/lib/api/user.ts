@@ -295,3 +295,73 @@ export async function deleteFromBinge(aniId: number) {
     throw error;
   }
 }
+
+// 내 활동: 별점 목록
+export async function getMyRatings(page: number = 0, size: number = 20) {
+  const qs = `page=${page}&size=${size}&t=${Date.now()}`;
+  console.log('🌐 [FRONTEND] getMyRatings 요청:', qs);
+  try {
+    const res = await apiCall(`/api/mypage/ratings?${qs}`);
+    console.log('🌐 [FRONTEND] getMyRatings 응답:', res);
+    return res;
+  } catch (error: any) {
+    if (error?.status === 401) {
+      console.log('🔍 내 별점 조회 실패: 로그인 필요 (401)');
+      return [];
+    }
+    console.error('🌐 [FRONTEND] getMyRatings 에러:', error);
+    throw error;
+  }
+}
+
+// 내 활동: 리뷰 목록
+export async function getMyReviews(page: number = 0, size: number = 20) {
+  const qs = `page=${page}&size=${size}&t=${Date.now()}`;
+  console.log('🌐 [FRONTEND] getMyReviews 요청:', qs);
+  try {
+    const res = await apiCall(`/api/mypage/reviews?${qs}`);
+    console.log('🌐 [FRONTEND] getMyReviews 응답:', res);
+    return res;
+  } catch (error: any) {
+    if (error?.status === 401) {
+      console.log('🔍 내 리뷰 조회 실패: 로그인 필요 (401)');
+      return [];
+    }
+    console.error('🌐 [FRONTEND] getMyReviews 에러:', error);
+    throw error;
+  }
+}
+
+// 내 활동: 댓글 목록
+export async function getMyComments(page: number = 0, size: number = 20) {
+  const qs = `page=${page}&size=${size}&t=${Date.now()}`;
+  console.log('🌐 [FRONTEND] getMyComments 요청:', qs);
+  try {
+    const res = await apiCall(`/api/mypage/comments?${qs}`);
+    console.log('🌐 [FRONTEND] getMyComments 응답:', res);
+    return res;
+  } catch (error: any) {
+    if (error?.status === 401) {
+      console.log('🔍 내 댓글 조회 실패: 로그인 필요 (401)');
+      return [];
+    }
+    console.error('🌐 [FRONTEND] getMyComments 에러:', error);
+    throw error;
+  }
+}
+
+// 좋아요 토글 APIs
+export async function toggleReviewLike(aniId: number, reviewId: number) {
+  console.log('🌐 [FRONTEND] toggleReviewLike', { aniId, reviewId });
+  return apiCall(`/api/anime/${aniId}/reviews/${reviewId}/like`, { method: 'POST' });
+}
+
+export async function toggleReviewCommentLike(reviewId: number, commentId: number) {
+  console.log('🌐 [FRONTEND] toggleReviewCommentLike', { reviewId, commentId });
+  return apiCall(`/api/reviews/${reviewId}/comments/${commentId}/like`, { method: 'POST' });
+}
+
+export async function toggleEpisodeCommentLike(episodeId: number, commentId: number) {
+  console.log('🌐 [FRONTEND] toggleEpisodeCommentLike', { episodeId, commentId });
+  return apiCall(`/api/episodes/${episodeId}/comments/${commentId}/like`, { method: 'POST' });
+}
