@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.ottproject.ottbackend.mybatis.MypageActivityQueryMapper">
+
+    <!-- 내 별점 목록: 최신 수정순 -->
+    <select id="findMyRatings" resultType="com.ottproject.ottbackend.dto.MyRatingItemDto">
+        SELECT
+            a.id           AS animeId,
+            COALESCE(a.title, a.title_en) AS title,
+            a.poster_url   AS posterUrl,
+            CAST(r.score AS DOUBLE PRECISION) AS score,
+            r.updated_at   AS updatedAt
+        FROM ratings r
+        JOIN anime a ON a.id = r.ani_id
+        WHERE r.user_id = #{userId}
+        ORDER BY r.updated_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 내 리뷰 목록: 활성 상태 최신 수정순 -->
+    <select id="findMyReviews" resultType="com.ottproject.ottbackend.dto.MyReviewItemDto">
+        SELECT
+            rv.id          AS reviewId,
+            a.id           AS animeId,
+            COALESCE(a.title, a.title_en) AS title,
+            a.poster_url   AS posterUrl,
+            rv.content     AS content,
+            CAST(rt.score AS DOUBLE PRECISION) AS score,
+            (SELECT COUNT(1) FROM review_likes rl WHERE rl.review_id = rv.id) AS likeCount,
+            rv.created_at  AS createdAt,
+            rv.updated_at  AS updatedAt
+        FROM reviews rv
+        JOIN anime a ON a.id = rv.ani_id
+        LEFT JOIN ratings rt ON rt.user_id = rv.user_id AND rt.ani_id = rv.ani_id
+        WHERE rv.user_id = #{userId}
+          AND rv.status = 'ACTIVE'
+        ORDER BY rv.updated_at DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+    <!-- 내 댓글 목록: 활성 상태 최신 작성순 (리뷰/작품 조인 가능 시) -->
+    <select id="findMyComments" resultType="com.ottproject.ottbackend.dto.MyCommentItemDto">
+        SELECT * FROM (
+            -- 리뷰 댓글/대댓글
+            SELECT
+                c.id           AS commentId,
+                'REVIEW'       AS targetType,
+                c.review_id    AS targetId,
+                c.parent_id    AS parentId,
+                a.id           AS animeId,
+                COALESCE(a.title, a.title_en) AS title,
+                NULL           AS episodeTitle,
+                a.poster_url   AS posterUrl,
+                c.content      AS content,
+                (SELECT COUNT(1) FROM comment_likes cl WHERE cl.comment_id = c.id) AS likeCount,
+                c.created_at   AS createdAt,
+                u.profile_image AS userProfileImage
+            FROM comments c
+            JOIN reviews rv ON rv.id = c.review_id
+            JOIN anime a ON a.id = rv.ani_id
+            JOIN users u ON u.id = c.user_id
+            WHERE c.user_id = #{userId}
+              AND c.status = 'ACTIVE'
+
+            UNION ALL
+
+            -- 에피소드 댓글/대댓글
+            SELECT
+                ec.id          AS commentId,
+                'EPISODE'      AS targetType,
+                ec.episode_id  AS targetId,
+                ec.parent_id   AS parentId,
+                a2.id          AS animeId,
+                COALESCE(a2.title, a2.title_en) AS title,
+                e.title        AS episodeTitle,
+                a2.poster_url  AS posterUrl,
+                e.thumbnail_url AS episodeThumbUrl,
+                ec.content     AS content,
+                (SELECT COUNT(1) FROM episode_comment_likes ecl WHERE ecl.episode_comment_id = ec.id) AS likeCount,
+                ec.created_at  AS createdAt,
+                u2.profile_image AS userProfileImage
+            FROM episode_comments ec
+            JOIN episodes e ON e.id = ec.episode_id
+            JOIN anime a2 ON a2.id = e.anime_id
+            JOIN users u2 ON u2.id = ec.user_id
+            WHERE ec.user_id = #{userId}
+              AND ec.status = 'ACTIVE'
+        ) t
+        ORDER BY t.createdAt DESC
+        LIMIT #{limit} OFFSET #{offset}
+    </select>
+
+</mapper>
+
+
