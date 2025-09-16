@@ -222,6 +222,12 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   ];
 
   const episodes = Array.isArray(detail?.episodes) ? detail.episodes : [];
+  const getFallbackEpisodeThumb = (episodeNumber?: number) => {
+    const n = Number(episodeNumber);
+    if (n === 1) return 'https://placehold.co/120x80/111827/ffffff?text=EP1+Thumbnail';
+    if (n === 2) return 'https://placehold.co/120x80/1f2937/ffffff?text=EP2+Thumbnail';
+    return 'https://placehold.co/120x80/374151/ffffff?text=Episode';
+  };
 
   return (
     <div className={styles.animeDetailModalOverlay}>
@@ -607,7 +613,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                   >
                     <div className={styles.episodeThumbnail}>
                       <img 
-                        src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
+                        src={episode.thumbnailUrl || getFallbackEpisodeThumb(episode.episodeNumber)} 
                         alt={episode.title}
                         className={styles.episodeThumbnailImage}
                       />
