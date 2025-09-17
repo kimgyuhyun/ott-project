@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
@@ -15,6 +16,8 @@ type ActivityTab = 'ratings' | 'reviews' | 'comments';
  * 프로필 정보, 활동 통계, 보관함 탭 포함
  */
 export default function MyPage() {
+  const searchParams = useSearchParams();
+  
   const formatRelativeTime = (isoLike?: string) => {
     if (!isoLike) return '';
     const t = new Date(isoLike).getTime();
@@ -56,6 +59,19 @@ export default function MyPage() {
 
   // 멤버십 상태
   const { userMembership, isLoading: isLoadingMembership } = useMembershipData();
+  
+  // URL 파라미터 처리
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    const activityTab = searchParams.get('activityTab');
+    
+    if (tab === 'activity') {
+      setViewMode('activity');
+      if (activityTab === 'ratings' || activityTab === 'reviews' || activityTab === 'comments') {
+        setActivityTab(activityTab as ActivityTab);
+      }
+    }
+  }, [searchParams]);
   const getKoreanPlanName = (raw?: string | null) => {
     const s = String(raw ?? '').toLowerCase();
     if (s.includes('premium')) return '프리미엄';
@@ -198,13 +214,13 @@ export default function MyPage() {
   };
 
   // 애니메이션 선택/해제
-  const toggleAnimeSelection = (animeId: number) => {
+  const toggleAnimeSelection = (id: number) => {
     setSelectedAnimeIds(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(animeId)) {
-        newSet.delete(animeId);
+      if (newSet.has(id)) {
+        newSet.delete(id);
       } else {
-        newSet.add(animeId);
+        newSet.add(id);
       }
       return newSet;
     });
@@ -212,26 +228,54 @@ export default function MyPage() {
 
   // 전체선택/해제
   const handleSelectAll = () => {
-    if (activeTab === 'recent') {
-      if (selectedAnimeIds.size === watchHistory.length) {
-        setSelectedAnimeIds(new Set());
-      } else {
-        const allIds = new Set(watchHistory.map(anime => anime.aniId));
-        setSelectedAnimeIds(allIds);
+    if (viewMode === 'archive') {
+      if (activeTab === 'recent') {
+        if (selectedAnimeIds.size === watchHistory.length) {
+          setSelectedAnimeIds(new Set());
+        } else {
+          const allIds = new Set(watchHistory.map(anime => anime.aniId));
+          setSelectedAnimeIds(allIds);
+        }
+      } else if (activeTab === 'want') {
+        if (selectedAnimeIds.size === wantList.length) {
+          setSelectedAnimeIds(new Set());
+        } else {
+          const allIds = new Set(wantList.map(anime => anime.aniId));
+          setSelectedAnimeIds(allIds);
+        }
+      } else if (activeTab === 'binge') {
+        if (selectedAnimeIds.size === bingeList.length) {
+          setSelectedAnimeIds(new Set());
+        } else {
+          const allIds = new Set(bingeList.map(anime => anime.aniId));
+          setSelectedAnimeIds(allIds);
+        }
       }
-    } else if (activeTab === 'want') {
-      if (selectedAnimeIds.size === wantList.length) {
-        setSelectedAnimeIds(new Set());
-      } else {
-        const allIds = new Set(wantList.map(anime => anime.aniId));
-        setSelectedAnimeIds(allIds);
-      }
-    } else if (activeTab === 'binge') {
-      if (selectedAnimeIds.size === bingeList.length) {
-        setSelectedAnimeIds(new Set());
-      } else {
-        const allIds = new Set(bingeList.map(anime => anime.aniId));
-        setSelectedAnimeIds(allIds);
+    } else if (viewMode === 'activity') {
+      if (activityTab === 'ratings') {
+        const ratingsLength = myRatings?.length || 0;
+        if (selectedAnimeIds.size === ratingsLength) {
+          setSelectedAnimeIds(new Set());
+        } else {
+          const allIds = new Set((myRatings || []).map(rating => rating.animeId));
+          setSelectedAnimeIds(allIds);
+        }
+      } else if (activityTab === 'reviews') {
+        const reviewsLength = myReviews?.length || 0;
+        if (selectedAnimeIds.size === reviewsLength) {
+          setSelectedAnimeIds(new Set());
+        } else {
+          const allIds = new Set((myReviews || []).map(review => review.animeId));
+          setSelectedAnimeIds(allIds);
+        }
+      } else if (activityTab === 'comments') {
+        const commentsLength = myComments?.length || 0;
+        if (selectedAnimeIds.size === commentsLength) {
+          setSelectedAnimeIds(new Set());
+        } else {
+          const allIds = new Set((myComments || []).map(comment => comment.commentId));
+          setSelectedAnimeIds(allIds);
+        }
       }
     }
   };
@@ -274,6 +318,17 @@ export default function MyPage() {
         
         // 프론트엔드 state 업데이트
         setBingeList(prev => prev.filter(anime => !selectedAnimeIds.has(anime.aniId)));
+      } else if (viewMode === 'activity') {
+        if (activityTab === 'ratings') {
+          // 별점 삭제: 프론트엔드에서만 제거 (실제 삭제 API는 없음)
+          setMyRatings(prev => prev?.filter(rating => !selectedAnimeIds.has(rating.animeId)) || []);
+        } else if (activityTab === 'reviews') {
+          // 리뷰 삭제: 프론트엔드에서만 제거 (실제 삭제 API는 없음)
+          setMyReviews(prev => prev?.filter(review => !selectedAnimeIds.has(review.animeId)) || []);
+        } else if (activityTab === 'comments') {
+          // 댓글 삭제: 프론트엔드에서만 제거 (실제 삭제 API는 없음)
+          setMyComments(prev => prev?.filter(comment => !selectedAnimeIds.has(comment.commentId)) || []);
+        }
       }
       
       setIsDeleteMode(false);
@@ -285,9 +340,18 @@ export default function MyPage() {
 
   // 애니메이션 클릭 핸들러
   const handleAnimeClick = async (anime: any) => {
+    // 댓글 탭 + 삭제 모드에서는 commentId로 토글
+    if (isDeleteMode && viewMode === 'activity' && activityTab === 'comments') {
+      const cid = Number(anime?.commentId);
+      if (cid) {
+        toggleAnimeSelection(cid);
+      }
+      return;
+    }
+
     const aniId = anime?.aniId ?? anime?.id ?? anime?.animeId;
     
-    // 삭제 모드일 때는 선택/해제만
+    // 삭제 모드일 때는 선택/해제만 (기본: aniId)
     if (isDeleteMode) {
       toggleAnimeSelection(aniId);
       return;
@@ -776,20 +840,140 @@ export default function MyPage() {
                         </button>
                       ))}
                     </div>
+                    
+                    {/* 삭제 버튼 - 활동 탭에서 데이터가 있을 때만 표시 */}
+                    {activityTab === 'ratings' && myRatings && myRatings.length > 0 && (
+                      <div className={styles.deleteButtonGroup}>
+                        {!isDeleteMode ? (
+                          <button 
+                            className={styles.deleteButton}
+                            onClick={toggleDeleteMode}
+                          >
+                            <svg className={styles.deleteIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>삭제</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button 
+                              className={styles.cancelButton}
+                              onClick={toggleDeleteMode}
+                            >
+                              <span>취소</span>
+                            </button>
+                            <button 
+                              className={styles.confirmDeleteButton}
+                              onClick={deleteSelectedAnime}
+                              disabled={selectedAnimeIds.size === 0}
+                            >
+                              <span>삭제 ({selectedAnimeIds.size})</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    
+                    {activityTab === 'reviews' && myReviews && myReviews.length > 0 && (
+                      <div className={styles.deleteButtonGroup}>
+                        {!isDeleteMode ? (
+                          <button 
+                            className={styles.deleteButton}
+                            onClick={toggleDeleteMode}
+                          >
+                            <svg className={styles.deleteIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>삭제</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button 
+                              className={styles.cancelButton}
+                              onClick={toggleDeleteMode}
+                            >
+                              <span>취소</span>
+                            </button>
+                            <button 
+                              className={styles.confirmDeleteButton}
+                              onClick={deleteSelectedAnime}
+                              disabled={selectedAnimeIds.size === 0}
+                            >
+                              <span>삭제 ({selectedAnimeIds.size})</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    
+                    {activityTab === 'comments' && myComments && myComments.length > 0 && (
+                      <div className={styles.deleteButtonGroup}>
+                        {!isDeleteMode ? (
+                          <button 
+                            className={styles.deleteButton}
+                            onClick={toggleDeleteMode}
+                          >
+                            <svg className={styles.deleteIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            <span>삭제</span>
+                          </button>
+                        ) : (
+                          <>
+                            <button 
+                              className={styles.cancelButton}
+                              onClick={toggleDeleteMode}
+                            >
+                              <span>취소</span>
+                            </button>
+                            <button 
+                              className={styles.confirmDeleteButton}
+                              onClick={deleteSelectedAnime}
+                              disabled={selectedAnimeIds.size === 0}
+                            >
+                              <span>삭제 ({selectedAnimeIds.size})</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className={styles.tabContent}>
                     {activityTab === 'ratings' && (
                       <div>
-                        <h3 className={styles.tabTitle}>내 별점 ({(myRatings?.length ?? 0)})</h3>
+                        {!isDeleteMode ? (
+                          <h3 className={styles.tabTitle}>내 별점 ({(myRatings?.length ?? 0)})</h3>
+                        ) : (
+                          <div className={styles.selectAllContainer}>
+                            <input 
+                              type="checkbox" 
+                              checked={selectedAnimeIds.size === (myRatings?.length || 0) && (myRatings?.length || 0) > 0}
+                              onChange={handleSelectAll}
+                              className={styles.selectAllCheckbox}
+                            />
+                            <label className={styles.selectAllLabel}>
+                              전체선택 ({selectedAnimeIds.size})
+                            </label>
+                          </div>
+                        )}
                         {Array.isArray(myRatings) && myRatings.length > 0 ? (
                           <div className={styles.animeGrid}>
-                            {myRatings.map((item: any, idx: number) => (
-                              <div 
-                                key={`${item.animeId ?? 'rating'}-${idx}`}
-                                className={styles.animeItem}
-                                onClick={() => handleAnimeClick({ aniId: item.animeId, animeId: item.animeId, title: item.title, posterUrl: item.posterUrl })}
-                              >
+                            {myRatings.map((item: any, idx: number) => {
+                              const aniId = item.animeId;
+                              const isSelected = selectedAnimeIds.has(aniId);
+                              
+                              return (
+                                <div 
+                                  key={`${aniId ?? 'rating'}-${idx}`}
+                                  className={`${styles.animeItem} ${isDeleteMode ? styles.selectable : ''} ${isSelected ? styles.selected : ''}`}
+                                  onClick={() => handleAnimeClick({ aniId: item.animeId, animeId: item.animeId, title: item.title, posterUrl: item.posterUrl })}
+                                >
+                                  {isDeleteMode && isSelected && (
+                                    <div className={styles.selectionIndicator}>
+                                      ✓
+                                    </div>
+                                  )}
                                 <div 
                                   className={styles.animePoster}
                                   style={{
@@ -806,8 +990,9 @@ export default function MyPage() {
                                   </svg>
                                   <span style={{ color: '#7C6BFF', fontWeight: 700 }}>{(item.score ?? 0).toFixed(1)}</span>
                                 </div>
-                              </div>
-                            ))}
+                                </div>
+                              );
+                            })}
                           </div>
                         ) : (
                           <div className={styles.emptyState}>활동 없음</div>
@@ -817,15 +1002,34 @@ export default function MyPage() {
 
                     {activityTab === 'reviews' && (
                       <div>
-                        <h3 className={styles.tabTitle}>리뷰 ({(myReviews?.length ?? 0)})</h3>
+                        {!isDeleteMode ? (
+                          <h3 className={styles.tabTitle}>리뷰 ({(myReviews?.length ?? 0)})</h3>
+                        ) : (
+                          <div className={styles.selectAllContainer}>
+                            <input 
+                              type="checkbox" 
+                              checked={selectedAnimeIds.size === (myReviews?.length || 0) && (myReviews?.length || 0) > 0}
+                              onChange={handleSelectAll}
+                              className={styles.selectAllCheckbox}
+                            />
+                            <label className={styles.selectAllLabel}>
+                              전체선택 ({selectedAnimeIds.size})
+                            </label>
+                          </div>
+                        )}
                         {Array.isArray(myReviews) && myReviews.length > 0 ? (
                           <div className={styles.reviewList}>
-                            {myReviews.map((item: any, idx: number) => (
-                              <button
-                                key={`${item.reviewId ?? 'review'}-${idx}`}
-                                className={styles.reviewItemButton}
-                                onClick={() => handleAnimeClick({ aniId: item.animeId, animeId: item.animeId, title: item.title, posterUrl: item.posterUrl })}
-                              >
+                            {myReviews.map((item: any, idx: number) => {
+                              const aniId = item.animeId;
+                              const isSelected = selectedAnimeIds.has(aniId);
+                              
+                              return (
+                                <div
+                                  key={`${item.reviewId ?? 'review'}-${idx}`}
+                                  className={`${styles.reviewItemButton} ${isDeleteMode ? styles.selectable : ''} ${isSelected ? styles.selected : ''}`}
+                                  onClick={() => handleAnimeClick({ aniId: item.animeId, animeId: item.animeId, title: item.title, posterUrl: item.posterUrl })}
+                                >
+                                  {/* 리뷰 카드에서는 체크 배지를 포스터 위에만 표시 */}
                                 <div className={styles.reviewHeader}>
                                   <div>
                                     <h3 className={styles.reviewTitle}>{item.title}</h3>
@@ -875,11 +1079,15 @@ export default function MyPage() {
                                     </div>
                                   </div>
                                   <div className={styles.reviewPosterWrap}>
+                                    {isDeleteMode && isSelected && (
+                                      <div className={styles.thumbCheckOverlay}>✓</div>
+                                    )}
                                     <img className={styles.reviewPoster} src={item.posterUrl} alt={item.title} />
                                   </div>
                                 </div>
-                              </button>
-                            ))}
+                                </div>
+                              );
+                            })}
                           </div>
                         ) : (
                           <div className={styles.emptyState}>활동 없음</div>
@@ -890,7 +1098,21 @@ export default function MyPage() {
                     {activityTab === 'comments' && (
                       <div>
                         <div className={styles.commentListHeader}>
-                          <h3 className={styles.tabTitle} style={{ marginBottom: 0 }}>댓글 ({(myComments?.length ?? 0)})</h3>
+                          {!isDeleteMode ? (
+                            <h3 className={styles.tabTitle} style={{ marginBottom: 0 }}>댓글 ({(myComments?.length ?? 0)})</h3>
+                          ) : (
+                            <div className={styles.selectAllContainer}>
+                              <input 
+                                type="checkbox" 
+                                checked={selectedAnimeIds.size === (myComments?.length || 0) && (myComments?.length || 0) > 0}
+                                onChange={handleSelectAll}
+                                className={styles.selectAllCheckbox}
+                              />
+                              <label className={styles.selectAllLabel}>
+                                전체선택 ({selectedAnimeIds.size})
+                              </label>
+                            </div>
+                          )}
                           <select
                             aria-label="댓글 정렬"
                             className={styles.commentSortSelect}
@@ -911,13 +1133,18 @@ export default function MyPage() {
                           console.log('[mypage:comments] sorted', commentSort, { count: sorted.length });
                           return (
                             <div className={styles.reviewList} role="list" aria-label="내 댓글 목록">
-                              {sorted.map((item: any, idx: number) => (
-                                <button
-                                  role="listitem"
-                                  key={`${item.commentId ?? 'comment'}-${idx}`}
-                                  className={`${styles.reviewItemButton} ${styles.commentItem}`}
-                                  onClick={() => handleAnimeClick({ aniId: item.animeId, animeId: item.animeId, title: item.title, posterUrl: item.posterUrl })}
-                                >
+                              {sorted.map((item: any, idx: number) => {
+                                const commentId = item.commentId;
+                                const isSelected = selectedAnimeIds.has(commentId);
+                                
+                                return (
+                                  <div
+                                    role="listitem"
+                                    key={`${item.commentId ?? 'comment'}-${idx}`}
+                                    className={`${styles.reviewItemButton} ${styles.commentItem} ${isDeleteMode ? styles.selectable : ''} ${isSelected ? styles.selected : ''}`}
+                                    onClick={() => handleAnimeClick({ aniId: item.animeId, animeId: item.animeId, commentId: item.commentId, title: item.title, posterUrl: item.posterUrl })}
+                                  >
+                                    {/* 댓글 섹션에서는 카드 전체 체크 오버레이를 렌더링하지 않음 (썸네일 위에만 표시) */}
                                   <img
                                     className={styles.commentAvatar}
                                     src={item.userProfileImage || '/icons/default-avatar.png'}
@@ -973,10 +1200,14 @@ export default function MyPage() {
                                     </button>
                                   </div>
                                   <div className={styles.commentEpisodeThumb}>
-                                    <img src={item.episodeThumbUrl || '/icons/default-avatar.png'} alt={item.episodeTitle || item.title} />
+                                    {isDeleteMode && isSelected && (
+                                      <div className={styles.thumbCheckOverlay}>✓</div>
+                                    )}
+                                    <img src={item.episodeThumbUrl || item.posterUrl || '/icons/default-avatar.png'} alt={item.episodeTitle || item.title} />
                                   </div>
-                                </button>
-                              ))}
+                                  </div>
+                                );
+                              })}
                             </div>
                           );
                         })() : (

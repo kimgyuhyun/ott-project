@@ -56,6 +56,12 @@ public class UserSettings { // 사용자 재생 설정
     @Column(nullable = false) // 알림 설정
     private Boolean notifications = true; // 알림 활성화
 
+    @Column(nullable = false) // 관심작품 업데이트 알림
+    private Boolean notificationWorkUpdates = true; // 관심작품 업데이트 알림
+
+    @Column(nullable = false) // 커뮤니티 활동 알림
+    private Boolean notificationCommunityActivity = true; // 커뮤니티 활동 알림
+
     @Column(nullable = false) // 자동 재생 설정
     private Boolean autoPlay = false; // 자동 재생
 
@@ -88,6 +94,8 @@ public class UserSettings { // 사용자 재생 설정
         settings.theme = null; // 기본값은 null
         settings.language = "ko";
         settings.notifications = true;
+        settings.notificationWorkUpdates = true;
+        settings.notificationCommunityActivity = true;
         settings.autoPlay = false;
 
         return settings;
@@ -131,6 +139,8 @@ public class UserSettings { // 사용자 재생 설정
         settings.theme = theme;
         settings.language = language.trim();
         settings.notifications = notifications;
+        settings.notificationWorkUpdates = true;
+        settings.notificationCommunityActivity = true;
         settings.autoPlay = false;
 
         return settings;

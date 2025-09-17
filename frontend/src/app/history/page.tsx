@@ -2,6 +2,32 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getPaymentHistory, PaymentHistoryItem } from "@/lib/api/membership";
+import styles from "./history.module.css";
+
+function formatDate(dateLike?: string): string {
+  if (!dateLike) return "";
+  const d = new Date(dateLike);
+  if (isNaN(d.getTime())) return String(dateLike);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function mapPlanName(raw?: string, provider?: string): string {
+  const s = String(raw || provider || "").toLowerCase();
+  if (s.includes("premium")) return "프리미엄 멤버십";
+  // 기본은 멤버십으로 표시
+  return "멤버십";
+}
+
+function mapMethod(raw?: string, provider?: string): string {
+  const s = String(raw || provider || "").toLowerCase();
+  if (s.includes("kakao")) return "카카오페이";
+  if (s.includes("danal") || s.includes("mobile")) return "다날(휴대폰)";
+  if (s.includes("toss")) return "토스페이";
+  if (s.includes("naver")) return "네이버페이";
+  if (s.includes("card")) return "신용카드";
+  return raw || provider || "";
+}
 
 export default function HistoryPage() {
   const [items, setItems] = useState<PaymentHistoryItem[]>([]);
@@ -12,7 +38,7 @@ export default function HistoryPage() {
     (async () => {
       try {
         const data = await getPaymentHistory();
-        setItems(data || []);
+        setItems(Array.isArray(data) ? data : []);
       } catch (e: any) {
         setError(e?.message || "불러오기 실패");
       } finally {
@@ -22,51 +48,42 @@ export default function HistoryPage() {
   }, []);
 
   return (
-    <main style={{ maxWidth: 800, margin: "40px auto", padding: "0 16px" }}>
-      <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 16 }}>이용내역</h1>
+    <main className={styles.historyPage}>
+      <h2 className={styles.title}>이용내역</h2>
 
-      <div style={{ marginBottom: 16, color: "#777" }}>
-        결제/구독 관련 내역을 임시로 표시합니다. (개발용)
-      </div>
-
-      {loading && <div>로딩 중...</div>}
-      {error && <div style={{ color: "crimson" }}>{error}</div>}
+      {loading && <div className={styles.stateText}>로딩 중...</div>}
+      {error && <div className={`${styles.stateText} ${styles.error}`}>{error}</div>}
 
       {!loading && !error && (
-        <div style={{ border: "1px solid #e5e7eb", borderRadius: 8 }}>
+        <div className={styles.listContainer}>
           {items.length === 0 && (
-            <div style={{ padding: 16, color: "#6b7280" }}>내역이 없습니다.</div>
+            <div className={styles.empty}>내역이 없습니다.</div>
           )}
-          {items.map((it) => (
-            <div
-              key={it.id as any}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 120px 160px 120px",
-                gap: 12,
-                alignItems: "center",
-                padding: 12,
-                borderBottom: "1px solid #f3f4f6",
-              }}
-            >
-              <div style={{ fontWeight: 600 }}>{it.description || it.planName || it.provider || "-"}</div>
-              <div style={{ textAlign: "right" }}>{typeof it.amount === "number" ? `${it.amount.toLocaleString()}원` : "-"}</div>
-              <div style={{ color: "#6b7280" }}>{it.createdAt || it.paidAt || "-"}</div>
-              <div style={{ textAlign: "right" }}>{it.status || "-"}</div>
-            </div>
-          ))}
+
+          {items.map((it) => {
+            const dateText = formatDate(it.createdAt || it.paidAt || "");
+            const nameText = mapPlanName(it.planName || it.description, it.provider);
+            const methodText = mapMethod(it.method, it.provider);
+            const amountText = typeof it.amount === "number" ? `${it.amount.toLocaleString()}원` : "";
+            return (
+              <div key={String(it.id)} className={styles.itemRow}>
+                <div className={styles.colLeft}>
+                  {dateText && <span className={styles.colDate}>{dateText}</span>}
+                  {nameText && <span className={styles.plan}>{nameText}</span>}
+                </div>
+                <div className={styles.colRight}>
+                  {methodText && <span className={styles.method}>{methodText}</span>}
+                  {amountText && <span className={styles.price}>{amountText}</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      <div style={{ marginTop: 24 }}>
-        <Link href="/membership/guide" style={{ textDecoration: "none" }}>
-          <button style={{
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #e5e7eb",
-            background: "#f9fafb",
-            cursor: "pointer"
-          }}>멤버십 가이드 보기</button>
+      <div className={styles.footerActions}>
+        <Link href="/membership/guide" className={styles.linkButton}>
+          멤버십 가이드 보기
         </Link>
       </div>
     </main>

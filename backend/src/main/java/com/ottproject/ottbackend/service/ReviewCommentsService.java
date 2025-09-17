@@ -12,6 +12,7 @@ import com.ottproject.ottbackend.repository.CommentLikeRepository;
 import com.ottproject.ottbackend.repository.CommentRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import com.ottproject.ottbackend.service.NotificationTriggerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ public class ReviewCommentsService {
     private final ReviewRepository reviewRepository; // 부모 리뷰 검증/연관
     private final UserRepository userRepository; // 작성자 검증/연관
     private final CommentLikeRepository commentLikeRepository; // 좋아요 CUD
+    private final NotificationTriggerService notificationTriggerService; // 알림 트리거 서비스
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<ReviewCommentsResponseDto> listByReview(Long reviewId, Long currentUserId, int page, int size) {
@@ -94,7 +96,12 @@ public class ReviewCommentsService {
             comment = Comment.createReply(user, review, parent, content);
         }
 
-        return commentRepository.save(comment).getId(); // 저장 후 ID 반환
+        Comment savedComment = commentRepository.save(comment); // 저장 후 ID 반환
+        
+        // 대댓글인 경우 알림 생성 (리뷰 댓글은 현재 NotificationTriggerService에서 처리하지 않음)
+        // TODO: 리뷰 댓글 알림 로직 추가 필요
+        
+        return savedComment.getId();
     }
 
     public void updateContent(Long commentId, Long userId, String content) { // 본인 댓글 수정
@@ -133,7 +140,12 @@ public class ReviewCommentsService {
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
         try {
-            commentLikeRepository.save(CommentLike.createLike(user, comment)); // on 시도
+            CommentLike like = CommentLike.createLike(user, comment);
+            CommentLike savedLike = commentLikeRepository.save(like); // on 시도
+            
+            // 좋아요 알림 생성
+            notificationTriggerService.triggerCommentLikeNotification(savedLike);
+            
             return true; // on
         } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
             commentLikeRepository.deleteByUser_IdAndComment_Id(userId, commentId);

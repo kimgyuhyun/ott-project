@@ -22,4 +22,6 @@ public class UserSettingsDto { // 사용자 재생 설정
     private String defaultQuality; // 기본 화질
     private Boolean autoNextEpisode; // 다음 화 자동재생
     private String theme; // 테마 설정 (light/dark)
+    private Boolean notificationWorkUpdates; // 관심작품 업데이트 알림
+    private Boolean notificationCommunityActivity; // 커뮤니티 활동 알림
 }

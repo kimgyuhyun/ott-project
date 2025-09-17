@@ -1,15 +1,21 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useMembershipData } from "@/hooks/useMembershipData";
+import { getUserStats } from "@/lib/api/user";
+import { getUnreadNotificationCount } from "@/lib/api/notification";
 import SearchBar from "@/components/search/SearchBar";
+import NotificationDropdown from "./NotificationDropdown";
 import styles from "./Header.module.css";
 
 export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [userStats, setUserStats] = useState<any>(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
   const { userMembership } = useMembershipData();
@@ -28,9 +34,44 @@ export default function Header() {
     setIsProfileOpen(false);
   };
 
+  // 사용자 통계 로드
+  useEffect(() => {
+    if (isAuthenticated) {
+      getUserStats()
+        .then(stats => setUserStats(stats))
+        .catch(err => console.error('통계 로드 실패:', err));
+    }
+  }, [isAuthenticated]);
+
+  // 읽지 않은 알림 개수 로드
+  useEffect(() => {
+    const loadUnreadCount = async () => {
+      if (isAuthenticated) {
+        try {
+          const count = await getUnreadNotificationCount();
+          setUnreadNotificationCount(count as number);
+        } catch (error) {
+          console.error('읽지 않은 알림 개수 로드 실패:', error);
+        }
+      }
+    };
+
+    loadUnreadCount();
+    
+    // 주기적으로 알림 개수 확인 (5분마다)
+    const interval = setInterval(loadUnreadCount, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   // 검색 실행 처리
   const handleSearch = (query: string) => {
     window.location.href = `/tags?search=${encodeURIComponent(query)}`;
+  };
+
+  // 알림 드롭다운 토글
+  const handleNotificationToggle = () => {
+    setIsNotificationOpen(!isNotificationOpen);
+    setIsProfileOpen(false);
   };
 
   // 멤버십 링크 결정 (멤버십 구독 중이거나 사용 가능 기간 내의 멤버는 모두 guide로)
@@ -108,11 +149,27 @@ export default function Header() {
             )}
 
             {/* 알림 버튼 */}
-            <button className={styles.headerButton}>
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.5 19a2.5 2.5 0 01-2.5-2.5V7a2.5 2.5 0 012.5-2.5h15a2.5 2.5 0 012.5 2.5v9.5a2.5 2.5 0 01-2.5 2.5h-15z" />
-              </svg>
-            </button>
+            {isAuthenticated && (
+              <div className={styles.notificationContainer}>
+                <button 
+                  className={styles.headerButton}
+                  onClick={handleNotificationToggle}
+                >
+                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.5 19a2.5 2.5 0 01-2.5-2.5V7a2.5 2.5 0 012.5-2.5h15a2.5 2.5 0 012.5 2.5v9.5a2.5 2.5 0 01-2.5 2.5h-15z" />
+                  </svg>
+                  {unreadNotificationCount > 0 && (
+                    <span className={styles.notificationBadge}>
+                      {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                    </span>
+                  )}
+                </button>
+                <NotificationDropdown 
+                  isOpen={isNotificationOpen}
+                  onClose={() => setIsNotificationOpen(false)}
+                />
+              </div>
+            )}
 
             {/* 로그인 상태에 따른 표시 */}
             {isAuthenticated ? (
@@ -153,71 +210,139 @@ export default function Header() {
                 {/* 프로필 드롭다운 메뉴 */}
                 {isProfileOpen && (
                   <div className={styles.headerDropdown}>
-                    <div style={{ padding: '0.25rem 0' }}>
-                      {/* 사용자 정보 표시 */}
-                      <div style={{ padding: '0.5rem 1rem', borderBottom: '1px solid #323232' }}>
-                        <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#F7F7F7' }}>
-                          {user?.username || '사용자'}
-                        </p>
-                        <p style={{ fontSize: '0.75rem', color: '#ABABAB' }}>
-                          {user?.email || ''}
-                        </p>
+                    <div className={styles.dropdownContent}>
+                      {/* 사용자 프로필 섹션 */}
+                      <div className={styles.userProfileSection}>
+                        <div className={styles.userProfileInfo}>
+                          <div className={styles.userProfileImage}>
+                            {user?.profileImage ? (
+                              <img 
+                                src={user.profileImage} 
+                                alt="프로필" 
+                              />
+                            ) : (
+                              <img src="/icons/default-avatar.png" alt="default" />
+                            )}
+                          </div>
+                          <div className={styles.userProfileDetails}>
+                            <div className={styles.userNameRow}>
+                              <span className={styles.userName}>
+                                {user?.username || '사용자'}
+                              </span>
+                              <svg className={styles.arrowIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </div>
+                            <div className={styles.userLevelRow}>
+                              <span className={styles.babyIcon}>👶</span>
+                              <span className={styles.userLevel}>Lv.0 베이비</span>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        {/* 사용자 통계 섹션 */}
+                        <div className={styles.userStatsSection}>
+                          <Link
+                            href="/mypage?tab=activity&activityTab=ratings"
+                            onClick={() => setIsProfileOpen(false)}
+                            className={styles.statItem}
+                          >
+                            <span className={styles.statNumber}>{userStats?.ratingCount || 0}</span>
+                            <span className={styles.statLabel}>별점</span>
+                          </Link>
+                          <Link
+                            href="/mypage?tab=activity&activityTab=reviews"
+                            onClick={() => setIsProfileOpen(false)}
+                            className={styles.statItem}
+                          >
+                            <span className={styles.statNumber}>{userStats?.reviewCount || 0}</span>
+                            <span className={styles.statLabel}>리뷰</span>
+                          </Link>
+                          <Link
+                            href="/mypage?tab=activity&activityTab=comments"
+                            onClick={() => setIsProfileOpen(false)}
+                            className={styles.statItem}
+                          >
+                            <span className={styles.statNumber}>{userStats?.commentCount || 0}</span>
+                            <span className={styles.statLabel}>댓글</span>
+                          </Link>
+                        </div>
+                        
+                        {/* 보관함 버튼 */}
+                        <Link
+                          href="/mypage"
+                          onClick={() => setIsProfileOpen(false)}
+                          className={styles.archiveButton}
+                        >
+                          <svg className={styles.archiveIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H7a2 2 0 01-2-2V8z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h8" />
+                          </svg>
+                          <span>보관함</span>
+                        </Link>
                       </div>
-                      
-                      {/* 보관함 */}
-                      <Link
-                        href="/mypage"
-                        onClick={() => setIsProfileOpen(false)}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <button className={styles.headerDropdownItem}>
-                          보관함
-                        </button>
-                      </Link>
-                      
-                      {/* 라프텔 멤버십 */}
-                      <Link
-                        href={getMembershipLink()}
-                        onClick={() => setIsProfileOpen(false)}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <button className={styles.headerDropdownItem}>
-                          라프텔 멤버십
-                        </button>
-                      </Link>
 
-                      {/* 설정 */}
-                      <Link
-                        href="/settings"
-                        onClick={() => setIsProfileOpen(false)}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <button className={styles.headerDropdownItem}>
-                          설정
-                        </button>
-                      </Link>
-                      
-                      {/* 이용내역 (임시) */}
-                      <Link
-                        href="/history"
-                        onClick={() => setIsProfileOpen(false)}
-                        style={{ textDecoration: 'none' }}
-                      >
-                        <button className={styles.headerDropdownItem}>
-                          이용내역
-                        </button>
-                      </Link>
+                      {/* 메뉴 항목들 */}
+                      <div className={styles.menuItems}>
+                        {/* 라프텔 멤버십 */}
+                        <Link
+                          href={getMembershipLink()}
+                          onClick={() => setIsProfileOpen(false)}
+                          className={styles.menuItem}
+                        >
+                          <svg className={styles.menuIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                          </svg>
+                          <span>라프텔 멤버십</span>
+                        </Link>
+                        
+                        {/* 이용내역 */}
+                        <Link
+                          href="/history"
+                          onClick={() => setIsProfileOpen(false)}
+                          className={styles.menuItem}
+                        >
+                          <svg className={styles.menuIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span>이용내역</span>
+                        </Link>
 
-                      {/* 구분선 */}
-                      <div className={styles.headerDropdownDivider} />
-                      
-                      {/* 로그아웃 */}
-                      <button
-                        className={`${styles.headerDropdownItem} ${styles.logout}`}
-                        onClick={handleLogout}
-                      >
-                        로그아웃
-                      </button>
+                        {/* 구분선 */}
+                        <div className={styles.menuDivider} />
+                        
+                        {/* 설정 */}
+                        <Link
+                          href="/settings"
+                          onClick={() => setIsProfileOpen(false)}
+                          className={styles.menuItem}
+                        >
+                          <svg className={styles.menuIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          <span>설정</span>
+                        </Link>
+                        
+                        {/* 고객센터 */}
+                        <button className={styles.menuItem}>
+                          <svg className={styles.menuIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                          </svg>
+                          <span>고객센터</span>
+                        </button>
+                        
+                        {/* 로그아웃 */}
+                        <button
+                          className={`${styles.menuItem} ${styles.logoutItem}`}
+                          onClick={handleLogout}
+                        >
+                          <svg className={styles.menuIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          <span>로그아웃</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

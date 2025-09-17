@@ -68,6 +68,12 @@ public class SettingsService { // 사용자 재생 설정
         if (dto.getTheme() != null) {
             userSettings.setTheme(dto.getTheme());
         }
+        if (dto.getNotificationWorkUpdates() != null) {
+            userSettings.setNotificationWorkUpdates(dto.getNotificationWorkUpdates());
+        }
+        if (dto.getNotificationCommunityActivity() != null) {
+            userSettings.setNotificationCommunityActivity(dto.getNotificationCommunityActivity());
+        }
 
         userSettingsRepository.save(userSettings);
     }
@@ -82,6 +88,8 @@ public class SettingsService { // 사용자 재생 설정
                 .defaultQuality(userSettings.getDefaultQuality())
                 .autoNextEpisode(userSettings.getAutoNextEpisode())
                 .theme(userSettings.getTheme())
+                .notificationWorkUpdates(userSettings.getNotificationWorkUpdates())
+                .notificationCommunityActivity(userSettings.getNotificationCommunityActivity())
                 .build();
     }
 }

@@ -636,14 +636,57 @@
   overflow: hidden;
   flex-shrink: 0;
   grid-area: thumb;
+  position: relative;
 }
 
 .commentEpisodeThumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center 20%;
   transform: scale(1);
   transition: transform .2s ease;
+}
+
+/* 카드 전체 오버레이(보라 원 체크)는 리뷰/평점 등에서만 사용. 댓글 아이템에는 적용하지 않음 */
+.reviewItemButton:not(.commentItem).selected .selectionIndicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3rem;
+  height: 3rem;
+  background-color: #8b5cf6;
+  color: #FFFFFF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 댓글 썸네일 전용 체크 오버레이 (보라 배경, 흰 텍스트) */
+.thumbCheckOverlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #8b5cf6;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .commentEpisodeThumb:hover img { transform: scale(1.02); }
@@ -685,6 +728,28 @@
   overflow: hidden;
   border-radius: 6px;
   flex-shrink: 0;
+  position: relative;
+}
+
+/* reuse the same circular overlay for reviews */
+.reviewPosterWrap .thumbCheckOverlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #8b5cf6;
+  color: #FFFFFF;
+  font-weight: 800;
+  font-size: 20px;
+  line-height: 1;
+  z-index: 2;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
 .reviewPoster {

@@ -20,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
@@ -242,11 +244,14 @@ public class PlayerService {
     }
     
     /**
-     * 사용자의 시청 기록 조회 (페이지네이션)
+     * 사용자의 시청 기록 조회 (페이지네이션, 90일 제한)
      */
     public Map<String, Object> getWatchHistory(Long userId, int page, int size) {
-        // 사용자의 진행률이 있는 에피소드들을 조회
-        var progressList = progressRepository.findByUser_IdOrderByUpdatedAtDesc(userId, 
+        // 90일 전 날짜 계산
+        LocalDateTime ninetyDaysAgo = LocalDateTime.now().minus(90, ChronoUnit.DAYS);
+        
+        // 사용자의 진행률이 있는 에피소드들을 조회 (90일 제한)
+        var progressList = progressRepository.findByUser_IdAndUpdatedAtAfterOrderByUpdatedAtDesc(userId, ninetyDaysAgo, 
             org.springframework.data.domain.PageRequest.of(page, size));
         
         // 결과 구성
