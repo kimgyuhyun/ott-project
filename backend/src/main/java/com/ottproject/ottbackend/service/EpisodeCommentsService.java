@@ -12,6 +12,7 @@ import com.ottproject.ottbackend.repository.EpisodeCommentLikeRepository;
 import com.ottproject.ottbackend.repository.EpisodeCommentRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import com.ottproject.ottbackend.service.NotificationTriggerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -43,6 +44,7 @@ public class EpisodeCommentsService {
     private final EpisodeRepository episodeRepository; // 부모 에피소드 검증/연관
     private final UserRepository userRepository; // 작성자 검증/연관
     private final EpisodeCommentLikeRepository commentLikeRepository; // 좋아요 CUD
+    private final NotificationTriggerService notificationTriggerService; // 알림 트리거 서비스
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<EpisodeCommentsResponseDto> listByEpisode(Long episodeId, Long currentUserId, int page, int size) {
@@ -89,7 +91,14 @@ public class EpisodeCommentsService {
                 ? EpisodeComment.createComment(user, episode, content)
                 : EpisodeComment.createReply(user, episode, parent, content);
 
-        return commentRepository.save(comment).getId(); // 저장 후 ID 반환
+        EpisodeComment savedComment = commentRepository.save(comment); // 저장 후 ID 반환
+        
+        // 대댓글인 경우 알림 생성
+        if (parent != null) {
+            notificationTriggerService.triggerEpisodeCommentNotification(savedComment);
+        }
+        
+        return savedComment.getId();
     }
 
     public void updateContent(Long commentId, Long userId, String content) { // 본인 댓글 수정
@@ -128,7 +137,12 @@ public class EpisodeCommentsService {
         EpisodeComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
         try {
-            commentLikeRepository.save(EpisodeCommentLike.createLike(user, comment)); // on 시도
+            EpisodeCommentLike like = EpisodeCommentLike.createLike(user, comment);
+            EpisodeCommentLike savedLike = commentLikeRepository.save(like); // on 시도
+            
+            // 좋아요 알림 생성
+            notificationTriggerService.triggerEpisodeCommentLikeNotification(savedLike);
+            
             return true; // on
         } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
             commentLikeRepository.deleteByUser_IdAndEpisodeComment_Id(userId, commentId);
