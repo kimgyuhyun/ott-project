@@ -1,0 +1,70 @@
+.historyPage {
+  max-width: 720px;
+  margin: 40px auto;
+  padding: 0 16px 40px;
+  color: #F7F7F7;
+  background-color: #000000;
+}
+
+.title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.stateText {
+  color: #ABABAB;
+  padding: 12px 0;
+}
+
+.error { color: #FF6B6B; }
+
+.listContainer {
+  border: none;
+  border-radius: 0;
+  background-color: #000000; /* 배경과 통일 */
+}
+
+.itemRow {
+  display: grid;
+  grid-template-columns: 1fr auto; /* 좌측(날짜+이름), 우측(결제수단+금액) */
+  gap: 12px;
+  align-items: center;
+  padding: 14px 0; /* 좌우 여백 제거, 라인만 보이도록 */
+  border-bottom: 1px solid #1f1f1f; /* 가로선만 */
+  background-color: #000000; /* 배경과 통일 */
+}
+
+.itemRow:last-child { border-bottom: none; }
+
+.colLeft { display: flex; align-items: center; gap: 12px; }
+.colDate { color: #ABABAB; font-size: 0.875rem; }
+.plan { font-weight: 600; font-size: 1rem; }
+
+.colRight { display: flex; align-items: center; gap: 12px; justify-content: flex-end; }
+.method { color: #ABABAB; font-size: 0.875rem; }
+.price { font-weight: 700; }
+
+.empty {
+  padding: 16px 0;
+  color: #ABABAB;
+  text-align: center;
+  background-color: #000000; /* 배경과 통일 */
+}
+
+.footerActions { margin-top: 24px; }
+.linkButton {
+  display: inline-block;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #323232;
+  background: #1a1a1a;
+  color: #F7F7F7;
+  text-decoration: none;
+}
+
+@media (max-width: 640px) {
+  .itemRow { grid-template-columns: 1fr; gap: 8px; }
+  .colLeft { justify-content: space-between; }
+  .colRight { justify-content: space-between; }
+}
