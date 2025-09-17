@@ -364,9 +364,9 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                 
                 {/* 관람등급 */}
                 <div className={styles.ageRatingBadge}>
-                  <svg width="36" height="36" viewBox="0 0 126 126" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M0 63C0 28.2061 28.2061 0 63 0C97.7939 0 126 28.2061 126 63C126 97.7939 97.7939 126 63 126C28.2061 126 0 97.7939 0 63Z" fill="#E9B62F" stroke="#FFFFFF" strokeWidth="10"/>
-                    <text x="63" y="85" textAnchor="middle" fill="#000" fontSize="10" fontWeight="bold">
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="10" cy="10" r="9" fill="#E9B62F" stroke="#FFFFFF" strokeWidth="2" />
+                    <text x="10" y="10" textAnchor="middle" dominantBaseline="central" fill="#000" fontSize="7" fontWeight="700">
                       {(() => {
                         const rating = detail?.ageRating;
                         if (rating === '전체 이용가') return 'ALL';
