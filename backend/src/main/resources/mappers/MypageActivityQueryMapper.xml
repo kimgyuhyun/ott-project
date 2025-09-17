@@ -52,6 +52,7 @@
                 COALESCE(a.title, a.title_en) AS title,
                 NULL           AS episodeTitle,
                 a.poster_url   AS posterUrl,
+                NULL           AS episodeThumbUrl,
                 c.content      AS content,
                 (SELECT COUNT(1) FROM comment_likes cl WHERE cl.comment_id = c.id) AS likeCount,
                 c.created_at   AS createdAt,
