@@ -82,6 +82,7 @@
   cursor: pointer;
   transition: color 0.2s;
   padding: 0.5rem;
+  position: relative;
 }
 
 .headerButton:hover {
@@ -91,6 +92,28 @@
 .headerButton svg {
   width: 1.5rem;
   height: 1.5rem;
+}
+
+.notificationContainer {
+  position: relative;
+}
+
+.notificationBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #ff4757;
+  color: white;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  padding: 0 2px;
 }
 
 .headerProfile {
@@ -165,7 +188,7 @@
   right: 0;
   top: 100%;
   margin-top: 0.5rem;
-  width: 12rem;
+  width: 250px;
   border-radius: 0.5rem;
   box-shadow: 0 10px 25px rgba(0,0,0,0.35);
   background-color: #121212;
@@ -271,6 +294,207 @@
   position: fixed;
   inset: 0;
   z-index: 998;
+}
+
+/* 드롭다운 컨텐츠 */
+.dropdownContent {
+  padding: 0;
+  min-width: 250px;
+  width: 250px;
+}
+
+/* 사용자 프로필 섹션 */
+.userProfileSection {
+  padding: 1.25rem;
+  border-bottom: 1px solid #323232;
+  box-sizing: border-box;
+  margin-bottom: 0.75rem;
+}
+
+.userProfileInfo {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0;
+  padding-top: 0.5rem;
+}
+
+.userProfileImage {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.userProfileImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.userProfileDetails {
+  flex: 1;
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: 0.5rem;
+}
+
+.userNameRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.userName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #F7F7F7;
+}
+
+.arrowIcon {
+  width: 16px;
+  height: 16px;
+  color: #ABABAB;
+}
+
+.userLevelRow {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.babyIcon {
+  font-size: 0.75rem;
+}
+
+.userLevel {
+  font-size: 0.875rem;
+  color: #ABABAB;
+}
+
+.userStats {
+  display: flex;
+  gap: 1rem;
+}
+
+/* 사용자 통계 섹션 */
+.userStatsSection {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem 1.25rem 1.25rem 1.25rem;
+  border-bottom: 1px solid #323232;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.125rem;
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.statItem:hover {
+  opacity: 0.8;
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.statNumber {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #F7F7F7;
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  color: #ABABAB;
+}
+
+.archiveButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 1rem;
+  background: none;
+  border: 1px solid #323232;
+  border-radius: 0.5rem;
+  color: #F7F7F7;
+  font-size: 1rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 0.2s;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.archiveButton:hover {
+  background-color: #323232;
+}
+
+.archiveIcon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* 메뉴 항목들 */
+.menuItems {
+  padding: 0.75rem 0;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  padding: 1rem 1.25rem;
+  background: none;
+  border: none;
+  color: #F7F7F7;
+  font-size: 1rem;
+  text-align: left;
+  text-decoration: none;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.menuItem:hover {
+  background-color: #2A2A2C;
+}
+
+.menuIcon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.menuDivider {
+  height: 1px;
+  background-color: #323232;
+  margin: 0.5rem 0;
+}
+
+.logoutItem {
+  color: #F7F7F7;
+  transition: background-color 0.2s;
+}
+
+.logoutItem:hover {
+  background-color: #2A2A2C;
+  color: #F7F7F7;
 }
 
 /* 반응형 스타일 */
