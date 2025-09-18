@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import NicknameSetupModal from "@/components/auth/NicknameSetupModal";
@@ -8,7 +8,7 @@ import NicknameSetupModal from "@/components/auth/NicknameSetupModal";
  * OAuth2 소셜 로그인 성공 콜백 페이지
  * 신규 사용자 여부에 따라 닉네임 설정 모달을 표시
  */
-export default function OAuth2SuccessPage() {
+function OAuth2SuccessContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [showNicknameModal, setShowNicknameModal] = useState(false);
   const router = useRouter();
@@ -98,17 +98,17 @@ export default function OAuth2SuccessPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-gray-600">로그인 처리 중...</div>
+      <div >
+        <div >로그인 처리 중...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <div className="text-xl text-green-600">소셜 로그인이 완료되었습니다!</div>
-        <div className="text-sm text-gray-600">잠시 후 홈페이지로 이동합니다.</div>
+    <div >
+      <div >
+        <div >소셜 로그인이 완료되었습니다!</div>
+        <div >잠시 후 홈페이지로 이동합니다.</div>
       </div>
       <NicknameSetupModal
         isOpen={showNicknameModal}
@@ -116,5 +116,13 @@ export default function OAuth2SuccessPage() {
         onSuccess={handleNicknameSuccess}
       />
     </div>
+  );
+}
+
+export default function OAuth2SuccessPage() {
+  return (
+    <Suspense fallback={<div><div>로그인 처리 중...</div></div>}>
+      <OAuth2SuccessContent />
+    </Suspense>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import Modal from "@/components/ui/Modal";
 import PosterWall from "@/components/auth/PosterWall";
 import SocialButton from "@/components/auth/SocialButton";
@@ -30,7 +31,7 @@ export default function LoginPage() {
           });
           return;
         }
-      } catch (_) {
+      } catch {
         // 실패 시 기본값으로 폴백
       }
       setOauthUrls({
@@ -79,13 +80,13 @@ export default function LoginPage() {
 
           <div className={styles.socialButtonsContainer}>
             <a href={oauthUrls.kakao} aria-label="kakao" className={`${styles.socialButton} ${styles.socialButtonKakao}`}>
-              <img alt="kakao" src="/icons/kakao.svg" className={styles.socialButtonIcon} />
+              <Image alt="kakao" src="/icons/kakao.svg" width={24} height={24} className={styles.socialButtonIcon} />
             </a>
             <a href={oauthUrls.google} aria-label="google" className={`${styles.socialButton} ${styles.socialButtonGoogle}`}>
-              <img alt="google" src="/icons/google.svg" className={styles.socialButtonIcon} />
+              <Image alt="google" src="/icons/google.svg" width={24} height={24} className={styles.socialButtonIcon} />
             </a>
             <a href={oauthUrls.naver} aria-label="naver" className={`${styles.socialButton} ${styles.socialButtonNaver}`}>
-              <img alt="naver" src="/icons/naver.svg" className={styles.socialButtonIcon} />
+              <Image alt="naver" src="/icons/naver.svg" width={24} height={24} className={styles.socialButtonIcon} />
             </a>
           </div>
 
