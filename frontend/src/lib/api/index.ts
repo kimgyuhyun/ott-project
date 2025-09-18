@@ -25,7 +25,7 @@ async function apiCall<T>(endpoint: string, init?: RequestInit): Promise<T> {
 				console.log('API 호출 실패:', errorMessage);
 			}
 			
-			const error = new Error(errorMessage) as any;
+			const error = new Error(errorMessage) as Error & { response: { status: number; data: { message: string } } };
 			error.response = { status: res.status, data: { message: text } };
 			throw error;
 		}
@@ -42,15 +42,15 @@ async function apiCall<T>(endpoint: string, init?: RequestInit): Promise<T> {
 // HTTP 메서드를 지원하는 API 객체
 export const api = {
 	get: <T>(endpoint: string) => apiCall<T>(endpoint, { method: 'GET' }),
-	post: <T>(endpoint: string, data?: any) => apiCall<T>(endpoint, { 
+	post: <T>(endpoint: string, data?: unknown) => apiCall<T>(endpoint, { 
 		method: 'POST', 
 		body: data ? JSON.stringify(data) : undefined 
 	}),
-	put: <T>(endpoint: string, data?: any) => apiCall<T>(endpoint, { 
+	put: <T>(endpoint: string, data?: unknown) => apiCall<T>(endpoint, { 
 		method: 'PUT', 
 		body: data ? JSON.stringify(data) : undefined 
 	}),
-	patch: <T>(endpoint: string, data?: any) => apiCall<T>(endpoint, { 
+	patch: <T>(endpoint: string, data?: unknown) => apiCall<T>(endpoint, { 
 		method: 'PATCH', 
 		body: data ? JSON.stringify(data) : undefined 
 	}),

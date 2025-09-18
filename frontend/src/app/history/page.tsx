@@ -39,8 +39,8 @@ export default function HistoryPage() {
       try {
         const data = await getPaymentHistory();
         setItems(Array.isArray(data) ? data : []);
-      } catch (e: any) {
-        setError(e?.message || "불러오기 실패");
+      } catch (e: unknown) {
+        setError((e as Error)?.message || "불러오기 실패");
       } finally {
         setLoading(false);
       }
@@ -61,12 +61,12 @@ export default function HistoryPage() {
           )}
 
           {items.map((it) => {
-            const dateText = formatDate(it.createdAt || it.paidAt || "");
-            const nameText = mapPlanName(it.planName || it.description, it.provider);
-            const methodText = mapMethod(it.method, it.provider);
+            const dateText = formatDate(it.paidAt || it.refundedAt || "");
+            const nameText = mapPlanName(it.planName);
+            const methodText = mapMethod(undefined, undefined);
             const amountText = typeof it.amount === "number" ? `${it.amount.toLocaleString()}원` : "";
             return (
-              <div key={String(it.id)} className={styles.itemRow}>
+              <div key={String(it.paymentId)} className={styles.itemRow}>
                 <div className={styles.colLeft}>
                   {dateText && <span className={styles.colDate}>{dateText}</span>}
                   {nameText && <span className={styles.plan}>{nameText}</span>}

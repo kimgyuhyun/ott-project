@@ -3,10 +3,11 @@ import { useState, useEffect, useRef } from "react";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import WeeklySchedule from "@/components/home/WeeklySchedule";
-import { getAnimeDetail } from "@/lib/api/anime";
+import { getAnimeDetail, listAnime } from "@/lib/api/anime";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import { useAuth } from "@/lib/AuthContext";
-import { getAnimeList, getRecommendedAnime, getPopularAnime, listAnime } from "@/lib/api/anime";
+import Image from "next/image";
+// import { getAnimeList, getRecommendedAnime, getPopularAnime, listAnime } from "@/lib/api/anime";
 import { api } from "@/lib/api/index";
 import styles from "./page.module.css";
 
@@ -15,12 +16,36 @@ import styles from "./page.module.css";
 type OAuthUserInfoResponse = {
   authenticated: boolean;
   username?: string;
-  authorities?: any;
-  principal?: any;
+  authorities?: string[];
+  principal?: string;
   oauth2User?: boolean;
   provider?: string;
-  attributes?: Record<string, any>;
+  attributes?: Record<string, unknown>;
 };
+
+interface Anime {
+  id: number;
+  title: string;
+  posterUrl: string;
+  rating: number;
+  status: string;
+  type: string;
+  year: number;
+  genres: string[];
+  studios: string[];
+  tags: string[];
+  synopsis: string;
+  fullSynopsis: string;
+  episodeCount: number;
+  duration: number;
+  ageRating: string;
+  createdAt: string;
+  updatedAt: string;
+  aniId?: number; // 추가된 속성
+  titleEn?: string; // 추가된 속성
+  titleJp?: string; // 추가된 속성
+  isNew?: boolean; // 추가된 속성
+}
 
 /**
  * 메인 홈페이지
@@ -28,11 +53,11 @@ type OAuthUserInfoResponse = {
  */
 export default function Home() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<any>(null);
-  const [animeList, setAnimeList] = useState<any[]>([]);
-  const [recommendedAnime, setRecommendedAnime] = useState<any[]>([]);
-  const [popularAnime, setPopularAnime] = useState<any[]>([]);
-  const [weeklyAnime, setWeeklyAnime] = useState<Record<string, any[]>>({});
+  const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
+  const [animeList, setAnimeList] = useState<Anime[]>([]);
+  const [recommendedAnime, setRecommendedAnime] = useState<Anime[]>([]);
+  const [popularAnime, setPopularAnime] = useState<Anime[]>([]);
+  const [weeklyAnime, setWeeklyAnime] = useState<Record<string, Anime[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
@@ -55,7 +80,7 @@ export default function Home() {
     }
   ];
 
-  const { user, isAuthenticated, login, logout } = useAuth();
+  const { user, isAuthenticated, login } = useAuth();
 
   // 캐러셀 참조
   const recommendedRef = useRef<HTMLDivElement | null>(null);
@@ -154,39 +179,70 @@ export default function Home() {
     setTheme();
   }, [isAuthenticated, user]);
 
-  // 소셜 로그인 후 사용자 상태 확인 (간소화)
+  // 로그인 상태 확인 (로컬 + 소셜 로그인)
   useEffect(() => {
     const checkAuthStatus = async () => {
       // 이미 로그인되어 있으면 체크하지 않음
       if (isAuthenticated) return;
       
       try {
-        // 백엔드에서 현재 로그인 상태 확인
-        const response = await api.get<OAuthUserInfoResponse>('/oauth2/user-info');
+        // 1. 먼저 로컬 로그인 상태 확인
+        try {
+          const localResponse = await api.get('/api/users/me');
+          if (localResponse) {
+            console.log('로컬 로그인 상태 확인 성공:', localResponse);
+            // localResponse를 User 타입으로 변환
+            const userData = {
+              id: String((localResponse as { id?: string | number }).id || 'unknown'),
+              username: String((localResponse as { username?: string }).username || ''),
+              email: String((localResponse as { email?: string }).email || ''),
+              profileImage: typeof (localResponse as { profileImage?: string }).profileImage === 'string' ? (localResponse as { profileImage?: string }).profileImage : undefined
+            };
+            login(userData);
+            return;
+          }
+        } catch (localError) {
+          // 로컬 로그인 실패 시 소셜 로그인 확인 (500 에러도 정상적으로 처리)
+          const errorStatus = (localError as Error & { response?: { status?: number } }).response?.status;
+          if (errorStatus === 500) {
+            console.log('로컬 로그인 API 서버 에러, 소셜 로그인 확인 중...');
+          } else {
+            console.log('로컬 로그인 없음, 소셜 로그인 확인 중...');
+          }
+        }
+
+        // 2. OAuth2 엔드포인트로 로그인 상태 확인 (로컬/소셜 구분)
+        const oauthResponse = await api.get<OAuthUserInfoResponse>('/oauth2/user-info');
         
-        if (response.authenticated && (response.attributes || response.username)) {
-          // OAuth2 사용자 정보를 AuthContext 형식으로 변환
+        if (oauthResponse.authenticated && (oauthResponse.attributes || oauthResponse.username)) {
+          // 로그인 타입 구분: attributes가 있으면 소셜 로그인, 없으면 로컬 로그인
+          const isSocialLogin = !!(oauthResponse.attributes && Object.keys(oauthResponse.attributes).length > 0);
+          
           const userData = {
-            id: (response as any).id || response.attributes?.userId || response.attributes?.id || 'unknown',
+            id: String((oauthResponse as { id?: string }).id || oauthResponse.attributes?.userId || oauthResponse.attributes?.id || 'unknown'),
             // DB 닉네임(response.username)이 있으면 최우선 사용
-            username: response.username || response.attributes?.userName || response.attributes?.name,
-            email: (response as any).email || response.attributes?.userEmail || response.attributes?.email || response.username,
-            profileImage: response.attributes?.picture || undefined
+            username: String(oauthResponse.username || oauthResponse.attributes?.userName || oauthResponse.attributes?.name || ''),
+            email: String((oauthResponse as { email?: string }).email || oauthResponse.attributes?.userEmail || oauthResponse.attributes?.email || oauthResponse.username || ''),
+            profileImage: typeof oauthResponse.attributes?.picture === 'string' ? oauthResponse.attributes.picture : undefined
           };
           
-          console.log('소셜 로그인 상태 확인 성공:', userData);
+          if (isSocialLogin) {
+            console.log('소셜 로그인 상태 확인 성공:', userData);
+          } else {
+            console.log('로컬 로그인 상태 확인 성공:', userData);
+          }
           login(userData);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         // 401 에러는 로그인되지 않은 상태이므로 정상
-        if (error.response?.status !== 401) {
+        if ((error as Error & { response?: { status?: number } }).response?.status !== 401) {
           console.error('로그인 상태 확인 실패:', error);
         }
       }
     };
 
     checkAuthStatus();
-  }, [isAuthenticated, login]);
+  }, [isAuthenticated]); // login 함수는 의존성에서 제거 (안정적인 함수)
 
   // 애니메이션 데이터 로드
   useEffect(() => {
@@ -206,14 +262,14 @@ export default function Home() {
         
         // 요일별 신작 데이터 로드
         const days = ['월', '화', '수', '목', '금', '토', '일'];
-        const weeklyData: Record<string, any[]> = {};
+        const weeklyData: Record<string, Anime[]> = {};
         
         for (const day of days) {
           try {
-            const response = await api.get(`/api/anime/weekly/${day}?limit=20`);
+            const response = await api.get(`/api/anime/weekly/${day}?limit=20`) as Anime[];
             const allAnime = Array.isArray(response) ? response : [];
             // 임시로 신작만 필터링해서 확인
-            const newAnime = allAnime.filter((anime: any) => anime.isNew === true);
+            const newAnime = allAnime.filter((anime: Anime) => anime.isNew === true);
             weeklyData[day] = newAnime;
             console.log(`${day}요일 전체 애니메이션:`, allAnime.length, '개, 신작만:', newAnime.length, '개');
           } catch (error) {
@@ -231,9 +287,9 @@ export default function Home() {
           popularDataKeys: Object.keys(popularData || {})
         });
         
-        const ongoingAnime = (animeListData as any).items || (animeListData as any).content || [];
-        const newAnime = recommendedData || []; // 개인화 추천은 직접 배열
-        const popularAnime = (popularData as any).items || (popularData as any).content || [];
+        const ongoingAnime = (animeListData as { items?: Anime[]; content?: Anime[] }).items || (animeListData as { items?: Anime[]; content?: Anime[] }).content || [];
+        const newAnime = (recommendedData as Anime[]) || []; // 개인화 추천은 직접 배열
+        const popularAnime = (popularData as { items?: Anime[]; content?: Anime[] }).items || (popularData as { items?: Anime[]; content?: Anime[] }).content || [];
         
         console.log('🔍 애니메이션 데이터 로드 결과:');
         console.log('방영중인 애니메이션:', ongoingAnime.length, ongoingAnime.slice(0, 3));
@@ -243,41 +299,42 @@ export default function Home() {
         // 필터링 전후 비교
         console.log('🔍 필터링 전후 비교:');
         console.log('방영중인 애니메이션 필터링 전:', ongoingAnime.length);
-        console.log('방영중인 애니메이션 필터링 후:', ongoingAnime.filter((anime: any) => (anime.title && anime.title.trim()) || (anime.titleEn && anime.titleEn.trim())).length);
+        console.log('방영중인 애니메이션 필터링 후:', ongoingAnime.filter((anime: Anime) => (anime.title && anime.title.trim()) || (anime.titleEn && anime.titleEn.trim())).length);
         console.log('첫 번째 애니메이션 필드들:', ongoingAnime[0] ? Object.keys(ongoingAnime[0]) : '없음');
         console.log('첫 번째 애니메이션 title/titleEn:', ongoingAnime[0] ? { title: ongoingAnime[0].title, titleEn: ongoingAnime[0].titleEn } : '없음');
         
         // title, titleEn, titleJp 중 하나라도 있는 애니메이션만 필터링
-        setAnimeList(ongoingAnime.filter((anime: any) => 
+        setAnimeList(ongoingAnime.filter((anime: Anime) => 
           (anime.title && anime.title.trim()) || 
           (anime.titleEn && anime.titleEn.trim()) || 
           (anime.titleJp && anime.titleJp.trim())
         ));
-        setRecommendedAnime(Array.isArray(newAnime) ? newAnime.filter((anime: any) => 
+        setRecommendedAnime(Array.isArray(newAnime) ? newAnime.filter((anime: Anime) => 
           (anime.title && anime.title.trim()) || 
           (anime.titleEn && anime.titleEn.trim()) || 
           (anime.titleJp && anime.titleJp.trim())
         ) : []);
-        setPopularAnime(popularAnime.filter((anime: any) => 
+        setPopularAnime(popularAnime.filter((anime: Anime) => 
           (anime.title && anime.title.trim()) || 
           (anime.titleEn && anime.titleEn.trim()) || 
           (anime.titleJp && anime.titleJp.trim())
         ));
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('애니메이션 데이터 로드 실패:', err);
         
         // 에러 메시지 개선
         let errorMessage = '애니메이션 데이터를 불러오는데 실패했습니다.';
         
-        if (err.message.includes('서버에 연결할 수 없습니다')) {
+        const errorMsg = (err as Error).message || '';
+        if (errorMsg.includes('서버에 연결할 수 없습니다')) {
           errorMessage = '백엔드 서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해주세요.';
-        } else if (err.message.includes('네트워크 연결')) {
+        } else if (errorMsg.includes('네트워크 연결')) {
           errorMessage = '네트워크 연결을 확인해주세요.';
-        } else if (err.message.includes('API Error: 401')) {
+        } else if (errorMsg.includes('API Error: 401')) {
           errorMessage = '인증이 필요합니다. 로그인해주세요.';
-        } else if (err.message.includes('API Error: 404')) {
+        } else if (errorMsg.includes('API Error: 404')) {
           errorMessage = '요청한 API를 찾을 수 없습니다.';
-        } else if (err.message.includes('API Error: 500')) {
+        } else if (errorMsg.includes('API Error: 500')) {
           errorMessage = '서버 내부 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
         }
         
@@ -306,7 +363,35 @@ export default function Home() {
   };
 
   // 애니메이션 클릭 핸들러
-  const handleAnimeClick = async (anime: any) => {
+  const handleAnimeClick = async (
+    anime: Anime | { aniId?: number; id?: number; title?: string; titleEn?: string; titleJp?: string; posterUrl?: string; isNew?: boolean }
+  ) => {
+    const coerceToAnime = (src: any): Anime => {
+      const id = Number(src?.aniId ?? src?.id ?? 0);
+      return {
+        id,
+        title: String(src?.title ?? src?.titleEn ?? src?.titleJp ?? ''),
+        posterUrl: src?.posterUrl ?? '/placeholder-anime.jpg',
+        rating: typeof src?.rating === 'number' ? src.rating : 0,
+        status: String(src?.status ?? ''),
+        type: String(src?.type ?? ''),
+        year: Number(src?.year ?? new Date().getFullYear()),
+        genres: Array.isArray(src?.genres) ? src.genres : [],
+        studios: Array.isArray(src?.studios) ? src.studios : [],
+        tags: Array.isArray(src?.tags) ? src.tags : [],
+        synopsis: String(src?.synopsis ?? ''),
+        fullSynopsis: String(src?.fullSynopsis ?? ''),
+        episodeCount: Number(src?.episodeCount ?? 0),
+        duration: Number(src?.duration ?? 0),
+        ageRating: String(src?.ageRating ?? ''),
+        createdAt: String(src?.createdAt ?? new Date().toISOString()),
+        updatedAt: String(src?.updatedAt ?? new Date().toISOString()),
+        aniId: id,
+        titleEn: src?.titleEn,
+        titleJp: src?.titleJp,
+        isNew: src?.isNew === true,
+      } as Anime;
+    };
     try {
       // 목록 DTO에는 필드가 적으므로 상세 조회로 모달 데이터 보강
       const id = anime?.aniId ?? anime?.id;
@@ -315,14 +400,14 @@ export default function Home() {
         recordUserActivity(id, 'view');
         
         const detail = await getAnimeDetail(id);
-        setSelectedAnime(detail);
+        setSelectedAnime(detail as Anime);
       } else {
-        // id가 없으면 목록 객체라도 표시
-        setSelectedAnime(anime);
+        // id가 없으면 받은 객체를 최소 스키마로 보정하여 표시
+        setSelectedAnime(coerceToAnime(anime));
       }
     } catch (e) {
       console.warn('상세 조회 실패, 목록 데이터로 대체합니다.', e);
-      setSelectedAnime(anime);
+      setSelectedAnime(coerceToAnime(anime));
     } finally {
       setIsModalOpen(true);
     }
@@ -394,7 +479,7 @@ export default function Home() {
           {/* 요일별 스케줄 */}
           <div className={styles.contentContainer}>
             <WeeklySchedule 
-              onAnimeClick={handleAnimeClick} 
+              onAnimeClick={(anime) => handleAnimeClick(anime)} 
               animeData={weeklyAnime}
             />
           </div>
@@ -415,16 +500,18 @@ export default function Home() {
                 )}
                 <div className={styles.carouselViewport}>
                   <div className={styles.carouselTrack} ref={recommendedRef}>
-                    {recommendedAnime.map((anime: any, idx: number) => (
+                    {recommendedAnime.map((anime: Anime, idx: number) => (
                       <div
                         key={anime.aniId ?? anime.id ?? idx}
                         className={`${styles.animeGridItem} ${styles.carouselItem}`}
                         onClick={() => handleAnimeClick(anime)}
                       >
-                        <img
+                        <Image
                           className={styles.animeGridPoster}
                           src={anime.posterUrl || '/placeholder-anime.jpg'}
                           alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
+                          width={200}
+                          height={280}
                         />
                         <div className={styles.animeGridTitle}>
                           {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
@@ -462,16 +549,18 @@ export default function Home() {
                 )}
                 <div className={styles.carouselViewport}>
                   <div className={styles.carouselTrack} ref={popularRef}>
-                    {popularAnime.map((anime: any, idx: number) => (
+                    {popularAnime.map((anime: Anime, idx: number) => (
                       <div
                         key={anime.aniId ?? anime.id ?? idx}
                         className={`${styles.animeGridItem} ${styles.carouselItem}`}
                         onClick={() => handleAnimeClick(anime)}
                       >
-                        <img
+                        <Image
                           className={styles.animeGridPoster}
                           src={anime.posterUrl || '/placeholder-anime.jpg'}
                           alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
+                          width={200}
+                          height={280}
                         />
                         <div className={styles.animeGridTitle}>
                           {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
