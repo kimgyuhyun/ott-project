@@ -7,12 +7,13 @@ import AnimeCard from "@/components/home/AnimeCard";
 import { getAnimeWatchHistory } from "@/lib/api/user";
 import { toggleFavorite, isFavorited } from "@/lib/api/favorites";
 import { deleteFromBinge } from "@/lib/api/user";
+import { Anime, Episode, User } from "@/types/common";
 import styles from "./AnimeDetailModal.module.css";
 import AnimeFullInfoModal from "@/components/anime/AnimeFullInfoModal";
 
 
 interface AnimeDetailModalProps {
-  anime: any;
+  anime: Anime;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -22,15 +23,44 @@ interface AnimeDetailModalProps {
  * 평점, 제목, 장르, 액션 버튼, 시놉시스, 탭 메뉴, 에피소드 목록 포함
  */
 export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetailModalProps) {
+  type ExtendedAnime = Anime & {
+    aniId?: number | string;
+    episodes?: Episode[];
+    fullSynopsis?: string;
+    synopsis?: string;
+    badges?: string[];
+    isDub?: boolean;
+    isSubtitle?: boolean;
+    titleJp?: string;
+    titleEn?: string;
+    backdropUrl?: string;
+    posterUrl?: string;
+    imageUrl?: string;
+    thumbnail?: string;
+    posterImage?: string;
+    ageRating?: string;
+    type?: string;
+    animeStatus?: 'COMPLETED' | 'ONGOING' | 'UPCOMING' | 'CANCELLED' | string;
+    rating?: number;
+    genres?: Array<string | { id?: number; name?: string }>;
+  };
+  type WatchHistory = {
+    episodeId: number;
+    episodeNumber: number;
+    positionSec: number;
+    duration?: number;
+    completed: boolean;
+    watchedAt?: string | number | Date;
+  } | null;
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'episodes' | 'reviews' | 'shop' | 'similar'>('episodes');
-  const [detail, setDetail] = useState<any>(anime);
-  const [watchHistory, setWatchHistory] = useState<any>(null);
+  const [detail, setDetail] = useState<ExtendedAnime>(anime as ExtendedAnime);
+  const [watchHistory, setWatchHistory] = useState<WatchHistory>(null);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isFavoritedState, setIsFavoritedState] = useState<boolean>(false);
   const [isLoadingFavorite, setIsLoadingFavorite] = useState(false);
   const [currentRating, setCurrentRating] = useState<number | null>(null); // 실시간 평점 상태
-  const [similarAnimes, setSimilarAnimes] = useState<any[]>([]);
+  const [similarAnimes, setSimilarAnimes] = useState<Anime[]>([]);
   const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
   const [showFullSynopsis, setShowFullSynopsis] = useState<boolean>(false);
   const MAX_SYNOPSIS_CHARS = 180;
@@ -42,14 +72,14 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   const handleRatingChange = (newRating: number) => {
     setCurrentRating(newRating);
     // detail 객체의 rating도 업데이트
-    setDetail((prev: any) => ({ ...prev, rating: newRating }));
+    setDetail((prev: ExtendedAnime) => ({ ...prev, rating: newRating }));
   };
 
   // 시청 기록 초기화 핸들러
   const handleDeleteWatchHistory = async () => {
     try {
-      console.log('🗑️ 시청 기록 초기화 시작 - aniId:', detail?.aniId);
-      await deleteFromBinge(detail?.aniId);
+      console.log('🗑️ 시청 기록 초기화 시작 - aniId:', (detail as any)?.aniId);
+      await deleteFromBinge(Number((detail as any)?.aniId ?? (detail as any)?.id));
       console.log('🗑️ 시청 기록 초기화 완료');
       
       // 시청 기록 상태 초기화
@@ -65,7 +95,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   };
 
   useEffect(() => {
-    setDetail(anime);
+    setDetail(anime as ExtendedAnime);
     // 초기 평점 설정
     if (anime?.rating) {
       setCurrentRating(anime.rating);
@@ -74,11 +104,11 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
   useEffect(() => {
     if (!isOpen) return;
-    const id = anime?.aniId ?? anime?.id;
-    const needsFetch = !Array.isArray(anime?.genres) || anime.genres.length === 0 || !Array.isArray(anime?.episodes);
+    const id = (anime as any)?.aniId ?? (anime as any)?.id;
+    const needsFetch = !Array.isArray((anime as any)?.genres) || (anime as any).genres.length === 0 || !Array.isArray((anime as any)?.episodes);
     if (id && needsFetch) {
       getAnimeDetail(Number(id))
-        .then((d) => setDetail((prev: any) => ({ ...prev, ...(d as any) })))
+        .then((d) => setDetail((prev: ExtendedAnime) => ({ ...prev, ...(d as Partial<ExtendedAnime>) })))
         .catch(() => {});
     }
   }, [isOpen, anime]);
@@ -96,8 +126,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       // 현재 작품과 장르가 겹치는 작품 목록을 조회
       const genreIds: number[] = Array.isArray(detail?.genres)
         ? (detail.genres as any[])
-            .map((g: any) => Number(g?.id ?? g))
-            .filter((v: any) => Number.isFinite(v))
+            .map((g: { id: number } | number) => Number(typeof g === 'object' ? g?.id : g))
+            .filter((v: number) => Number.isFinite(v))
         : [];
 
       if (genreIds.length === 0) {
@@ -107,17 +137,17 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       }
 
       const response: any = await listAnime({ genreIds, sort: 'rating', page: 0, size: 30 });
-      const rawItems: any[] = Array.isArray(response?.items)
-        ? response.items
-        : (Array.isArray(response) ? response : []);
+      const rawItems: ExtendedAnime[] = Array.isArray(response?.items)
+        ? (response.items as ExtendedAnime[])
+        : (Array.isArray(response) ? (response as ExtendedAnime[]) : []);
 
-      const baseId = Number(detail?.aniId ?? detail?.id);
-      const filtered = rawItems.filter((a: any) => Number(a?.aniId ?? a?.id) !== baseId);
+      const baseId = Number((detail as any)?.aniId ?? (detail as any)?.id);
+      const filtered = rawItems.filter((a: ExtendedAnime) => Number((a as any)?.aniId ?? (a as any)?.id) !== baseId);
 
       // 중복 제거 (aniId 기준)
       const seen = new Set<number>();
-      const unique = filtered.filter((a: any) => {
-        const id = Number(a?.aniId ?? a?.id);
+      const unique = filtered.filter((a: ExtendedAnime) => {
+        const id = Number((a as any)?.aniId ?? (a as any)?.id);
         if (!Number.isFinite(id) || seen.has(id)) return false;
         seen.add(id);
         return true;
@@ -136,14 +166,14 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
   // 사용자의 시청 기록 가져오기
   useEffect(() => {
-    if (!isOpen || !detail?.aniId) return;
+    if (!isOpen || !(detail as any)?.aniId) return;
     
-    console.log('🔍 시청 기록 조회 시작 - animeId:', detail.aniId);
+    console.log('🔍 시청 기록 조회 시작 - animeId:', (detail as any).aniId);
     setIsLoadingHistory(true);
-    getAnimeWatchHistory(detail.aniId)
-      .then((history) => {
+    getAnimeWatchHistory(Number((detail as any).aniId))
+      .then((history: any) => {
         console.log('🔍 시청 기록 조회 결과:', history);
-        setWatchHistory(history);
+        setWatchHistory(history as WatchHistory);
       })
       .catch((error) => {
         console.error('시청 기록 조회 실패:', error);
@@ -156,9 +186,9 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
   // 보고싶다 상태 확인
   useEffect(() => {
-    if (!isOpen || !detail?.aniId) return;
+    if (!isOpen || !(detail as any)?.aniId) return;
     
-    isFavorited(detail.aniId)
+    isFavorited(Number((detail as any).aniId))
       .then((favorited) => {
         setIsFavoritedState(favorited);
       })
@@ -194,22 +224,22 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
   // 디버깅: anime 객체 확인
   console.log('🔍 AnimeDetailModal - anime 객체:', detail);
-  console.log('🔍 AnimeDetailModal - anime.aniId:', detail?.aniId);
+  console.log('🔍 AnimeDetailModal - anime.aniId:', (detail as any)?.aniId);
   console.log('🔍 AnimeDetailModal - anime 타입:', typeof detail);
-  console.log('🔍 장르 정보:', detail?.genres);
+  console.log('🔍 장르 정보:', (detail as any)?.genres);
   console.log('🔍 평점 정보:', detail?.rating);
   console.log('🔍 관람등급:', detail?.ageRating);
-  console.log('🔍 줄거리:', detail?.fullSynopsis || detail?.synopsis);
-  console.log('🔍 에피소드:', detail?.episodes);
+  console.log('🔍 줄거리:', (detail as any)?.fullSynopsis || (detail as any)?.synopsis);
+  console.log('🔍 에피소드:', (detail as any)?.episodes);
   console.log('🔍 시청 기록 상태:', {
     watchHistory,
     isLoadingHistory,
     hasWatchHistory: !!watchHistory,
-    isCompleted: watchHistory?.completed,
-    episodeNumber: watchHistory?.episodeNumber,
-    positionSec: watchHistory?.positionSec,
-    shouldShowContinue: !isLoadingHistory && watchHistory && !watchHistory.completed,
-    shouldShowPlay: !isLoadingHistory && (!watchHistory || watchHistory.completed)
+    isCompleted: (watchHistory as any)?.completed,
+    episodeNumber: (watchHistory as any)?.episodeNumber,
+    positionSec: (watchHistory as any)?.positionSec,
+    shouldShowContinue: !isLoadingHistory && !!watchHistory && !(watchHistory as any).completed,
+    shouldShowPlay: !isLoadingHistory && (!watchHistory || (watchHistory as any).completed)
   });
 
   if (!isOpen) return null;
@@ -221,7 +251,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     { id: 'similar', label: '비슷한 작품', count: null }
   ];
 
-  const episodes = Array.isArray(detail?.episodes) ? detail.episodes : [];
+  const episodes = Array.isArray((detail as any)?.episodes) ? ((detail as any).episodes as Episode[]) : [];
   const getFallbackEpisodeThumb = (episodeNumber?: number) => {
     const n = Number(episodeNumber);
     if (n === 1) return 'https://placehold.co/120x80/111827/ffffff?text=EP1+Thumbnail';
@@ -316,7 +346,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                   </span>
                 </div>
                 <span className={styles.ratingBadge}>
-                  {detail?.badges?.[0] || 'ONLY'}
+                  {Array.isArray((detail as any)?.badges) ? (detail as any).badges[0] : 'ONLY'}
                 </span>
               </div>
 
@@ -324,8 +354,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               <h1 className={styles.animeTitle}>
                 {(() => {
                   // 더빙과 자막 여부 확인
-                  const isDub = detail?.isDub === true;
-                  const isSubtitle = detail?.isSubtitle === true;
+                  const isDub = (detail as any)?.isDub === true;
+                  const isSubtitle = (detail as any)?.isSubtitle === true;
                   
                   let prefix = '';
                   if (isDub && isSubtitle) {
@@ -337,17 +367,17 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                     prefix = '(자막) ';
                   }
                   
-                  const title = detail?.title || detail?.titleEn || detail?.titleJp || '제목 없음';
+                  const title = (detail as any)?.title || (detail as any)?.titleEn || (detail as any)?.titleJp || '제목 없음';
                   return `${prefix}${title}`;
                 })()}
               </h1>
 
               {/* 장르 및 정보 */}
               <div className={styles.genreSection}>
-                {Array.isArray(detail?.genres) && detail.genres.length > 0 ? (
-                  detail.genres.slice(0, 6).map((g: any, idx: number) => (
+                {Array.isArray((detail as any)?.genres) && (detail as any).genres.length > 0 ? (
+                  ((detail as any).genres as Array<string | { name?: string }>).slice(0, 6).map((g: any, idx: number) => (
                     <span key={idx} className={styles.genreTag}>
-                      {g?.name || g}
+                      {typeof g === 'string' ? g : (g?.name || '')}
                     </span>
                   ))
                 ) : (
@@ -356,10 +386,10 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                 
                 {/* 애니메이션 타입·상태 */}
                 <span className={styles.typeStatusBadge}>
-                  {detail?.type || 'TV'}·{detail?.animeStatus === 'COMPLETED' ? '완결' : 
-                   detail?.animeStatus === 'ONGOING' ? '방영중' : 
-                   detail?.animeStatus === 'UPCOMING' ? '예정' : 
-                   detail?.animeStatus === 'CANCELLED' ? '중단' : '완결'}
+                  {(detail as any)?.type || 'TV'}·{(detail as any)?.animeStatus === 'COMPLETED' ? '완결' : 
+                   (detail as any)?.animeStatus === 'ONGOING' ? '방영중' : 
+                   (detail as any)?.animeStatus === 'UPCOMING' ? '예정' : 
+                   (detail as any)?.animeStatus === 'CANCELLED' ? '중단' : '완결'}
                 </span>
                 
                 {/* 관람등급 */}
@@ -395,14 +425,14 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                     <button 
                       onClick={() => {
                         console.log('🎬 이어보기 버튼 클릭:', {
-                          episodeId: watchHistory.episodeId,
-                          animeId: detail?.aniId,
-                          positionSec: watchHistory.positionSec,
-                          episodeNumber: watchHistory.episodeNumber
+                          episodeId: (watchHistory as any).episodeId,
+                          animeId: (detail as any)?.aniId,
+                          positionSec: (watchHistory as any).positionSec,
+                          episodeNumber: (watchHistory as any).episodeNumber
                         });
                         // 이어보기: 마지막으로 본 에피소드부터 재생
-                        const position = watchHistory.positionSec > 0 ? `&position=${watchHistory.positionSec}` : '';
-                        const url = `/player?episodeId=${watchHistory.episodeId}&animeId=${detail?.aniId}${position}`;
+                        const position = (watchHistory as any).positionSec > 0 ? `&position=${(watchHistory as any).positionSec}` : '';
+                        const url = `/player?episodeId=${(watchHistory as any).episodeId}&animeId=${(detail as any)?.aniId}${position}`;
                         console.log('🔗 이동할 URL:', url);
                         router.push(url);
                         onClose();
@@ -427,19 +457,19 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                         console.log('🎬 재생하기 버튼 클릭:', {
                           watchHistory,
                           hasWatchHistory: !!watchHistory,
-                          isCompleted: watchHistory?.completed,
-                          animeId: detail?.aniId
+                          isCompleted: (watchHistory as any)?.completed,
+                          animeId: (detail as any)?.aniId
                         });
                         
                         // 시청 기록이 있지만 완료된 경우: 다음 에피소드부터 시작
                         // 시청 기록이 없는 경우: 1화부터 시작
                         let nextEpisodeId = 1;
-                        if (watchHistory && watchHistory.completed) {
+                        if (watchHistory && (watchHistory as any).completed) {
                           // 완료된 경우 다음 에피소드
-                          nextEpisodeId = watchHistory.episodeNumber + 1;
+                          nextEpisodeId = (watchHistory as any).episodeNumber + 1;
                         }
                         
-                        const url = `/player?episodeId=${nextEpisodeId}&animeId=${detail?.aniId}`;
+                        const url = `/player?episodeId=${nextEpisodeId}&animeId=${(detail as any)?.aniId}`;
                         console.log('🔗 이동할 URL:', url);
                         router.push(url);
                         onClose();
@@ -452,8 +482,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                         </svg>
                       </div>
                       <span className={styles.playButtonText}>
-                        {watchHistory && watchHistory.completed 
-                          ? `${watchHistory.episodeNumber + 1}화 재생하기`
+                        {watchHistory && (watchHistory as any).completed 
+                          ? `${(watchHistory as any).episodeNumber + 1}화 재생하기`
                           : '1화 재생하기'
                         }
                       </span>
@@ -469,7 +499,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                       
                       try {
                         setIsLoadingFavorite(true);
-                        const newState = await toggleFavorite(detail?.aniId);
+                        const newState = await toggleFavorite(Number((detail as any)?.aniId));
                         setIsFavoritedState(newState);
                         console.log('보고싶다 토글 완료:', newState);
                       } catch (error) {
@@ -516,7 +546,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               {/* 줄거리 */}
               <div className={styles.synopsisSection}>
                 {(() => {
-                  const raw = (detail?.fullSynopsis ?? detail?.synopsis ?? "").toString().trim();
+                  const raw = (((detail as any)?.fullSynopsis ?? (detail as any)?.synopsis ?? "")).toString().trim();
                   const isLong = raw.length > MAX_SYNOPSIS_CHARS;
                   const text = showFullSynopsis || !isLong ? raw : `${raw.slice(0, MAX_SYNOPSIS_CHARS)}…`;
                   return (
@@ -600,7 +630,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               <h3 className={styles.episodesTitle}>에피소드 목록</h3>
               <div className={styles.episodesList}>
                 {episodes.length > 0 ? (
-                  episodes.map((episode: any) => (
+                  episodes.map((episode: Episode) => (
                   <div 
                     key={episode.id} 
                     className={styles.episodeItem}
@@ -673,14 +703,15 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                 </div>
               ) : similarAnimes.length > 0 ? (
                 <div className={styles.similarGrid}>
-                  {similarAnimes.map((anime: any, index: number) => {
-                    const itemId = Number(anime?.aniId ?? anime?.id ?? index);
-                    const title = anime?.title || anime?.titleEn || anime?.titleJp || '제목 없음';
+                  {similarAnimes.map((anime: Anime, index: number) => {
+                    const a = anime as unknown as ExtendedAnime;
+                    const itemId = Number((a as any)?.aniId ?? (a as any)?.id ?? index);
+                    const title = (a as any)?.title || (a as any)?.titleEn || (a as any)?.titleJp || '제목 없음';
                     const posterUrl =
-                      anime?.posterUrl ||
-                      anime?.imageUrl ||
-                      anime?.thumbnail ||
-                      anime?.posterImage ||
+                      (a as any)?.posterUrl ||
+                      (a as any)?.imageUrl ||
+                      (a as any)?.thumbnail ||
+                      (a as any)?.posterImage ||
                       '/icons/default-avatar.svg';
 
                     return (
@@ -689,8 +720,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                         aniId={itemId}
                         title={title}
                         posterUrl={posterUrl}
-                        rating={typeof anime?.rating === 'number' ? anime.rating : null}
-                        badge={Array.isArray(anime?.badges) ? anime.badges[0] : undefined}
+                        rating={typeof (a as any)?.rating === 'number' ? (a as any).rating : null}
+                        badge={Array.isArray((a as any)?.badges) ? (a as any).badges[0] : undefined}
                         onClick={() => {
                           onClose();
                           router.push(`/player?animeId=${itemId}`);
