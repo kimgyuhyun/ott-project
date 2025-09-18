@@ -24,7 +24,7 @@ export default function PaymentMethodItem({ id, label, colorClass, selected, onS
       className={`p-3 rounded-lg border-2 text-left transition-all duration-200`}
       style={{ backgroundColor, borderColor, boxShadow }}
     >
-      <div className="flex items-center">
+      <div style={{ display: 'flex', alignItems: 'center' }}>
         <div className={`w-8 h-8 ${colorClass} rounded-full flex items-center justify-center mr-3`}>
           {id === 'kakao' && (
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">

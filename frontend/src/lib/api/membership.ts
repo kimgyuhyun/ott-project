@@ -6,7 +6,7 @@
 const API_BASE = '';
 
 // 공통 fetch 함수
-async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiCall<T>(endpoint: string, options: RequestInit = {}, expectJson: boolean = true): Promise<T> {
   const url = `${API_BASE}${endpoint}`; // '' + '/api/...' => '/api/...'
   
   const response = await fetch(url, {
@@ -23,15 +23,20 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
 
-  // 응답이 비어있으면 null 반환 (환불 API 등)
+  // JSON 미기대 응답은 바로 종료 (void 응답 처리)
+  if (!expectJson) {
+    return undefined as T;
+  }
+
+  // 응답이 비어있으면 undefined 반환 (환불 API 등)
   const contentType = response.headers.get('content-type');
   if (!contentType || !contentType.includes('application/json')) {
-    return null;
+    return undefined as T;
   }
 
   const text = await response.text();
   if (!text.trim()) {
-    return null;
+    return undefined as T;
   }
 
   return JSON.parse(text);
@@ -87,10 +92,14 @@ export async function cancelScheduledPlanChange() {
 
 // 결제수단 등록
 export async function registerPaymentMethod(paymentMethod: PaymentMethodRegisterRequest) {
-  return apiCall<void>('/api/payment-methods', {
-    method: 'POST',
-    body: JSON.stringify(paymentMethod),
-  });
+  return apiCall<void>(
+    '/api/payment-methods',
+    {
+      method: 'POST',
+      body: JSON.stringify(paymentMethod),
+    },
+    false,
+  );
 }
 
 // 결제수단 목록 조회
@@ -100,16 +109,24 @@ export async function getPaymentMethods() {
 
 // 결제수단 기본 지정
 export async function setDefaultPaymentMethod(id: number) {
-  return apiCall<void>(`/api/payment-methods/${id}/default`, {
-    method: 'PUT',
-  });
+  return apiCall<void>(
+    `/api/payment-methods/${id}/default`,
+    {
+      method: 'PUT',
+    },
+    false,
+  );
 }
 
 // 결제수단 삭제
 export async function deletePaymentMethod(id: number) {
-  return apiCall<void>(`/api/payment-methods/${id}`, {
-    method: 'DELETE',
-  });
+  return apiCall<void>(
+    `/api/payment-methods/${id}`,
+    {
+      method: 'DELETE',
+    },
+    false,
+  );
 }
 
 // 결제 내역 조회
@@ -136,9 +153,13 @@ export async function checkPaymentStatus(paymentId: number) {
 
 // 환불 요청
 export async function requestRefund(paymentId: number) {
-  return apiCall<void>(`/api/payments/${paymentId}/refund`, {
-    method: 'POST',
-  });
+  return apiCall<void>(
+    `/api/payments/${paymentId}/refund`,
+    {
+      method: 'POST',
+    },
+    false,
+  );
 }
 
 // 타입 정의

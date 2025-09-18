@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { IamportResponse, IamportRequestPayData } from '@/types/iamport';
 import { createProrationCheckout, processProrationPayment as completeProrationPayment } from '@/lib/api/proration';
 import { useAuth } from './useAuth';
 
@@ -13,7 +14,7 @@ interface ProrationPaymentResult {
   success: boolean;
   paymentId?: number;
   errorMessage?: string;
-  redirectUrl?: string;
+  redirectUrl?: string | null;
 }
 
 export const useProrationPayment = () => {
@@ -43,17 +44,19 @@ export const useProrationPayment = () => {
 
         // 3. 차액 결제 요청
         return new Promise((resolve) => {
-          window.IMP.request_pay({
-            pg: checkoutResponse.pg || 'kakaopay.TC0ONETIME',
+          const paymentData: IamportRequestPayData = {
+            pg: request.paymentService || 'kakaopay.TC0ONETIME',
             pay_method: 'card',
             merchant_uid: checkoutResponse.providerSessionId,
             amount: checkoutResponse.amount,
             name: '플랜 업그레이드 차액 결제',
             buyer_email: user?.email || '',
-            buyer_name: user?.name || '',
+            buyer_name: user?.username || '',
             m_redirect_url: window.location.origin + '/membership/success',
-            popup: false
-          }, async (response) => {
+            popup: false,
+          };
+
+          window.IMP.request_pay(paymentData, async (response: IamportResponse) => {
             if (response.success) {
               // 결제 성공 시 백엔드에서 차액 결제 완료 처리
               try {
@@ -94,8 +97,9 @@ export const useProrationPayment = () => {
 
   const checkProrationPayment = async (paymentId: number): Promise<boolean> => {
     try {
-      const result = await processProrationPayment(paymentId);
-      return result.success;
+      // 백엔드에 결제 완료 처리/확인 요청
+      await completeProrationPayment(paymentId);
+      return true;
     } catch (err) {
       console.error('차액 결제 상태 확인 실패:', err);
       return false;

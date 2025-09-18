@@ -26,6 +26,7 @@ export default function PlanChangeSuccessModal({
       
       return () => clearTimeout(timer);
     }
+    return () => {};
   }, [isOpen, onClose]);
 
   if (!isOpen || !newPlan) return null;
