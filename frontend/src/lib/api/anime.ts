@@ -6,7 +6,7 @@
 const API_BASE = '/api';
 
 // 공통 fetch 함수
-async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
   const url = `${API_BASE}${endpoint}`; // '' + '/api/...' => '/api/...'
   
   try {
@@ -29,7 +29,37 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
       throw new Error(`API Error: ${response.status} ${errorText}`);
     }
 
-    return response.json();
+    // 응답이 비어있는지 확인
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      // 404나 204 같은 경우는 정상적인 응답일 수 있음
+      if (response.status === 404 || response.status === 204) {
+        console.log('리소스를 찾을 수 없습니다 (404/204):', endpoint);
+        return null;
+      }
+      // 애니메이션 ID가 0인 경우는 유효하지 않은 요청
+      if (endpoint.includes('/anime/0')) {
+        console.log('유효하지 않은 애니메이션 ID (0):', endpoint);
+        return null;
+      }
+      console.warn('응답이 JSON이 아닙니다:', contentType, 'endpoint:', endpoint);
+      return null;
+    }
+
+    // 응답 텍스트를 먼저 확인
+    const text = await response.text();
+    if (!text || text.trim() === '') {
+      console.warn('빈 응답을 받았습니다');
+      return null;
+    }
+
+    try {
+      return JSON.parse(text);
+    } catch (parseError) {
+      console.error('JSON 파싱 실패:', parseError);
+      console.error('응답 텍스트:', text);
+      throw new Error(`JSON 파싱 실패: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+    }
   } catch (error) {
     // 네트워크 오류인지 확인
     if (error instanceof TypeError && error.message === 'Failed to fetch') {

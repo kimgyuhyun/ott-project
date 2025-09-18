@@ -43,11 +43,7 @@ export default function FilterSidebar({
   selectedSeasons,
   selectedStatuses,
   selectedTypes,
-  filters,
   searchQuery,
-  selectedYear,
-  selectedStatus,
-  selectedType,
   genreOptions,
   tagOptions,
   seasonOptions,
@@ -59,13 +55,11 @@ export default function FilterSidebar({
   onSeasonChange,
   onStatusChange,
   onTypeChange,
-  onFilterChange,
   onResetFilters
 }: FilterSidebarProps) {
   // 백엔드에서 이미 번역된 데이터 사용
   const genres = genreOptions ?? [];
   const tags = tagOptions ?? [];
-  const seasons = seasonOptions ?? [];
   const years = yearOptions ?? [];
   const statuses = statusOptions ?? [];
   const types = typeOptions ?? [];
@@ -76,6 +70,23 @@ export default function FilterSidebar({
   const [showMoreSeasons, setShowMoreSeasons] = useState(false);
   const [showMoreStatuses, setShowMoreStatuses] = useState(false);
   const [showMoreTypes, setShowMoreTypes] = useState(false);
+
+  // 모달용 토글 어댑터 (매개변수 통일)
+  const handleToggleGenre = (item: number | string) => {
+    if (typeof item === 'number') onGenreChange(item);
+  };
+  const handleToggleTag = (item: number | string) => {
+    if (typeof item === 'number') onTagChange(item);
+  };
+  const handleToggleSeason = (item: number | string) => {
+    if (typeof item === 'string') onSeasonChange(item);
+  };
+  const handleToggleStatus = (item: number | string) => {
+    if (typeof item === 'string') onStatusChange(item);
+  };
+  const handleToggleType = (item: number | string) => {
+    if (typeof item === 'string') onTypeChange(item);
+  };
 
   return (
     <div className={styles.filterSidebar}>
@@ -242,7 +253,7 @@ export default function FilterSidebar({
         title="장르 전체"
         items={genres}
         selectedItems={selectedGenreIds}
-        onItemToggle={onGenreChange}
+        onItemToggle={handleToggleGenre}
         onResetAll={() => {
           selectedGenreIds.forEach(id => onGenreChange(id));
         }}
@@ -256,7 +267,7 @@ export default function FilterSidebar({
         title="태그 전체"
         items={tags}
         selectedItems={selectedTagIds}
-        onItemToggle={onTagChange}
+        onItemToggle={handleToggleTag}
         onResetAll={() => {
           selectedTagIds.forEach(id => onTagChange(id));
         }}
@@ -270,7 +281,7 @@ export default function FilterSidebar({
         title="년도 전체"
         items={years.map(year => ({ key: year.value, name: year.label }))}
         selectedItems={selectedSeasons}
-        onItemToggle={onSeasonChange}
+        onItemToggle={handleToggleSeason}
         onResetAll={() => {
           selectedSeasons.forEach(season => onSeasonChange(season));
         }}
@@ -282,9 +293,9 @@ export default function FilterSidebar({
         isOpen={showMoreStatuses}
         onClose={() => setShowMoreStatuses(false)}
         title="방영 전체"
-        items={statuses}
+        items={statuses.map(s => ({ ...s, name: s.label }))}
         selectedItems={selectedStatuses}
-        onItemToggle={onStatusChange}
+        onItemToggle={handleToggleStatus}
         onResetAll={() => {
           selectedStatuses.forEach(status => onStatusChange(status));
         }}
@@ -296,9 +307,9 @@ export default function FilterSidebar({
         isOpen={showMoreTypes}
         onClose={() => setShowMoreTypes(false)}
         title="출시타입 전체"
-        items={types}
+        items={types.map(t => ({ ...t, name: t.label }))}
         selectedItems={selectedTypes}
-        onItemToggle={onTypeChange}
+        onItemToggle={handleToggleType}
         onResetAll={() => {
           selectedTypes.forEach(type => onTypeChange(type));
         }}

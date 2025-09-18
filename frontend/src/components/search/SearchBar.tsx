@@ -22,7 +22,7 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
   const [isLoading, setIsLoading] = useState(false);
   const [isRecentLoading, setIsRecentLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const searchTimeoutRef = useRef<NodeJS.Timeout>();
+  const searchTimeoutRef = useRef<number | undefined>(undefined);
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const [hasLoadedRecent, setHasLoadedRecent] = useState(false);
   const [trending, setTrending] = useState<string[]>([]);
@@ -39,8 +39,9 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
   useEffect(() => {
     if (query.trim().length === 0) {
       getTrendingAnime24h(10)
-        .then((items: any[]) => {
-          const titles = Array.isArray(items) ? items.map((i: any) => i.title).filter(Boolean) : [];
+        .then((items: unknown) => {
+          const arr = Array.isArray(items) ? items : [] as any[];
+          const titles = arr.map((i: any) => i.title).filter(Boolean);
           setTrending(titles);
         })
         .catch(() => setTrending([]));
@@ -65,12 +66,10 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
 
   // 검색어가 변경될 때마다 자동완성 요청
   useEffect(() => {
-    if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+    if (searchTimeoutRef.current !== undefined) window.clearTimeout(searchTimeoutRef.current);
 
     if (query.trim().length > 0) {
-      searchTimeoutRef.current = setTimeout(async () => {
+      searchTimeoutRef.current = window.setTimeout(async () => {
         try {
           setIsLoading(true);
           setError(null);
@@ -94,9 +93,7 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
     }
 
     return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
+      if (searchTimeoutRef.current !== undefined) window.clearTimeout(searchTimeoutRef.current);
     };
   }, [query]);
 
