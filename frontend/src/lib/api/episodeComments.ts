@@ -65,6 +65,7 @@ export async function deleteEpisodeComment(episodeId: number, commentId: number)
 
 // 댓글 좋아요 토글
 export async function toggleEpisodeCommentLike(episodeId: number, commentId: number) {
+  console.log('🌐 [FRONTEND] toggleEpisodeCommentLike 호출:', { episodeId, commentId });
   return apiCall(`/api/episodes/${episodeId}/comments/${commentId}/like`, {
     method: 'POST',
   });

@@ -187,6 +187,7 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
       alert('로그인이 필요합니다.');
       return;
     }
+    console.log('🔧 [FRONTEND] EpisodeCommentList 좋아요 토글 시작 - episodeId:', episodeId, 'commentId:', commentId);
     saveScroll();
     const prevCommentsSnapshot = comments;
     const prevRepliesSnapshot = replies;
@@ -217,6 +218,16 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
       restoreScroll();
     } catch (error) {
       console.error('좋아요 토글 실패:', error);
+      // 에러 타입에 따라 다른 메시지 표시
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          alert('댓글을 찾을 수 없습니다.');
+        } else if (error.message.includes('500')) {
+          alert('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+        } else {
+          alert('좋아요 처리 중 오류가 발생했습니다.');
+        }
+      }
       setComments(prevCommentsSnapshot);
       setReplies(prevRepliesSnapshot);
       setTimeout(() => restoreScroll(), 0);
@@ -336,15 +347,23 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
                   <div className={styles.commentMeta}>
                     <span className={styles.commentDate}>{formatRelativeTime(comment.createdAt, comment.updatedAt)}</span>
                     <div className={styles.userNameSection}>
-                      <img 
-                        src={comment.userProfileImage || ''} 
-                        alt={comment.userName} 
-                        className={styles.userNameAvatar}
-                        onError={(e) => {
-                          console.error('❌ 댓글 닉네임 프로필 이미지 로딩 실패:', comment.userProfileImage);
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
+                      {comment.userProfileImage ? (
+                        <img 
+                          src={comment.userProfileImage} 
+                          alt={comment.userName} 
+                          className={styles.userNameAvatar}
+                          onError={(e) => {
+                            console.error('❌ 댓글 닉네임 프로필 이미지 로딩 실패:', comment.userProfileImage);
+                            e.currentTarget.src = '/icons/default-avatar.png';
+                          }}
+                        />
+                      ) : (
+                        <img 
+                          src="/icons/default-avatar.png" 
+                          alt={comment.userName} 
+                          className={styles.userNameAvatar}
+                        />
+                      )}
                       <span className={styles.userName}>{comment.userName}</span>
                     </div>
                     {currentUser && currentUser.id === comment.userId && (
@@ -504,15 +523,23 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
                             <div className={styles.replyMeta}>
                               <span className={styles.replyDate}>{formatRelativeTime(reply.createdAt, reply.updatedAt)}</span>
                               <div className={styles.userNameSection}>
-                                <img 
-                                  src={reply.userProfileImage || ''} 
-                                  alt={reply.userName} 
-                                  className={styles.userNameAvatar}
-                                  onError={(e) => {
-                                    console.error('❌ 대댓글 닉네임 프로필 이미지 로딩 실패:', reply.userProfileImage);
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
+                                {reply.userProfileImage ? (
+                                  <img 
+                                    src={reply.userProfileImage} 
+                                    alt={reply.userName} 
+                                    className={styles.userNameAvatar}
+                                    onError={(e) => {
+                                      console.error('❌ 대댓글 닉네임 프로필 이미지 로딩 실패:', reply.userProfileImage);
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <img 
+                                    src="/icons/default-avatar.png" 
+                                    alt={reply.userName} 
+                                    className={styles.userNameAvatar}
+                                  />
+                                )}
                                 <span className={styles.replyUserName}>{reply.userName}</span>
                               </div>
                               <div className={styles.replyActions}>

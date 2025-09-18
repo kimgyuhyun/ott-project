@@ -738,12 +738,12 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
                   <div className={styles.reviewMeta}>
                     <div className={styles.userNameSection}>
                       <img 
-                        src={review.userProfileImage || '/icons/default-avatar.svg'} 
+                        src={review.userProfileImage || '/icons/default-avatar.png'} 
                         alt={review.userName} 
                         className={styles.userNameAvatar}
                         onError={(e) => {
                           console.error('❌ 닉네임 프로필 이미지 로딩 실패:', review.userProfileImage);
-                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.src = '/icons/default-avatar.png';
                         }}
                       />
                       <span className={styles.userName}>{review.userName}</span>
