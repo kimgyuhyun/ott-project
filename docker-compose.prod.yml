@@ -1,0 +1,39 @@
+# 프로덕션용 오버라이드 - docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+version: '3.8'
+
+services:
+  app: # Spring Boot 애플리케이션 서비스
+    environment:
+      # 프로덕션 프로파일 설정
+      SPRING_PROFILES_ACTIVE: prod
+      # 프로덕션 데이터베이스 연결 정보 (실제 환경에 맞게 수정 필요)
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ott-postgres:5432/ott_project_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}  # 환경변수 사용 권장
+      # JPA 설정 (프로덕션용)
+      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      # Redis 설정
+      SPRING_DATA_REDIS_HOST: ott-redis
+      SPRING_DATA_REDIS_PORT: 6379
+
+  frontend: # Next.js 프론트엔드 서비스
+    build:
+      target: production  # 프로덕션 스테이지 사용
+    environment:
+      # 프로덕션 백엔드 URL
+      NEXT_PUBLIC_BACKEND_ORIGIN: http://ott-app:8090
+      NODE_ENV: production
+    # 프로덕션에서는 볼륨 마운트 제거 (정적 파일로 실행)
+    # volumes: 제거됨
+
+  postgres: # PostgreSQL 데이터베이스 서비스
+    environment:
+      # 프로덕션 데이터베이스 설정
+      POSTGRES_DB: ott_project_db
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: ${DB_PASSWORD}  # 환경변수 사용 권장
+
+  nginx: # Nginx 리버스 프록시
+    # 프로덕션용 nginx 설정 (필요시 별도 설정 파일 사용)
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro

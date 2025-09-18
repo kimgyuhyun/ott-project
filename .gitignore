@@ -225,6 +225,14 @@ docker-compose.override.yml
 docker-compose.*.yml
 !docker-compose.example.yml
 
+# ===== Allow Docker config files to be tracked =====
+!backend/Dockerfile
+!frontend/Dockerfile
+!Dockerfile
+!docker-compose.yml
+!docker-compose.override.yml
+!docker-compose.prod.yml
+
 # ===== Environment files =====
 # Spring Boot application properties (민감한 정보 포함 가능)
 backend/src/main/resources/application-*.properties
