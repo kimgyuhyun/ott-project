@@ -49,14 +49,15 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+    return () => {};
   }, [isOpen, onClose]);
 
   // 알림 데이터 로드
   const loadNotifications = async (pageNum: number = 0, append: boolean = false) => {
     try {
       setIsLoading(true);
-      const response = await getNotifications(pageNum, 20);
-      const newNotifications = (response as any).content || [];
+      const response = await getNotifications(pageNum, 20) as { content: Notification[]; last: boolean };
+      const newNotifications = response.content || [];
       
       if (append) {
         setNotifications(prev => [...prev, ...newNotifications]);
@@ -64,7 +65,7 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
         setNotifications(newNotifications);
       }
       
-      setHasMore(!(response as any).last);
+      setHasMore(!response.last);
       setPage(pageNum);
     } catch (error) {
       console.error('알림 로드 실패:', error);
@@ -76,8 +77,8 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   // 읽지 않은 알림 개수 로드
   const loadUnreadCount = async () => {
     try {
-      const count = await getUnreadNotificationCount();
-      setUnreadCount(count as number);
+      const count = await getUnreadNotificationCount() as number;
+      setUnreadCount(count);
     } catch (error) {
       console.error('읽지 않은 알림 개수 로드 실패:', error);
     }
@@ -196,7 +197,7 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
                 </div>
                 {notification.data.commentContent && (
                   <div className={styles.commentPreview}>
-                    "{notification.data.commentContent}"
+                    &ldquo;{notification.data.commentContent}&rdquo;
                   </div>
                 )}
                 <div className={styles.notificationTime}>
