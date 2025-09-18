@@ -58,6 +58,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     /**
      * 사용자별 특정 콘텐츠 관련 알림 중복 확인
      */
-    @Query("SELECT COUNT(n) FROM Notification n WHERE n.user.id = :userId AND n.type = :type AND n.data LIKE %:contentId% AND n.isRead = false")
-    long countDuplicateNotifications(@Param("userId") Long userId, @Param("type") NotificationType type, @Param("contentId") String contentId);
+    @Query(value = "SELECT COUNT(n) FROM notifications n WHERE n.user_id = :userId AND n.type = :type AND n.data LIKE CONCAT('%\"contentId\":', :contentId, '%') AND n.is_read = false", nativeQuery = true)
+    long countDuplicateNotifications(@Param("userId") Long userId, @Param("type") String type, @Param("contentId") String contentId);
 }
