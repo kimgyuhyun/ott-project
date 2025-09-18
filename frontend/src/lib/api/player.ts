@@ -93,7 +93,7 @@ export async function getEpisodeStreamUrl(episodeId: number) {
 }
 
 // 진행률 저장 디바운싱을 위한 Map (메모리 누수 방지)
-const saveProgressTimeouts = new Map<number, NodeJS.Timeout>();
+const saveProgressTimeouts = new Map<number, ReturnType<typeof setTimeout>>();
 const MAX_TIMEOUTS = 100; // 최대 타이머 수 제한
 
 // 메모리 정리 함수
