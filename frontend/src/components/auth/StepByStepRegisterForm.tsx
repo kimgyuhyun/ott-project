@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { sendVerificationCode, verifyCode, register } from "@/lib/api/auth";
 
 type RegisterStep = 'email' | 'verification' | 'password';
@@ -103,40 +104,55 @@ export default function StepByStepRegisterForm({ onClose, onSuccess }: StepBySte
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+    <div >
+      <div >
         {/* 헤더 */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">회원가입</h2>
+        <div >
+          <h2 >회원가입</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            
           >
             ✕
           </button>
         </div>
 
         {/* 진행 단계 표시 */}
-        <div className="flex justify-center mb-6">
-          <div className="flex space-x-2">
-            <div className={`w-3 h-3 rounded-full ${currentStep === 'email' ? 'bg-purple-600' : 'bg-gray-300'}`}></div>
-            <div className={`w-3 h-3 rounded-full ${currentStep === 'verification' ? 'bg-purple-600' : 'bg-gray-300'}`}></div>
-            <div className={`w-3 h-3 rounded-full ${currentStep === 'password' ? 'bg-purple-600' : 'bg-gray-300'}`}></div>
+        <div >
+          <div >
+            <div style={{ 
+              width: '12px', 
+              height: '12px', 
+              borderRadius: '50%', 
+              backgroundColor: currentStep === 'email' ? '#8b5cf6' : '#d1d5db' 
+            }}></div>
+            <div style={{ 
+              width: '12px', 
+              height: '12px', 
+              borderRadius: '50%', 
+              backgroundColor: currentStep === 'verification' ? '#8b5cf6' : '#d1d5db' 
+            }}></div>
+            <div style={{ 
+              width: '12px', 
+              height: '12px', 
+              borderRadius: '50%', 
+              backgroundColor: currentStep === 'password' ? '#8b5cf6' : '#d1d5db' 
+            }}></div>
           </div>
         </div>
 
         {/* 1단계: 이메일 입력 */}
         {currentStep === 'email' && (
-          <div className="space-y-4">
+          <div >
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label >
                 이메일
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                
                 placeholder="example@email.com"
                 required
               />
@@ -158,26 +174,26 @@ export default function StepByStepRegisterForm({ onClose, onSuccess }: StepBySte
 
         {/* 2단계: 인증코드 입력 */}
         {currentStep === 'verification' && (
-          <div className="space-y-4">
+          <div >
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label >
                 인증코드
               </label>
               <input
                 type="text"
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                
                 placeholder="이메일로 받은 6자리 코드를 입력하세요"
                 maxLength={6}
                 required
               />
             </div>
             
-            <div className="flex space-x-2">
+            <div >
               <button
                 onClick={() => setCurrentStep('email')}
-                className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                
               >
                 이전
               </button>
@@ -198,16 +214,16 @@ export default function StepByStepRegisterForm({ onClose, onSuccess }: StepBySte
 
         {/* 3단계: 비밀번호 및 닉네임 입력 */}
         {currentStep === 'password' && (
-          <form onSubmit={handleRegister} className="space-y-4">
+          <form onSubmit={handleRegister} >
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label >
                 비밀번호
               </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                
                 placeholder="최소 6자 이상"
                 minLength={6}
                 required
@@ -215,14 +231,14 @@ export default function StepByStepRegisterForm({ onClose, onSuccess }: StepBySte
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label >
                 닉네임
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                
                 placeholder="2-20자"
                 minLength={2}
                 maxLength={20}
@@ -230,11 +246,11 @@ export default function StepByStepRegisterForm({ onClose, onSuccess }: StepBySte
               />
             </div>
 
-            <div className="flex space-x-2">
+            <div >
               <button
                 type="button"
                 onClick={() => setCurrentStep('verification')}
-                className="flex-1 py-3 px-4 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+                
               >
                 이전
               </button>
@@ -255,19 +271,19 @@ export default function StepByStepRegisterForm({ onClose, onSuccess }: StepBySte
 
         {/* 에러 메시지 */}
         {error && (
-          <div className="mt-4 text-red-500 text-sm text-center">{error}</div>
+          <div >{error}</div>
         )}
 
         {/* 성공 메시지 */}
         {successMessage && (
-          <div className="mt-4 text-green-600 text-sm text-center">{successMessage}</div>
+          <div >{successMessage}</div>
         )}
 
         {/* 하단 링크 */}
-        <div className="mt-6 text-center">
+        <div >
           <button
             onClick={resetForm}
-            className="text-purple-600 hover:text-purple-700 text-sm"
+            
           >
             처음부터 다시 시작
           </button>
