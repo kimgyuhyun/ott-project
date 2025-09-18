@@ -93,10 +93,8 @@ public class EpisodeCommentsService {
 
         EpisodeComment savedComment = commentRepository.save(comment); // 저장 후 ID 반환
         
-        // 대댓글인 경우 알림 생성
-        if (parent != null) {
-            notificationTriggerService.triggerEpisodeCommentNotification(savedComment);
-        }
+        // 댓글 작성 시 알림 생성 (일반 댓글, 대댓글 모두)
+        notificationTriggerService.triggerEpisodeCommentNotification(savedComment);
         
         return savedComment.getId();
     }
@@ -127,26 +125,48 @@ public class EpisodeCommentsService {
     }
 
     public boolean toggleLike(Long commentId, Long userId) { // 좋아요 토글(delete-first 전략)
-        int deleted = commentLikeRepository.deleteByUser_IdAndEpisodeComment_Id(userId, commentId); // 먼저 off 시도
-        if (deleted > 0) {
-            return false; // off
-        }
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
-        EpisodeComment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
+        System.out.println("🔧 [SERVICE] EpisodeComment toggleLike 시작 - commentId: " + commentId + ", userId: " + userId);
+        
         try {
-            EpisodeCommentLike like = EpisodeCommentLike.createLike(user, comment);
-            EpisodeCommentLike savedLike = commentLikeRepository.save(like); // on 시도
+            int deleted = commentLikeRepository.deleteByUser_IdAndEpisodeComment_Id(userId, commentId); // 먼저 off 시도
+            System.out.println("🔧 [SERVICE] 기존 좋아요 삭제 결과: " + deleted);
+            if (deleted > 0) {
+                System.out.println("🔧 [SERVICE] 좋아요 OFF 완료");
+                return false; // off
+            }
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+            System.out.println("🔧 [SERVICE] 사용자 조회 완료: " + user.getEmail());
             
-            // 좋아요 알림 생성
-            notificationTriggerService.triggerEpisodeCommentLikeNotification(savedLike);
+            EpisodeComment comment = commentRepository.findById(commentId)
+                    .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
+            System.out.println("🔧 [SERVICE] 댓글 조회 완료: " + comment.getId());
             
-            return true; // on
-        } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
-            commentLikeRepository.deleteByUser_IdAndEpisodeComment_Id(userId, commentId);
-            return false; // off
+            try {
+                EpisodeCommentLike like = EpisodeCommentLike.createLike(user, comment);
+                EpisodeCommentLike savedLike = commentLikeRepository.save(like); // on 시도
+                System.out.println("🔧 [SERVICE] 좋아요 생성 완료: " + savedLike.getId());
+                
+                // 좋아요 알림 생성 (실패해도 좋아요는 정상 처리)
+                try {
+                    notificationTriggerService.triggerEpisodeCommentLikeNotification(savedLike);
+                    System.out.println("🔧 [SERVICE] 좋아요 알림 생성 완료");
+                } catch (Exception e) {
+                    System.out.println("🔧 [SERVICE] 좋아요 알림 생성 실패 (무시): " + e.getMessage());
+                }
+                
+                System.out.println("🔧 [SERVICE] 좋아요 ON 완료");
+                return true; // on
+            } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
+                System.out.println("🔧 [SERVICE] DataIntegrityViolationException 발생, 좋아요 OFF로 수렴: " + e.getMessage());
+                commentLikeRepository.deleteByUser_IdAndEpisodeComment_Id(userId, commentId);
+                return false; // off
+            }
+        } catch (Exception e) {
+            System.out.println("🔧 [SERVICE] EpisodeComment toggleLike 실패: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
     }
 
