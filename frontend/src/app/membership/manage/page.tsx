@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
 import { cancelMembership, cancelScheduledPlanChange, resumeMembership, requestRefund, PaymentHistoryItem } from "@/lib/api/membership";
@@ -174,11 +175,11 @@ export default function MembershipManagePage() {
       await requestRefund(paymentId);
       await loadPaymentHistory(); // 내역 새로고침
       setNotice({ type: 'success', title: '환불 완료', message: '환불이 성공적으로 처리되었습니다.' });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('환불 실패:', error);
-      const errorMessage = error.message?.includes('환불 가능 기간을 초과') 
+      const errorMessage = (error as Error).message?.includes('환불 가능 기간을 초과') 
         ? '환불 가능 기간(7일)을 초과했습니다.'
-        : error.message?.includes('콘텐츠를 시청한 경우')
+        : (error as Error).message?.includes('콘텐츠를 시청한 경우')
         ? '콘텐츠를 시청한 경우 환불이 불가합니다.'
         : '환불 처리 중 오류가 발생했습니다.';
       setNotice({ type: 'error', title: '환불 실패', message: errorMessage });
@@ -435,9 +436,11 @@ export default function MembershipManagePage() {
               {paymentMethods.length > 0 ? (
                 <div className={styles.currentPaymentMethod}>
                   <div className={styles.paymentMethodIcon}>
-                    <img 
+                    <Image 
                       src={getPaymentMethodIcon(paymentMethods[0].type)}
                       alt={translatePaymentMethodType(paymentMethods[0].type)}
+                      width={24}
+                      height={24}
                       className={styles.paymentMethodIconImage}
                     />
                   </div>

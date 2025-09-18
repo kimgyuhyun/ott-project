@@ -98,8 +98,13 @@ public class ReviewCommentsService {
 
         Comment savedComment = commentRepository.save(comment); // 저장 후 ID 반환
         
-        // 대댓글인 경우 알림 생성 (리뷰 댓글은 현재 NotificationTriggerService에서 처리하지 않음)
-        // TODO: 리뷰 댓글 알림 로직 추가 필요
+        // 모든 댓글에 대해 알림 생성 (자신의 리뷰가 아닌 경우만)
+        try {
+            notificationTriggerService.triggerReviewCommentNotification(savedComment);
+            System.out.println("🔧 [SERVICE] 리뷰 댓글 알림 생성 완료");
+        } catch (Exception e) {
+            System.out.println("🔧 [SERVICE] 리뷰 댓글 알림 생성 실패 (무시): " + e.getMessage());
+        }
         
         return savedComment.getId();
     }
@@ -130,26 +135,48 @@ public class ReviewCommentsService {
     }
 
     public boolean toggleLike(Long commentId, Long userId) { // 좋아요 토글(delete-first 전략)
-        int deleted = commentLikeRepository.deleteByUser_IdAndComment_Id(userId, commentId); // 먼저 off 시도
-        if (deleted > 0) {
-            return false; // off
-        }
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
-        Comment comment = commentRepository.findById(commentId)
-                .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
+        System.out.println("🔧 [SERVICE] ReviewComment toggleLike 시작 - commentId: " + commentId + ", userId: " + userId);
+        
         try {
-            CommentLike like = CommentLike.createLike(user, comment);
-            CommentLike savedLike = commentLikeRepository.save(like); // on 시도
+            int deleted = commentLikeRepository.deleteByUser_IdAndComment_Id(userId, commentId); // 먼저 off 시도
+            System.out.println("🔧 [SERVICE] 기존 좋아요 삭제 결과: " + deleted);
+            if (deleted > 0) {
+                System.out.println("🔧 [SERVICE] 좋아요 OFF 완료");
+                return false; // off
+            }
+
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+            System.out.println("🔧 [SERVICE] 사용자 조회 완료: " + user.getEmail());
             
-            // 좋아요 알림 생성
-            notificationTriggerService.triggerCommentLikeNotification(savedLike);
+            Comment comment = commentRepository.findById(commentId)
+                    .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
+            System.out.println("🔧 [SERVICE] 댓글 조회 완료: " + comment.getId());
             
-            return true; // on
-        } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
-            commentLikeRepository.deleteByUser_IdAndComment_Id(userId, commentId);
-            return false; // off
+            try {
+                CommentLike like = CommentLike.createLike(user, comment);
+                CommentLike savedLike = commentLikeRepository.save(like); // on 시도
+                System.out.println("🔧 [SERVICE] 좋아요 생성 완료: " + savedLike.getId());
+                
+                // 좋아요 알림 생성 (실패해도 좋아요는 정상 처리)
+                try {
+                    notificationTriggerService.triggerCommentLikeNotification(savedLike);
+                    System.out.println("🔧 [SERVICE] 좋아요 알림 생성 완료");
+                } catch (Exception e) {
+                    System.out.println("🔧 [SERVICE] 좋아요 알림 생성 실패 (무시): " + e.getMessage());
+                }
+                
+                System.out.println("🔧 [SERVICE] 좋아요 ON 완료");
+                return true; // on
+            } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
+                System.out.println("🔧 [SERVICE] DataIntegrityViolationException 발생, 좋아요 OFF로 수렴: " + e.getMessage());
+                commentLikeRepository.deleteByUser_IdAndComment_Id(userId, commentId);
+                return false; // off
+            }
+        } catch (Exception e) {
+            System.out.println("🔧 [SERVICE] ReviewComment toggleLike 실패: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            e.printStackTrace();
+            throw e;
         }
     }
 

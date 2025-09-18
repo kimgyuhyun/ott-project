@@ -50,7 +50,7 @@ public class Notification {
     @Column(columnDefinition = "TEXT")
     private String content; // 알림 내용
 
-    @Column(columnDefinition = "JSONB")
+    @Column(columnDefinition = "TEXT")
     private String data; // JSON 메타데이터
 
     @Column(nullable = false)

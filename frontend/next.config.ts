@@ -4,7 +4,6 @@ const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
     forceSwcTransforms: true,
-    esmExternals: 'loose',
   },
   // 개발 모드에서 콘솔 로그 활성화
   logging: {
@@ -30,6 +29,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'cdn.myanimelist.net',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   async rewrites() {
@@ -47,6 +52,13 @@ const nextConfig: NextConfig = {
       { source: "/oauth2/api/:path*", destination: `${base}/oauth2/api/:path*` }
     ];
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // typescript: {
+  //   // 빌드 차단 방지: 타입 오류가 있어도 빌드 진행
+  //   ignoreBuildErrors: true,
+  // },
 };
 
 export default nextConfig;

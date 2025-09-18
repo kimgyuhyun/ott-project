@@ -1,13 +1,8 @@
 "use client";
 import { createCheckout, checkPaymentStatus } from "@/lib/api/membership";
+import type { IamportRequestPayData, IamportResponse } from "@/types/iamport";
 
-declare global {
-  interface Window {
-    IMP?: any;
-  }
-}
-
-async function loadPortOne(): Promise<any> {
+async function loadPortOne(): Promise<Window["IMP"] | null> {
   if (typeof window === "undefined") return null;
   if (window.IMP) return window.IMP;
   await new Promise<void>((resolve, reject) => {
@@ -51,15 +46,18 @@ export function useCheckout() {
     const pg = PG_MAP[paymentService?.toLowerCase?.()] || "kakaopay.TC0ONETIME"; // 기본값 설정
 
     await new Promise<void>((resolve, reject) => {
+      const paymentData: IamportRequestPayData = {
+        pg,
+        pay_method: "card",
+        merchant_uid: providerSessionId,
+        amount,
+        name: `Membership ${planCode}`,
+        m_redirect_url: successUrl, // 모바일 복귀 URL
+      };
+
       IMP.request_pay(
-        {
-          pg,
-          merchant_uid: providerSessionId,
-          name: `Membership ${planCode}`,
-          amount,
-          m_redirect_url: successUrl, // 모바일 복귀 URL
-        },
-        async (rsp: any) => {
+        paymentData,
+        async (rsp: IamportResponse) => {
           if (rsp.success) {
             try {
               // 결제 완료 후 백엔드 상태 확인

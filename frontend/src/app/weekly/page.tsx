@@ -3,6 +3,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Header from "@/components/layout/Header";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import { api } from "@/lib/api/index";
+import { Anime } from "@/types/common";
+import Image from "next/image";
 import styles from "./weekly.module.css";
 
 /**
@@ -10,9 +12,10 @@ import styles from "./weekly.module.css";
  * 7열 컬럼형 레이아웃으로 모든 요일을 동시에 표시
  */
 export default function WeeklyPage() {
+  type ExtendedAnime = Anime & { isNew?: boolean; aniId?: number | string; badges?: string[] };
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<any>(null);
-  const [weeklyAnimes, setWeeklyAnimes] = useState<Record<string, any[]>>({
+  const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
+  const [weeklyAnimes, setWeeklyAnimes] = useState<Record<string, Anime[]>>({
     '월': [],
     '화': [],
     '수': [],
@@ -62,9 +65,9 @@ export default function WeeklyPage() {
         const dayPromises = days.map(async (day) => {
           try {
             const data = await api.get(`/api/anime/weekly/${day.id}?limit=20`);
-            const allAnime = Array.isArray(data) ? data : [];
+            const allAnime = Array.isArray(data) ? (data as ExtendedAnime[]) : [];
             // 신작만 필터링
-            const newAnime = allAnime.filter((anime: any) => anime.isNew === true);
+            const newAnime = allAnime.filter((anime: ExtendedAnime) => anime.isNew === true);
             console.log(`${day.fullLabel} 전체 애니메이션:`, allAnime.length, '개, 신작만:', newAnime.length, '개');
             return { day: day.id, data: newAnime };
           } catch (err) {
@@ -74,7 +77,7 @@ export default function WeeklyPage() {
         });
         
         const results = await Promise.all(dayPromises);
-        const animeData: Record<string, any[]> = {
+        const animeData: Record<string, ExtendedAnime[]> = {
           '월': [],
           '화': [],
           '수': [],
@@ -151,13 +154,13 @@ export default function WeeklyPage() {
 
 
   // 애니 카드 클릭 시 모달 열기
-  const handleAnimeClick = (anime: any) => {
+  const handleAnimeClick = (anime: Anime) => {
     setSelectedAnime(anime);
     setIsModalOpen(true);
   };
 
   // 키보드 접근성
-  const handleKeyDown = (event: React.KeyboardEvent, anime: any) => {
+  const handleKeyDown = (event: React.KeyboardEvent, anime: Anime) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       handleAnimeClick(anime);
@@ -238,7 +241,7 @@ export default function WeeklyPage() {
               return (
                 <div
                   key={day.id}
-                  ref={(el) => (columnRefs.current[day.id] = el)}
+                  ref={(el) => { columnRefs.current[day.id] = el; }}
                   data-day={day.id}
                   className={`${styles.weeklyColumn} ${day.id === currentDay ? styles.weeklyColumnToday : ''}`}
                   aria-labelledby={`column-header-${day.id}`}
@@ -258,10 +261,10 @@ export default function WeeklyPage() {
                   <div className={styles.weeklyColumnContent}>
                     {dayAnimes.length > 0 ? (
                       <div className={styles.weeklyAnimeGrid}>
-                        {dayAnimes.map((anime: any, index: number) => {
-                          const itemId = anime.id ?? anime.aniId ?? index;
-                          const key = `${itemId}-${anime.title ?? 'item'}`;
-                          const badge = anime.badges?.[0];
+                        {dayAnimes.map((anime: ExtendedAnime, index: number) => {
+                          const itemId = (anime as any).id ?? (anime as any).aniId ?? index;
+                          const key = `${itemId}-${(anime as any).title ?? 'item'}`;
+                          const badge = (anime as any).badges?.[0];
                           return (
                             <div
                               key={key}
@@ -272,10 +275,12 @@ export default function WeeklyPage() {
                               role="button"
                               aria-label={`${anime.title || '애니메이션'} 상세보기`}
                             >
-                              <img
+                              <Image
                                 className={styles.weeklyAnimePoster}
                                 src={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
                                 alt={anime.title || '애니메이션 포스터'}
+                                width={200}
+                                height={280}
                                 loading="lazy"
                               />
                               <div className={styles.weeklyAnimeTitle}>

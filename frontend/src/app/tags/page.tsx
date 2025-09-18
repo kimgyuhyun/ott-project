@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Header from "@/components/layout/Header";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
@@ -7,18 +7,20 @@ import FilterSidebar from "@/components/search/FilterSidebar";
 import AnimeGrid from "@/components/search/AnimeGrid";
 import { searchContent } from "@/lib/api/search";
 import { getGenres, getTags, getSeasons, getYearOptions, getStatuses, getTypes, getAnimeList, listAnime } from "@/lib/api/anime";
+import { Anime } from "@/types/common";
 import styles from "./TagsPage.module.css";
 
 /**
  * 태그별 검색 페이지
  * 2단 레이아웃: 좌측 필터 사이드바 + 우측 애니메이션 그리드
  */
-export default function TagsPage() {
+function TagsPageContent() {
   console.log('[DEBUG] TagsPage 컴포넌트 렌더링');
+  type ExtendedAnime = Anime & { isExclusive?: boolean; aniId?: number | string; rating?: number };
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<any>(null);
-  const [animes, setAnimes] = useState<any[]>([]);
+  const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
+  const [animes, setAnimes] = useState<ExtendedAnime[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -101,20 +103,20 @@ export default function TagsPage() {
           setStatusOptions(Array.isArray(sts) ? sts : []);
           setTypeOptions(Array.isArray(tps) ? tps : []);
 
-          const normalizeToArray = (data: any): any[] => {
+          const normalizeToArray = (data: unknown): ExtendedAnime[] => {
             const isArr = Array.isArray(data);
-            const hasContent = data && Array.isArray((data as any).content);
-            const hasItems = data && Array.isArray((data as any).items);
-            if (isArr) return data as any[];
-            if (hasContent) return (data as any).content as any[];
-            if (hasItems) return (data as any).items as any[];
+            const hasContent = data && Array.isArray((data as { content: unknown[] }).content);
+            const hasItems = data && Array.isArray((data as { items: unknown[] }).items);
+            if (isArr) return data as ExtendedAnime[];
+            if (hasContent) return (data as { content: ExtendedAnime[] }).content;
+            if (hasItems) return (data as { items: ExtendedAnime[] }).items;
             return [];
           };
                      console.log('[DEBUG] 초기 listRaw:', listRaw);
-           console.log('[DEBUG] listRaw.items:', (listRaw as any)?.items);
-           console.log('[DEBUG] listRaw.items[0]:', (listRaw as any)?.items?.[0]);
+           console.log('[DEBUG] listRaw.items:', (listRaw as { items: Anime[] })?.items);
+           console.log('[DEBUG] listRaw.items[0]:', (listRaw as { items: Anime[] })?.items?.[0]);
            // 백엔드 응답 구조에 맞게 .items 사용
-           const list = (listRaw as any)?.items || normalizeToArray(listRaw);
+           const list = (listRaw as { items: ExtendedAnime[] })?.items || normalizeToArray(listRaw);
            console.log('[DEBUG] 초기 최종 list:', list);
            console.log('[DEBUG] 초기 list[0]:', list[0]);
            console.log('[DEBUG] 초기 list[0] 전체 키:', list[0] ? Object.keys(list[0]) : 'no list[0]');
@@ -161,19 +163,19 @@ export default function TagsPage() {
       }
       setError(null);
 
-      const normalizeToArray = (data: any): any[] => {
+      const normalizeToArray = (data: unknown): ExtendedAnime[] => {
         const isArr = Array.isArray(data);
-        const hasContent = data && Array.isArray((data as any).content);
-        const hasItems = data && Array.isArray((data as any).items);
+        const hasContent = data && Array.isArray((data as { content: unknown[] }).content);
+        const hasItems = data && Array.isArray((data as { items: unknown[] }).items);
         console.log('[검색응답] typeof=', typeof data, 'isArray=', isArr, 'keys=', data ? Object.keys(data) : null);
-        if (isArr) return data as any[];
-        if (hasContent) return (data as any).content as any[];
-        if (hasItems) return (data as any).items as any[];
+        if (isArr) return data as ExtendedAnime[];
+        if (hasContent) return (data as { content: ExtendedAnime[] }).content;
+        if (hasItems) return (data as { items: ExtendedAnime[] }).items;
         console.warn('[검색응답] 예상치 못한 구조, 빈 배열로 처리:', data);
         return [];
       };
 
-      let collected: any[] = [];
+      let collected: ExtendedAnime[] = [];
       const page = isLoadMore ? currentPage + 1 : 0;
 
       // 정렬 값을 백엔드 API 형식으로 변환
@@ -252,14 +254,14 @@ export default function TagsPage() {
       }
       
       if (filters.membership) {
-        collected = collected.filter(anime => anime.isExclusive === true);
+        collected = collected.filter(anime => (anime as any).isExclusive === true);
       }
 
-      let uniqueResults: any[] = [];
+      let uniqueResults: ExtendedAnime[] = [];
       if (Array.isArray(collected)) {
         uniqueResults = collected.filter((anime, index, self) => {
-          const key = anime?.aniId ?? anime?.id;
-          return index === self.findIndex(a => (a?.aniId ?? a?.id) === key);
+          const key = (anime as any)?.aniId ?? anime?.id;
+          return index === self.findIndex(a => (((a as any)?.aniId) ?? a?.id) === key);
         });
       } else {
         console.warn('[검색응답] 배열이 아님. 빈 배열로 처리:', collected);
@@ -280,8 +282,8 @@ export default function TagsPage() {
       // 다음 커서 계산
       if (uniqueResults.length > 0) {
         const last = uniqueResults[uniqueResults.length - 1];
-        const lastId = last?.aniId ?? last?.id;
-        const lastRating = last?.rating;
+        const lastId = (last as any)?.aniId ?? last?.id;
+        const lastRating = (last as any)?.rating;
         setCursorId(Number(lastId));
         setCursorRating(typeof lastRating === 'number' ? lastRating : null);
       }
@@ -409,22 +411,22 @@ export default function TagsPage() {
 
   // 스크롤 이벤트 리스너 등록/해제 (디바운싱 적용)
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: number;
     
     const debouncedHandleScroll = () => {
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(handleScroll, 100); // 100ms 디바운싱
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(handleScroll, 100); // 100ms 디바운싱
     };
     
     window.addEventListener('scroll', debouncedHandleScroll);
     return () => {
       window.removeEventListener('scroll', debouncedHandleScroll);
-      clearTimeout(timeoutId);
+      window.clearTimeout(timeoutId);
     };
   }, [currentPage, hasMore, isLoadingMore, isLoading]);
 
   // 애니메이션 클릭 핸들러
-  const handleAnimeClick = (anime: any) => {
+  const handleAnimeClick = (anime: Anime) => {
     setSelectedAnime(anime);
     setIsModalOpen(true);
   };
@@ -490,5 +492,13 @@ export default function TagsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function TagsPage() {
+  return (
+    <Suspense fallback={<div className={styles.root}><main className={styles.mainContainer}>로딩 중...</main></div>}>
+      <TagsPageContent />
+    </Suspense>
   );
 }

@@ -11,8 +11,14 @@ import styles from "./password.module.css";
  * 사용자가 현재 비밀번호와 새 비밀번호를 입력하여 비밀번호를 변경
  */
 export default function PasswordChangePage() {
+  type UserProfile = {
+    id: number;
+    email: string;
+    nickname: string;
+    authProvider?: 'LOCAL' | 'GOOGLE' | 'KAKAO' | 'NAVER' | string;
+  };
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     currentPassword: '',
@@ -32,7 +38,7 @@ export default function PasswordChangePage() {
     const loadUserProfile = async () => {
       try {
         const userData = await getUserProfile();
-        setUser(userData);
+        setUser(userData as UserProfile);
       } catch (err) {
         console.error('사용자 정보 로드 실패:', err);
         router.push('/login');
@@ -94,9 +100,12 @@ export default function PasswordChangePage() {
       alert('비밀번호가 성공적으로 변경되었습니다.');
       router.push('/settings');
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('비밀번호 변경 실패:', err);
-      setError(err.message || '비밀번호 변경에 실패했습니다.');
+      const message = (err && typeof err === 'object' && 'message' in err)
+        ? String((err as any).message)
+        : '비밀번호 변경에 실패했습니다.';
+      setError(message);
     } finally {
       setIsSubmitting(false);
     }

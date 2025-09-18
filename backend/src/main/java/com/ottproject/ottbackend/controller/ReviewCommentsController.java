@@ -143,8 +143,21 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 Id
             HttpSession session // 세션에서 사용자 확인
     ) {
-        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        return ResponseEntity.ok(reviewCommentsService.toggleLike(commentId, userId)); // 200 OK + 토글 결과
+        try {
+            Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
+            System.out.println("🔧 [BACKEND] ReviewComment 좋아요 토글 요청 - reviewId: " + reviewId + ", commentId: " + commentId + ", userId: " + userId);
+            boolean result = reviewCommentsService.toggleLike(commentId, userId);
+            System.out.println("🔧 [BACKEND] ReviewComment 좋아요 토글 결과: " + result);
+            return ResponseEntity.ok(result); // 200 OK + 토글 결과
+        } catch (IllegalArgumentException e) {
+            System.out.println("🔧 [BACKEND] ReviewComment 좋아요 토글 실패 - IllegalArgumentException: " + e.getMessage());
+            // 댓글이 존재하지 않거나 사용자를 찾을 수 없는 경우
+            return ResponseEntity.notFound().build(); // 404 Not Found
+        } catch (Exception e) {
+            System.out.println("🔧 [BACKEND] ReviewComment 좋아요 토글 실패 - Exception: " + e.getMessage());
+            // 기타 예외
+            return ResponseEntity.status(500).build(); // 500 Internal Server Error
+        }
     }
 
     @Operation(summary = "대댓글 목록", description = "특정 댓글의 대댓글을 조회합니다.")

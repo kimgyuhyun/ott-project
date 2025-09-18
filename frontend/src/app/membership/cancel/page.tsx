@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from "@/components/layout/Header";
 import styles from "./cancel.module.css";
 
-export default function PaymentCancelPage() {
+function PaymentCancelContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [countdown, setCountdown] = useState(5);
@@ -72,5 +72,13 @@ export default function PaymentCancelPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PaymentCancelPage() {
+  return (
+    <Suspense fallback={<div className={styles.container}><main className={styles.main}>로딩 중...</main></div>}>
+      <PaymentCancelContent />
+    </Suspense>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from "@/components/layout/Header";
 import styles from "./success.module.css";
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -66,5 +66,13 @@ export default function PaymentSuccessPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={<div className={styles.container}><main className={styles.main}>로딩 중...</main></div>}>
+      <PaymentSuccessContent />
+    </Suspense>
   );
 }

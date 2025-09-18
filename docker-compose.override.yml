@@ -1,0 +1,14 @@
+# 개발용 오버라이드 - docker-compose up 시 자동 적용
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      dockerfile: Dockerfile
+      target: development  # 개발용 스테이지 사용
+    volumes:
+      - ./frontend:/app           # 소스 코드 실시간 반영
+      - /app/node_modules         # node_modules는 컨테이너 유지
+    environment:
+      - WATCHPACK_POLLING=true    # 핫 리로드 최적화
+      - CHOKIDAR_USEPOLLING=true

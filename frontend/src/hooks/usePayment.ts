@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createCheckout, checkPaymentStatus } from '@/lib/api/membership';
 import { useAuth } from './useAuth';
+import type { IamportRequestPayData, IamportResponse } from '@/types/iamport';
 
 interface PaymentRequest {
   planCode: string;
@@ -13,7 +14,7 @@ interface PaymentResult {
   success: boolean;
   paymentId?: number;
   errorMessage?: string;
-  redirectUrl?: string;
+  redirectUrl?: string | null;
 }
 
 export const usePayment = () => {
@@ -52,21 +53,21 @@ export const usePayment = () => {
 
         // 3. 결제 요청
         return new Promise((resolve) => {
-          const paymentData = {
-            pg: checkoutResponse.pg || 'kakaopay.TC0ONETIME',
+          const paymentData: IamportRequestPayData = {
+            pg: request.paymentService || 'kakaopay.TC0ONETIME',
             pay_method: 'card',
             merchant_uid: checkoutResponse.providerSessionId,
             amount: checkoutResponse.amount,
             name: 'OTT 멤버십 구독',
             buyer_email: user?.email || '',
-            buyer_name: user?.name || '',
+            buyer_name: user?.username || '',
             m_redirect_url: window.location.origin + '/membership/success',
             popup: false
           };
 
           console.log('usePayment - paymentData:', paymentData);
 
-          window.IMP.request_pay(paymentData, async (response) => {
+          window.IMP.request_pay(paymentData, async (response: IamportResponse) => {
             console.log('usePayment - payment response:', response);
             
             if (response.success) {

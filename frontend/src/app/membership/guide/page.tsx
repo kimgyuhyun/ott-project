@@ -3,9 +3,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
-import { changeMembershipPlan, resumeMembership } from "@/lib/api/membership";
+import { resumeMembership } from "@/lib/api/membership";
 import PlanChangeModal from "@/components/membership/PlanChangeModal";
-import PaymentModal from "@/components/membership/PaymentModal";
+// import PaymentModal from "@/components/membership/PaymentModal";
 import ProrationPaymentModal from "@/components/membership/ProrationPaymentModal";
 import styles from "./guide.module.css";
 
@@ -17,10 +17,10 @@ export default function MembershipGuidePage() {
   
   // 멤버십 변경 모달 상태
   const [isChangeModalOpen, setIsChangeModalOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [selectedPlan, setSelectedPlan] = useState<{ id: string; name: string; price: number; features: string[]; code?: string; monthlyPrice?: number; concurrentStreams?: number; maxQuality?: string } | null>(null);
   
   // 결제 모달 상태
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  // const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showProrationPaymentModal, setShowProrationPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('simple');
   const [selectedPaymentService, setSelectedPaymentService] = useState('');
@@ -59,7 +59,7 @@ export default function MembershipGuidePage() {
   const planForUser = useMemo(() => {
     if (!userMembership) return null;
     const matched = membershipPlans.find(p => {
-      const byCode = (p as any).code && userMembership.planCode && String((p as any).code).toUpperCase() === String(userMembership.planCode).toUpperCase();
+      const byCode = (p as { code?: string }).code && userMembership.planCode && String((p as { code?: string }).code).toUpperCase() === String(userMembership.planCode).toUpperCase();
       const byName = p.name && userMembership.planName && String(p.name).toLowerCase() === String(userMembership.planName).toLowerCase();
       return byCode || byName;
     });
@@ -80,7 +80,7 @@ export default function MembershipGuidePage() {
       
       // 다음 전환 플랜이 예약되어 있으면 플랜명을 함께 표기
       if (userMembership.nextPlanCode) {
-        const nextPlan = membershipPlans.find(p => (p as any).code && String((p as any).code).toUpperCase() === String(userMembership.nextPlanCode).toUpperCase());
+        const nextPlan = membershipPlans.find(p => (p as { code?: string }).code && String((p as { code?: string }).code).toUpperCase() === String(userMembership.nextPlanCode).toUpperCase());
         const nextPlanName = translatePlanName(nextPlan?.name);
         if (nextPlanName) {
           return `${base} ${nextPlanName} ${suffix}`;
@@ -94,20 +94,20 @@ export default function MembershipGuidePage() {
 
 
   // 플랜 기능 리스트 생성 (DB 데이터 기반)
-  const getPlanFeatures = (plan: any) => {
+  const getPlanFeatures = (plan: { concurrentStreams?: number; maxQuality?: string } | null) => {
     if (!plan) return [];
     
     return [
-      `프로필 ${plan.concurrentStreams}인·동시재생 ${plan.concurrentStreams}회선`,
+      `프로필 ${plan.concurrentStreams || 1}인·동시재생 ${plan.concurrentStreams || 1}회선`,
       '최신화 시청',
       '다운로드 지원',
-      `${plan.maxQuality} 화질 지원`,
+      `${plan.maxQuality || 'HD'} 화질 지원`,
       'TV 앱 지원'
     ];
   };
 
   // 차액 계산 (간단한 예시)
-  const calculateProrationAmount = (currentPlan: any, targetPlan: any) => {
+  const calculateProrationAmount = (currentPlan: { monthlyPrice: number } | null, targetPlan: { monthlyPrice: number } | null) => {
     if (!currentPlan || !targetPlan) return 0;
     const priceDifference = targetPlan.monthlyPrice - currentPlan.monthlyPrice;
     // 남은 기간에 대한 차액 계산 (간단히 월 가격의 50%로 가정)
@@ -115,14 +115,14 @@ export default function MembershipGuidePage() {
   };
 
   // 멤버십 변경 처리
-  const handlePlanChange = (plan: any) => {
+  const handlePlanChange = (plan: { id: string; name: string; price: number; features: string[]; code?: string; monthlyPrice?: number; concurrentStreams?: number; maxQuality?: string }) => {
     if (!plan) return;
     setSelectedPlan(plan);
     setIsChangeModalOpen(true);
   };
 
   // 업그레이드 시 차액 결제 모달 열기
-  const handleUpgradePayment = (plan: any) => {
+  const handleUpgradePayment = (plan: { id: string; name: string; price: number; features: string[]; code?: string; monthlyPrice?: number; concurrentStreams?: number; maxQuality?: string }) => {
     setSelectedPlan(plan);
     setIsChangeModalOpen(false);
     setShowProrationPaymentModal(true);
@@ -185,7 +185,7 @@ export default function MembershipGuidePage() {
       </div>
 
       <div className={styles.summaryCardFeatures}>
-        <ul className="space-y-2">
+        <ul >
           {getPlanFeatures(planForUser).map((feature, index) => (
             <li key={index} className={styles.summaryCardFeature}>{feature}</li>
           ))}
@@ -220,7 +220,7 @@ export default function MembershipGuidePage() {
   return (
     <div className={styles.guideContainer}>
       <Header />
-      <main className="relative pt-16">
+      <main >
         {notice && (
           <div className={styles.centerNoticeOverlay} onClick={() => setNotice(null)}>
             <div className={`${styles.centerNoticeBox} ${notice.type === 'success' ? styles.centerNoticeSuccess : styles.centerNoticeError}`} onClick={(e) => e.stopPropagation()}>
@@ -298,13 +298,13 @@ export default function MembershipGuidePage() {
               if (isRefundedAndCancelled) return true;
               
               if (!userMembership) return true;
-              const byCodeDifferent = (p as any).code && userMembership.planCode && String((p as any).code).toUpperCase() !== String(userMembership.planCode).toUpperCase();
+              const byCodeDifferent = (p as { code?: string }).code && userMembership.planCode && String((p as { code?: string }).code).toUpperCase() !== String(userMembership.planCode).toUpperCase();
               const byNameDifferent = p.name && userMembership.planName && String(p.name).toLowerCase() !== String(userMembership.planName).toLowerCase();
               // If code is present, use it; otherwise fallback to name comparison
-              return (p as any).code ? byCodeDifferent : byNameDifferent;
+              return (p as { code?: string }).code ? byCodeDifferent : byNameDifferent;
             })).map(p => (
               <div 
-                key={(p as any).code || p.name} 
+                key={(p as { code?: string }).code || p.name} 
                 className={styles.otherMembershipCard}
                 onClick={() => {
                   const planName = p.name;
@@ -336,7 +336,7 @@ export default function MembershipGuidePage() {
                     <p className={styles.expandedPlanPrice}>월 {p.monthlyPrice.toLocaleString()}원</p>
                     
                     <div className={styles.expandedPlanFeatures}>
-                      <ul className="space-y-2">
+                      <ul >
                         {getPlanFeatures(p).map((feature, index) => (
                           <li key={index} className={styles.expandedPlanFeature}>{feature}</li>
                         ))}
@@ -353,7 +353,7 @@ export default function MembershipGuidePage() {
                       >
                         멤버십 구독하기
                       </button>
-                    ) : userMembership?.nextPlanCode && (p as any).code && String((p as any).code).toUpperCase() === String(userMembership.nextPlanCode).toUpperCase() ? (
+                    ) : userMembership?.nextPlanCode && (p as { code?: string }).code && String((p as { code?: string }).code).toUpperCase() === String(userMembership.nextPlanCode).toUpperCase() ? (
                       <button 
                         onClick={(e) => { e.stopPropagation(); }}
                         className={styles.changePlanButton}
@@ -365,7 +365,16 @@ export default function MembershipGuidePage() {
                       <button 
                         onClick={(e) => {
                           e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
-                          handlePlanChange(p);
+                          handlePlanChange({
+                            id: String(p.id),
+                            name: p.name,
+                            price: p.monthlyPrice,
+                            features: getPlanFeatures(p),
+                            code: p.code,
+                            monthlyPrice: p.monthlyPrice,
+                            concurrentStreams: p.concurrentStreams,
+                            maxQuality: p.maxQuality
+                          });
                         }}
                         className={styles.changePlanButton}
                       >
@@ -451,10 +460,27 @@ export default function MembershipGuidePage() {
         isOpen={isChangeModalOpen}
         onClose={() => setIsChangeModalOpen(false)}
         currentPlan={planForUser}
-        targetPlan={selectedPlan}
+        targetPlan={selectedPlan ? {
+          id: Number(selectedPlan.id),
+          code: selectedPlan.code || '',
+          name: selectedPlan.name,
+          monthlyPrice: selectedPlan.monthlyPrice || selectedPlan.price,
+          periodMonths: 1,
+          concurrentStreams: selectedPlan.concurrentStreams || 1,
+          maxQuality: selectedPlan.maxQuality || 'HD'
+        } : null}
         userMembership={userMembership}
         onPlanChanged={reloadUserMembership}
-        onUpgradePayment={handleUpgradePayment}
+        onUpgradePayment={(plan) => handleUpgradePayment({
+          id: String(plan.id),
+          name: plan.name,
+          price: plan.monthlyPrice,
+          features: getPlanFeatures(plan),
+          code: plan.code,
+          monthlyPrice: plan.monthlyPrice,
+          concurrentStreams: plan.concurrentStreams,
+          maxQuality: plan.maxQuality
+        })}
       />
 
       {/* 차액 결제 모달 - 업그레이드 시 표시 */}
@@ -464,15 +490,15 @@ export default function MembershipGuidePage() {
           onClose={() => setShowProrationPaymentModal(false)}
           planInfo={{
             name: `${translatePlanName(selectedPlan.name)} 업그레이드`,
-            price: calculateProrationAmount(planForUser, selectedPlan).toLocaleString(),
+            price: calculateProrationAmount(planForUser, { monthlyPrice: selectedPlan.monthlyPrice || selectedPlan.price }).toLocaleString(),
             features: [
-              `프로필 ${selectedPlan.concurrentStreams}인·동시재생 ${selectedPlan.concurrentStreams}회선`,
+              `프로필 ${selectedPlan.concurrentStreams || 1}인·동시재생 ${selectedPlan.concurrentStreams || 1}회선`,
               '최신화 시청',
               '다운로드 지원',
-              `${selectedPlan.maxQuality} 화질 지원`,
+              `${selectedPlan.maxQuality || 'HD'} 화질 지원`,
               'TV 앱 지원'
             ],
-            code: selectedPlan.code
+            code: selectedPlan.code || ''
           }}
           paymentMethod={paymentMethod}
           onChangePaymentMethod={setPaymentMethod}

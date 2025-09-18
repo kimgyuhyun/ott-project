@@ -350,18 +350,15 @@ export async function getMyComments(page: number = 0, size: number = 20) {
   }
 }
 
-// 좋아요 토글 APIs
-export async function toggleReviewLike(aniId: number, reviewId: number) {
-  console.log('🌐 [FRONTEND] toggleReviewLike', { aniId, reviewId });
-  return apiCall(`/api/anime/${aniId}/reviews/${reviewId}/like`, { method: 'POST' });
-}
+// 좋아요 토글 APIs (다른 모듈로 이동됨 - 중복 제거)
+// export async function toggleReviewLike(aniId: number, reviewId: number) {
+//   console.log('🌐 [FRONTEND] toggleReviewLike', { aniId, reviewId });
+//   return apiCall(`/api/anime/${aniId}/reviews/${reviewId}/like`, { method: 'POST' });
+// }
 
-export async function toggleReviewCommentLike(reviewId: number, commentId: number) {
-  console.log('🌐 [FRONTEND] toggleReviewCommentLike', { reviewId, commentId });
-  return apiCall(`/api/reviews/${reviewId}/comments/${commentId}/like`, { method: 'POST' });
-}
+// toggleReviewCommentLike는 comments.ts로 이동됨
 
-export async function toggleEpisodeCommentLike(episodeId: number, commentId: number) {
-  console.log('🌐 [FRONTEND] toggleEpisodeCommentLike', { episodeId, commentId });
-  return apiCall(`/api/episodes/${episodeId}/comments/${commentId}/like`, { method: 'POST' });
-}
+// export async function toggleEpisodeCommentLike(episodeId: number, commentId: number) {
+//   console.log('🌐 [FRONTEND] toggleEpisodeCommentLike', { episodeId, commentId });
+//   return apiCall(`/api/episodes/${episodeId}/comments/${commentId}/like`, { method: 'POST' });
+// }

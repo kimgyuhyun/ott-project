@@ -37,6 +37,8 @@ public class SettingsService { // 사용자 재생 설정
                         .defaultQuality("auto")
                         .autoNextEpisode(true)
                         .theme("light") // 기본 테마
+                        .notificationWorkUpdates(true) // 관심작품 업데이트 알림 기본 활성화
+                        .notificationCommunityActivity(true) // 커뮤니티 활동 알림 기본 활성화
                         .build());
     }
 

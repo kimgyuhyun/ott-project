@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/layout/Header";
 import { getEpisodeStreamUrl, saveEpisodeProgress, getEpisodeProgress, getNextEpisode, getSkips } from "@/lib/api/player";
@@ -9,13 +9,26 @@ import PlayerSettingsModal from "@/components/player/PlayerSettingsModal";
 import EpisodeCommentList from "@/components/episode/EpisodeCommentList";
 import { useAuth } from "@/hooks/useAuth";
 import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
+import { Anime, Episode } from "@/types/common";
 import styles from "./player.module.css";
 
 /**
  * 에피소드 재생 페이지
  * 비디오 플레이어, 컨트롤, 에피소드 정보, 다음 에피소드 이동 기능 포함
  */
-export default function PlayerPage() {
+function PlayerContent() {
+  const getFallbackEpisodeThumb = (episodeNumber?: number) => {
+    const n = Number(episodeNumber);
+    if (n === 1) return 'https://placehold.co/120x80/111827/ffffff?text=EP1+Thumbnail';
+    if (n === 2) return 'https://placehold.co/120x80/1f2937/ffffff?text=EP2+Thumbnail';
+    return 'https://placehold.co/120x80/374151/ffffff?text=Episode';
+  };
+  type ExtendedAnime = Anime & {
+    episodes?: Episode[];
+    isDub?: boolean;
+    isSubtitle?: boolean;
+    title?: string;
+  };
   const searchParams = useSearchParams();
   const router = useRouter();
   const episodeId = searchParams.get('episodeId');
@@ -23,8 +36,8 @@ export default function PlayerPage() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const [streamUrl, setStreamUrl] = useState<string>("");
-  const [animeInfo, setAnimeInfo] = useState<any>(null);
-  const [episodeInfo, setEpisodeInfo] = useState<any>(null);
+  const [animeInfo, setAnimeInfo] = useState<ExtendedAnime | null>(null);
+  const [episodeInfo, setEpisodeInfo] = useState<Episode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
@@ -33,11 +46,11 @@ export default function PlayerPage() {
   const [volume, setVolume] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [nextEpisode, setNextEpisode] = useState<any>(null);
+  const [nextEpisode, setNextEpisode] = useState<Episode | null>(null);
   const [hasMembership, setHasMembership] = useState<boolean>(false);
   
   // 스킵 메타 데이터
-  const [skipMeta, setSkipMeta] = useState<any>(null);
+  const [skipMeta, setSkipMeta] = useState<{ introStart: number; introEnd: number; outroStart: number; outroEnd: number } | null>(null);
   const [hasSkippedIntro, setHasSkippedIntro] = useState<boolean>(false);
   const [hasSkippedOutro, setHasSkippedOutro] = useState<boolean>(false);
   
@@ -115,7 +128,7 @@ export default function PlayerPage() {
           setHasMembership(false);
           return;
         }
-        const membership: any = await getUserMembership();
+        const membership = await getUserMembership();
         const status: string | undefined = membership?.status;
         const endAt: string | undefined = membership?.endAt;
         const now = new Date();
@@ -133,12 +146,12 @@ export default function PlayerPage() {
 
   // 자동 진행률 저장 (5초마다) - 한 번만 시작
   useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
+    let interval: number | null = null;
     
     if (duration > 0 && isLoggedIn && episodeId) {
       console.log('⏰ 자동 저장 타이머 시작:', { duration, isLoggedIn, episodeId });
       
-      interval = setInterval(() => {
+      interval = window.setInterval(() => {
         console.log('⏰ 5초 경과 - 자동 저장 실행');
         saveProgress();
       }, 5000);
@@ -147,7 +160,7 @@ export default function PlayerPage() {
     return () => {
       if (interval) {
         console.log('⏰ 자동 저장 타이머 정리');
-        clearInterval(interval);
+        window.clearInterval(interval);
         interval = null;
       }
     };
@@ -297,7 +310,7 @@ export default function PlayerPage() {
   // PIP 모드 이벤트 리스너
   useEffect(() => {
     const handlePipChange = () => {
-      setIsPipMode(!!document.pictureInPictureElement);
+      setIsPipMode(!!(document as any).pictureInPictureElement);
     };
 
     document.addEventListener('enterpictureinpicture', handlePipChange);
@@ -364,14 +377,14 @@ export default function PlayerPage() {
 
   // 마우스 움직임 감지로 컨트롤 자동 숨김/표시
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: number;
 
     const handleMouseMove = () => {
       setShowControls(true);
       
       // 3초 후 자동으로 컨트롤 숨김
-      clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
+      window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
         setShowControls(false);
       }, 3000);
     };
@@ -387,7 +400,7 @@ export default function PlayerPage() {
     }
 
     return () => {
-      clearTimeout(timeoutId);
+      window.clearTimeout(timeoutId);
       if (videoContainer) {
         videoContainer.removeEventListener('mousemove', handleMouseMove);
         videoContainer.removeEventListener('mouseleave', handleMouseLeave);
@@ -423,6 +436,7 @@ export default function PlayerPage() {
         video.removeEventListener('canplay', handleCanPlay);
       };
     }
+    return undefined;
   }, [streamUrl, isLoggedIn, episodeId]); // episodeId 추가하여 에피소드 변경 시에만 실행
 
   // 페이지 로드 시 자동 재생 시도 - 에피소드 변경 시에만 실행
@@ -441,10 +455,11 @@ export default function PlayerPage() {
       };
 
       // 약간의 지연 후 재생 시도 (DOM이 완전히 준비된 후)
-      const timer = setTimeout(attemptAutoPlay, 500);
+      const timer = window.setTimeout(attemptAutoPlay, 500);
       
-      return () => clearTimeout(timer);
+      return () => window.clearTimeout(timer);
     }
+    return undefined;
   }, [streamUrl, isLoggedIn, episodeId]); // episodeId 추가하여 에피소드 변경 시에만 실행
 
   const loadPlayerData = async () => {
@@ -499,18 +514,18 @@ export default function PlayerPage() {
     if (!animeId) return;
     
     try {
-      const data = await getAnimeDetail(parseInt(animeId));
+      const data = await getAnimeDetail(parseInt(animeId)) as ExtendedAnime;
       console.log('🔍 애니메이션 상세 데이터:', data);
-      console.log('🔍 isDub 값:', data?.isDub, typeof data?.isDub);
-      console.log('🔍 isSubtitle 값:', data?.isSubtitle, typeof data?.isSubtitle);
-      console.log('🔍 title 값:', data?.title);
-      setAnimeInfo(data);
+      console.log('🔍 isDub 값:', (data as ExtendedAnime)?.isDub, typeof (data as ExtendedAnime)?.isDub);
+      console.log('🔍 isSubtitle 값:', (data as ExtendedAnime)?.isSubtitle, typeof (data as ExtendedAnime)?.isSubtitle);
+      console.log('🔍 title 값:', (data as ExtendedAnime)?.title);
+      setAnimeInfo(data as ExtendedAnime);
       
       // 현재 에피소드 정보 찾기
       if ((data as any)?.episodes && episodeId) {
-        const episode = (data as any).episodes.find((ep: any) => ep.id == episodeId);
+        const episode = (data as { episodes: Episode[] }).episodes.find((ep: Episode) => ep.id === Number(episodeId));
         console.log('🔍 현재 에피소드 데이터:', episode);
-        setEpisodeInfo(episode);
+        setEpisodeInfo(episode || null);
       }
     } catch (error) {
       console.error('애니메이션 정보 로드 실패:', error);
@@ -523,8 +538,8 @@ export default function PlayerPage() {
     try {
       // API로 다음 에피소드 로드 시도
       const data = await getNextEpisode(parseInt(episodeId));
-      if (data) {
-        setNextEpisode(data);
+      if (data && (data as any).id) {
+        setNextEpisode(data as Episode);
         return;
       }
     } catch (error) {
@@ -532,10 +547,10 @@ export default function PlayerPage() {
     }
     
     // API 실패 시 사이드바 에피소드 목록에서 다음 에피소드 찾기
-    if (animeInfo?.episodes) {
-      const currentEpisodeIndex = animeInfo.episodes.findIndex((ep: any) => ep.id == episodeId);
-      if (currentEpisodeIndex !== -1 && currentEpisodeIndex < animeInfo.episodes.length - 1) {
-        const nextEp = animeInfo.episodes[currentEpisodeIndex + 1];
+    if ((animeInfo as ExtendedAnime)?.episodes) {
+      const currentEpisodeIndex = (animeInfo as ExtendedAnime).episodes!.findIndex((ep: Episode) => ep.id === Number(episodeId));
+      if (currentEpisodeIndex !== -1 && currentEpisodeIndex < (animeInfo as ExtendedAnime).episodes!.length - 1) {
+        const nextEp = (animeInfo as ExtendedAnime).episodes![currentEpisodeIndex + 1];
         setNextEpisode(nextEp);
         console.log('사이드바 목록에서 다음 에피소드 찾음:', nextEp);
       }
@@ -549,7 +564,8 @@ export default function PlayerPage() {
     try {
       const data = await getSkips(parseInt(episodeId));
       console.log('🔍 스킵 메타 로드:', data);
-      setSkipMeta(data);
+      const meta = data as { introStart: number; introEnd: number; outroStart: number; outroEnd: number };
+      setSkipMeta(meta);
       // 에피소드 변경 시 스킵 상태 초기화
       setHasSkippedIntro(false);
       setHasSkippedOutro(false);
@@ -559,8 +575,8 @@ export default function PlayerPage() {
     }
   };
 
-  const handleTimeUpdate = useCallback((event: any) => {
-    const video = event.target;
+  const handleTimeUpdate = useCallback((event: React.SyntheticEvent<HTMLVideoElement, Event>) => {
+    const video = event.currentTarget;
     const newCurrentTime = video.currentTime;
     const newDuration = video.duration;
     
@@ -684,11 +700,11 @@ export default function PlayerPage() {
     if (!video) return;
 
     try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
+      if ((document as any).pictureInPictureElement) {
+        await (document as any).exitPictureInPicture();
         setIsPipMode(false);
       } else {
-        await video.requestPictureInPicture();
+        await (video as any).requestPictureInPicture();
         setIsPipMode(true);
       }
     } catch (error) {
@@ -737,10 +753,10 @@ export default function PlayerPage() {
 
   // 카운트다운 타이머
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: number | undefined;
     
     if (showNextEpisodeOverlay && countdown > 0) {
-      timer = setTimeout(() => {
+      timer = window.setTimeout(() => {
         setCountdown(countdown - 1);
       }, 1000);
     } else if (showNextEpisodeOverlay && countdown === 0) {
@@ -749,7 +765,7 @@ export default function PlayerPage() {
     }
     
     return () => {
-      if (timer) clearTimeout(timer);
+      if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [showNextEpisodeOverlay, countdown]);
 
@@ -818,9 +834,10 @@ export default function PlayerPage() {
                       
                       <div className={styles.nextEpisodeContent}>
                         <img
-                          src={nextEpisode.thumbnailUrl || "/api/placeholder/180/102"}
+                          src={nextEpisode.thumbnailUrl || getFallbackEpisodeThumb(nextEpisode.episodeNumber)}
                           alt={nextEpisode.title}
                           className={styles.nextEpisodeThumbnail}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/icons/default-avatar.png'; }}
                         />
                         
                         <div className={styles.nextEpisodeInfo}>
@@ -867,8 +884,8 @@ export default function PlayerPage() {
                     saveProgress(); // 일시정지 시에도 진행률 저장
                   }}
                   onEnded={handleVideoEnded}
-                  onSeeked={(event) => {
-                    const video = event.target;
+                  onSeeked={(event: React.SyntheticEvent<HTMLVideoElement>) => {
+                    const video = event.currentTarget;
                     setCurrentTime(video.currentTime);
                     saveProgress(); // 구간 이동 시에도 진행률 저장
                   }}
@@ -1172,8 +1189,8 @@ export default function PlayerPage() {
                     <span className={styles.episodeHeaderTitle}>
                       {animeInfo ? (() => {
                         // 더빙과 자막 여부 확인
-                        const isDub = animeInfo.isDub === true;
-                        const isSubtitle = animeInfo.isSubtitle === true;
+                        const isDub = (animeInfo as any).isDub === true;
+                        const isSubtitle = (animeInfo as any).isSubtitle === true;
                         
                         let prefix = '';
                         if (isDub && isSubtitle) {
@@ -1185,7 +1202,7 @@ export default function PlayerPage() {
                           prefix = '(자막) ';
                         }
                         
-                        return `${prefix}${animeInfo.title}`;
+                        return `${prefix}${(animeInfo as any).title}`;
                       })() : '애니메이션'}
                     </span>
                   </div>
@@ -1194,17 +1211,18 @@ export default function PlayerPage() {
                 {/* 와이드 모드 에피소드 목록 */}
                 <div className={styles.episodeScrollContainer}>
                   {animeInfo?.episodes ? (
-                    animeInfo.episodes.map((episode: any, idx: number) => (
+                    animeInfo.episodes.map((episode: Episode, idx: number) => (
                       <div 
                         key={episode.id} 
-                        className={`${styles.episodeItem} ${episode.id == episodeId ? styles.activeEpisode : ''}`}
+                        className={`${styles.episodeItem} ${episode.id === Number(episodeId) ? styles.activeEpisode : ''}`}
                         onClick={() => router.push(`/player?episodeId=${episode.id}&animeId=${animeId}`)}
                       >
                         <div className={styles.episodeThumbnail}>
                           <img 
-                            src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
+                            src={episode.thumbnailUrl || getFallbackEpisodeThumb(episode.episodeNumber)} 
                             alt={episode.title}
                             className={styles.thumbnail}
+                            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/icons/default-avatar.png'; }}
                           />
                           {(() => {
                             const epNum = Number(episode?.episodeNumber ?? (idx + 1));
@@ -1246,10 +1264,10 @@ export default function PlayerPage() {
               <header className={styles.episodeHeader}>
                 <div className={styles.episodeHeaderContent}>
                   <span className={styles.episodeHeaderTitle}>
-                    {animeInfo ? (() => {
+                  {animeInfo ? (() => {
                       // 더빙과 자막 여부 확인
-                      const isDub = animeInfo.isDub === true;
-                      const isSubtitle = animeInfo.isSubtitle === true;
+                    const isDub = (animeInfo as any).isDub === true;
+                    const isSubtitle = (animeInfo as any).isSubtitle === true;
                       
                       let prefix = '';
                       if (isDub && isSubtitle) {
@@ -1261,7 +1279,7 @@ export default function PlayerPage() {
                         prefix = '(자막) ';
                       }
                       
-                      return `${prefix}${animeInfo.title}`;
+                    return `${prefix}${(animeInfo as any).title}`;
                     })() : '애니메이션'}
                   </span>
                 </div>
@@ -1270,17 +1288,18 @@ export default function PlayerPage() {
               {/* 에피소드 목록 */}
               <div className={styles.episodeListContainer}>
                 {animeInfo?.episodes ? (
-                  animeInfo.episodes.map((episode: any, idx: number) => (
+                  animeInfo.episodes.map((episode: Episode, idx: number) => (
                     <div 
                       key={episode.id} 
-                      className={`${styles.episodeItem} ${episode.id == episodeId ? styles.activeEpisode : ''}`}
+                        className={`${styles.episodeItem} ${episode.id === Number(episodeId) ? styles.activeEpisode : ''}`}
                       onClick={() => router.push(`/player?episodeId=${episode.id}&animeId=${animeId}`)}
                     >
                       <div className={styles.episodeThumbnail}>
                         <img 
-                          src={episode.thumbnailUrl || "https://placehold.co/120x80/999/ffffff?text=Episode"} 
+                          src={episode.thumbnailUrl || getFallbackEpisodeThumb(episode.episodeNumber)} 
                           alt={episode.title}
                           className={styles.thumbnail}
+                          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/icons/default-avatar.png'; }}
                         />
                         {(() => {
                           const epNum = Number(episode?.episodeNumber ?? (idx + 1));
@@ -1379,3 +1398,17 @@ export default function PlayerPage() {
       </div>
     );
   }
+
+export default function PlayerPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className={styles.loadingContainer}>
+          <div className={styles.loadingText}>로딩 중...</div>
+        </div>
+      }
+    >
+      <PlayerContent />
+    </Suspense>
+  );
+}

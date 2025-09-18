@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
-import { getUserSettings, updateUserSettings, changePassword, changeEmail } from "@/lib/api/user";
+import { getUserSettings, updateUserSettings, changePassword } from "@/lib/api/user";
 import { useAuth } from "@/lib/AuthContext";
 import styles from "./settings.module.css";
 
@@ -12,7 +12,10 @@ import styles from "./settings.module.css";
  */
 export default function SettingsPage() {
   const { logout } = useAuth();
-  const [userSettings, setUserSettings] = useState<any>(null);
+  type Notifications = { workUpdates?: boolean; communityActivity?: boolean; eventBenefits?: boolean };
+  type EmailNotifications = { eventBenefits?: boolean };
+  type Settings = { theme?: string; language?: string; notifications?: Notifications | boolean; emailNotifications?: EmailNotifications };
+  const [userSettings, setUserSettings] = useState<Settings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -54,14 +57,14 @@ export default function SettingsPage() {
         setError(null);
         
         const settingsData = await getUserSettings();
-        const settings = (settingsData as any) || {};
+        const settings = (settingsData as Settings) || { theme: 'light', language: 'ko', notifications: { workUpdates: false, communityActivity: false, eventBenefits: false }, emailNotifications: { eventBenefits: true } };
         
         setUserSettings(settings);
         setSettingsForm({
           notifications: {
-            workUpdates: settings.notifications?.workUpdates || false,
-            communityActivity: settings.notifications?.communityActivity || false,
-            eventBenefits: settings.notifications?.eventBenefits || false
+            workUpdates: (typeof settings.notifications === 'object' && settings.notifications?.workUpdates) || false,
+            communityActivity: (typeof settings.notifications === 'object' && settings.notifications?.communityActivity) || false,
+            eventBenefits: (typeof settings.notifications === 'object' && settings.notifications?.eventBenefits) || false
           },
           emailNotifications: {
             eventBenefits: settings.emailNotifications?.eventBenefits !== false

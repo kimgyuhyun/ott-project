@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/lib/AuthContext";
 import { subscribeMembership, registerPaymentMethod } from "@/lib/api/membership";
 import { useMembershipData } from "@/hooks/useMembershipData";
 import { useCheckout } from "@/hooks/useCheckout";
-import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
+// import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import PaymentModal from "@/components/membership/PaymentModal";
 import PaymentFailureModal from "@/components/membership/PaymentFailureModal";
 import CardRegistrationModal from "@/components/membership/CardRegistrationModal";
@@ -87,13 +88,13 @@ export default function MembershipPage() {
   };
 
   // 카드 등록
-  const handleCardRegistration = async (cardData: any) => {
+  const handleCardRegistration = async (cardData: { cardNumber: string; expiryMonth: string; expiryYear: string; birthDate: string; password: string }) => {
     try {
       await registerPaymentMethod({
         type: 'CARD',
         cardNumber: cardData.cardNumber,
-        expiryMonth: cardData.expiryMonth,
-        expiryYear: cardData.expiryYear,
+        expiryMonth: Number(cardData.expiryMonth),
+        expiryYear: Number(cardData.expiryYear),
         birthDate: cardData.birthDate,
         password: cardData.password
       });
@@ -114,8 +115,8 @@ export default function MembershipPage() {
     // 현재는 더미 데이터로 처리
     const cardData = {
       cardNumber: '1234567890123456',
-      expiryMonth: 12,
-      expiryYear: 25,
+      expiryMonth: '12',
+      expiryYear: '25',
       birthDate: '901231',
       password: '12'
     };
@@ -158,10 +159,10 @@ export default function MembershipPage() {
         name: plan.name,
         price: plan.monthlyPrice.toLocaleString(),
         features: [
-          `프로필 ${plan.maxConcurrentStreams}인 · 동시재생 ${plan.maxConcurrentStreams}회선`,
+          `프로필 ${plan.concurrentStreams}인 · 동시재생 ${plan.concurrentStreams}회선`,
           '최신화 시청',
           '다운로드 지원',
-          `${plan.quality} 화질 지원`,
+          `${plan.maxQuality} 화질 지원`,
           'TV 앱 지원'
         ]
       };
@@ -192,9 +193,9 @@ export default function MembershipPage() {
     return (
       <div className={styles.membershipContainer}>
         <Header />
-        <main className="relative pt-16">
+        <main >
           <div className={styles.loadingContainer}>
-            <div className="text-center">
+            <div >
               <div className={styles.loadingSpinner}></div>
               <p className={styles.loadingText}>로딩 중...</p>
             </div>
@@ -209,9 +210,9 @@ export default function MembershipPage() {
     return (
       <div className={styles.membershipContainer}>
         <Header />
-        <main className="relative pt-16">
+        <main >
           <div className={styles.errorContainer}>
-            <div className="text-center">
+            <div >
               <p className={styles.errorText}>{error}</p>
               <button 
                 onClick={() => window.location.reload()} 
@@ -231,7 +232,7 @@ export default function MembershipPage() {
       <Header />
       
       {/* 메인 콘텐츠 영역 */}
-      <main className="relative pt-16">
+      <main >
         {/* 히어로 섹션 */}
         <div className={styles.heroSection}>
           {/* 배경 영상 */}
@@ -272,9 +273,11 @@ export default function MembershipPage() {
         {/* 멤버십 페이지 이미지 섹션 */}
         <div className={styles.membershipImageSection}>
           <div className={styles.membershipImageContainer}>
-            <img 
+            <Image 
               src="/images/animations/membership_page.png" 
               alt="멤버십 페이지" 
+              width={600}
+              height={400}
               className={styles.membershipImage}
             />
           </div>
@@ -448,7 +451,7 @@ export default function MembershipPage() {
             </div>
             
             {/* 멤버십 플랜 선택 */}
-            <div className="space-y-4 mb-8">
+            <div >
               {/* 베이직 플랜 */}
               <div
                 className={`${styles.planSelectionCard} ${selectedPlan === 'basic' ? styles.planSelectionCardSelected : ''}`}

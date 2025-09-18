@@ -9,6 +9,8 @@ const API_BASE = '';
 async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
   
+  console.log('🌐 [FRONTEND] API 호출:', { url, method: options.method || 'GET' });
+  
   const response = await fetch(url, {
     ...options,
     credentials: 'include', // 세션 쿠키 포함
@@ -18,15 +20,32 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     },
   });
 
+  console.log('🌐 [FRONTEND] API 응답:', { 
+    status: response.status, 
+    statusText: response.statusText, 
+    ok: response.ok 
+  });
+
   if (!response.ok) {
     const errorText = await response.text();
+    console.error('🌐 [FRONTEND] API 에러:', { 
+      status: response.status, 
+      statusText: response.statusText, 
+      errorText 
+    });
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
 
-  // 본문이 없는 204 등의 응답을 허용
-  return response
-    .json()
-    .catch(() => undefined as unknown as T);
+  // 응답이 비어있는지 확인
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    console.log('🌐 [FRONTEND] API 성공 (빈 응답):', { status: response.status });
+    return {} as T; // 빈 객체 반환
+  }
+
+  const result = await response.json();
+  console.log('🌐 [FRONTEND] API 성공:', result);
+  return result;
 }
 
 // 리뷰별 댓글 목록 조회
@@ -64,6 +83,7 @@ export async function deleteComment(reviewId: number, commentId: number) {
 
 // 댓글 좋아요 토글
 export async function toggleCommentLike(reviewId: number, commentId: number) {
+  console.log('🌐 [FRONTEND] toggleCommentLike 호출:', { reviewId, commentId });
   return apiCall(`/api/reviews/${reviewId}/comments/${commentId}/like`, {
     method: 'POST',
   });
