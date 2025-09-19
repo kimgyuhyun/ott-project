@@ -76,6 +76,8 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.ngrok
+.env.portforward
 
 # IDE
 .vscode/
