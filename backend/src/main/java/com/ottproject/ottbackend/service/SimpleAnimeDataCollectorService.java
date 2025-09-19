@@ -2,11 +2,13 @@ package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.VoiceActor;
+import com.ottproject.ottbackend.entity.Director;
 import com.ottproject.ottbackend.entity.Character;
 import com.ottproject.ottbackend.exception.AdultContentException;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.VoiceActorRepository;
 import com.ottproject.ottbackend.repository.CharacterRepository;
+import com.ottproject.ottbackend.repository.DirectorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +46,7 @@ public class SimpleAnimeDataCollectorService {
     private final AnimeRepository animeRepository;
     private final VoiceActorRepository voiceActorRepository;
     private final CharacterRepository characterRepository;
+    private final DirectorRepository directorRepository;
     private final AnimeBatchProcessor animeBatchProcessor;
     private final PlatformTransactionManager transactionManager;
     
@@ -270,18 +273,31 @@ public class SimpleAnimeDataCollectorService {
             }
         }
         
-        // 새 캐릭터만 배치 생성
+        // 새 캐릭터만 배치 생성 (개별 트랜잭션으로 에러 격리)
         if (!newCharacters.isEmpty()) {
             try {
                 Set<Character> savedCharacters = new java.util.HashSet<>(characterRepository.saveAll(newCharacters));
                 managedCharacters.addAll(savedCharacters);
             } catch (Exception e) {
-                log.warn("캐릭터 저장 중 오류 발생, 개별 저장 시도: {}", e.getMessage());
-                // 개별 저장으로 fallback
+                log.warn("캐릭터 배치 저장 실패, 개별 저장으로 폴백: {}", e.getMessage());
+                // 개별 저장으로 fallback (각각 새로운 트랜잭션)
                 for (Character character : newCharacters) {
                     try {
-                        Character saved = characterRepository.save(character);
-                        managedCharacters.add(saved);
+                        // 개별 트랜잭션으로 저장
+                        DefaultTransactionDefinition def = new DefaultTransactionDefinition();
+                        def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+                        def.setReadOnly(false);
+                        def.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+                        
+                        TransactionStatus status = transactionManager.getTransaction(def);
+                        try {
+                            Character saved = characterRepository.save(character);
+                            managedCharacters.add(saved);
+                            transactionManager.commit(status);
+                        } catch (Exception ex) {
+                            transactionManager.rollback(status);
+                            log.warn("캐릭터 개별 저장 실패: {} - {}", character.getName(), ex.getMessage());
+                        }
                     } catch (Exception ex) {
                         log.warn("캐릭터 개별 저장 실패: {} - {}", character.getName(), ex.getMessage());
                     }
@@ -407,28 +423,52 @@ public class SimpleAnimeDataCollectorService {
         int adultContentCount = 0;
         int errorCount = 0;
         
-        for (int i = 0; i < popularIds.size(); i++) {
-            Long malId = popularIds.get(i);
-            log.info("📺 [{}/{}] 애니메이션 수집 시작: MAL ID {}", i + 1, popularIds.size(), malId);
+        // 배치 크기 설정 (한 번에 처리할 개수)
+        int batchSize = 10;
+        int totalBatches = (int) Math.ceil((double) popularIds.size() / batchSize);
+        
+        for (int batch = 0; batch < totalBatches; batch++) {
+            int start = batch * batchSize;
+            int end = Math.min(start + batchSize, popularIds.size());
+            List<Long> batchIds = popularIds.subList(start, end);
             
-            try {
-                boolean success = collectAnime(malId);
-                if (success) {
-                    successCount++;
-                    log.info("✅ [{}/{}] 수집 성공: MAL ID {}", i + 1, popularIds.size(), malId);
-                } else {
-                        log.warn("⚠️ [{}/{}] 수집 실패 (중복 또는 기타): MAL ID {}", i + 1, popularIds.size(), malId);
+            log.info("📦 배치 {}/{} 처리 시작: {}개 항목", batch + 1, totalBatches, batchIds.size());
+            
+            for (int i = 0; i < batchIds.size(); i++) {
+                Long malId = batchIds.get(i);
+                int globalIndex = start + i + 1;
+                log.info("📺 [{}/{}] 애니메이션 수집 시작: MAL ID {}", globalIndex, popularIds.size(), malId);
+                
+                try {
+                    boolean success = collectAnime(malId);
+                    if (success) {
+                        successCount++;
+                        log.info("✅ [{}/{}] 수집 성공: MAL ID {}", globalIndex, popularIds.size(), malId);
+                    } else {
+                        log.warn("⚠️ [{}/{}] 수집 실패 (중복 또는 기타): MAL ID {}", globalIndex, popularIds.size(), malId);
+                    }
+                    
+                    // Rate limit 대응
+                    jikanApiService.delayForRateLimit();
+                    
+                } catch (AdultContentException e) {
+                    adultContentCount++;
+                    log.info("🚫 [{}/{}] 19금 콘텐츠 제외: MAL ID {} - {}", globalIndex, popularIds.size(), malId, e.getMessage());
+                } catch (Exception e) {
+                    errorCount++;
+                    log.error("❌ [{}/{}] 수집 중 오류: MAL ID {}", globalIndex, popularIds.size(), malId, e);
                 }
-                
-                // Rate limit 대응
-                jikanApiService.delayForRateLimit();
-                
-            } catch (AdultContentException e) {
-                adultContentCount++;
-                log.info("🚫 [{}/{}] 19금 콘텐츠 제외: MAL ID {} - {}", i + 1, popularIds.size(), malId, e.getMessage());
-            } catch (Exception e) {
-                errorCount++;
-                log.error("❌ [{}/{}] 수집 중 오류: MAL ID {}", i + 1, popularIds.size(), malId, e);
+            }
+            
+            // 배치 간 추가 대기 (API 부하 분산)
+            if (batch < totalBatches - 1) {
+                log.info("⏳ 배치 간 대기: 5초");
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.warn("배치 간 대기 중 인터럽트 발생", e);
+                }
             }
         }
         
@@ -808,41 +848,66 @@ public class SimpleAnimeDataCollectorService {
      * 디렉터 데이터 백그라운드 처리
      */
     public void processDirectorsInBackground(Long animeId, Long malId) {
-        // 새로운 쓰기 가능한 트랜잭션 생성
+        // 배치 트랜잭션 오버헤드 최소화: 필요한 범위에서만 트랜잭션 사용
         DefaultTransactionDefinition def = new DefaultTransactionDefinition();
-        def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
         def.setReadOnly(false);
         def.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
-        
+
         TransactionStatus status = transactionManager.getTransaction(def);
-        
+
         try {
-            // 저장된 애니메이션 조회
             Anime anime = animeRepository.findById(animeId).orElse(null);
             if (anime == null) {
                 log.warn("애니메이션을 찾을 수 없음: ID {}", animeId);
+                transactionManager.rollback(status);
                 return;
             }
-            
-            // Jikan API에서 애니메이션 상세 정보 조회
-            var details = jikanApiService.getAnimeDetails(malId);
-            if (details == null) {
-                log.warn("애니메이션 상세 데이터 없음: MAL ID {}", malId);
+
+            // /anime/{id}/staff 호출로 직접 감독 추출
+            var staffItems = jikanApiService.getAnimeStaff(malId);
+            java.util.Set<String> directorNames = new java.util.HashSet<>();
+            if (staffItems != null) {
+                for (var st : staffItems) {
+                    if (st == null) continue;
+                    var positions = st.getPositions();
+                    if (positions != null && positions.contains("Director")) {
+                        String name = st.getName();
+                        if (name != null && !name.trim().isEmpty()) {
+                            directorNames.add(name.trim());
+                        }
+                    }
+                }
+            }
+
+            if (directorNames.isEmpty()) {
+                anime.setDirectors(new java.util.HashSet<>()); // 빈 세트로 설정  // right-side comment as per user preference
+                animeRepository.save(anime);
+                transactionManager.commit(status);
                 return;
             }
-            
-            // DTO를 Map으로 변환 (현재는 사용하지 않음)
-            // Map<String, Object> jikanData = convertToMap(details);
-            
-            // 디렉터 처리 (현재는 Jikan API에 디렉터 정보가 없으므로 로그만 출력)
-            log.info("디렉터 데이터 처리: MAL ID {} (현재 Jikan API에 디렉터 정보 없음)", malId);
-            
-            // 애니메이션 업데이트
+
+            // 기존 감독 배치 조회 및 신규 생성 배치 저장
+            var existing = directorRepository.findByNameIn(directorNames);
+            java.util.Map<String, Director> existingMap = existing.stream()
+                .collect(java.util.stream.Collectors.toMap(Director::getName, d -> d));
+
+            java.util.Set<Director> managed = new java.util.HashSet<>(existing);
+            java.util.Set<String> newNames = directorNames.stream()
+                .filter(n -> !existingMap.containsKey(n))
+                .collect(java.util.stream.Collectors.toSet());
+
+            if (!newNames.isEmpty()) {
+                java.util.Set<Director> newDirectors = newNames.stream()
+                    .map(n -> Director.createDirector(n, n, n, "", ""))
+                    .collect(java.util.stream.Collectors.toSet());
+                managed.addAll(directorRepository.saveAll(newDirectors));
+            }
+
+            anime.setDirectors(managed);
             animeRepository.save(anime);
-            
-            // 트랜잭션 커밋
             transactionManager.commit(status);
-            
+
         } catch (Exception e) {
             log.error("디렉터 처리 실패: MAL ID {} - 재시도 예정", malId, e);
             transactionManager.rollback(status);

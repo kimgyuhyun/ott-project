@@ -544,6 +544,7 @@ public class SimpleJikanDataMapper {
     
     /**
      * 안전한 Integer 변환 (String 또는 Number 모두 처리)
+     * "24 min per ep" 같은 문자열에서 숫자만 추출
      */
     private Integer convertToInteger(Object value) {
         if (value == null) return null;
@@ -553,8 +554,14 @@ public class SimpleJikanDataMapper {
         } else if (value instanceof Number) {
             return ((Number) value).intValue();
         } else if (value instanceof String) {
+            String str = (String) value;
             try {
-                return Integer.parseInt((String) value);
+                // "24 min per ep" 같은 문자열에서 숫자만 추출
+                String numberStr = str.replaceAll("[^0-9]", "");
+                if (numberStr.isEmpty()) {
+                    return null;
+                }
+                return Integer.parseInt(numberStr);
             } catch (NumberFormatException e) {
                 log.warn("숫자 변환 실패: {}", value);
                 return null;
