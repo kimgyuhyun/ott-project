@@ -14,6 +14,7 @@ import java.util.List;
 import com.ottproject.ottbackend.dto.jikan.TopAnimePageJikanDto;
 import com.ottproject.ottbackend.dto.jikan.AnimeDetailsJikanDto;
 import com.ottproject.ottbackend.dto.jikan.AnimeCharactersJikanDto;
+import com.ottproject.ottbackend.dto.jikan.AnimeStaffJikanDto;
 
 /**
  * 간단한 Jikan API 호출 서비스 (Jikan 전용 DTO 사용)
@@ -33,7 +34,7 @@ public class SimpleJikanApiService {
     private String baseUrl; // 운영 환경에서는 환경변수로 설정 필요
 
     @Value("${jikan.rate-limit.max-rps:3}")
-    private int maxRequestsPerSecond; // 초당 허용 요청수
+    private double maxRequestsPerSecond; // 초당 허용 요청수
 
     @Value("${jikan.rate-limit.backoff-ms:1200}")
     private long defaultBackoffMs; // 기본 백오프(ms)
@@ -45,8 +46,8 @@ public class SimpleJikanApiService {
     private volatile boolean circuitOpen = false;
     private volatile long lastFailureTime = 0;
     private final java.util.concurrent.atomic.AtomicInteger consecutiveFailures = new java.util.concurrent.atomic.AtomicInteger(0);
-    private static final int FAILURE_THRESHOLD = 3; // 연속 실패 임계값 (운영 환경 최적화)
-    private static final long CIRCUIT_TIMEOUT = 60000; // 1분 후 재시도 (개발 환경)
+    private static final int FAILURE_THRESHOLD = 5; // 연속 실패 임계값 (더 관대하게)
+    private static final long CIRCUIT_TIMEOUT = 300000; // 5분 후 재시도 (더 긴 대기)
     private final Object circuitLock = new Object(); // Circuit 상태 변경 동기화
     
     /**
@@ -103,6 +104,53 @@ public class SimpleJikanApiService {
             log.error("ANIME_API_CIRCUIT_BREAKER_TRIGGERED|malId={}|consecutiveFailures={}", malId, consecutiveFailures.get());
         return null;
     }
+
+    /**
+     * 애니메이션 스태프 정보 조회 (/anime/{id}/staff)
+     */
+    public List<AnimeStaffJikanDto.StaffItem> getAnimeStaff(Long malId) {
+        if (isCircuitOpen()) {
+            log.warn("🚫 Circuit Breaker 열림: staff 호출 차단 (MAL ID: {})", malId);
+            return java.util.Collections.emptyList();
+        }
+
+        int maxRetries = 3;
+        int retryCount = 0;
+
+        while (retryCount < maxRetries) {
+            try {
+                String url = baseUrl + "/anime/" + malId + "/staff";
+                log.info("Jikan API 호출(staff): {} (시도: {}/{})", url.replaceAll("\\d+", "***"), retryCount + 1, maxRetries);
+
+                ResponseEntity<AnimeStaffJikanDto> response = restTemplate.getForEntity(url, AnimeStaffJikanDto.class);
+
+                if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                    AnimeStaffJikanDto dto = response.getBody();
+                    List<AnimeStaffJikanDto.StaffItem> data = dto == null ? java.util.List.of() : dto.getData();
+                    recordSuccess();
+                    return data == null ? java.util.List.of() : data;
+                } else if (response.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
+                    log.warn("Rate limit 도달(staff): MAL ID {} (시도: {}/{})", malId, retryCount + 1, maxRetries);
+                    handleRateLimitRetry();
+                    retryCount++;
+                    continue;
+                }
+
+                log.warn("스태프 조회 실패: MAL ID {} (상태: {})", malId, response.getStatusCode());
+                return java.util.List.of();
+
+            } catch (Exception e) {
+                log.error("스태프 조회 중 오류: MAL ID {} (시도: {}/{})", malId, retryCount + 1, maxRetries, e);
+                retryCount++;
+                if (retryCount < maxRetries) {
+                    handleRateLimitRetry();
+                }
+            }
+        }
+
+        recordFailure();
+        return java.util.List.of();
+    }
     
     /**
      * 인기 애니메이션 ID 목록 조회 (페이지네이션 지원)
@@ -126,29 +174,35 @@ public class SimpleJikanApiService {
                     TopAnimePageJikanDto dto = response.getBody();
                     List<TopAnimePageJikanDto.AnimeSummary> dataList = (dto == null ? null : dto.getData());
                     if (dataList == null || dataList.isEmpty()) {
-                        log.info("더 이상 데이터가 없음. 페이지: {}", page);
+                        log.info("더 이상 데이터가 없음. 페이지: {} (총 수집: {}개)", page, allAnimeIds.size());
                         break;
                     }
                     
+                    log.info("페이지 {} 응답: {}개 항목 수신", page, dataList.size());
+                    
                     for (TopAnimePageJikanDto.AnimeSummary anime : dataList) {
-                        if (allAnimeIds.size() >= limit) break;
+                        if (allAnimeIds.size() >= limit) {
+                            log.info("목표 개수 도달: {}개 (요청: {}개)", allAnimeIds.size(), limit);
+                            break;
+                        }
                         
                         Long malId = anime.getMal_id();
                         allAnimeIds.add(malId);
                     }
                     
-                    log.info("페이지 {} 완료: {}개 수집 (총 {}개)", page, dataList.size(), allAnimeIds.size());
+                    log.info("페이지 {} 완료: {}개 수집 (총 {}개, 목표: {}개)", page, dataList.size(), allAnimeIds.size(), limit);
                     
-                    // Rate limit 대응
+                    // Rate limit 대응 + 페이지 간 소폭 지연(안정화)
                     delayForRateLimit();
+                    try { Thread.sleep(Math.max(250L, defaultBackoffMs)); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
                     page++;
                     
                 } else if (response.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
-                    log.warn("페이지 {} 조회 시 Rate limit 도달: 백오프 후 재시도", page);
+                    log.warn("페이지 {} 조회 시 Rate limit 도달: 백오프 후 재시도 (현재 수집: {}개)", page, allAnimeIds.size());
                     handleRateLimitRetry();
                     // page 유지 후 재시도
                 } else {
-                    log.warn("페이지 {} 조회 실패 (상태: {})", page, response.getStatusCode());
+                    log.warn("페이지 {} 조회 실패 (상태: {}) - 수집 중단 (현재 수집: {}개)", page, response.getStatusCode(), allAnimeIds.size());
                     break;
                 }
             }
@@ -157,7 +211,7 @@ public class SimpleJikanApiService {
             return allAnimeIds;
             
         } catch (Exception e) {
-            log.error("인기 애니메이션 조회 중 오류 발생", e);
+            log.error("인기 애니메이션 조회 중 오류 발생 (현재 수집: {}개, 목표: {}개)", allAnimeIds.size(), limit, e);
             return allAnimeIds; // 부분적으로 수집된 데이터라도 반환
         }
     }
@@ -222,7 +276,7 @@ public class SimpleJikanApiService {
      * - 설정 기반 백오프 사용. maxRequestsPerSecond에 따라 최소 대기 계산.
      */
     public void delayForRateLimit() {
-        long minDelayMs = Math.max(defaultBackoffMs, (long)Math.ceil(1000.0 / Math.max(1, maxRequestsPerSecond)));
+        long minDelayMs = Math.max(defaultBackoffMs, (long)Math.ceil(1000.0 / Math.max(1.0, maxRequestsPerSecond)));
         try {
             // 짧은 지연은 Thread.sleep, 긴 지연은 CompletableFuture 사용
             if (minDelayMs <= 100) {
@@ -242,16 +296,10 @@ public class SimpleJikanApiService {
      * 429 에러 시 재시도 로직 - 비동기 처리
      */
     private void handleRateLimitRetry() {
-        long delayMs = Math.max(1000L, retryBackoffMs);
+        long delayMs = Math.max(5000L, retryBackoffMs); // 최소 5초 대기
         try {
-            // 짧은 지연은 Thread.sleep, 긴 지연은 CompletableFuture 사용
-            if (delayMs <= 200) {
-                Thread.sleep(delayMs);
-            } else {
-                // 비동기 지연으로 스레드 풀 효율성 향상
-                java.util.concurrent.CompletableFuture.delayedExecutor(delayMs, java.util.concurrent.TimeUnit.MILLISECONDS)
-                    .execute(() -> {});
-            }
+            log.warn("Rate limit 도달로 인한 대기: {}ms ({}초)", delayMs, delayMs / 1000);
+            Thread.sleep(delayMs);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.warn("Rate limit 재시도 지연 중 인터럽트 발생", e);

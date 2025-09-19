@@ -19,7 +19,7 @@ public class MvcConfig implements WebMvcConfigurer {
 				.allowCredentials(true) // 쿠키 전송 허용
 				.allowedMethods("GET","POST","PUT","DELETE","OPTIONS") // 메서드 허용
 				.allowedHeaders("*") // 헤더 허용
-				.allowedOrigins("http://localhost:3000"); // 프론트 오리진
+				.allowedOrigins("http://localhost:3000", "http://127.0.0.1:3000"); // 프론트 오리진
 	}
 }
 

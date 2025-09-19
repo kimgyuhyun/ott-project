@@ -89,7 +89,7 @@ public class VerificationEmailService {
         if (origin == null || origin.isBlank()) {
             origin = System.getenv("BACKEND_PUBLIC_ORIGIN"); // 백엔드 공개 오리진이 있으면 사용
         }
-        String resetBase = (origin != null && !origin.isBlank()) ? origin : ("http://" + "localhost:8090");
+        String resetBase = (origin != null && !origin.isBlank()) ? origin : ("http://" + "127.0.0.1:8090");
         message.setText("비밀번호를 재설정하려면 다음 링크를 클릭하세요:\n\n"
                 + resetBase.replaceAll("/+$", "") + "/api/auth/reset-password?token=" + resetToken + "\n\n"
                 + "이 링크는 1시간 동안 유효합니다."); // 메일 본문 내용 설정 (비밀번호 재설정 링크 포함)

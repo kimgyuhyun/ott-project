@@ -36,11 +36,10 @@ public class Character {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // 캐릭터 고유 ID (DB에서 자동 생성)
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String name; // 캐릭터 이름 (한글)
 
-    @Column(nullable = true)
-    private Long animeId; // 내 DB의 애니메이션 PK (이 캐릭터가 속한 애니메이션)
+    // 캐릭터-애니 관계는 조인 테이블로만 관리 (anime_characters)
 
     @Column(nullable = true)
     private String nameEn; // 캐릭터 이름 (영어)
@@ -121,11 +120,6 @@ public class Character {
      */
     public static Character createCharacter(String name, String nameEn, String nameJp, 
                                           String imageUrl, String description) {
-        return createCharacter(name, nameEn, nameJp, imageUrl, description, null);
-    }
-    
-    public static Character createCharacter(String name, String nameEn, String nameJp, 
-                                          String imageUrl, String description, Long animeId) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("캐릭터 이름은 필수입니다.");
         }
@@ -136,7 +130,6 @@ public class Character {
         character.nameJp = nameJp != null ? nameJp.trim() : null;
         character.imageUrl = imageUrl != null ? imageUrl.trim() : null;
         character.description = description != null ? description.trim() : null;
-        character.animeId = animeId;
         character.isActive = true;
         character.createdAt = LocalDateTime.now();
         character.updatedAt = LocalDateTime.now();
