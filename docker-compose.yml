@@ -3,14 +3,18 @@ services:                         # 서비스 정의 시작
   postgres:                       # PostgreSQL 데이터베이스 서비스
     image: postgres:15            # PostgreSQL 15 버전 이미지
     container_name: ott-postgres  # 컨테이너 이름
+    env_file: # .env 파일에서 환경변수 로드
+      - .env
     environment:                  # 환경 변수 설정
-      POSTGRES_DB: ott_project_db     # 데이터베이스 이름
-      POSTGRES_USER: root             # 데이터베이스 사용자명
-      POSTGRES_PASSWORD: 1234         # 데이터베이스 비밀번호
+      POSTGRES_DB: ${DB_NAME}     # 데이터베이스 이름
+      POSTGRES_USER: ${DB_USERNAME}             # 데이터베이스 사용자명
+      POSTGRES_PASSWORD: ${DB_PASSWORD}         # 데이터베이스 비밀번호
     ports:                        # 포트 매핑
       - "5432:5432"               # 호스트:컨테이너 포트
     volumes:                      # 데이터 영속성 볼륨
       - postgres_data:/var/lib/postgresql/data  # PostgreSQL 데이터 저장 경로
+    networks:
+      - default
 
   redis: # Redis 캐시 서비스
     image: redis:7-alpine
@@ -18,6 +22,8 @@ services:                         # 서비스 정의 시작
     ports:
       - "6379:6379"
     command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks:
+      - default
 
   app: # Spring Boot 애플리케이션 서비스
     build:
@@ -25,40 +31,80 @@ services:                         # 서비스 정의 시작
       dockerfile: Dockerfile
     container_name: ott-app # 컨테이너 이름
     ports: # 포트 매핑
-      - "8090:8090" # 호스트:컨테이너 포트 (외부:내부)
+      - "8090:8090"
     depends_on: # 의존성 설정
       - postgres # postgres 서비스가 먼저 시작되어야 함
       - redis
+    env_file: # .env 파일에서 환경변수 로드
+      - .env
+    networks:
+      - default
     environment: # 환경 변수 설정
-      # Spring 프로파일 설정 (여기에 추가)
+      # Spring 프로파일 설정
       SPRING_PROFILES_ACTIVE: dev
-      # 데이터베이스 연결 정보
-      SPRING_DATASOURCE_URL: jdbc:postgresql://ott-postgres:5432/ott_project_db # 컨테이너 내부 네트워크로 db 연결
-      SPRING_DATASOURCE_USERNAME: root # 데이터베이스 사용자명
-      SPRING_DATASOURCE_PASSWORD: 1234 # 데이터베이스 비밀번호
-      # Flyway 설정
-      SPRING_FLYWAY_ENABLED: true
-      SPRING_FLYWAY_LOCATIONS: classpath:db/migration
-      SPRING_FLYWAY_BASELINE_ON_MIGRATE: true
-      # JPA 설정
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      # 데이터베이스 연결 정보 (환경변수 사용)
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
       # Redis 설정
-      SPRING_DATA_REDIS_HOST: ott-redis
-      SPRING_DATA_REDIS_PORT: 6379
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      # API 키들
+      TMDB_API_KEY: ${TMDB_API_KEY}
+      # OAuth2 설정
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      KAKAO_CLIENT_ID: ${KAKAO_CLIENT_ID}
+      KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
+      # 메일 설정
+      MAIL_HOST: ${MAIL_HOST}
+      MAIL_PORT: ${MAIL_PORT}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      MAIL_FROM: ${MAIL_FROM}
+      # 쿠키 설정
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
+      COOKIE_SECURE: ${COOKIE_SECURE}
+      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE}
+      # Base URL
+      BASE_URL: ${BASE_URL}
+      # Iamport 결제 설정
+      IAMPORT_MERCHANT_CODE: ${IAMPORT_MERCHANT_CODE}
+      IAMPORT_API_KEY: ${IAMPORT_API_KEY}
+      IAMPORT_API_SECRET: ${IAMPORT_API_SECRET}
+      IAMPORT_WEBHOOK_URL: ${IAMPORT_WEBHOOK_URL}
+      IAMPORT_KAKAO_CHANNEL_KEY: ${IAMPORT_KAKAO_CHANNEL_KEY}
+      IAMPORT_TOSS_CHANNEL_KEY: ${IAMPORT_TOSS_CHANNEL_KEY}
+      IAMPORT_NICE_CHANNEL_KEY: ${IAMPORT_NICE_CHANNEL_KEY}
+      # 결제 설정
+      PAYMENT_TEST_AMOUNT: ${PAYMENT_TEST_AMOUNT}
+      PAYMENT_DEV_MODE: ${PAYMENT_DEV_MODE}
+      # Redis 네임스페이스
+      REDIS_NAMESPACE: ${REDIS_NAMESPACE}
+      RECENT_SEARCH_TTL_DAYS: ${RECENT_SEARCH_TTL_DAYS}
 
   frontend: # Next.js 프론트엔드 서비스
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - BACKEND_ORIGIN=http://ott-app:8090
+        - BACKEND_ORIGIN=${BASE_URL}
     container_name: ott-frontend
+    env_file: # .env 파일에서 환경변수 로드
+      - .env
     environment:
-      NEXT_PUBLIC_BACKEND_ORIGIN: http://ott-app:8090
+       NEXT_PUBLIC_BACKEND_ORIGIN: http://ott-app:8090  # 컨테이너 내부 통신
+       NEXT_PUBLIC_FRONTEND_ORIGIN: http://127.0.0.1  # 외부 접속용
     ports:
       - "3000:3000"
     depends_on:
       - app
+    networks:
+      - default
 
   nginx: # Nginx 리버스 프록시
     image: nginx:alpine
@@ -70,6 +116,13 @@ services:                         # 서비스 정의 시작
       - app
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    # Nginx가 다른 컨테이너와 통신할 수 있도록 네트워크 설정
+    networks:
+      - default
 
 volumes:                         # 볼륨 정의
   postgres_data:                 # PostgreSQL 데이터 저장용 볼륨
+
+networks:                        # 네트워크 정의
+  default:                       # 기본 네트워크 (모든 컨테이너가 통신 가능)
+    driver: bridge
