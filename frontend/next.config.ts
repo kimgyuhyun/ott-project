@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  output: 'standalone', // Docker 빌드를 위한 standalone 모드 활성화
   experimental: {
     forceSwcTransforms: true,
   },
@@ -32,6 +32,12 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'cdn.myanimelist.net',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn.example.com',
         port: '',
         pathname: '/**',
       },
