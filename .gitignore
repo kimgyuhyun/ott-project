@@ -90,7 +90,7 @@ backend/*.iml
 
 # ===== Database =====
 # PostgreSQL
-*.sql
+# *.sql  # Allow migration files to be committed
 *.sqlite
 *.db
 *.dump
@@ -99,6 +99,13 @@ backend/*.iml
 # Allow Flyway migration SQLs to be committed
 !backend/src/main/resources/db/migration/*.sql
 !backend/src/main/resources/db/migration/**/*.sql
+
+# Allow application yml files to be committed (they use environment variables)
+!backend/src/main/resources/application*.yml
+!backend/src/main/resources/application.yml
+!backend/src/main/resources/application-dev.yml
+!backend/src/main/resources/application-prod.yml
+!backend/src/main/resources/application-test.yml
 
 # ===== Redis =====
 dump.rdb
@@ -222,9 +229,9 @@ backend/Dockerfile
 Dockerfile
 
 # Docker compose files (민감한 정보 포함)
-docker-compose.yml
-docker-compose.override.yml
-docker-compose.*.yml
+# docker-compose.yml  # Allow docker-compose files
+# docker-compose.override.yml
+# docker-compose.*.yml
 !docker-compose.example.yml
 
 # ===== Allow Docker config files to be tracked =====
@@ -237,22 +244,15 @@ docker-compose.*.yml
 
 # ===== Environment files =====
 # Spring Boot application properties (민감한 정보 포함 가능)
-backend/src/main/resources/application-*.properties
-backend/src/main/resources/application-*.yml
-backend/src/main/resources/application.properties
-backend/src/main/resources/application.yml
+# backend/src/main/resources/application-*.properties  # Allow yml files
+# backend/src/main/resources/application.properties  # Allow application.yml
 
 # Configuration files with sensitive data
-application-prod.yml
 application-prod.properties
-application-prod-*.yml
 application-prod-*.properties
-application-local.yml
 application-local.properties
-application-dev.yml
 application-dev.properties
-secrets.yml
-secrets.properties
+# secrets.properties  # Allow yml files
 *.env
 *.key
 *.pem
