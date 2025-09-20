@@ -1,0 +1,4 @@
+# application.yml (기본 설정 파일)
+spring:
+  profiles:
+    active: dev # 개발 환경 프로파일 활성화
