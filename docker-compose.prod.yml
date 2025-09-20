@@ -3,6 +3,7 @@ version: '3.8'
 
 services:
   app: # Spring Boot 애플리케이션 서비스
+    image: para98/ott-backend:latest  # 이미지 사용
     environment:
       # 프로덕션 프로파일 설정
       SPRING_PROFILES_ACTIVE: prod
@@ -17,8 +18,7 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
 
   frontend: # Next.js 프론트엔드 서비스
-    build:
-      target: production  # 프로덕션 스테이지 사용
+    image: para98/ott-frontend:latest  # 이미지 사용
     environment:
       # 프로덕션 백엔드 URL
       NEXT_PUBLIC_BACKEND_ORIGIN: http://ott-app:8090
