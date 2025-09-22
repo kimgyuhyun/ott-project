@@ -33,4 +33,10 @@ public interface DirectorRepository extends JpaRepository<Director, Long> {
      * 이름 목록으로 감독 조회 (배치 조회)
      */
     java.util.Set<Director> findByNameIn(java.util.Collection<String> names);
+
+    /** MAL ID로 감독 조회 */
+    java.util.Optional<Director> findByMalId(Long malId);
+
+    /** MAL ID 목록으로 감독 배치 조회 */
+    java.util.Set<Director> findByMalIdIn(java.util.Collection<Long> malIds);
 }
