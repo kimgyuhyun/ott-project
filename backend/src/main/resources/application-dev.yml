@@ -7,23 +7,21 @@ anime:
   auto-sync:
     enabled: true # 개발 환경에서 자동 데이터 수집 활성화
   enhancement:
-    auto-enabled: false # Jikan API 수집 완료 후 TMDB API 보완 자동 실행
+    auto-enabled: true # Jikan API 수집 완료 후 TMDB API 보완 자동 실행
   voice-actor:
     auto-enabled: false # 성우 데이터 자동 수집 활성화 (개별 테스트용)
   director:
     auto-enabled: false # 디렉터 데이터 자동 수집 활성화 (개별 테스트용)
   character:
     auto-enabled: false # 캐릭터 데이터 자동 수집 활성화 (개별 테스트용)
-  join-mapping:
-    auto-enabled: false # 구 러너 비활성화 (분리 러너로 대체)
   join:
     character-voice:
-      enabled: false   # 캐릭터-성우 조인 러너 실행
+      enabled: true   # 캐릭터-성우 조인 러너 실행
     anime-voice:
       enabled: false  # 이후 단계에서 실행
   cast:
     full-sync:
-      enabled: true # 새로운 통합 러너 활성화
+      enabled: false # 새로운 통합 러너 활성화
 
 # TMDB API 설정
 tmdb:

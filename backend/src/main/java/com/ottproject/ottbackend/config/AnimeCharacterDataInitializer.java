@@ -42,8 +42,6 @@
 //            // 캐릭터 데이터 처리
 //            processCharacters();
 //
-//            log.info("🎉 애니메이션 캐릭터 데이터 자동 초기화 완료");
-//
 //        } catch (Exception e) {
 //            log.error("❌ 애니메이션 캐릭터 데이터 자동 초기화 실패", e);
 //        }
@@ -51,7 +49,7 @@
 //
 //    /**
 //     * 캐릭터 데이터 처리
-//     * - Order 5에서 실행하여 트랜잭션 충돌 방지
+//     * - Order 4에서 실행하여 트랜잭션 충돌 방지
 //     * - Jikan API에서 캐릭터 정보를 조회하여 저장
 //     */
 //    private void processCharacters() {
@@ -64,9 +62,17 @@
 //
 //            int successCount = 0;
 //            int failCount = 0;
+//            int skipCount = 0;
 //
 //            for (var anime : allAnime) {
 //                try {
+//                    // MAL ID null 체크 추가
+//                    if (anime.getMalId() == null) {
+//                        log.warn("MAL ID가 null인 애니메이션 스킵: ID={}, 제목={}", anime.getId(), anime.getTitle());
+//                        skipCount++;
+//                        continue;
+//                    }
+//
 //                    // 캐릭터 처리 (비동기)
 //                    collectorService.processCharactersAsync(anime.getId(), anime.getMalId());
 //                    successCount++;
@@ -80,7 +86,7 @@
 //                }
 //            }
 //
-//            log.info("🎉 캐릭터 데이터 처리 완료: 성공 {}개, 실패 {}개", successCount, failCount);
+//            log.info("🎉 캐릭터 데이터 처리 완료: 성공 {}개, 실패 {}개, 스킵 {}개", successCount, failCount, skipCount);
 //
 //        } catch (Exception e) {
 //            log.error("❌ 캐릭터 데이터 처리 중 오류 발생", e);

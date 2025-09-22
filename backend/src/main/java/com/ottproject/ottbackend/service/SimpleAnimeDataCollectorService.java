@@ -173,6 +173,12 @@ public class SimpleAnimeDataCollectorService {
             return new java.util.HashSet<>();
         }
         
+        // MAL ID 우선, 이름은 폴백
+        java.util.Set<Long> voiceMalIds = voiceActors.stream()
+            .map(VoiceActor::getMalId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
+
         // 모든 성우 이름 수집
         Set<String> voiceActorNames = voiceActors.stream()
             .map(VoiceActor::getName)
@@ -183,8 +189,15 @@ public class SimpleAnimeDataCollectorService {
             return new java.util.HashSet<>();
         }
         
-        // 배치로 기존 성우 조회 (N+1 쿼리 방지)
-        Set<VoiceActor> existingVoiceActors = voiceActorRepository.findByNameIn(voiceActorNames);
+        // 배치로 기존 성우 조회: MAL ID 우선
+        Set<VoiceActor> existingVoiceActors = new java.util.HashSet<>();
+        if (!voiceMalIds.isEmpty()) {
+            existingVoiceActors.addAll(voiceActorRepository.findByMalIdIn(voiceMalIds));
+        }
+        // 남은 것은 이름으로 폴백 조회
+        if (!voiceActorNames.isEmpty()) {
+            existingVoiceActors.addAll(voiceActorRepository.findByNameIn(voiceActorNames));
+        }
         
         // 기존 성우를 이름별로 그룹화 (같은 이름의 성우가 여러 개 있을 수 있음)
         Map<String, List<VoiceActor>> existingVoiceActorMap = existingVoiceActors.stream()
@@ -196,9 +209,19 @@ public class SimpleAnimeDataCollectorService {
         
         for (VoiceActor voiceActor : voiceActors) {
             String name = voiceActor.getName();
+            Long malId = voiceActor.getMalId();
             if (name != null && !name.trim().isEmpty()) {
                 List<VoiceActor> existingWithSameName = existingVoiceActorMap.get(name);
-                if (existingWithSameName == null || existingWithSameName.isEmpty()) {
+                boolean matchedByMal = false;
+                if (malId != null) {
+                    // MAL ID로 먼저 시도
+                    var byMal = existingVoiceActors.stream().filter(v -> malId.equals(v.getMalId())).findFirst();
+                    if (byMal.isPresent()) {
+                        managedVoiceActors.add(byMal.get());
+                        matchedByMal = true;
+                    }
+                }
+                if (!matchedByMal && (existingWithSameName == null || existingWithSameName.isEmpty())) {
                     // 같은 이름의 성우가 없으면 새로 추가
                     newVoiceActors.add(voiceActor);
                 } else {
@@ -238,6 +261,11 @@ public class SimpleAnimeDataCollectorService {
             return new java.util.HashSet<>();
         }
         
+        // MAL ID 우선, 이름 폴백
+        java.util.Set<Long> characterMalIds = characters.stream()
+            .map(Character::getMalId)
+            .filter(java.util.Objects::nonNull)
+            .collect(Collectors.toSet());
         // 모든 캐릭터 이름 수집
         Set<String> characterNames = characters.stream()
             .map(Character::getName)
@@ -248,8 +276,14 @@ public class SimpleAnimeDataCollectorService {
             return new java.util.HashSet<>();
         }
         
-        // 배치로 기존 캐릭터 조회 (N+1 쿼리 방지)
-        Set<Character> existingCharacters = characterRepository.findByNameIn(characterNames);
+        // 배치로 기존 캐릭터 조회: MAL ID 우선
+        Set<Character> existingCharacters = new java.util.HashSet<>();
+        if (!characterMalIds.isEmpty()) {
+            existingCharacters.addAll(characterRepository.findByMalIdIn(characterMalIds));
+        }
+        if (!characterNames.isEmpty()) {
+            existingCharacters.addAll(characterRepository.findByNameIn(characterNames));
+        }
         
         // 기존 캐릭터를 이름별로 그룹화 (같은 이름의 캐릭터가 여러 개 있을 수 있음)
         Map<String, List<Character>> existingCharacterMap = existingCharacters.stream()
@@ -261,9 +295,18 @@ public class SimpleAnimeDataCollectorService {
         
         for (Character character : characters) {
             String name = character.getName();
+            Long malId = character.getMalId();
             if (name != null && !name.trim().isEmpty()) {
                 List<Character> existingWithSameName = existingCharacterMap.get(name);
-                if (existingWithSameName == null || existingWithSameName.isEmpty()) {
+                boolean matchedByMal = false;
+                if (malId != null) {
+                    var byMal = existingCharacters.stream().filter(c -> malId.equals(c.getMalId())).findFirst();
+                    if (byMal.isPresent()) {
+                        managedCharacters.add(byMal.get());
+                        matchedByMal = true;
+                    }
+                }
+                if (!matchedByMal && (existingWithSameName == null || existingWithSameName.isEmpty())) {
                     // 같은 이름의 캐릭터가 없으면 새로 추가
                     newCharacters.add(character);
                 } else {
@@ -544,18 +587,37 @@ public class SimpleAnimeDataCollectorService {
             // DTO를 Map으로 변환
             Map<String, Object> charactersData = convertCharactersToMap(charactersDto);
             
-            // 성우 처리 - 마스터만 upsert (조인/애니 매핑 금지)
+            // 성우 처리 - 마스터 upsert 후 애니-성우 조인 upsert까지 즉시 수행
             Set<VoiceActor> voiceActors = dataMapper.mapToVoiceActors(charactersData);
             if (!voiceActors.isEmpty()) {
                 Set<VoiceActor> managedVoiceActors = processVoiceActorsBatch(voiceActors);
                 log.info("성우 마스터 upsert 완료: {}명 (MAL ID {})", managedVoiceActors.size(), malId);
+
+                // 애니-성우 조인 즉시 반영
+                java.util.Set<Long> voiceActorIds = managedVoiceActors.stream()
+                    .map(VoiceActor::getId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toSet());
+                if (!voiceActorIds.isEmpty()) {
+                    upsertAnimeVoiceActorJoins(animeId, voiceActorIds);
+                    log.info("애니-성우 조인 upsert 완료: animeId={}, voiceIds={}", animeId, voiceActorIds.size());
+                }
             }
             
-            // 캐릭터 처리 - 마스터만 upsert (조인/애니 매핑 금지)
+            // 캐릭터 처리 - 마스터 upsert 후 애니-캐릭터 조인 upsert까지 즉시 수행
             Set<Character> characters = dataMapper.mapToCharacters(charactersData);
             if (!characters.isEmpty()) {
                 Set<Character> managedCharacters = processCharactersBatch(characters);
                 log.info("캐릭터 마스터 upsert 완료: {}명 (MAL ID {})", managedCharacters.size(), malId);
+
+                java.util.Set<Long> characterIds = managedCharacters.stream()
+                    .map(Character::getId)
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toSet());
+                if (!characterIds.isEmpty()) {
+                    upsertAnimeCharacterJoins(animeId, characterIds);
+                    log.info("애니-캐릭터 조인 upsert 완료: animeId={}, characterIds={}", animeId, characterIds.size());
+                }
             }
             
             
@@ -608,6 +670,7 @@ public class SimpleAnimeDataCollectorService {
                 Map<String, Object> character = new java.util.HashMap<>();
                 if (item.getCharacter() != null) {
                     character.put("name", item.getCharacter().getName());
+                    character.put("mal_id", item.getCharacter().getMal_id());
                     Map<String, Object> img = new java.util.HashMap<>();
                     if (item.getCharacter().getImages() != null && item.getCharacter().getImages().getJpg() != null) {
                         Map<String, Object> jpg = new java.util.HashMap<>();
@@ -625,7 +688,10 @@ public class SimpleAnimeDataCollectorService {
                         Map<String, Object> vaMap = new java.util.HashMap<>();
                         vaMap.put("language", va.getLanguage());
                         Map<String, Object> person = new java.util.HashMap<>();
-                        if (va.getPerson() != null) person.put("name", va.getPerson().getName());
+                        if (va.getPerson() != null) {
+                            person.put("name", va.getPerson().getName());
+                            person.put("mal_id", va.getPerson().getMal_id());
+                        }
                         vaMap.put("person", person);
                         vaList.add(vaMap);
                     }
@@ -770,6 +836,27 @@ public class SimpleAnimeDataCollectorService {
             animeRepository.save(anime);
         }
     }
+
+    /**
+     * 애니-캐릭터 조인 upsert (집계 반영)
+     */
+    @Transactional
+    public void upsertAnimeCharacterJoins(Long animeId, Set<Long> characterIds) {
+        if (animeId == null || characterIds == null || characterIds.isEmpty()) return;
+        Anime anime = animeRepository.findById(animeId).orElse(null);
+        if (anime == null) return;
+
+        java.util.Set<Character> chars = new java.util.HashSet<>(characterRepository.findAllById(characterIds));
+        if (chars.isEmpty()) return;
+
+        java.util.Set<Character> current = anime.getCharacters() != null ? new java.util.HashSet<>(anime.getCharacters()) : new java.util.HashSet<>();
+        int before = current.size();
+        current.addAll(chars);
+        if (current.size() > before) {
+            anime.setCharacters(current);
+            animeRepository.save(anime);
+        }
+    }
     
     /**
      * 성우 데이터만 처리 (비동기)
@@ -866,29 +953,53 @@ public class SimpleAnimeDataCollectorService {
 
             // /anime/{id}/staff 호출로 직접 감독 추출
             var staffItems = jikanApiService.getAnimeStaff(malId);
+            log.info("🔍 Staff API 응답: MAL ID {}, staffItems 크기: {}", malId, staffItems != null ? staffItems.size() : "null");
+            
             java.util.Set<String> directorNames = new java.util.HashSet<>();
-            if (staffItems != null) {
-                for (var st : staffItems) {
-                    if (st == null) continue;
+            java.util.Set<Long> directorMalIds = new java.util.HashSet<>();
+            if (staffItems != null && !staffItems.isEmpty()) {
+                log.info("📋 Staff 상세 정보:");
+                for (int i = 0; i < staffItems.size(); i++) {
+                    var st = staffItems.get(i);
+                    if (st == null) {
+                        log.debug("  [{}] StaffItem이 null", i);
+                        continue;
+                    }
                     var positions = st.getPositions();
+                    String name = st.getName();
+                    Long pid = st.getMalId();
+                    log.debug("  [{}] 이름: {}, 포지션: {}", i, name, positions);
+                    
                     if (positions != null && positions.contains("Director")) {
-                        String name = st.getName();
                         if (name != null && !name.trim().isEmpty()) {
                             directorNames.add(name.trim());
+                            log.info("🎬 감독 발견: {}", name.trim());
                         }
+                        if (pid != null) directorMalIds.add(pid);
                     }
                 }
+            } else {
+                log.warn("⚠️ Staff API에서 데이터를 가져오지 못함: MAL ID {}", malId);
             }
 
             if (directorNames.isEmpty()) {
+                log.info("디렉터 이름 없음 - 빈 세트로 설정 (MAL ID: {})", malId);
                 anime.setDirectors(new java.util.HashSet<>()); // 빈 세트로 설정  // right-side comment as per user preference
                 animeRepository.save(anime);
                 transactionManager.commit(status);
                 return;
             }
+            
+            log.info("처리할 디렉터 이름들: {}", directorNames);
 
-            // 기존 감독 배치 조회 및 신규 생성 배치 저장
-            var existing = directorRepository.findByNameIn(directorNames);
+            // 기존 감독 배치 조회: MAL ID 우선
+            java.util.Set<Director> existing = new java.util.HashSet<>();
+            if (!directorMalIds.isEmpty()) {
+                existing.addAll(directorRepository.findByMalIdIn(directorMalIds));
+            }
+            if (!directorNames.isEmpty()) {
+                existing.addAll(directorRepository.findByNameIn(directorNames));
+            }
             java.util.Map<String, Director> existingMap = existing.stream()
                 .collect(java.util.stream.Collectors.toMap(Director::getName, d -> d));
 
@@ -898,10 +1009,32 @@ public class SimpleAnimeDataCollectorService {
                 .collect(java.util.stream.Collectors.toSet());
 
             if (!newNames.isEmpty()) {
+                log.info("🆕 새 디렉터 생성 중: {}개", newNames.size());
                 java.util.Set<Director> newDirectors = newNames.stream()
-                    .map(n -> Director.createDirector(n, n, n, "", ""))
+                    .map(n -> {
+                        try {
+                            Director director = Director.createDirector(n, n, n, "", "");
+                            log.debug("디렉터 엔티티 생성됨: {}", director.getName());
+                            return director;
+                        } catch (Exception e) {
+                            log.error("디렉터 생성 실패: {}", n, e);
+                            return null;
+                        }
+                    })
+                    .filter(java.util.Objects::nonNull)
                     .collect(java.util.stream.Collectors.toSet());
-                managed.addAll(directorRepository.saveAll(newDirectors));
+                
+                log.info("💾 디렉터 저장 시작: {}개", newDirectors.size());
+                try {
+                    var savedDirectors = directorRepository.saveAll(newDirectors);
+                    log.info("✅ 디렉터 저장 완료: {}개", savedDirectors.size());
+                    managed.addAll(savedDirectors);
+                } catch (Exception e) {
+                    log.error("❌ 디렉터 저장 실패", e);
+                    throw e;
+                }
+            } else {
+                log.info("새 디렉터 없음 - 기존 디렉터만 사용");
             }
 
             anime.setDirectors(managed);

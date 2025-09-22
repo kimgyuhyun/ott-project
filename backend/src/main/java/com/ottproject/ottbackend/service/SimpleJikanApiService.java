@@ -127,6 +127,26 @@ public class SimpleJikanApiService {
                 if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                     AnimeStaffJikanDto dto = response.getBody();
                     List<AnimeStaffJikanDto.StaffItem> data = dto == null ? java.util.List.of() : dto.getData();
+                    log.info("✅ Staff API 성공: MAL ID {}, 데이터 크기: {}", malId, data != null ? data.size() : "null");
+                    
+                    // 디버깅: 실제 데이터 내용 확인
+                    if (data != null && !data.isEmpty()) {
+                        log.info("🔍 Staff 데이터 샘플 (처음 3개):");
+                        for (int i = 0; i < Math.min(3, data.size()); i++) {
+                            var item = data.get(i);
+                            log.info("  [{}] 이름: {}, 포지션: {}, Person 객체: {}", 
+                                i, item.getName(), item.getPositions(), item.getPerson());
+                        }
+                        
+                        // Director 포지션 찾기
+                        log.info("🎬 Director 검색 결과:");
+                        for (var item : data) {
+                            if (item.getPositions() != null && item.getPositions().contains("Director")) {
+                                log.info("  ✅ 감독 발견: {} (포지션: {})", item.getName(), item.getPositions());
+                            }
+                        }
+                    }
+                    
                     recordSuccess();
                     return data == null ? java.util.List.of() : data;
                 } else if (response.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {

@@ -18,13 +18,12 @@
 // * 필드 개요
 // * - animeEnhancementService: 애니메 데이터 보완 서비스
 // */
-//// @Component
+//@Component
 //@RequiredArgsConstructor
 //@Slf4j
-//// @ConditionalOnProperty(name = "anime.enhancement.auto-enabled", havingValue = "true", matchIfMissing = false)
-//// @Order(7) // (TMDB 한국어 정보 보완)
-//// public class AnimeEnhancementInitializer implements CommandLineRunner {
-//public class AnimeEnhancementInitializer {
+//@ConditionalOnProperty(name = "anime.enhancement.auto-enabled", havingValue = "true", matchIfMissing = false)
+//@Order(7) // (TMDB 한국어 정보 보완)
+//public class AnimeEnhancementInitializer implements CommandLineRunner {
 //
 //    private final AnimeEnhancementService animeEnhancementService;
 //

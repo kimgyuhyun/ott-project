@@ -31,6 +31,7 @@ public class AnimeCharactersJikanDto {
     @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class CharacterRef {
+        private Long mal_id;
         private String name;
         private Images images;
     }
@@ -46,7 +47,7 @@ public class AnimeCharactersJikanDto {
     @Getter
     @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Person { private String name; }
+    public static class Person { private Long mal_id; private String name; }
 
     @Getter
     @Setter

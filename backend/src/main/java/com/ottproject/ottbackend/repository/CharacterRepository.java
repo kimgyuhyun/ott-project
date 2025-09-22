@@ -35,4 +35,14 @@ public interface CharacterRepository extends JpaRepository<Character, Long> {
      * 이름 목록으로 캐릭터 배치 조회 (N+1 쿼리 방지)
      */
     Set<Character> findByNameIn(Set<String> names);
+
+    /**
+     * MAL ID로 캐릭터 조회
+     */
+    Optional<Character> findByMalId(Long malId);
+
+    /**
+     * MAL ID 목록으로 캐릭터 배치 조회
+     */
+    Set<Character> findByMalIdIn(Set<Long> malIds);
 }

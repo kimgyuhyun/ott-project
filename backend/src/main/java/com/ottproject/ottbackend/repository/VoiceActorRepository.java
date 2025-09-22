@@ -35,4 +35,10 @@ public interface VoiceActorRepository extends JpaRepository<VoiceActor, Long> {
      * 이름 목록으로 성우 배치 조회 (N+1 쿼리 방지)
      */
     Set<VoiceActor> findByNameIn(Set<String> names);
+
+    /** MAL ID로 성우 조회 */
+    Optional<VoiceActor> findByMalId(Long malId);
+
+    /** MAL ID 목록으로 성우 배치 조회 */
+    Set<VoiceActor> findByMalIdIn(Set<Long> malIds);
 }

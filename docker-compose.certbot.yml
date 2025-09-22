@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  nginx-cert:
+    image: nginx:alpine
+    container_name: ott-nginx-cert
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.prod.http.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot-etc:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot
+    networks:
+      - default
+
+volumes:
+  certbot-etc:
+    external: true
+    name: certbot-etc
+  certbot-webroot:
+    external: true
+    name: certbot-webroot
+
+networks:
+  default:
+    driver: bridge
+
+

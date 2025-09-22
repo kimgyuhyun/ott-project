@@ -39,7 +39,10 @@ public class VoiceActor {
     @Column(nullable = false)
     private String name; // 성우 이름 (한글)
 
-    // 애니메이션 연관은 조인 테이블로만 관리하며, 본 테이블에 anime_id를 두지 않는다.
+
+    @Column(unique = true)
+    private Long malId; // Jikan MAL ID (글로벌 식별자)
+
 
     @Column(nullable = true)
     private String nameEn; // 성우 이름 (영어)

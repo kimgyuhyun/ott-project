@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -215,6 +216,7 @@ public class AnimeBatchProcessor {
     /**
      * 감독 처리
      */
+    @Transactional
     private void processDirectors(Anime anime, Map<String, Object> jikanData) {
         Set<Director> directors = dataMapper.mapToDirectors(jikanData);
         if (directors == null || directors.isEmpty()) {
@@ -246,12 +248,30 @@ public class AnimeBatchProcessor {
         
         // 새 감독만 배치 생성
         if (!newDirectorNames.isEmpty()) {
+            log.info("🆕 새 감독 생성 시작: {}명", newDirectorNames.size());
             Set<Director> newDirectors = newDirectorNames.stream()
-                .map(name -> Director.createDirector(name, "", "", "", ""))
+                .map(name -> {
+                    try {
+                        Director director = Director.createDirector(name, "", "", "", "");
+                        log.debug("감독 엔티티 생성됨: {}", director.getName());
+                        return director;
+                    } catch (Exception e) {
+                        log.error("감독 생성 실패: {}", name, e);
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
             
-            Set<Director> savedDirectors = new java.util.HashSet<>(directorRepository.saveAll(newDirectors));
-            managedDirectors.addAll(savedDirectors);
+            log.info("💾 감독 저장 시작: {}명", newDirectors.size());
+            try {
+                Set<Director> savedDirectors = new java.util.HashSet<>(directorRepository.saveAll(newDirectors));
+                log.info("✅ 감독 저장 완료: {}명", savedDirectors.size());
+                managedDirectors.addAll(savedDirectors);
+            } catch (Exception e) {
+                log.error("❌ 감독 저장 실패", e);
+                throw e;
+            }
         }
         
         anime.setDirectors(managedDirectors);
@@ -262,6 +282,7 @@ public class AnimeBatchProcessor {
     /**
      * 장르 처리
      */
+    @Transactional
     private void processGenres(Anime anime, Map<String, Object> jikanData) {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> genresList = (List<Map<String, Object>>) jikanData.get("genres");
@@ -310,6 +331,7 @@ public class AnimeBatchProcessor {
     /**
      * 스튜디오 처리
      */
+    @Transactional
     private void processStudios(Anime anime, Map<String, Object> jikanData) {
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> studiosList = (List<Map<String, Object>>) jikanData.get("studios");
@@ -358,6 +380,7 @@ public class AnimeBatchProcessor {
     /**
      * 태그 처리
      */
+    @Transactional
     private void processTags(Anime anime, Map<String, Object> jikanData) {
         // 안전한 타입 캐스팅
         List<Map<String, Object>> themesList = null;
