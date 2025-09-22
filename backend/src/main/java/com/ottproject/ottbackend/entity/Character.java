@@ -39,7 +39,10 @@ public class Character {
     @Column(nullable = false, unique = true)
     private String name; // 캐릭터 이름 (한글)
 
-    // 캐릭터-애니 관계는 조인 테이블로만 관리 (anime_characters)
+
+    @Column(unique = true)
+    private Long malId; // Jikan MAL ID (글로벌 식별자)
+
 
     @Column(nullable = true)
     private String nameEn; // 캐릭터 이름 (영어)

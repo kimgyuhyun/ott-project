@@ -39,6 +39,9 @@ public class Director {
     @Column(nullable = false, unique = true)
     private String name; // 감독 이름 (한글)
 
+    @Column(unique = true)
+    private Long malId; // Jikan MAL ID (글로벌 식별자)
+
     @Column(nullable = true)
     private String nameEn; // 감독 이름 (영어)
 
@@ -106,8 +109,7 @@ public class Director {
         director.profileUrl = profileUrl != null ? profileUrl.trim() : null;
         director.description = description != null ? description.trim() : null;
         director.isActive = true;
-        director.createdAt = LocalDateTime.now();
-        director.updatedAt = LocalDateTime.now();
+        // Auditing이 자동으로 createdAt, updatedAt을 설정하므로 수동 설정 제거
         
         return director;
     }
