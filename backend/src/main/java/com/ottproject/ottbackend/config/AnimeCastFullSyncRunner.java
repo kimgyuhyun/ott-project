@@ -68,9 +68,9 @@
 //                    Long malCharacterId = (Long) cm.get("mal_id");
 //                        Character c = existingChars.stream().filter(x -> cname.equals(trim(x.getName()))).findFirst()
 //                                .orElseGet(() -> {
-//                                    Character newChar = Character.createCharacter(cname, null, null, null, null, anime.getId());
+//                                    Character newChar = Character.createCharacter(cname, null, null, null, null);
 //                                    Character saved = characterRepository.save(newChar);
-//                                    log.info("새 캐릭터 저장: {} (animeId: {})", saved.getName(), saved.getAnimeId());
+//                                    log.info("새 캐릭터 저장: {}", saved.getName());
 //                                    return saved;
 //                                });
 //
@@ -87,9 +87,9 @@
 //                        Long malPersonId = (Long) person.get("mal_id");
 //                        VoiceActor v = existingVAs.stream().filter(x -> vname.equals(trim(x.getName()))).findFirst()
 //                                .orElseGet(() -> {
-//                                    VoiceActor newVA = VoiceActor.createVoiceActor(vname, null, null, null, null, anime.getId());
+//                                    VoiceActor newVA = VoiceActor.createVoiceActor(vname, null, null, null, null);
 //                                    VoiceActor saved = voiceActorRepository.save(newVA);
-//                                    log.info("새 성우 저장: {} (animeId: {})", saved.getName(), saved.getAnimeId());
+//                                    log.info("새 성우 저장: {}", saved.getName());
 //                                    return saved;
 //                                });
 //
