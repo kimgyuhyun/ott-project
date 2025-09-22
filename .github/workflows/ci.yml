@@ -29,7 +29,7 @@ jobs:
       - name: Build & Push backend image
         if: github.ref == 'refs/heads/main'
         run: |
-          docker build -t para98/ott-backend:latest -f backend/Dockerfile .
+          docker build -t para98/ott-backend:latest -f backend/Dockerfile backend/
           docker push para98/ott-backend:latest
 
   frontend:
@@ -56,6 +56,6 @@ jobs:
       - name: Build & Push frontend image
         if: github.ref == 'refs/heads/main'
         run: |
-          docker build -t para98/ott-frontend:latest -f frontend/Dockerfile .
+          docker build -t para98/ott-frontend:latest -f frontend/Dockerfile frontend/
           docker push para98/ott-frontend:latest
 
