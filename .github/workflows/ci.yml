@@ -17,7 +17,7 @@ jobs:
           distribution: 'temurin'
       - name: Build backend (Gradle)
         run: |
-          cd ott-project/backend
+          cd backend
           chmod +x gradlew || true
           ./gradlew clean build -x test
       - name: Docker login
@@ -29,7 +29,7 @@ jobs:
       - name: Build & Push backend image
         if: github.ref == 'refs/heads/main'
         run: |
-          docker build -t para98/ott-backend:latest -f ott-project/backend/Dockerfile .
+          docker build -t para98/ott-backend:latest -f backend/Dockerfile .
           docker push para98/ott-backend:latest
 
   frontend:
@@ -41,10 +41,10 @@ jobs:
         with:
           node-version: '18'
           cache: 'npm'
-          cache-dependency-path: ott-project/frontend/package-lock.json
+          cache-dependency-path: frontend/package-lock.json
       - name: Build frontend
         run: |
-          cd ott-project/frontend
+          cd frontend
           npm ci
           npm run build
       - name: Docker login
@@ -56,6 +56,6 @@ jobs:
       - name: Build & Push frontend image
         if: github.ref == 'refs/heads/main'
         run: |
-          docker build -t para98/ott-frontend:latest -f ott-project/frontend/Dockerfile .
+          docker build -t para98/ott-frontend:latest -f frontend/Dockerfile .
           docker push para98/ott-frontend:latest
 
