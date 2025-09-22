@@ -10,6 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Validate Gradle wrapper
+        uses: gradle/wrapper-validation-action@v2
+      - name: Diagnose wrapper files
+        run: |
+          ls -al backend/gradle/wrapper || true
+          test -f backend/gradle/wrapper/gradle-wrapper.jar || (echo "gradle-wrapper.jar is missing. Ensure it's committed (not ignored) or fetched via LFS." && exit 1)
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -36,6 +44,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - name: Use Node.js 18
         uses: actions/setup-node@v4
         with:
