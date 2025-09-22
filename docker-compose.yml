@@ -1,4 +1,3 @@
-version: '3.8'                    # Docker Compose 버전
 services:                         # 서비스 정의 시작
   postgres:                       # PostgreSQL 데이터베이스 서비스
     image: postgres:15            # PostgreSQL 15 버전 이미지
