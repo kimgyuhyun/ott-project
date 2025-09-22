@@ -356,9 +356,16 @@ public class SimpleJikanDataMapper {
                         List<String> positions = (List<String>) staffMember.get("positions");
                         if (positions != null && positions.contains("Director")) {
                             String name = (String) staffMember.get("name");
+                            Long malId = null;
+                            Object person = staffMember.get("person");
+                            if (person instanceof java.util.Map<?,?> pm) {
+                                Object mid = ((java.util.Map<?,?>) person).get("mal_id");
+                                if (mid instanceof Number) malId = ((Number) mid).longValue();
+                            }
                             if (name != null && !name.trim().isEmpty()) {
                                 try {
                                     Director director = Director.createDirector(name.trim(), name.trim(), name.trim(), "", "");
+                                    director.setMalId(malId);
                                     directors.add(director);
                                 } catch (Exception e) {
                                     log.warn("감독 생성 실패: {}", name, e);
@@ -398,7 +405,7 @@ public class SimpleJikanDataMapper {
                                             String name = (String) person.get("name");
                                             if (name != null && !name.trim().isEmpty()) {
                                                 try {
-                                                    // 중복 체크 후 생성
+                                                // 중복 체크 후 생성
                                                     String koreanName = getKoreanCharacterName(name.trim());
                                                     VoiceActor voiceActorEntity = VoiceActor.createVoiceActor(
                                                         koreanName != null ? koreanName : name.trim(), // 한국어 우선
@@ -406,6 +413,11 @@ public class SimpleJikanDataMapper {
                                                         name.trim(), // 일본어
                                                         "", ""
                                                     );
+                                                // MAL ID 매핑
+                                                Object mid = person.get("mal_id");
+                                                if (mid instanceof Number) {
+                                                    voiceActorEntity.setMalId(((Number) mid).longValue());
+                                                }
                                                     voiceActors.add(voiceActorEntity);
                                                 } catch (Exception e) {
                                                     log.warn("성우 생성 실패: {}", name, e);
@@ -468,6 +480,11 @@ public class SimpleJikanDataMapper {
                                         imageUrl, 
                                         ""
                                     );
+                                    // MAL ID 매핑
+                                    Object cmid = character.get("mal_id");
+                                    if (cmid instanceof Number) {
+                                        characterEntity.setMalId(((Number) cmid).longValue());
+                                    }
                                     characters.add(characterEntity);
                                 } catch (Exception e) {
                                     log.warn("캐릭터 생성 실패: {}", name, e);
