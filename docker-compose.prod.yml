@@ -3,6 +3,8 @@
 services:
   app: # Spring Boot 애플리케이션 서비스
     image: para98/ott-backend:latest  # 이미지 사용
+    env_file:
+      - .env  # 서버의 .env 파일 사용
     environment:
       # 프로덕션 프로파일 설정
       SPRING_PROFILES_ACTIVE: prod
