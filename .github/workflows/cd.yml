@@ -15,12 +15,9 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            $ErrorActionPreference = 'Stop'
-            $repo = 'C:\solo-project\ott-project'
-            if (-not (Test-Path $repo)) { throw "Repo path not found: $repo" }
-            Set-Location $repo
+            cd /d C:\solo-project\ott-project
             git pull origin main
             docker login -u ${{ secrets.REGISTRY_USER }} -p ${{ secrets.REGISTRY_PASSWORD }}
-            $env:DB_PASSWORD='${{ secrets.DB_PASSWORD }}'
+            set DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
