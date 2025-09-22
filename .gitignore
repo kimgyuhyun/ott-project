@@ -37,6 +37,8 @@ backend/build/
 # Gradle Wrapper
 gradle/wrapper/gradle-wrapper.properties
 gradle/wrapper/gradle-wrapper.jar
+!backend/gradle/wrapper/gradle-wrapper.properties
+!backend/gradle/wrapper/gradle-wrapper.jar
 
 # Maven (참고용, 현재는 Gradle 사용)
 # target/
