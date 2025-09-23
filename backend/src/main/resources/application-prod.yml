@@ -1,6 +1,8 @@
 # 운영 환경 설정
 server:
   port: 8090
+  # Behind Nginx/SSL: trust X-Forwarded-* to compute request scheme/host for {baseUrl}
+  forward-headers-strategy: framework
 
 # Spring 설정 (통합)
 spring:
