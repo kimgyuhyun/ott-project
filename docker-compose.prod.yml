@@ -28,6 +28,7 @@ services:
       
       # 도메인 설정
       BASE_URL: ${BASE_URL}
+      FRONTEND_ORIGIN: ${BASE_URL}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN}
       COOKIE_SECURE: ${COOKIE_SECURE}
       COOKIE_SAME_SITE: ${COOKIE_SAME_SITE}

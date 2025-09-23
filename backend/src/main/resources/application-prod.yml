@@ -134,7 +134,7 @@ spring:
             user-name-attribute: response
 
 # baseUrl 설정
-baseUrl: ${BASE_URL:http://localhost}
+baseUrl: ${BASE_URL:https://laputa.kozow.com}
 
 # 로깅 설정 (운영 환경)
 logging:
