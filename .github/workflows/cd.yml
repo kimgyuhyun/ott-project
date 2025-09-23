@@ -27,11 +27,11 @@ jobs:
 
             docker login -u '${{ secrets.REGISTRY_USER }}' -p '${{ secrets.REGISTRY_PASSWORD }}'
 
-            # ENV_FILE 우선 적용: 값이 존재하면 .env를 덮어씀
-            if (-not [string]::IsNullOrWhiteSpace("${{ secrets.ENV_FILE }}")) {
-              @'
-${{ secrets.ENV_FILE }}
-'@ | Set-Content -Path .env -NoNewline
+            # ENV_FILE 우선 적용: GitHub expression을 JSON으로 안전하게 전달 후 복원
+            $envJson = "${{ toJSON(secrets.ENV_FILE) }}"
+            if ($envJson -and $envJson -ne 'null' -and $envJson -ne '""') {
+              $envContent = $envJson | ConvertFrom-Json
+              Set-Content -Path .env -Value $envContent -NoNewline
             }
 
             docker pull para98/ott-backend:latest
