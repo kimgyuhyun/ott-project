@@ -18,25 +18,4 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            powershell -NoProfile -NonInteractive -Command @'
-            Set-StrictMode -Version Latest
-            $ErrorActionPreference = "Stop"
-
-            Set-Location -Path 'C:\solo-project\ott-project'
-            git pull origin main
-
-            docker login -u '${{ secrets.REGISTRY_USER }}' -p '${{ secrets.REGISTRY_PASSWORD }}'
-
-            # ENV_FILE 우선 적용: GitHub expression을 JSON으로 안전하게 전달 후 복원
-            $envJson = "${{ toJSON(secrets.ENV_FILE) }}"
-            if ($envJson -and $envJson -ne 'null' -and $envJson -ne '""') {
-              $envContent = $envJson | ConvertFrom-Json
-              Set-Content -Path .env -Value $envContent -NoNewline
-            }
-
-            docker pull para98/ott-backend:latest
-            docker pull para98/ott-frontend:latest
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --pull always --force-recreate --remove-orphans
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
-            '@
+            powershell -NoProfile -NonInteractive -Command "Set-StrictMode -Version Latest; $ErrorActionPreference='Stop'; Set-Location -Path 'C:\solo-project\ott-project'; git pull origin main; docker login -u '${{ secrets.REGISTRY_USER }}' -p '${{ secrets.REGISTRY_PASSWORD }}'; $envJson='${{ toJSON(secrets.ENV_FILE) }}'; if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') { $envContent = $envJson | ConvertFrom-Json; Set-Content -Path .env -Value $envContent -NoNewline }; docker pull para98/ott-backend:latest; docker pull para98/ott-frontend:latest; docker compose -f docker-compose.yml -f docker-compose.prod.yml pull; docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --pull always --force-recreate --remove-orphans; docker compose -f docker-compose.yml -f docker-compose.prod.yml ps"
