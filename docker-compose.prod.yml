@@ -26,9 +26,9 @@ services:
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
       
-      # 도메인 설정
-      BASE_URL: ${BASE_URL}
-      FRONTEND_ORIGIN: ${BASE_URL}
+      # 도메인 설정 (프로덕션 환경 강제 설정)
+      BASE_URL: ${BASE_URL:-https://laputa.kozow.com}
+      FRONTEND_ORIGIN: ${BASE_URL:-https://laputa.kozow.com}
       COOKIE_DOMAIN: ${COOKIE_DOMAIN}
       COOKIE_SECURE: ${COOKIE_SECURE}
       COOKIE_SAME_SITE: ${COOKIE_SAME_SITE}
@@ -59,12 +59,14 @@ services:
       # Redis 네임스페이스
       REDIS_NAMESPACE: ${REDIS_NAMESPACE}
       RECENT_SEARCH_TTL_DAYS: ${RECENT_SEARCH_TTL_DAYS}
+      # CORS 허용 오리진 (프로덕션 도메인 명시)
+      APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-https://laputa.kozow.com}
 
   frontend: # Next.js 프론트엔드 서비스
     image: para98/ott-frontend:latest  # 이미지 사용
     environment:
-      # 프로덕션 백엔드 URL
-      NEXT_PUBLIC_BACKEND_ORIGIN: http://ott-app:8090
+      # 프로덕션에서는 브라우저가 내부 호스트(ott-app)에 접근할 수 없으므로
+      # NEXT_PUBLIC_BACKEND_ORIGIN을 노출하지 않습니다. Nginx가 /api 및 /login/oauth2/* 를 프록시합니다.
       NODE_ENV: production
     # 프로덕션에서는 볼륨 마운트 제거 (정적 파일로 실행)
     # volumes: 제거됨

@@ -21,7 +21,17 @@ jobs:
             cd /d C:\solo-project\ott-project
             git pull origin main
             docker login -u ${{ secrets.REGISTRY_USER }} -p ${{ secrets.REGISTRY_PASSWORD }}
-            set DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            REM ENV_FILE이 있으면 우선 적용(기존 .env를 덮어씀). 없으면 기존 .env 사용
+            IF NOT "${{ secrets.ENV_FILE }}"=="" (
+              echo Writing .env from ENV_FILE secret
+              powershell -Command "$envContent = @'\n${{ secrets.ENV_FILE }}\n'@; Set-Content -Path .env -Value $envContent -NoNewline"
+            ) ELSE (
+              IF EXIST .env (
+                echo Using existing .env
+              ) ELSE (
+                echo No ENV_FILE provided and no existing .env. Skipping .env creation.
+              )
+            )
             docker pull para98/ott-backend:latest
             docker pull para98/ott-frontend:latest
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull

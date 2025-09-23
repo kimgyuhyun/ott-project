@@ -115,15 +115,25 @@ public class SocialAuthController {
     public ResponseEntity<Map<String, Object>> getOAuth2LoginUrls() { // HTTP 응답을 위한 ResponseEntity 반환
         log.info("OAuth2 로그인 URL 요청"); // 로그 출력 - 요청 시작을 알림
 
+        // 환경변수 디버깅
+        String baseUrl = System.getenv("BASE_URL");
+        String frontendOrigin = System.getenv("FRONTEND_ORIGIN");
+        log.info("DEBUG - BASE_URL: {}", baseUrl);
+        log.info("DEBUG - FRONTEND_ORIGIN: {}", frontendOrigin);
+
         // 응답 데이터를 담을 Map 객체 생성
         Map<String, Object> response = new HashMap<>();
 
         // 소셜 로그인 URL들을 상대 경로로 설정 (현업 표준)
-        response.put("loginUrls", Map.of(
+        Map<String, String> loginUrls = Map.of(
                 "google", "/login/oauth2/authorization/google", // Google 로그인 URL
                 "kakao", "/login/oauth2/authorization/kakao", // Kakao 로그인 URL
                 "naver", "/login/oauth2/authorization/naver" // Naver 로그인 URL
-        ));
+        );
+        
+        response.put("loginUrls", loginUrls);
+        
+        log.info("OAuth2 로그인 URL 응답: {}", loginUrls); // 응답 URL 로그
 
         return ResponseEntity.ok(response); // 200 OK 상태코드와 함께 응답 데이터 반환
     }

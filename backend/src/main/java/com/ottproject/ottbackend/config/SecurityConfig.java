@@ -135,7 +135,6 @@ public class SecurityConfig {
                 // OAuth2 소셜 로그인 설정
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(a -> a.baseUri("/login/oauth2/authorization")) // 인가 엔드포인트 baseUri 일치
-                        .redirectionEndpoint(r -> r.baseUri("/login/oauth2/code/*")) // 리다이렉션 엔드포인트 설정
                         .successHandler(oAuth2AuthSuccessHandler) // OAuth2 로그인 성공 시 처리할 핸들러
                         .failureHandler(oAuth2AuthFailureHandler) // OAuth2 로그인 실패 시 처리할 핸들러
                         .userInfoEndpoint(userInfo -> userInfo
