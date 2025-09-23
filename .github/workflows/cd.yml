@@ -22,5 +22,7 @@ jobs:
             git pull origin main
             docker login -u ${{ secrets.REGISTRY_USER }} -p ${{ secrets.REGISTRY_PASSWORD }}
             set DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            docker pull para98/ott-backend:latest
+            docker pull para98/ott-frontend:latest
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --force-recreate --remove-orphans
