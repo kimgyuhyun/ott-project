@@ -118,7 +118,7 @@ public class SocialAuthController {
         // 응답 데이터를 담을 Map 객체 생성
         Map<String, Object> response = new HashMap<>();
 
-        // 소셜 로그인 URL들을 Map으로 설정
+        // 소셜 로그인 URL들을 상대 경로로 설정 (현업 표준)
         response.put("loginUrls", Map.of(
                 "google", "/login/oauth2/authorization/google", // Google 로그인 URL
                 "kakao", "/login/oauth2/authorization/kakao", // Kakao 로그인 URL
