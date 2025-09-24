@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * ImportPaymentGateway
@@ -26,6 +27,7 @@ import org.springframework.web.client.RestTemplate;
  * - verifyPaymentStatus: 아임포트 API로 결제 상태 재검증
  */
 @Component // 스프링 컴포넌트 등록
+@Slf4j
 public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 시작
 	@Value("${iamport.api.base:https://api.iamport.kr}")
 	private String apiBase; // API Base
@@ -259,6 +261,19 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 			throw new IllegalStateException("Failed to get Iamport access token"); // 실패
 		}
 		return tr.response.access_token; // 토큰
+	}
+
+	/**
+	 * 아임포트 API 연결 테스트 (public 메서드)
+	 */
+	public boolean testConnection() {
+		try {
+			getAccessToken();
+			return true;
+		} catch (Exception e) {
+			log.error("아임포트 API 연결 테스트 실패", e);
+			return false;
+		}
 	}
 
 	private HttpHeaders bearer(String token) { // 인증 헤더 생성

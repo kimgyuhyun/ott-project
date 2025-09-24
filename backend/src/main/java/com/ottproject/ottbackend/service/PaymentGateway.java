@@ -65,6 +65,7 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 	 */
 	boolean verifyWebhookBasicValidation(String rawBody, java.util.Map<String, String> headers);
 
+
 	/**
 	 * 결제 실패 유형
 	 * - HARD_DECLINE: 영구적 실패(재시도 불가)
