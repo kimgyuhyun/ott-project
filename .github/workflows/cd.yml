@@ -18,4 +18,38 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            powershell -NoProfile -NonInteractive -Command "Set-StrictMode -Version Latest; $ErrorActionPreference='Stop'; Set-Location -Path 'C:\solo-project\ott-project'; git pull origin main; $pwd='${{ secrets.REGISTRY_PASSWORD }}'; $pwd | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin; $envJson='${{ toJSON(secrets.ENV_FILE) }}'; if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') { $envContent = [System.Text.RegularExpressions.Regex]::Unescape($envJson.Trim('"')); Set-Content -Path .env -Value $envContent -NoNewline }; docker compose -f docker-compose.yml -f docker-compose.prod.yml pull app frontend; docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d app frontend --force-recreate --no-deps; Write-Host '--- VERIFY IMAGES ---'; $app = (docker inspect ott-app | ConvertFrom-Json)[0]; $fe = (docker inspect ott-frontend | ConvertFrom-Json)[0]; Write-Host ('app:      ' + $app.Config.Image + ' | ' + $app.Image); Write-Host ('frontend: ' + $fe.Config.Image  + ' | ' + $fe.Image); $ha = (docker image inspect para98/ott-backend:latest  | ConvertFrom-Json)[0]; $hf = (docker image inspect para98/ott-frontend:latest | ConvertFrom-Json)[0]; Write-Host ('hub app:      ' + $ha.RepoDigests[0]); Write-Host ('hub frontend: ' + $hf.RepoDigests[0]); docker compose -f docker-compose.yml -f docker-compose.prod.yml ps"
+            powershell -NoProfile -NonInteractive -Command "
+            $script = @'
+            Set-StrictMode -Version Latest
+            $ErrorActionPreference = 'Stop'
+            Set-Location -Path 'C:\solo-project\ott-project'
+
+            git pull origin main
+
+            '${{ secrets.REGISTRY_PASSWORD }}' | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin
+
+            $envJson = @'${{ toJSON(secrets.ENV_FILE) }}'@
+            if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') {
+              $envContent = [System.Text.RegularExpressions.Regex]::Unescape($envJson.Trim('"'))
+              Set-Content -Path .env -Value $envContent -NoNewline
+            }
+
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull app frontend
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d app frontend --force-recreate --no-deps
+
+            Write-Host '--- VERIFY IMAGES ---'
+            $appObj = (docker inspect ott-app | ConvertFrom-Json)[0]
+            $feObj  = (docker inspect ott-frontend | ConvertFrom-Json)[0]
+            Write-Host ('app:      ' + $appObj.Config.Image + ' | ' + $appObj.Image)
+            Write-Host ('frontend: ' + $feObj.Config.Image + ' | ' + $feObj.Image)
+            $haObj = (docker image inspect para98/ott-backend:latest  | ConvertFrom-Json)[0]
+            $hfObj = (docker image inspect para98/ott-frontend:latest | ConvertFrom-Json)[0]
+            Write-Host ('hub app:      ' + $haObj.RepoDigests[0])
+            Write-Host ('hub frontend: ' + $hfObj.RepoDigests[0])
+
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+            '@
+            $path = "$env:TEMP\deploy_ott.ps1"
+            Set-Content -Path $path -Value $script -Encoding UTF8
+            powershell -NoProfile -ExecutionPolicy Bypass -File $path
+            "
