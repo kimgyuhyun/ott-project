@@ -122,6 +122,4 @@ jobs:
                 Set-Content -Path (Join-Path $publicDir 'last_cd.txt') -Value $marker -Encoding UTF8
               } catch { Write-Host 'marker write failed (DONE)'; }
             }
-            Write-Host 'Writing transcript...'
-            Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
             Write-Host '=== CD END ==='
