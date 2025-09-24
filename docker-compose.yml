@@ -28,6 +28,7 @@ services:                         # 서비스 정의 시작
     build:
       context: ./backend
       dockerfile: Dockerfile
+    profiles: ["dev-build"]  # 빌드는 개발 프로필에서만 활성화
     container_name: ott-app # 컨테이너 이름
     ports: # 포트 매핑
       - "8090:8090"
@@ -92,6 +93,7 @@ services:                         # 서비스 정의 시작
       dockerfile: Dockerfile
       args:
         - BACKEND_ORIGIN=${BASE_URL}
+    profiles: ["dev-build"]  # 빌드는 개발 프로필에서만 활성화
     container_name: ott-frontend
     env_file: # .env 파일에서 환경변수 로드
       - .env
