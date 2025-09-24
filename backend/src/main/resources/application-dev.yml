@@ -16,7 +16,7 @@ anime:
     auto-enabled: false # 캐릭터 데이터 자동 수집 활성화 (개별 테스트용)
   join:
     character-voice:
-      enabled: true   # 캐릭터-성우 조인 러너 실행
+      enabled: false   # 캐릭터-성우 조인 러너 실행
     anime-voice:
       enabled: false  # 이후 단계에서 실행
   cast:
