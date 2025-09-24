@@ -11,6 +11,7 @@ import com.ottproject.ottbackend.dto.PaymentResultResponseDto;
 import com.ottproject.ottbackend.service.PaymentCommandService;
 import com.ottproject.ottbackend.service.PaymentReadService;
 import com.ottproject.ottbackend.service.PaymentMethodService;
+import com.ottproject.ottbackend.service.PaymentGateway;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -25,6 +26,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -52,6 +55,34 @@ public class PaymentController { // 결제 컨트롤러 시작
 	private final PaymentReadService paymentReadService; // 읽기 서비스 주입
 	private final SecurityUtil securityUtil; // 인증 사용자 식별 유틸
     private final PaymentMethodService paymentMethodService; // 결제수단 서비스
+    private final PaymentGateway paymentGateway; // 결제 게이트웨이
+
+	@Operation(summary = "아임포트 API 연결 테스트", description = "아임포트 API 연결 상태를 확인합니다.")
+	@ApiResponse(responseCode = "200", description = "연결 성공")
+	@ApiResponse(responseCode = "500", description = "연결 실패")
+	@GetMapping("/payments/test-iamport") // HTTP GET 매핑: 아임포트 연결 테스트
+	public ResponseEntity<Map<String, Object>> testIamportConnection() { // 아임포트 연결 테스트
+		Map<String, Object> result = new HashMap<>();
+		
+		try {
+			// 아임포트 토큰 요청 테스트
+			String token = paymentGateway.getAccessToken();
+			
+			result.put("status", "SUCCESS");
+			result.put("message", "아임포트 API 연결 성공");
+			result.put("tokenReceived", token != null);
+			
+			return ResponseEntity.ok(result);
+			
+		} catch (Exception e) {
+			result.put("status", "FAILED");
+			result.put("message", "아임포트 API 연결 실패");
+			result.put("error", e.getMessage());
+			result.put("errorType", e.getClass().getSimpleName());
+			
+			return ResponseEntity.status(500).body(result);
+		}
+	}
 
 	@Operation(summary = "체크아웃 생성", description = "플랜 코드로 결제창 세션을 생성하고 redirectUrl을 반환합니다.") // Swagger 요약/설명
 	@ApiResponse(responseCode = "200", description = "생성 성공") // Swagger 응답 코드 문서화
