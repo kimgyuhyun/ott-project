@@ -18,12 +18,22 @@ async function loadPortOne(): Promise<Window["IMP"] | null> {
 
 const PG_MAP: Record<string, string> = {
   kakao: "kakaopay",
+  kakaopay: "kakaopay",
   toss: "tosspayments",
+  tosspay: "tosspayments", 
+  tosspayments: "tosspayments",
   nice: "nice",
+  nicepay: "nice",
+  card: "kakaopay", // 기본 카드 결제
 };
 
 export function useCheckout() {
   const requestPay = async (planCode: string, paymentService: string) => {
+    // paymentService 유효성 검사
+    if (!paymentService || typeof paymentService !== 'string') {
+      throw new Error('유효하지 않은 결제 서비스입니다.');
+    }
+
     const successUrl = `${window.location.origin}/membership/guide`;
     const cancelUrl = `${window.location.origin}/oauth2/failure`;
 
@@ -38,12 +48,24 @@ export function useCheckout() {
     const IMP = await loadPortOne();
     if (!IMP) throw new Error("PortOne SDK를 불러오지 못했습니다.");
 
-    const merchantCode = (process.env.NEXT_PUBLIC_PORTONE_MERCHANT_CODE as string) || (process.env.NODE_ENV !== 'production' ? 'imp45866522' : '');
-    if (!merchantCode) throw new Error("NEXT_PUBLIC_PORTONE_MERCHANT_CODE 미설정");
+    // 환경별 아임포트 가맹점 코드 설정
+    const isProduction = (globalThis as any).process?.env?.NODE_ENV === 'production';
+    const merchantCode = (globalThis as any).process?.env?.NEXT_PUBLIC_PORTONE_MERCHANT_CODE || 
+      (isProduction ? '' : 'imp45866522'); // 개발용 코드
+    
+    if (!merchantCode) {
+      throw new Error(`아임포트 가맹점 코드가 설정되지 않았습니다. ${isProduction ? '프로덕션' : '개발'} 환경에서 NEXT_PUBLIC_PORTONE_MERCHANT_CODE를 설정하세요.`);
+    }
 
     IMP.init(merchantCode);
 
-    const pg = PG_MAP[paymentService?.toLowerCase?.()] || "kakaopay"; // 기본값 설정
+    // paymentService가 유효한지 확인하고 pg 값 설정
+    const normalizedPaymentService = paymentService?.toLowerCase?.()?.trim();
+    const pg = normalizedPaymentService && PG_MAP[normalizedPaymentService] 
+      ? PG_MAP[normalizedPaymentService] 
+      : "kakaopay"; // 기본값 설정 (PG_MAP과 일치)
+    
+    console.log('Payment Service:', paymentService, 'Normalized:', normalizedPaymentService, 'PG:', pg);
 
     await new Promise<void>((resolve, reject) => {
       const paymentData: IamportRequestPayData = {
