@@ -37,9 +37,12 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Build & Push backend image
         if: github.ref == 'refs/heads/main'
+        env:
+          IMAGE_SHA: ${{ github.sha }}
         run: |
-          docker build -t para98/ott-backend:latest -f backend/Dockerfile backend/
+          docker build --pull -t para98/ott-backend:latest -t para98/ott-backend:${IMAGE_SHA} -f backend/Dockerfile backend/
           docker push para98/ott-backend:latest
+          docker push para98/ott-backend:${IMAGE_SHA}
 
   frontend:
     runs-on: ubuntu-latest
@@ -66,7 +69,10 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
       - name: Build & Push frontend image
         if: github.ref == 'refs/heads/main'
+        env:
+          IMAGE_SHA: ${{ github.sha }}
         run: |
-          docker build -t para98/ott-frontend:latest -f frontend/Dockerfile frontend/
+          docker build --pull -t para98/ott-frontend:latest -t para98/ott-frontend:${IMAGE_SHA} -f frontend/Dockerfile frontend/
           docker push para98/ott-frontend:latest
+          docker push para98/ott-frontend:${IMAGE_SHA}
 
