@@ -23,8 +23,6 @@ jobs:
           script_stop: false
           command_timeout: 30m
           script: |
-            powershell -NoProfile -NonInteractive -Command "
-            $script = @'
             Set-StrictMode -Version Latest
             $ErrorActionPreference = 'Stop'
             Write-Host '=== CD START ==='
@@ -76,7 +74,7 @@ jobs:
             docker compose version || Write-Host 'docker compose version failed'
             docker info -f 'Server: {{.ServerVersion}}, OS: {{.OperatingSystem}}' || Write-Host 'docker info failed'
 
-            $envJson = @'${{ toJSON(secrets.ENV_FILE) }}'@
+            $envJson = '${{ toJSON(secrets.ENV_FILE) }}'
             if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') {
               $envContent = [System.Text.RegularExpressions.Regex]::Unescape($envJson.Trim('"'))
               Set-Content -Path .env -Value $envContent -NoNewline
@@ -117,12 +115,3 @@ jobs:
             Write-Host 'Writing transcript...'
             Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
             Write-Host '=== CD END ==='
-            '@
-            $path = Join-Path $env:TEMP 'deploy_ott.ps1'
-            $deployLogDir = 'C:\Users\Public\ott_cd'
-            if (-not (Test-Path $deployLogDir)) { New-Item -ItemType Directory -Path $deployLogDir | Out-Null }
-            Set-Content -Path $path -Value $script -Encoding UTF8
-            if (-not (Test-Path $path)) { throw ('script not written: ' + $path) }
-            Start-Transcript -Path (Join-Path $deployLogDir 'cd_transcript.log') -Append | Out-Null
-            powershell -NoProfile -ExecutionPolicy Bypass -File $path
-            "
