@@ -67,15 +67,15 @@ jobs:
             $overrideLines | Set-Content -Path $overridePath -Encoding UTF8
             Write-Host ('Using override file: ' + $overridePath)
 
-            # Configure Docker client to avoid Windows Credential Manager in non-interactive sessions
-            $dockerCfgDir = Join-Path $env:TEMP 'docker_cfg'
-            if (-not (Test-Path $dockerCfgDir)) { New-Item -ItemType Directory -Path $dockerCfgDir | Out-Null }
-            $dockerCfgPath = Join-Path $dockerCfgDir 'config.json'
-            '{"auths":{},"credsStore":""}' | Set-Content -Path $dockerCfgPath -Encoding ASCII -NoNewline
-            $env:DOCKER_CONFIG = $dockerCfgDir
-
-            '${{ secrets.REGISTRY_PASSWORD }}' | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin
-            if ($LASTEXITCODE -ne 0) { throw 'docker login failed' }
+            # Use DOCKER_AUTH_CONFIG to auth without saving credentials (works in non-interactive Windows sessions)
+            $registry = 'https://index.docker.io/v1/'
+            $username = '${{ secrets.REGISTRY_USER }}'
+            $password = '${{ secrets.REGISTRY_PASSWORD }}'
+            $pair = $username + ':' + $password
+            $b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair))
+            $authObj = @{ auths = @{ $registry = @{ auth = $b64 } } }
+            $env:DOCKER_AUTH_CONFIG = ($authObj | ConvertTo-Json -Compress)
+            Write-Host 'Docker auth configured for registry: ' + $registry
 
             Write-Host 'Docker diagnostics:'
             docker version; if ($LASTEXITCODE -ne 0) { Write-Host 'docker version failed' }
