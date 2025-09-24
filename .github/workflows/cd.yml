@@ -92,7 +92,7 @@ jobs:
             docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath pull app frontend
             if ($LASTEXITCODE -ne 0) { throw 'docker compose pull failed' }
             Write-Host '=== COMPOSE UP (pull always) ==='
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath up -d app frontend --force-recreate --no-deps --pull always --env-file .env
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath --env-file .env up -d app frontend --force-recreate --no-deps --pull always
             if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
 
             Write-Host '=== VERIFY IMAGES ==='
