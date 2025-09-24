@@ -12,7 +12,7 @@ import styles from "./weekly.module.css";
  * 7열 컬럼형 레이아웃으로 모든 요일을 동시에 표시
  */
 export default function WeeklyPage() {
-  type ExtendedAnime = Anime & { isNew?: boolean; aniId?: number | string; badges?: string[] };
+  type ExtendedAnime = Anime & { isNew?: boolean; aniId?: number | string; badges?: string[]; titleEn?: string; titleJp?: string };
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
   const [weeklyAnimes, setWeeklyAnimes] = useState<Record<string, Anime[]>>({
@@ -213,25 +213,27 @@ export default function WeeklyPage() {
           <h1 className={styles.weeklyPageTitle}>요일별 신작</h1>
 
           {/* 서비스 업데이트 안내 박스 */}
-          <div className={styles.noticeBox}>
-            <div className={styles.noticeContent}>
-              <div className={styles.noticeIcon}>🔔</div>
-              <div className={styles.noticeText}>
-                <p>
-                  8월 12일 서비스 예정이었던 <span className={styles.noticeHighlight}>《가치아쿠타》 3화</span>는 
-                  판권사 사정으로 인해 4화와 함께 <span className={styles.noticeHighlight}>8월 28일 업데이트 예정</span>입니다.
-                </p>
-                <p>
-                  8월 21일 업데이트 예정이었던 <span className={styles.noticeHighlight}>《앤 셜리 (Anne Shirley)》 19화</span>는 
-                  현지 휴방으로 인해 <span className={styles.noticeHighlight}>8월 28일 업데이트 예정</span>입니다.
-                </p>
-                <p>
-                  <span className={styles.noticeHighlight}>《가라오케 가자!》 5화</span>는 
-                  현지 휴방으로 인해 <span className={styles.noticeHighlight}>9월 중 서비스 예정</span>입니다.
-                </p>
+          {false && ( // 공지 필요 시 true로 바꿔서 노출
+            <div className={styles.noticeBox}>
+              <div className={styles.noticeContent}>
+                <div className={styles.noticeIcon}>🔔</div>
+                <div className={styles.noticeText}>
+                  <p>
+                    8월 12일 서비스 예정이었던 <span className={styles.noticeHighlight}>《가치아쿠타》 3화</span>는 
+                    판권사 사정으로 인해 4화와 함께 <span className={styles.noticeHighlight}>8월 28일 업데이트 예정</span>입니다.
+                  </p>
+                  <p>
+                    8월 21일 업데이트 예정이었던 <span className={styles.noticeHighlight}>《앤 셜리 (Anne Shirley)》 19화</span>는 
+                    현지 휴방으로 인해 <span className={styles.noticeHighlight}>8월 28일 업데이트 예정</span>입니다.
+                  </p>
+                  <p>
+                    <span className={styles.noticeHighlight}>《가라오케 가자!》 5화</span>는 
+                    현지 휴방으로 인해 <span className={styles.noticeHighlight}>9월 중 서비스 예정</span>입니다.
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
 
           {/* 7열 컬럼 컨테이너 */}
@@ -253,7 +255,6 @@ export default function WeeklyPage() {
                       className={`${styles.weeklyColumnTitle} ${day.id === currentDay ? styles.weeklyColumnTitleToday : ''}`}
                     >
                       {day.fullLabel}
-                      {day.id === currentDay && <span className={styles.weeklyTodayBadge}>TODAY</span>}
                     </h2>
                   </div>
 
@@ -273,18 +274,18 @@ export default function WeeklyPage() {
                               onKeyDown={(e) => handleKeyDown(e, anime)}
                               tabIndex={0}
                               role="button"
-                              aria-label={`${anime.title || '애니메이션'} 상세보기`}
+                              aria-label={`${anime.title || anime.titleEn || anime.titleJp || '애니메이션'} 상세보기`}
                             >
                               <Image
                                 className={styles.weeklyAnimePoster}
                                 src={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
-                                alt={anime.title || '애니메이션 포스터'}
+                                alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
                                 width={200}
                                 height={280}
                                 loading="lazy"
                               />
                               <div className={styles.weeklyAnimeTitle}>
-                                {anime.title || '제목 없음'}
+                                {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
                               </div>
                               {badge && (
                                 <div className={`${styles.weeklyAnimeBadge} ${getBadgeClass(badge)}`}>
