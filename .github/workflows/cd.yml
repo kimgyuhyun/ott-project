@@ -66,7 +66,14 @@ jobs:
             $overrideLines | Set-Content -Path $overridePath -Encoding UTF8
             Write-Host ('Using override file: ' + $overridePath)
 
-            '${{ secrets.REGISTRY_PASSWORD }}' | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin
+            # Configure Docker client to avoid Windows Credential Manager in non-interactive sessions
+            $dockerCfgDir = Join-Path $env:TEMP 'docker_cfg'
+            if (-not (Test-Path $dockerCfgDir)) { New-Item -ItemType Directory -Path $dockerCfgDir | Out-Null }
+            $dockerCfgPath = Join-Path $dockerCfgDir 'config.json'
+            '{"auths":{},"credsStore":""}' | Set-Content -Path $dockerCfgPath -Encoding ASCII -NoNewline
+            $env:DOCKER_CONFIG = $dockerCfgDir
+
+            '${{ secrets.REGISTRY_PASSWORD }}' | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin --config $dockerCfgDir
             if ($LASTEXITCODE -ne 0) { throw 'docker login failed' }
 
             Write-Host 'Docker diagnostics:'
