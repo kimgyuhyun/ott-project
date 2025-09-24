@@ -24,6 +24,7 @@ jobs:
           command_timeout: 30m
           script: |
             Set-StrictMode -Version Latest
+            $ProgressPreference = 'SilentlyContinue'
             $ErrorActionPreference = 'Stop'
             Write-Host '=== CD START ==='
             Set-Location -Path 'C:\solo-project\ott-project'
@@ -73,7 +74,7 @@ jobs:
             '{"auths":{},"credsStore":""}' | Set-Content -Path $dockerCfgPath -Encoding ASCII -NoNewline
             $env:DOCKER_CONFIG = $dockerCfgDir
 
-            '${{ secrets.REGISTRY_PASSWORD }}' | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin --config $dockerCfgDir
+            '${{ secrets.REGISTRY_PASSWORD }}' | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin
             if ($LASTEXITCODE -ne 0) { throw 'docker login failed' }
 
             Write-Host 'Docker diagnostics:'
