@@ -18,6 +18,9 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          debug: true
+          script_stop: true
+          command_timeout: 30m
           script: |
             powershell -NoProfile -NonInteractive -Command "
             $script = @'
@@ -25,6 +28,12 @@ jobs:
             $ErrorActionPreference = 'Stop'
             Write-Host '=== CD START ==='
             Set-Location -Path 'C:\solo-project\ott-project'
+
+            # Persist a marker for external verification of CD execution
+            $deployDir = 'C:\solo-project\ott-project\.deploy'
+            if (-not (Test-Path $deployDir)) { New-Item -ItemType Directory -Path $deployDir | Out-Null }
+            $marker = "deployed_sha=STARTING`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
+            Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
 
             # 안전한 동기화 (pull 충돌 회피)
             git fetch origin main
@@ -36,6 +45,18 @@ jobs:
             $env:COMMIT_SHA = (git rev-parse HEAD).Trim()
             if (-not $env:COMMIT_SHA) { throw 'cannot resolve commit sha' }
             Write-Host ('Deploying commit ' + $env:COMMIT_SHA)
+
+            # SHA 이미지 강제 적용용 임시 override 파일 생성
+            $overridePath = Join-Path $env:TEMP 'compose.sha.override.yml'
+            $overrideLines = @(
+              'services:',
+              '  app:',
+              "    image: para98/ott-backend:$($env:COMMIT_SHA)",
+              '  frontend:',
+              "    image: para98/ott-frontend:$($env:COMMIT_SHA)"
+            )
+            $overrideLines | Set-Content -Path $overridePath -Encoding UTF8
+            Write-Host ('Using override file: ' + $overridePath)
 
             '${{ secrets.REGISTRY_PASSWORD }}' | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin
             if ($LASTEXITCODE -ne 0) { throw 'docker login failed' }
@@ -52,23 +73,10 @@ jobs:
             }
 
             Write-Host '=== COMPOSE PULL (by SHA tag) ==='
-            docker pull para98/ott-backend:$env:COMMIT_SHA
-            if ($LASTEXITCODE -ne 0) { throw 'docker pull backend:sha failed' }
-            docker pull para98/ott-frontend:$env:COMMIT_SHA
-            if ($LASTEXITCODE -ne 0) { throw 'docker pull frontend:sha failed' }
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath pull app frontend
             if ($LASTEXITCODE -ne 0) { throw 'docker compose pull failed' }
             Write-Host '=== COMPOSE UP (pull always) ==='
-            $composeArgs = @(
-              '-f', 'docker-compose.yml',
-              '-f', 'docker-compose.prod.yml',
-              'up', '-d', 'app', 'frontend', '--force-recreate', '--no-deps', '--pull', 'always'
-            )
-            # 서비스별 이미지 태그를 SHA로 오버라이드
-            $env:APP_IMAGE="para98/ott-backend:$env:COMMIT_SHA"
-            $env:FRONT_IMAGE="para98/ott-frontend:$env:COMMIT_SHA"
-            Write-Host ('Using APP_IMAGE=' + $env:APP_IMAGE)
-            Write-Host ('Using FRONT_IMAGE=' + $env:FRONT_IMAGE)
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d app frontend --force-recreate --no-deps --pull always --env-file .env
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath up -d app frontend --force-recreate --no-deps --pull always --env-file .env
             if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
 
             Write-Host '=== VERIFY IMAGES ==='
@@ -81,16 +89,23 @@ jobs:
             Write-Host ('hub app: ' + $ha)
             Write-Host ('hub fe:  ' + $hf)
 
+            Write-Host '=== RESOLVED COMPOSE IMAGES ==='
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath config --images
+
             docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 
-            # Persist a marker for external verification of CD execution
-            $deployDir = 'C:\solo-project\ott-project\.deploy'
-            if (-not (Test-Path $deployDir)) { New-Item -ItemType Directory -Path $deployDir | Out-Null }
+            # Persist a marker and transcript for external verification of CD execution
             $marker = "deployed_sha=$env:COMMIT_SHA`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
             Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
+            Write-Host 'Writing transcript...'
+            Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
             Write-Host '=== CD END ==='
             '@
-            $path = "$env:TEMP\deploy_ott.ps1"
+            $path = 'C:\solo-project\ott-project\deploy_ott.ps1'
+            $deployLogDir = 'C:\solo-project\ott-project\.deploy'
+            if (-not (Test-Path $deployLogDir)) { New-Item -ItemType Directory -Path $deployLogDir | Out-Null }
             Set-Content -Path $path -Value $script -Encoding UTF8
+            if (-not (Test-Path $path)) { throw ('script not written: ' + $path) }
+            Start-Transcript -Path (Join-Path $deployLogDir 'cd_transcript.log') -Append | Out-Null
             powershell -NoProfile -ExecutionPolicy Bypass -File $path
             "
