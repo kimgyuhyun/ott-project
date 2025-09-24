@@ -45,7 +45,7 @@ export const useProrationPayment = () => {
         // 3. 차액 결제 요청
         return new Promise((resolve) => {
           const paymentData: IamportRequestPayData = {
-            pg: request.paymentService || 'kakaopay.TC0ONETIME',
+            pg: request.paymentService || 'kakaopay',
             pay_method: 'card',
             merchant_uid: checkoutResponse.providerSessionId,
             amount: checkoutResponse.amount,

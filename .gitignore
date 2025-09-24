@@ -264,6 +264,9 @@ application-dev.properties
 *.truststore
 
 # ===== Application specific =====
+# CD deployment markers
+.deploy/
+
 # Video files (for OTT project) - but allow public folder
 # *.mp4
 # *.avi

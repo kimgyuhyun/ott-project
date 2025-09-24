@@ -302,9 +302,9 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		String normalizedService = (req.paymentService == null ? null : req.paymentService.trim().toLowerCase());
 		String mappedPg = null;
 		if (normalizedService == null || normalizedService.isBlank()) {
-			mappedPg = "kakaopay.TC0ONETIME"; // 기본값: 카카오
+			mappedPg = "kakaopay"; // 기본값: 카카오
 		} else if ("kakao".equals(normalizedService)) {
-			mappedPg = "kakaopay.TC0ONETIME";
+			mappedPg = "kakaopay";
 		} else if ("toss".equals(normalizedService)) {
 			mappedPg = "tosspayments";
 		} else if ("nice".equals(normalizedService)) {

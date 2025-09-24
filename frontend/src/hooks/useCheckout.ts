@@ -17,7 +17,7 @@ async function loadPortOne(): Promise<Window["IMP"] | null> {
 }
 
 const PG_MAP: Record<string, string> = {
-  kakao: "kakaopay.TC0ONETIME",
+  kakao: "kakaopay",
   toss: "tosspayments",
   nice: "nice",
 };
@@ -43,7 +43,7 @@ export function useCheckout() {
 
     IMP.init(merchantCode);
 
-    const pg = PG_MAP[paymentService?.toLowerCase?.()] || "kakaopay.TC0ONETIME"; // 기본값 설정
+    const pg = PG_MAP[paymentService?.toLowerCase?.()] || "kakaopay"; // 기본값 설정
 
     await new Promise<void>((resolve, reject) => {
       const paymentData: IamportRequestPayData = {
