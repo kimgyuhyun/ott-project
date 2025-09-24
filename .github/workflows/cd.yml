@@ -70,9 +70,9 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'docker login failed' }
 
             Write-Host 'Docker diagnostics:'
-            docker version || Write-Host 'docker version failed'
-            docker compose version || Write-Host 'docker compose version failed'
-            docker info -f 'Server: {{.ServerVersion}}, OS: {{.OperatingSystem}}' || Write-Host 'docker info failed'
+            docker version; if ($LASTEXITCODE -ne 0) { Write-Host 'docker version failed' }
+            docker compose version; if ($LASTEXITCODE -ne 0) { Write-Host 'docker compose version failed' }
+            docker info -f 'Server: {{.ServerVersion}}, OS: {{.OperatingSystem}}'; if ($LASTEXITCODE -ne 0) { Write-Host 'docker info failed' }
 
             $envJson = '${{ toJSON(secrets.ENV_FILE) }}'
             if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') {
@@ -88,8 +88,10 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
 
             Write-Host '=== VERIFY IMAGES ==='
-            docker inspect -f "app:      {{.Config.Image}} | {{.Image}} | started={{.State.StartedAt}}" ott-app 2>$null || Write-Host 'ott-app not found'
-            docker inspect -f "frontend: {{.Config.Image}} | {{.Image}} | started={{.State.StartedAt}}" ott-frontend 2>$null || Write-Host 'ott-frontend not found'
+            $inspectApp = docker inspect -f "app:      {{.Config.Image}} | {{.Image}} | started={{.State.StartedAt}}" ott-app 2>$null
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($inspectApp)) { Write-Host 'ott-app not found' } else { Write-Host $inspectApp }
+            $inspectFe = docker inspect -f "frontend: {{.Config.Image}} | {{.Image}} | started={{.State.StartedAt}}" ott-frontend 2>$null
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($inspectFe)) { Write-Host 'ott-frontend not found' } else { Write-Host $inspectFe }
             $ha = docker image inspect ("para98/ott-backend:" + $env:COMMIT_SHA)  -f 'id={{.Id}} digests={{.RepoDigests}}'
             $hf = docker image inspect ("para98/ott-frontend:" + $env:COMMIT_SHA) -f 'id={{.Id}} digests={{.RepoDigests}}'
             Write-Host ('hub app: ' + $ha)
