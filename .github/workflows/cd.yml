@@ -5,11 +5,12 @@ on:
     workflows: ["CI"]
     types:
       - completed
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -22,11 +23,22 @@ jobs:
             $script = @'
             Set-StrictMode -Version Latest
             $ErrorActionPreference = 'Stop'
+            Write-Host '=== CD START ==='
             Set-Location -Path 'C:\solo-project\ott-project'
 
-            git pull origin main
+            # 안전한 동기화 (pull 충돌 회피)
+            git fetch origin main
+            if ($LASTEXITCODE -ne 0) { throw 'git fetch failed' }
+            git reset --hard origin/main
+            if ($LASTEXITCODE -ne 0) { throw 'git reset --hard failed' }
 
             '${{ secrets.REGISTRY_PASSWORD }}' | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin
+            if ($LASTEXITCODE -ne 0) { throw 'docker login failed' }
+
+            Write-Host 'Docker diagnostics:'
+            docker version || Write-Host 'docker version failed'
+            docker compose version || Write-Host 'docker compose version failed'
+            docker info -f 'Server: {{.ServerVersion}}, OS: {{.OperatingSystem}}' || Write-Host 'docker info failed'
 
             $envJson = @'${{ toJSON(secrets.ENV_FILE) }}'@
             if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') {
@@ -34,20 +46,25 @@ jobs:
               Set-Content -Path .env -Value $envContent -NoNewline
             }
 
+            Write-Host '=== COMPOSE PULL ==='
             docker compose -f docker-compose.yml -f docker-compose.prod.yml pull app frontend
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d app frontend --force-recreate --no-deps
+            if ($LASTEXITCODE -ne 0) { throw 'docker compose pull failed' }
+            Write-Host '=== COMPOSE UP (pull always) ==='
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d app frontend --force-recreate --no-deps --pull always
+            if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
 
-            Write-Host '--- VERIFY IMAGES ---'
+            Write-Host '=== VERIFY IMAGES ==='
             $appObj = (docker inspect ott-app | ConvertFrom-Json)[0]
             $feObj  = (docker inspect ott-frontend | ConvertFrom-Json)[0]
-            Write-Host ('app:      ' + $appObj.Config.Image + ' | ' + $appObj.Image)
-            Write-Host ('frontend: ' + $feObj.Config.Image + ' | ' + $feObj.Image)
-            $haObj = (docker image inspect para98/ott-backend:latest  | ConvertFrom-Json)[0]
-            $hfObj = (docker image inspect para98/ott-frontend:latest | ConvertFrom-Json)[0]
-            Write-Host ('hub app:      ' + $haObj.RepoDigests[0])
-            Write-Host ('hub frontend: ' + $hfObj.RepoDigests[0])
+            Write-Host ('app:      ' + $appObj.Config.Image + ' | ' + $appObj.Image + ' | started=' + $appObj.State.StartedAt)
+            Write-Host ('frontend: ' + $feObj.Config.Image + ' | ' + $feObj.Image + ' | started=' + $feObj.State.StartedAt)
+            $ha = docker image inspect para98/ott-backend:latest  -f 'latestId={{.Id}} digests={{.RepoDigests}}'
+            $hf = docker image inspect para98/ott-frontend:latest -f 'latestId={{.Id}} digests={{.RepoDigests}}'
+            Write-Host ('hub app: ' + $ha)
+            Write-Host ('hub fe:  ' + $hf)
 
             docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+            Write-Host '=== CD END ==='
             '@
             $path = "$env:TEMP\deploy_ott.ps1"
             Set-Content -Path $path -Value $script -Encoding UTF8
