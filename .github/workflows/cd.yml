@@ -18,8 +18,9 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
           debug: true
-          script_stop: true
+          script_stop: false
           command_timeout: 30m
           script: |
             powershell -NoProfile -NonInteractive -Command "
@@ -29,11 +30,20 @@ jobs:
             Write-Host '=== CD START ==='
             Set-Location -Path 'C:\solo-project\ott-project'
 
-            # Persist a marker for external verification of CD execution
-            $deployDir = 'C:\solo-project\ott-project\.deploy'
-            if (-not (Test-Path $deployDir)) { New-Item -ItemType Directory -Path $deployDir | Out-Null }
-            $marker = "deployed_sha=STARTING`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
-            Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
+            # Try to persist a STARTING marker without failing the run on permission errors
+            try {
+              $deployDir = 'C:\solo-project\ott-project\.deploy'
+              if (-not (Test-Path $deployDir)) { New-Item -ItemType Directory -Path $deployDir | Out-Null }
+              $marker = "deployed_sha=STARTING`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
+              Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
+            } catch {
+              try {
+                $publicDir = 'C:\Users\Public\ott_cd'
+                if (-not (Test-Path $publicDir)) { New-Item -ItemType Directory -Path $publicDir | Out-Null }
+                $marker = "deployed_sha=STARTING`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
+                Set-Content -Path (Join-Path $publicDir 'last_cd.txt') -Value $marker -Encoding UTF8
+              } catch { Write-Host 'marker write failed (STARTING)'; }
+            }
 
             # 안전한 동기화 (pull 충돌 회피)
             git fetch origin main
@@ -80,10 +90,8 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
 
             Write-Host '=== VERIFY IMAGES ==='
-            $appObj = (docker inspect ott-app | ConvertFrom-Json)[0]
-            $feObj  = (docker inspect ott-frontend | ConvertFrom-Json)[0]
-            Write-Host ('app:      ' + $appObj.Config.Image + ' | ' + $appObj.Image + ' | started=' + $appObj.State.StartedAt)
-            Write-Host ('frontend: ' + $feObj.Config.Image + ' | ' + $feObj.Image + ' | started=' + $feObj.State.StartedAt)
+            docker inspect -f "app:      {{.Config.Image}} | {{.Image}} | started={{.State.StartedAt}}" ott-app 2>$null || Write-Host 'ott-app not found'
+            docker inspect -f "frontend: {{.Config.Image}} | {{.Image}} | started={{.State.StartedAt}}" ott-frontend 2>$null || Write-Host 'ott-frontend not found'
             $ha = docker image inspect ("para98/ott-backend:" + $env:COMMIT_SHA)  -f 'id={{.Id}} digests={{.RepoDigests}}'
             $hf = docker image inspect ("para98/ott-frontend:" + $env:COMMIT_SHA) -f 'id={{.Id}} digests={{.RepoDigests}}'
             Write-Host ('hub app: ' + $ha)
@@ -94,15 +102,24 @@ jobs:
 
             docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
 
-            # Persist a marker and transcript for external verification of CD execution
-            $marker = "deployed_sha=$env:COMMIT_SHA`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
-            Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
+            # Persist a marker for completion (with fallback)
+            try {
+              $marker = "deployed_sha=$env:COMMIT_SHA`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
+              Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
+            } catch {
+              try {
+                $publicDir = 'C:\Users\Public\ott_cd'
+                if (-not (Test-Path $publicDir)) { New-Item -ItemType Directory -Path $publicDir | Out-Null }
+                $marker = "deployed_sha=$env:COMMIT_SHA`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
+                Set-Content -Path (Join-Path $publicDir 'last_cd.txt') -Value $marker -Encoding UTF8
+              } catch { Write-Host 'marker write failed (DONE)'; }
+            }
             Write-Host 'Writing transcript...'
             Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
             Write-Host '=== CD END ==='
             '@
-            $path = 'C:\solo-project\ott-project\deploy_ott.ps1'
-            $deployLogDir = 'C:\solo-project\ott-project\.deploy'
+            $path = Join-Path $env:TEMP 'deploy_ott.ps1'
+            $deployLogDir = 'C:\Users\Public\ott_cd'
             if (-not (Test-Path $deployLogDir)) { New-Item -ItemType Directory -Path $deployLogDir | Out-Null }
             Set-Content -Path $path -Value $script -Encoding UTF8
             if (-not (Test-Path $path)) { throw ('script not written: ' + $path) }
