@@ -11,7 +11,7 @@ import com.ottproject.ottbackend.dto.PaymentResultResponseDto;
 import com.ottproject.ottbackend.service.PaymentCommandService;
 import com.ottproject.ottbackend.service.PaymentReadService;
 import com.ottproject.ottbackend.service.PaymentMethodService;
-import com.ottproject.ottbackend.service.PaymentGateway;
+import com.ottproject.ottbackend.service.ImportPaymentGateway;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -55,7 +55,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 	private final PaymentReadService paymentReadService; // 읽기 서비스 주입
 	private final SecurityUtil securityUtil; // 인증 사용자 식별 유틸
     private final PaymentMethodService paymentMethodService; // 결제수단 서비스
-    private final PaymentGateway paymentGateway; // 결제 게이트웨이
+    private final ImportPaymentGateway importPaymentGateway; // 아임포트 게이트웨이
 
 	@Operation(summary = "아임포트 API 연결 테스트", description = "아임포트 API 연결 상태를 확인합니다.")
 	@ApiResponse(responseCode = "200", description = "연결 성공")
@@ -65,14 +65,18 @@ public class PaymentController { // 결제 컨트롤러 시작
 		Map<String, Object> result = new HashMap<>();
 		
 		try {
-			// 아임포트 토큰 요청 테스트
-			String token = paymentGateway.getAccessToken();
+			// 아임포트 API 연결 테스트
+			boolean isConnected = importPaymentGateway.testConnection();
 			
-			result.put("status", "SUCCESS");
-			result.put("message", "아임포트 API 연결 성공");
-			result.put("tokenReceived", token != null);
-			
-			return ResponseEntity.ok(result);
+			if (isConnected) {
+				result.put("status", "SUCCESS");
+				result.put("message", "아임포트 API 연결 성공");
+				return ResponseEntity.ok(result);
+			} else {
+				result.put("status", "FAILED");
+				result.put("message", "아임포트 API 연결 실패");
+				return ResponseEntity.status(500).body(result);
+			}
 			
 		} catch (Exception e) {
 			result.put("status", "FAILED");
