@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { PaymentMethodResponse } from "@/lib/api/membership";
+import { PaymentService } from "@/types/payment";
 import styles from "./PaymentMethodChangeModal.module.css";
 
 interface PaymentMethodChangeModalProps {
@@ -18,7 +19,7 @@ export default function PaymentMethodChangeModal({
 }: PaymentMethodChangeModalProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('simple');
-  const [selectedPaymentService, setSelectedPaymentService] = useState('');
+  const [selectedPaymentService, setSelectedPaymentService] = useState<PaymentService | ''>('');
   const [isAgreed, setIsAgreed] = useState(false);
 
   if (!isOpen) return null;

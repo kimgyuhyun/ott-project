@@ -1,6 +1,7 @@
 "use client";
 import { createCheckout, checkPaymentStatus } from "@/lib/api/membership";
 import type { IamportRequestPayData, IamportResponse } from "@/types/iamport";
+import type { PaymentService } from "@/types/payment";
 
 async function loadPortOne(): Promise<Window["IMP"] | null> {
   if (typeof window === "undefined") return null;
@@ -42,7 +43,7 @@ export function useCheckout() {
       successUrl,
       cancelUrl,
       undefined,
-      paymentService
+      paymentService as PaymentService
     );
 
     const IMP = await loadPortOne();

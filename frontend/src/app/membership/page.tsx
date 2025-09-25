@@ -143,7 +143,7 @@ export default function MembershipPage() {
   const handlePayment = async () => {
     try {
       const planCode = selectedPlan === 'basic' ? 'BASIC_MONTHLY' : 'PREMIUM_MONTHLY';
-      await requestPay(planCode, selectedPaymentService);
+      await requestPay(planCode, selectedPaymentService as string);
     } catch (err) {
       const msg = (err as Error)?.message || '결제 실패';
       setPaymentFailureMsg(msg);
