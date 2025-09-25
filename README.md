@@ -18,7 +18,7 @@
 ## 기술 스택
 - Backend: Java 21, Spring Boot, JPA, Spring Security, OAuth2, Redis, MyBatis
 - DB/Cache: PostgreSQL, Redis
-- Frontend: Next.js 15, React 18, React Query
+- Frontend: Next.js 15, React 18, React Query, TypeScript
 - Infra: Nginx, Docker, GitHub Actions, Docker Hub Registry
 - 외부 API: TMDB, Jikan, Iamport
 
