@@ -7,6 +7,7 @@ import { resumeMembership } from "@/lib/api/membership";
 import PlanChangeModal from "@/components/membership/PlanChangeModal";
 // import PaymentModal from "@/components/membership/PaymentModal";
 import ProrationPaymentModal from "@/components/membership/ProrationPaymentModal";
+import { PaymentService } from "@/types/payment";
 import styles from "./guide.module.css";
 
 export default function MembershipGuidePage() {
@@ -23,7 +24,7 @@ export default function MembershipGuidePage() {
   // const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showProrationPaymentModal, setShowProrationPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('simple');
-  const [selectedPaymentService, setSelectedPaymentService] = useState('');
+  const [selectedPaymentService, setSelectedPaymentService] = useState<PaymentService | ''>('');
   
   // 멤버십 재시작 상태
   const [isResuming, setIsResuming] = useState(false);

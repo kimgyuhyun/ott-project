@@ -11,6 +11,7 @@ import { useCheckout } from "@/hooks/useCheckout";
 import PaymentModal from "@/components/membership/PaymentModal";
 import PaymentFailureModal from "@/components/membership/PaymentFailureModal";
 import CardRegistrationModal from "@/components/membership/CardRegistrationModal";
+import { PaymentService } from "@/types/payment";
 import styles from "./membership.module.css";
 
 /**
@@ -25,7 +26,7 @@ export default function MembershipPage() {
   const [hoveredPlan, setHoveredPlan] = useState<string | null>(null);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<string>('simple');
-  const [selectedPaymentService, setSelectedPaymentService] = useState<string>('toss');
+  const [selectedPaymentService, setSelectedPaymentService] = useState<PaymentService | ''>('toss');
   const [isCardRegistrationModalOpen, setIsCardRegistrationModalOpen] = useState(false);
   const [isPaymentFailureOpen, setIsPaymentFailureOpen] = useState(false);
   const [paymentFailureMsg, setPaymentFailureMsg] = useState<string>('결제 실패');
@@ -83,7 +84,7 @@ export default function MembershipPage() {
   };
 
   // 결제 서비스 선택
-  const handlePaymentServiceSelect = (service: string) => {
+  const handlePaymentServiceSelect = (service: PaymentService) => {
     setSelectedPaymentService(service);
   };
 
