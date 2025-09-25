@@ -1,9 +1,19 @@
 # 개발용 오버라이드 - docker-compose up 시 자동 적용
-version: '3.8'
 
 services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend/src:/app/src  # 소스 코드만 마운트
+      - /app/build  # 빌드 결과물은 컨테이너에 유지
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+
   frontend:
     build:
+      context: ./frontend
       dockerfile: Dockerfile
       target: development  # 개발용 스테이지 사용
     volumes:
