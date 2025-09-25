@@ -77,12 +77,11 @@ export default function MembershipManagePage() {
   // 결제 예정일 계산 (다음 결제일)
   const nextBillingDate = useMemo(() => {
     if (!userMembership?.nextBillingAt) return null;
-    const date = new Date(userMembership.nextBillingAt);
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    }).replace(/\. /g, '.').replace('.', '');
+    const d = new Date(userMembership.nextBillingAt);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}.${m}.${day}`;
   }, [userMembership]);
 
   // 결제 수단 변경 핸들러 (모달 열기)  
@@ -349,11 +348,11 @@ export default function MembershipManagePage() {
                 멤버십 만료 예정일 : {(() => {
                   const endDate = userMembership.endAt || userMembership.nextBillingAt;
                   if (endDate) {
-                    return new Date(endDate).toLocaleDateString('ko-KR', {
-                      year: 'numeric',
-                      month: '2-digit', 
-                      day: '2-digit'
-                    }).replace(/\. /g, '.').replace(/\.$/, '');
+                    const d = new Date(endDate);
+                    const y = d.getFullYear();
+                    const m = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${y}.${m}.${day}`;
                   }
                   return '정보 없음';
                 })()}
