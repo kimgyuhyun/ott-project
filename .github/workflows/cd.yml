@@ -5,11 +5,12 @@ on:
     workflows: ["CI"]
     types:
       - completed
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.3
@@ -17,39 +18,108 @@ jobs:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          debug: true
+          script_stop: false
+          command_timeout: 30m
           script: |
-            powershell -NoProfile -NonInteractive -Command "
-            $script = @'
             Set-StrictMode -Version Latest
+            $ProgressPreference = 'SilentlyContinue'
             $ErrorActionPreference = 'Stop'
+            Write-Host '=== CD START ==='
             Set-Location -Path 'C:\solo-project\ott-project'
 
-            git pull origin main
+            # Try to persist a STARTING marker without failing the run on permission errors
+            try {
+              $deployDir = 'C:\solo-project\ott-project\.deploy'
+              if (-not (Test-Path $deployDir)) { New-Item -ItemType Directory -Path $deployDir | Out-Null }
+              $marker = "deployed_sha=STARTING`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
+              Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
+            } catch {
+              try {
+                $publicDir = 'C:\Users\Public\ott_cd'
+                if (-not (Test-Path $publicDir)) { New-Item -ItemType Directory -Path $publicDir | Out-Null }
+                $marker = "deployed_sha=STARTING`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
+                Set-Content -Path (Join-Path $publicDir 'last_cd.txt') -Value $marker -Encoding UTF8
+              } catch { Write-Host 'marker write failed (STARTING)'; }
+            }
 
-            '${{ secrets.REGISTRY_PASSWORD }}' | docker login -u '${{ secrets.REGISTRY_USER }}' --password-stdin
+            # 안전한 동기화 (pull 충돌 회피)
+            git fetch origin main
+            if ($LASTEXITCODE -ne 0) { throw 'git fetch failed' }
+            git reset --hard origin/main
+            if ($LASTEXITCODE -ne 0) { throw 'git reset --hard failed' }
 
-            $envJson = @'${{ toJSON(secrets.ENV_FILE) }}'@
+            # 현재 커밋 SHA를 환경변수로 획득 (immutable tag 배포용)
+            $env:COMMIT_SHA = (git rev-parse HEAD).Trim()
+            if (-not $env:COMMIT_SHA) { throw 'cannot resolve commit sha' }
+            Write-Host ('Deploying commit ' + $env:COMMIT_SHA)
+
+            # SHA 이미지 강제 적용용 임시 override 파일 생성
+            $overridePath = Join-Path $env:TEMP 'compose.sha.override.yml'
+            $overrideLines = @(
+              'services:',
+              '  app:',
+              "    image: para98/ott-backend:$($env:COMMIT_SHA)",
+              '  frontend:',
+              "    image: para98/ott-frontend:$($env:COMMIT_SHA)"
+            )
+            $overrideLines | Set-Content -Path $overridePath -Encoding UTF8
+            Write-Host ('Using override file: ' + $overridePath)
+
+            # Use DOCKER_AUTH_CONFIG to auth without saving credentials (works in non-interactive Windows sessions)
+            $registry = 'https://index.docker.io/v1/'
+            $username = '${{ secrets.REGISTRY_USER }}'
+            $password = '${{ secrets.REGISTRY_PASSWORD }}'
+            $pair = $username + ':' + $password
+            $b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair))
+            $authObj = @{ auths = @{ $registry = @{ auth = $b64 } } }
+            $env:DOCKER_AUTH_CONFIG = ($authObj | ConvertTo-Json -Compress)
+            Write-Host 'Docker auth configured for registry: ' + $registry
+
+            Write-Host 'Docker diagnostics:'
+            docker version; if ($LASTEXITCODE -ne 0) { Write-Host 'docker version failed' }
+            docker compose version; if ($LASTEXITCODE -ne 0) { Write-Host 'docker compose version failed' }
+            docker info -f 'Server: {{.ServerVersion}}, OS: {{.OperatingSystem}}'; if ($LASTEXITCODE -ne 0) { Write-Host 'docker info failed' }
+
+            $envJson = '${{ toJSON(secrets.ENV_FILE) }}'
             if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') {
               $envContent = [System.Text.RegularExpressions.Regex]::Unescape($envJson.Trim('"'))
               Set-Content -Path .env -Value $envContent -NoNewline
             }
 
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull app frontend
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d app frontend --force-recreate --no-deps
+            Write-Host '=== COMPOSE PULL (by SHA tag) ==='
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath pull app frontend
+            if ($LASTEXITCODE -ne 0) { throw 'docker compose pull failed' }
+            Write-Host '=== COMPOSE UP (pull always) ==='
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath --env-file .env up -d app frontend --force-recreate --no-deps --pull always
+            if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
 
-            Write-Host '--- VERIFY IMAGES ---'
-            $appObj = (docker inspect ott-app | ConvertFrom-Json)[0]
-            $feObj  = (docker inspect ott-frontend | ConvertFrom-Json)[0]
-            Write-Host ('app:      ' + $appObj.Config.Image + ' | ' + $appObj.Image)
-            Write-Host ('frontend: ' + $feObj.Config.Image + ' | ' + $feObj.Image)
-            $haObj = (docker image inspect para98/ott-backend:latest  | ConvertFrom-Json)[0]
-            $hfObj = (docker image inspect para98/ott-frontend:latest | ConvertFrom-Json)[0]
-            Write-Host ('hub app:      ' + $haObj.RepoDigests[0])
-            Write-Host ('hub frontend: ' + $hfObj.RepoDigests[0])
+            Write-Host '=== VERIFY IMAGES ==='
+            $inspectApp = docker inspect -f "app:      {{.Config.Image}} | {{.Image}} | started={{.State.StartedAt}}" ott-app 2>$null
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($inspectApp)) { Write-Host 'ott-app not found' } else { Write-Host $inspectApp }
+            $inspectFe = docker inspect -f "frontend: {{.Config.Image}} | {{.Image}} | started={{.State.StartedAt}}" ott-frontend 2>$null
+            if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($inspectFe)) { Write-Host 'ott-frontend not found' } else { Write-Host $inspectFe }
+            $ha = docker image inspect ("para98/ott-backend:" + $env:COMMIT_SHA)  -f 'id={{.Id}} digests={{.RepoDigests}}'
+            $hf = docker image inspect ("para98/ott-frontend:" + $env:COMMIT_SHA) -f 'id={{.Id}} digests={{.RepoDigests}}'
+            Write-Host ('hub app: ' + $ha)
+            Write-Host ('hub fe:  ' + $hf)
+
+            Write-Host '=== RESOLVED COMPOSE IMAGES ==='
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath config --images
 
             docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
-            '@
-            $path = "$env:TEMP\deploy_ott.ps1"
-            Set-Content -Path $path -Value $script -Encoding UTF8
-            powershell -NoProfile -ExecutionPolicy Bypass -File $path
-            "
+
+            # Persist a marker for completion (with fallback)
+            try {
+              $marker = "deployed_sha=$env:COMMIT_SHA`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
+              Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
+            } catch {
+              try {
+                $publicDir = 'C:\Users\Public\ott_cd'
+                if (-not (Test-Path $publicDir)) { New-Item -ItemType Directory -Path $publicDir | Out-Null }
+                $marker = "deployed_sha=$env:COMMIT_SHA`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
+                Set-Content -Path (Join-Path $publicDir 'last_cd.txt') -Value $marker -Encoding UTF8
+              } catch { Write-Host 'marker write failed (DONE)'; }
+            }
+            Write-Host '=== CD END ==='
