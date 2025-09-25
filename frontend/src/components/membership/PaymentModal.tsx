@@ -3,6 +3,7 @@ import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import { useState, useEffect } from "react";
 import { usePayment } from "@/hooks/usePayment";
 import { useAuth } from "@/hooks/useAuth";
+import { PaymentService } from "@/types/payment";
 import styles from "./PaymentModal.module.css";
 
 interface PlanInfo {
@@ -18,8 +19,8 @@ interface PaymentModalProps {
   planInfo: PlanInfo;
   paymentMethod: string;
   onChangePaymentMethod: (method: string) => void;
-  selectedPaymentService: string;
-  onSelectPaymentService: (service: string) => void;
+  selectedPaymentService: PaymentService | '';
+  onSelectPaymentService: (service: PaymentService) => void;
   onOpenCardRegistration: () => void;
   onPay: () => void;
 }
@@ -64,7 +65,7 @@ export default function PaymentModal({
     try {
       const result = await processPayment({
         planCode: planInfo.code,
-        paymentService: selectedPaymentService,
+        paymentService: selectedPaymentService as PaymentService,
         successUrl: `${window.location.origin}/membership/success`,
         cancelUrl: `${window.location.origin}/membership/cancel`
       });

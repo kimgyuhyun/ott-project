@@ -3,6 +3,7 @@ import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import { useState, useEffect } from "react";
 import { useProrationPayment } from "@/hooks/useProrationPayment";
 import { useAuth } from "@/hooks/useAuth";
+import { PaymentService } from "@/types/payment";
 import styles from "./ProrationPaymentModal.module.css";
 
 interface PlanInfo {
@@ -18,8 +19,8 @@ interface ProrationPaymentModalProps {
   planInfo: PlanInfo;
   paymentMethod: string;
   onChangePaymentMethod: (method: string) => void;
-  selectedPaymentService: string;
-  onSelectPaymentService: (service: string) => void;
+  selectedPaymentService: PaymentService | '';
+  onSelectPaymentService: (service: PaymentService) => void;
   onOpenCardRegistration: () => void;
   onPay: () => void;
 }
@@ -63,7 +64,7 @@ export default function ProrationPaymentModal({
       const result = await processProrationPayment({
         planCode: planInfo.code,
         // 간편 결제인 경우 선택값이 없으면 기본 PG로 'kakao' 사용
-        paymentService: paymentMethod === 'other' ? selectedPaymentService : (selectedPaymentService || 'kakao'),
+        paymentService: paymentMethod === 'other' ? (selectedPaymentService as PaymentService) : (selectedPaymentService as PaymentService || 'kakao'),
         successUrl: `${window.location.origin}/membership/success`,
         cancelUrl: `${window.location.origin}/membership/cancel`
       });
