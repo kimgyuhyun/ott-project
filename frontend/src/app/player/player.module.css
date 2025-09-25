@@ -280,31 +280,96 @@
   margin-bottom: 1rem;
 }
 
+.progressRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.progressTimeLeft {
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  width: 30px; /* 좌측/우측 고정 폭으로 균등 여백 */
+  font-variant-numeric: tabular-nums; /* 숫자 폭을 고정해 흔들림 제거 */
+  white-space: nowrap;
+  text-align: center; /* 내부 텍스트 수평 중앙 */
+  display: flex; /* 수직 중앙 정렬 */
+  align-items: center;
+  justify-content: center;
+  margin: 0; /* 불필요 여백 제거 */
+  padding: 0; /* 불필요 여백 제거 */
+  border: none; /* 여백 유발 경계 제거 */
+  outline: none;
+}
+
+.progressTimeRight {
+  color: #e5e7eb;
+  font-size: 0.75rem;
+  width: 30px; /* 좌측과 동일 폭 */
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: center; /* 내부 텍스트 수평 중앙 */
+  display: flex; /* 수직 중앙 정렬 */
+  align-items: center;
+  justify-content: center;
+  margin: 0; /* 불필요 여백 제거 */
+  padding: 0; /* 불필요 여백 제거 */
+  border: none; /* 여백 유발 경계 제거 */
+  outline: none;
+}
+
 .progressBar {
+  /* 공통 치수 변수 */
+  --seek-track-height: 6px;
+  --seek-thumb-size: 14px;
   width: 100%;
-  height: 0.5rem;
-  background-color: #4b5563;
+  height: var(--seek-track-height);
+  background-color: transparent; /* 트랙에서 색상 제어 */
   border-radius: 0.5rem;
   appearance: none;
   cursor: pointer;
+  margin: 0; /* 불필요 여백 제거 */
+  padding: 0; /* 불필요 여백 제거 */
 }
+.progressBar::-webkit-slider-runnable-track {
+  height: var(--seek-track-height);
+  background: linear-gradient(to right, #816bff var(--seek-fill, 0%), #2f2f34 var(--seek-fill, 0%));
+  border-radius: 0.5rem;
+}
+
 
 .progressBar::-webkit-slider-thumb {
   appearance: none;
-  height: 20px;
-  width: 20px;
+  height: var(--seek-thumb-size);
+  width: var(--seek-thumb-size);
   border-radius: 50%;
-  background: #3b82f6;
+  background: #ffffff;
   cursor: pointer;
+  /* 트랙 중앙 정렬 보정 (thumb가 트랙보다 큼) */
+  margin-top: calc((var(--seek-thumb-size) - var(--seek-track-height)) / -2);
 }
 
 .progressBar::-moz-range-thumb {
-  height: 20px;
-  width: 20px;
+  height: var(--seek-thumb-size);
+  width: var(--seek-thumb-size);
   border-radius: 50%;
-  background: #3b82f6;
+  background: #ffffff;
   cursor: pointer;
   border: none;
+}
+
+/* Firefox: 진행/잔여 트랙 분리 스타일 */
+.progressBar::-moz-range-track {
+  height: var(--seek-track-height);
+  background: #2f2f34;
+  border-radius: 0.5rem;
+}
+
+.progressBar::-moz-range-progress {
+  height: var(--seek-track-height);
+  background: #816bff;
+  border-radius: 0.5rem;
 }
 
 .controlsRow {
@@ -316,7 +381,8 @@
 .leftControls {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem; /* 버튼 간 간격 축소 */
+  margin-right: 1rem; /* 좌측 그룹과 우측 그룹 사이 최소 간격 확보 */
 }
 
 .playPauseButton {
@@ -344,11 +410,12 @@
   border: none;
   cursor: pointer;
   transition: all 0.2s;
-  padding: 0.5rem;
+  padding: 0.25rem; /* 여백 축소 */
   border-radius: 0.375rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  line-height: 0; /* 내부 여백 제거 */
 }
 
 .rewindButton:hover,
@@ -359,8 +426,8 @@
 
 .rewindIcon,
 .forwardIcon {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1rem;  /* 아이콘 크기 축소 */
+  height: 1rem;
 }
 
 /* 다음 에피소드 버튼 아이콘 (컨트롤 내부) */
@@ -369,27 +436,31 @@
   height: 1.25rem;
 }
 
-.timeDisplay {
-  color: #ffffff;
-  font-size: 0.875rem;
+.timeDisplay { /* deprecated: replaced by .progressTimes */
+  display: none;
 }
 
 .rightControls {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
+  margin-left: 1rem; /* 좌측 그룹과의 간격 확보 */
 }
 
 .volumeControl {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center; /* 아이콘을 컨테이너 중앙에 */
+  gap: 0; /* 아이콘 주변 불필요 간격 제거 (팝업은 absolute) */
+  width: 36px; /* 클릭 영역 고정 폭 */
 }
 
 .volumeIcon {
   width: 1.25rem;
   height: 1.25rem;
   color: #ffffff;
+  display: block;
 }
 
 .volumeSlider {
@@ -417,6 +488,127 @@
   background: #3b82f6;
   cursor: pointer;
   border: none;
+}
+
+/* 세로 볼륨 팝업 */
+.volumePopup {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid #333;
+  border-radius: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease, transform 120ms ease;
+  z-index: 1000;
+  display: flex; /* 슬라이더 자체를 중앙정렬 */
+  align-items: center;
+  justify-content: center;
+}
+
+.volumePopup::before {
+  content: "";
+  position: absolute;
+  bottom: -12px;
+  left: 0;
+  right: 0;
+  height: 12px; /* 호버 브릿지 영역 */
+}
+
+.volumeControl:hover .volumePopup,
+.volumeControl:focus-within .volumePopup,
+.volumePopup:hover {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.volumeSliderVertical {
+  /* 네이티브 수직 슬라이더는 thumb 커스텀이 제한적이라 비활성화 */
+  -webkit-appearance: none; /* WebKit */
+  appearance: none;
+  writing-mode: vertical-lr; /* 최신 브라우저 수직 방향 */
+  /* 공통 치수 변수 */
+  --track-width: 6px;
+  --thumb-size: 12px;
+  --thumb-offset: calc((var(--thumb-size) - var(--track-width)) / -2);
+  width: var(--track-width); /* 트랙 폭을 6px로 축소 */
+  height: 100px;
+  background: transparent; /* track에서 그라데이션 처리 */
+  border-radius: 4px;
+  cursor: pointer;
+  color: initial; /* 현재색 영향 제거 */
+  accent-color: unset !important; /* 시스템 포커스/강조색 비활성화 */
+  /* 팝업 내에서 슬라이더 자체 중앙 정렬 */
+  display: block;
+  margin: 0 auto;
+  /* Firefox에서 커스텀 스타일이 확실히 적용되도록 */
+  -moz-appearance: none;
+}
+
+/* WebKit: 세로 트랙 색 (보라: 채워진, 다크그레이: 비채움) */
+.volumeSliderVertical::-webkit-slider-runnable-track {
+  width: var(--track-width);
+  background: linear-gradient(to top, #816bff var(--vol-fill, 50%), #2f2f34 var(--vol-fill, 50%));
+  border-radius: 4px;
+}
+
+.volumeSliderVertical::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  border-radius: 50%;
+  background-color: #ffffff !important;
+  border: 2px solid #ffffff !important; /* 흰색 핸들 강조 */
+  box-shadow: none !important;
+  filter: none !important;
+  /* 트랙(6px) 중앙에 12px 손잡이가 오도록 보정 */
+  transform: translateX(var(--thumb-offset));
+}
+
+.volumeSliderVertical::-webkit-slider-thumb:active {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+  transform: translateX(var(--thumb-offset));
+}
+
+/* 강한 우선순위로 전역 스타일을 덮어쓰기 (WebKit) */
+.volumePopup input[type="range"].volumeSliderVertical::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: none !important;
+  transform: translateX(var(--thumb-offset)) !important;
+}
+
+.volumeSliderVertical::-moz-range-track {
+  width: var(--track-width);
+  background: linear-gradient(to top, #816bff var(--vol-fill, 50%), #2f2f34 var(--vol-fill, 50%));
+  border-radius: 4px;
+}
+
+.volumeSliderVertical::-moz-range-thumb {
+  width: var(--thumb-size);
+  height: var(--thumb-size);
+  border-radius: 50%;
+  background-color: #ffffff !important;
+  border: 2px solid #ffffff !important; /* 흰색 핸들 강조 */
+  box-shadow: none !important;
+  filter: none !important;
+  /* Firefox는 margin-left가 적용되지 않아 transform으로 보정 */
+  transform: translateX(var(--thumb-offset));
+}
+
+/* 강한 우선순위로 전역 스타일을 덮어쓰기 (Firefox) */
+.volumePopup input[type="range"].volumeSliderVertical::-moz-range-thumb {
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: none !important;
+  transform: translateX(var(--thumb-offset));
 }
 
 .fullscreenButton {

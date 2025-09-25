@@ -45,7 +45,9 @@ function PlayerContent() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [showControls, setShowControls] = useState(true);
+  const [showControls, setShowControls] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const hideTimerRef = useRef<number | null>(null);
   const [nextEpisode, setNextEpisode] = useState<Episode | null>(null);
   const [hasMembership, setHasMembership] = useState<boolean>(false);
   
@@ -375,38 +377,20 @@ function PlayerContent() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [volume, isFullscreen]);
 
-  // 마우스 움직임 감지로 컨트롤 자동 숨김/표시
-  useEffect(() => {
-    let timeoutId: number;
-
-    const handleMouseMove = () => {
-      setShowControls(true);
-      
-      // 3초 후 자동으로 컨트롤 숨김
-      window.clearTimeout(timeoutId);
-      timeoutId = window.setTimeout(() => {
-        setShowControls(false);
-      }, 3000);
-    };
-
-    const handleMouseLeave = () => {
-      setShowControls(false);
-    };
-
-    const videoContainer = document.querySelector(`.${styles.videoContainer}`);
-    if (videoContainer) {
-      videoContainer.addEventListener('mousemove', handleMouseMove);
-      videoContainer.addEventListener('mouseleave', handleMouseLeave);
-    }
-
-    return () => {
-      window.clearTimeout(timeoutId);
-      if (videoContainer) {
-        videoContainer.removeEventListener('mousemove', handleMouseMove);
-        videoContainer.removeEventListener('mouseleave', handleMouseLeave);
-      }
-    };
-  }, []);
+  // 컨테이너에 직접 핸들러를 달아 호버 시에만 표시
+  const handleControlsMouseEnter = () => {
+    setShowControls(true);
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+  };
+  const handleControlsMouseMove = () => {
+    setShowControls(true);
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = window.setTimeout(() => setShowControls(false), 2000);
+  };
+  const handleControlsMouseLeave = () => {
+    if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+    setShowControls(false);
+  };
 
   // 비디오 자동 재생 시도 - 에피소드 변경 시에만 실행
   useEffect(() => {
@@ -825,7 +809,13 @@ function PlayerContent() {
 
             {/* 비디오 플레이어 - 로그인 상태 및 스트림 URL 유무에 따라 조건부 렌더링 */}
             {isLoggedIn && streamUrl ? (
-              <div className={`${styles.videoContainer} ${isWideMode ? styles.wideMode : ''}`}>
+              <div
+                ref={containerRef}
+                className={`${styles.videoContainer} ${isWideMode ? styles.wideMode : ''}`}
+                onMouseEnter={handleControlsMouseEnter}
+                onMouseMove={handleControlsMouseMove}
+                onMouseLeave={handleControlsMouseLeave}
+              >
                 {/* 다음화 자동재생 오버레이 */}
                 {showNextEpisodeOverlay && nextEpisode && (
                   <div className={styles.nextEpisodeOverlay}>
@@ -907,25 +897,28 @@ function PlayerContent() {
                   autoPlay
                 />
                
-                {/* 커스텀 컨트롤 */}
-                <div className={`${styles.controls} ${!showControls ? styles.hidden : ''}`}>
-                  {/* 진행률 바 */}
-                  <div className={styles.progressContainer}>
-                    <input
-                      type="range"
-                      min="0"
-                      max={duration || 0}
-                      value={currentTime}
-                      onChange={handleSeek}
-                      className={styles.progressBar}
-                      style={{
-                        background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${(currentTime / duration) * 100}%, #4b5563 ${(currentTime / duration) * 100}%, #4b5563 100%)`
-                      }}
-                    />
-                  </div>
-                  
-                  {/* 컨트롤 버튼들 */}
-                  <div className={styles.controlsRow}>
+               {/* 커스텀 컨트롤 - 호버/활성시에만 렌더 */}
+               {showControls && (
+                 <div className={styles.controls}>
+                   {/* 진행률 바 */}
+                   <div className={styles.progressContainer}>
+                     <div className={styles.progressRow}>
+                       <span className={styles.progressTimeLeft}>{formatTime(currentTime)}</span>
+                       <input
+                         type="range"
+                         min="0"
+                         max={duration || 0}
+                         value={currentTime}
+                         onChange={handleSeek}
+                         className={styles.progressBar}
+                         style={{ ['--seek-fill' as any]: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                       />
+                       <span className={styles.progressTimeRight}>{formatTime(duration)}</span>
+                     </div>
+                   </div>
+
+                   {/* 컨트롤 버튼들 */}
+                   <div className={styles.controlsRow}>
                     <div className={styles.leftControls}>
                       <button
                         onClick={handlePlayPause}
@@ -963,28 +956,8 @@ function PlayerContent() {
                           <path d="M13 6v12l8.5-6L13 6z"/>
                         </svg>
                       </button>
-                      
-                      <div className={styles.timeDisplay}>
-                        {formatTime(currentTime)} / {formatTime(duration)}
-                      </div>
 
-                      {/* 다음 에피소드 버튼 - 로그인한 사용자만 표시 */}
-                      {nextEpisode && isLoggedIn && (
-                        <button
-                          onClick={goToNextEpisode}
-                          className={styles.nextEpisodeButton}
-                          title="다음 에피소드"
-                        >
-                          <svg className={styles.nextEpisodeIcon} fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M6 18l8.5-6L6 6v12z"/>
-                            <path d="M16 6h2v12h-2z"/>
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                    
-                    <div className={styles.rightControls}>
-                      {/* 볼륨 컨트롤 */}
+                      {/* 볼륨 컨트롤 (앞으로 버튼과 다음 화 사이, 아이콘 호버 시 세로 슬라이더 표시) */}
                       <div className={styles.volumeControl}>
                         {volume > 0 ? (
                           <svg 
@@ -1020,19 +993,46 @@ function PlayerContent() {
                             <path fillRule="evenodd" d="M3.28 2.22a.75.75 0 00-1.06 1.06l14.5 14.5a.75.75 0 101.06-1.06L3.28 2.22z" clipRule="evenodd" />
                           </svg>
                         )}
-                        <input
-                          type="range"
-                          min="0"
-                          max="1"
-                          step="0.1"
-                          value={volume}
-                          onChange={handleVolumeChange}
-                          className={styles.volumeSlider}
-                          style={{
-                            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${volume * 100}%, #4b5563 ${volume * 100}%, #4b5563 100%)`
-                          }}
-                        />
+                        <div className={styles.volumePopup}>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={1 - volume}
+                            onChange={(e) => {
+                              const raw = parseFloat(e.target.value);
+                              const newVolume = 1 - raw; // 슬라이더는 0=아래, 1=위로 보이게, 실제 볼륨은 역으로 매핑
+                              setVolume(newVolume);
+                              if (videoRef.current) {
+                                videoRef.current.volume = newVolume;
+                              }
+                            }}
+                            className={styles.volumeSliderVertical}
+                            style={{
+                              // CSS 변수로 채움 비율 전달 (아래→위)
+                              ['--vol-fill' as any]: `${volume * 100}%`
+                            }}
+                          />
+                        </div>
                       </div>
+
+                      {/* 다음 에피소드 버튼 - 로그인한 사용자만 표시 */}
+                      {nextEpisode && isLoggedIn && (
+                        <button
+                          onClick={goToNextEpisode}
+                          className={styles.nextEpisodeButton}
+                          title="다음 에피소드"
+                        >
+                          <svg className={styles.nextEpisodeIcon} fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 18l8.5-6L6 6v12z"/>
+                            <path d="M16 6h2v12h-2z"/>
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                    
+                    <div className={styles.rightControls}>
 
                       {/* 환경설정 버튼 */}
                       <button
@@ -1045,16 +1045,7 @@ function PlayerContent() {
                         </svg>
                       </button>
 
-                      {/* 키보드 단축키 도움말 버튼 */}
-                      <button
-                        onClick={() => setShowKeyboardHelp(!showKeyboardHelp)}
-                        className={`${styles.helpButton} ${showKeyboardHelp ? styles.active : ''}`}
-                        title="키보드 단축키 도움말"
-                      >
-                        <svg className={styles.helpIcon} fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/>
-                        </svg>
-                      </button>
+                      {/* 키보드 단축키 도움말 버튼 제거 */}
 
                       {/* PIP 모드 버튼 */}
                       <button
@@ -1091,6 +1082,7 @@ function PlayerContent() {
                     </div>
                   </div>
                 </div>
+               )}
               </div>
             ) : (
               /* 로그인하지 않았거나 스트림 URL이 없을 때 메시지 */
