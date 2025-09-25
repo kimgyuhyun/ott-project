@@ -1,6 +1,7 @@
 // 동일 오리진 경유
 
 // 멤버십 관련 API 함수들
+import { PaymentService } from '@/types/payment';
 
 // API 기본 설정: 항상 동일 오리진 프록시 사용
 const API_BASE = '';
@@ -139,7 +140,7 @@ export async function getPaymentHistory(start?: string, end?: string) {
 }
 
 // 체크아웃 생성 (결제창 이동용)
-export async function createCheckout(planCode: string, successUrl?: string, cancelUrl?: string, idempotencyKey?: string, paymentService?: string) {
+export async function createCheckout(planCode: string, successUrl?: string, cancelUrl?: string, idempotencyKey?: string, paymentService?: PaymentService) {
   return apiCall<PaymentCheckoutCreateSuccess>(`/api/payments/checkout`, {
     method: 'POST',
     body: JSON.stringify({ planCode, successUrl, cancelUrl, idempotencyKey, paymentService }),

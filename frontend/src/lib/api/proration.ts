@@ -1,10 +1,11 @@
 // 차액 결제 관련 API 함수들
+import { PaymentService } from '@/types/payment';
 
 // API 기본 설정: 항상 동일 오리진 프록시 사용
 const API_BASE = '';
 
 // 공통 fetch 함수
-async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiCall<T>(endpoint: string, options: RequestInit = {}, expectJson: boolean = true): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
   
   const response = await fetch(url, {
@@ -21,7 +22,23 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
 
-  return response.json();
+  // JSON 미기대 응답은 바로 종료 (void 응답 처리)
+  if (!expectJson) {
+    return undefined as T;
+  }
+
+  // 응답이 비어있으면 undefined 반환 (환불 API 등)
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  if (!text.trim()) {
+    return undefined as T;
+  }
+
+  return JSON.parse(text);
 }
 
 // 차액 결제 세션 생성
@@ -29,7 +46,7 @@ export async function createProrationCheckout(
   planCode: string, 
   successUrl?: string, 
   cancelUrl?: string, 
-  paymentService?: string
+  paymentService?: PaymentService
 ) {
   return apiCall<ProrationCheckoutResponse>('/api/payments/proration', {
     method: 'POST',
