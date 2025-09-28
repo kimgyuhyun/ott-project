@@ -6,8 +6,6 @@
 
 ## Live
 - 서비스: https://laputa.kozow.com
-- API: https://laputa.kozow.com/api
-- API Docs: https://laputa.kozow.com/swagger-ui/index.html
 
 ## 소개
 - 개인화 추천: 찜/시청/평점 기반 태그 가중치 계산 → Redis 캐시 → 상위 태그 기반 추천
