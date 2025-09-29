@@ -39,10 +39,11 @@ public class MembershipNotificationService { // 알림 메일 서비스
         SimpleMailMessage msg = new SimpleMailMessage(); // 텍스트 메일
         msg.setFrom(fromEmail); // 발신자
         msg.setTo(user.getEmail()); // 수신자
+        String planLabel = getPlanLabel(sub != null ? sub.getMembershipPlan() : null); // 플랜 라벨 계산
         msg.setSubject("[OTT] 멤버십 말일 해지 예약 안내"); // 제목
         msg.setText("안녕하세요, " + user.getName() + "님.\n\n" +
                 "멤버십이 말일 해지로 예약되었습니다. 만료일까지는 혜택이 유지되며, 이후 자동 갱신되지 않습니다.\n" +
-                "플랜: " + sub.getMembershipPlan().getName() + "\n" +
+                "플랜: " + planLabel + "\n" +
                 (sub.getEndAt() != null ? ("만료일: " + sub.getEndAt()) : "") + "\n\n" +
                 "감사합니다."); // 본문
         mailSender.send(msg); // 발송
@@ -53,10 +54,11 @@ public class MembershipNotificationService { // 알림 메일 서비스
         SimpleMailMessage msg = new SimpleMailMessage(); // 텍스트 메일
         msg.setFrom(fromEmail); // 발신자
         msg.setTo(user.getEmail()); // 수신자
+        String planLabel = getPlanLabel(sub != null ? sub.getMembershipPlan() : null); // 플랜 라벨 계산
         msg.setSubject("[OTT] 결제 실패로 인한 멤버십 해지 안내"); // 제목
         msg.setText("안녕하세요, " + user.getName() + "님.\n\n" +
                 "등록된 결제수단으로 여러 차례 결제 재시도를 진행했으나 모두 실패하여 멤버십이 해지되었습니다.\n" +
-                "플랜: " + sub.getMembershipPlan().getName() + "\n" +
+                "플랜: " + planLabel + "\n" +
                 "다시 구독하시려면 결제수단을 확인한 뒤 구독을 신청해주세요.\n\n" +
                 "감사합니다."); // 본문
         mailSender.send(msg); // 발송
@@ -73,9 +75,10 @@ public class MembershipNotificationService { // 알림 메일 서비스
         msg.setFrom(fromEmail); // 발신자
         msg.setTo(user.getEmail()); // 수신자
         msg.setSubject("[OTT] 멤버십 플랜 변경 완료 안내"); // 제목
+        String planLabel = getPlanLabel(newPlan); // 플랜 라벨 계산
         msg.setText("안녕하세요, " + user.getName() + "님.\n\n" +
                 "요청하신 멤버십 플랜 변경이 완료되었습니다.\n" +
-                "새로운 플랜: " + newPlan.getName() + "\n" +
+                "새로운 플랜: " + planLabel + "\n" +
                 "월 요금: " + newPlan.getPrice() + "원\n" +
                 "적용일: " + LocalDateTime.now().toLocalDate() + "\n\n" +
                 "새로운 플랜의 혜택을 즐겨보세요!\n\n" +
@@ -113,10 +116,11 @@ public class MembershipNotificationService { // 알림 메일 서비스
         msg.setFrom(fromEmail); // 발신자
         msg.setTo(user.getEmail()); // 수신자
         msg.setSubject("[OTT] 멤버십 플랜 변경 예정 안내"); // 제목
+        String planLabel = getPlanLabel(subscription != null ? subscription.getNextPlan() : null); // 플랜 라벨 계산
         msg.setText("안녕하세요, " + user.getName() + "님.\n\n" +
                 "요청하신 멤버십 플랜 변경이 3일 후에 적용됩니다.\n" +
-                "새로운 플랜: " + subscription.getNextPlan().getName() + "\n" +
-                "월 요금: " + subscription.getNextPlan().getPrice() + "원\n" +
+                "새로운 플랜: " + planLabel + "\n" +
+                "월 요금: " + (subscription.getNextPlan() != null ? subscription.getNextPlan().getPrice() : "") + "원\n" +
                 "적용일: " + subscription.getPlanChangeScheduledAt().toLocalDate() + "\n\n" +
                 "변경을 취소하시려면 고객센터로 문의해주세요.\n\n" +
                 "감사합니다."); // 본문
@@ -133,13 +137,31 @@ public class MembershipNotificationService { // 알림 메일 서비스
         msg.setFrom(fromEmail); // 발신자
         msg.setTo(user.getEmail()); // 수신자
         msg.setSubject("[OTT] 멤버십 정기결제 재시작 안내"); // 제목
+        String planLabel = getPlanLabel(subscription != null ? subscription.getMembershipPlan() : null); // 플랜 라벨 계산
         msg.setText("안녕하세요, " + user.getName() + "님.\n\n" +
                 "멤버십 정기결제가 다시 시작되었습니다.\n" +
-                "플랜: " + subscription.getMembershipPlan().getName() + "\n" +
+                "플랜: " + planLabel + "\n" +
                 "다음 결제일: " + subscription.getNextBillingAt().toLocalDate() + "\n" +
                 "멤버십이 자동으로 갱신됩니다.\n\n" +
                 "감사합니다."); // 본문
         mailSender.send(msg); // 발송
+    }
+
+    /**
+     * 플랜 코드 기준 라벨 정규화
+     * - BASIC, PREMIUM, FREE 등 코드에 따라 사용자 표시명을 간결히 표기한다.
+     * - 코드가 없거나 매칭되지 않으면 기존 name 을 반환한다.
+     */
+    private String getPlanLabel(MembershipPlan plan) {
+        if (plan == null) return "";
+        String code = plan.getCode();
+        if (code == null || code.isBlank()) return plan.getName();
+        String normalized = code.trim().toUpperCase();
+        if (normalized.contains("PREMIUM")) return "Premium";
+        if (normalized.contains("BASIC")) return "Basic";
+        if (normalized.contains("FREE")) return "Free";
+        if (normalized.contains("STANDARD")) return "Standard";
+        return plan.getName();
     }
 }
 
