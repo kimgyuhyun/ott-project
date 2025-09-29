@@ -9,7 +9,7 @@ services:                         # 서비스 정의 시작
       POSTGRES_USER: ${DB_USERNAME}             # 데이터베이스 사용자명
       POSTGRES_PASSWORD: ${DB_PASSWORD}         # 데이터베이스 비밀번호
     ports:                        # 포트 매핑
-      - "5432:5432"               # 호스트:컨테이너 포트
+      - "127.0.0.1:5432:5432"     # 로컬호스트 전용 바인딩
     volumes:                      # 데이터 영속성 볼륨
       - postgres_data:/var/lib/postgresql/data  # PostgreSQL 데이터 저장 경로
     networks:
@@ -19,7 +19,7 @@ services:                         # 서비스 정의 시작
     image: redis:7-alpine
     container_name: ott-redis
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     networks:
       - default
