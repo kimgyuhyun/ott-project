@@ -51,7 +51,7 @@
     <!-- 자동완성: 제목만 반환 -->
     <select id="suggestTitles" resultType="com.ottproject.ottbackend.dto.SearchSuggestTitleDto"> <!-- DTO 매핑 -->
         SELECT
-        a.title AS title <!-- DTO.title -->
+        COALESCE(a.title, a.title_en) AS title <!-- DTO.title -->
         FROM anime a <!-- 대상 테이블 -->
         <include refid="base_where"/> <!-- 활성+키워드 -->
         ORDER BY a.is_popular DESC, a.rating DESC, a.id DESC <!-- 노출 우선순위 -->
@@ -62,7 +62,7 @@
     <select id="searchAnimes" resultType="com.ottproject.ottbackend.dto.AnimeListDto"> <!-- DTO 매핑 -->
         SELECT
         a.id AS aniId, <!-- 목록 아이템 ID -->
-        a.title AS title, <!-- 제목 -->
+        COALESCE(a.title, a.title_en) AS title, <!-- 제목 -->
         a.poster_url AS posterUrl, <!-- 포스터 -->
         a.rating AS rating, <!-- 평점 -->
         a.rating_count AS ratingCount, <!-- 평점 수 -->

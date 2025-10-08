@@ -56,53 +56,52 @@ function TagsPageContent() {
 
   // URL 검색 파라미터 처리 및 초기 데이터 로드
   useEffect(() => {
-    const urlSearch = searchParams.get('search');
-    if (urlSearch) {
-      setSearchQuery(urlSearch);
-      // URL 검색어가 있으면 자동으로 검색 실행
-      setTimeout(() => {
-        handleSearch(urlSearch);
-      }, 100);
-    } else {
-      // 초기: 필터 옵션 + 인기순 목록 동시 로드(목록 API 사용)
-      (async () => {
-        try {
-          setIsLoading(true);
-          setError(null);
-          const [gs, ts, ss, yos, sts, tps, listRaw] = await Promise.all([
-            getGenres(),
-            getTags(),
-            getSeasons(),
-            getYearOptions(),
-            getStatuses(),
-            getTypes(),
-            getAnimeList(0, 20, 'popular')
-          ]);
-          // API 응답 로그
-          console.log('API 로딩 완료:', {
-            genres: Array.isArray(gs) ? gs.length : 0,
-            tags: Array.isArray(ts) ? ts.length : 0,
-            seasons: Array.isArray(ss) ? ss.length : 0,
-            yearOptions: Array.isArray(yos) ? yos.length : 0,
-            statuses: Array.isArray(sts) ? sts.length : 0,
-            types: Array.isArray(tps) ? tps.length : 0,
-            animeList: (listRaw as any)?.items?.length || 0
-          });
-          
-          // 장르/태그 데이터 구조 확인
-          console.log('장르 데이터 샘플:', Array.isArray(gs) ? gs[0] : null);
-          console.log('태그 데이터 샘플:', Array.isArray(ts) ? ts[0] : null);
-          
-          // window 객체에 직접 저장
-          (window as any).debugGenres = gs;
-          (window as any).debugTags = ts;
-          setGenreOptions(Array.isArray(gs) ? gs : []);
-          setTagOptions(Array.isArray(ts) ? ts : []);
-          setSeasonOptions(Array.isArray(ss) ? ss : []);
-          setYearOptions(Array.isArray(yos) ? yos : []);
-          setStatusOptions(Array.isArray(sts) ? sts : []);
-          setTypeOptions(Array.isArray(tps) ? tps : []);
-
+    (async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // 필터 옵션은 항상 로드 (검색어 유무와 무관)
+        const [gs, ts, ss, yos, sts, tps] = await Promise.all([
+          getGenres(),
+          getTags(),
+          getSeasons(),
+          getYearOptions(),
+          getStatuses(),
+          getTypes()
+        ]);
+        
+        // API 응답 로그
+        console.log('필터 옵션 로딩 완료:', {
+          genres: Array.isArray(gs) ? gs.length : 0,
+          tags: Array.isArray(ts) ? ts.length : 0,
+          seasons: Array.isArray(ss) ? ss.length : 0,
+          yearOptions: Array.isArray(yos) ? yos.length : 0,
+          statuses: Array.isArray(sts) ? sts.length : 0,
+          types: Array.isArray(tps) ? tps.length : 0
+        });
+        
+        // 장르/태그 데이터 구조 확인
+        console.log('장르 데이터 샘플:', Array.isArray(gs) ? gs[0] : null);
+        console.log('태그 데이터 샘플:', Array.isArray(ts) ? ts[0] : null);
+        
+        // window 객체에 직접 저장
+        (window as any).debugGenres = gs;
+        (window as any).debugTags = ts;
+        setGenreOptions(Array.isArray(gs) ? gs : []);
+        setTagOptions(Array.isArray(ts) ? ts : []);
+        setSeasonOptions(Array.isArray(ss) ? ss : []);
+        setYearOptions(Array.isArray(yos) ? yos : []);
+        setStatusOptions(Array.isArray(sts) ? sts : []);
+        setTypeOptions(Array.isArray(tps) ? tps : []);
+        
+        // URL 검색어 처리
+        const urlSearch = searchParams.get('search');
+        if (urlSearch) {
+          setSearchQuery(urlSearch); // 상태 업데이트하면 useEffect(line 149)에서 자동 검색
+        } else {
+          // 검색어 없으면 초기 인기순 목록 로드
+          const listRaw = await getAnimeList(0, 20, 'popular');
           const normalizeToArray = (data: unknown): ExtendedAnime[] => {
             const isArr = Array.isArray(data);
             const hasContent = data && Array.isArray((data as { content: unknown[] }).content);
@@ -112,24 +111,25 @@ function TagsPageContent() {
             if (hasItems) return (data as { items: ExtendedAnime[] }).items;
             return [];
           };
-                     console.log('[DEBUG] 초기 listRaw:', listRaw);
-           console.log('[DEBUG] listRaw.items:', (listRaw as { items: Anime[] })?.items);
-           console.log('[DEBUG] listRaw.items[0]:', (listRaw as { items: Anime[] })?.items?.[0]);
-           // 백엔드 응답 구조에 맞게 .items 사용
-           const list = (listRaw as { items: ExtendedAnime[] })?.items || normalizeToArray(listRaw);
-           console.log('[DEBUG] 초기 최종 list:', list);
-           console.log('[DEBUG] 초기 list[0]:', list[0]);
-           console.log('[DEBUG] 초기 list[0] 전체 키:', list[0] ? Object.keys(list[0]) : 'no list[0]');
-           setAnimes(Array.isArray(list) ? list : []);
-        } catch (e) {
-          console.error('초기 데이터 로드 실패', e);
-          setError('초기 데이터를 불러오지 못했습니다.');
-          setAnimes([]);
-        } finally {
-          setIsLoading(false);
+          
+          console.log('[DEBUG] 초기 listRaw:', listRaw);
+          console.log('[DEBUG] listRaw.items:', (listRaw as { items: Anime[] })?.items);
+          console.log('[DEBUG] listRaw.items[0]:', (listRaw as { items: Anime[] })?.items?.[0]);
+          // 백엔드 응답 구조에 맞게 .items 사용
+          const list = (listRaw as { items: ExtendedAnime[] })?.items || normalizeToArray(listRaw);
+          console.log('[DEBUG] 초기 최종 list:', list);
+          console.log('[DEBUG] 초기 list[0]:', list[0]);
+          console.log('[DEBUG] 초기 list[0] 전체 키:', list[0] ? Object.keys(list[0]) : 'no list[0]');
+          setAnimes(Array.isArray(list) ? list : []);
         }
-      })();
-    }
+      } catch (e) {
+        console.error('초기 데이터 로드 실패', e);
+        setError('초기 데이터를 불러오지 못했습니다.');
+        setAnimes([]);
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, [searchParams]);
 
   // 필터 변경 시 자동 검색 실행 (searchQuery 제외)
@@ -270,7 +270,7 @@ function TagsPageContent() {
 
       // 무한스크롤링 처리 + 커서 업데이트
       if (isLoadMore) {
-        setAnimes(prev => [...prev, ...uniqueResults]);
+        setAnimes((prev: ExtendedAnime[]) => [...prev, ...uniqueResults]);
         setCurrentPage(page);
       } else {
         setAnimes(uniqueResults);
@@ -317,25 +317,25 @@ function TagsPageContent() {
 
   // 장르 선택/해제
   const toggleGenre = (genreId: number) => {
-    setSelectedGenreIds(prev => 
+    setSelectedGenreIds((prev: number[]) => 
       prev.includes(genreId) 
-        ? prev.filter(g => g !== genreId)
+        ? prev.filter((g: number) => g !== genreId)
         : [...prev, genreId]
     );
   };
 
   // 태그 선택/해제
   const toggleTag = (tagId: number) => {
-    setSelectedTagIds(prev => 
+    setSelectedTagIds((prev: number[]) => 
       prev.includes(tagId) 
-        ? prev.filter(g => g !== tagId)
+        ? prev.filter((g: number) => g !== tagId)
         : [...prev, tagId]
     );
   };
 
   // 고급 필터 변경
   const handleFilterChange = (key: string, value: boolean) => {
-    setFilters(prev => ({
+    setFilters((prev: { watchable: boolean; membership: boolean }) => ({
       ...prev,
       [key]: value
     }));
@@ -348,25 +348,25 @@ function TagsPageContent() {
 
   // 시즌/상태/타입 다중 선택 핸들러
   const handleSeasonToggle = (season: string) => {
-    setSelectedSeasons(prev => 
+    setSelectedSeasons((prev: string[]) => 
       prev.includes(season) 
-        ? prev.filter(s => s !== season)
+        ? prev.filter((s: string) => s !== season)
         : [...prev, season]
     );
   };
 
   const handleStatusToggle = (status: string) => {
-    setSelectedStatuses(prev => 
+    setSelectedStatuses((prev: string[]) => 
       prev.includes(status) 
-        ? prev.filter(s => s !== status)
+        ? prev.filter((s: string) => s !== status)
         : [...prev, status]
     );
   };
 
   const handleTypeToggle = (type: string) => {
-    setSelectedTypes(prev => 
+    setSelectedTypes((prev: string[]) => 
       prev.includes(type) 
-        ? prev.filter(t => t !== type)
+        ? prev.filter((t: string) => t !== type)
         : [...prev, type]
     );
   };
@@ -471,9 +471,9 @@ function TagsPageContent() {
             isLoading={isLoading}
             error={error}
             searchQuery={searchQuery}
-            selectedGenres={selectedGenreIds.map(id => genreOptions.find(g=>g.id===id)?.name ?? String(id))}
-            selectedTags={selectedTagIds.map(id => tagOptions.find(t=>t.id===id)?.name ?? String(id))}
-            selectedSeasons={selectedSeasons.map(season => yearOptions.find(y=>y.value===season)?.label ?? season)}
+            selectedGenres={selectedGenreIds.map((id: number) => genreOptions.find((g: {id: number; name: string; color?: string}) => g.id === id)?.name ?? String(id))}
+            selectedTags={selectedTagIds.map((id: number) => tagOptions.find((t: {id: number; name: string; color?: string}) => t.id === id)?.name ?? String(id))}
+            selectedSeasons={selectedSeasons.map((season: string) => yearOptions.find((y: {value: string; label: string; type: string}) => y.value === season)?.label ?? season)}
             selectedStatuses={selectedStatuses}
             selectedTypes={selectedTypes}
             sortBy={sortBy}
