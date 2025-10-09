@@ -48,7 +48,13 @@ jobs:
           
           # SHA 이미지 강제 적용용 임시 override 파일 생성
           $overridePath = Join-Path $env:TEMP 'compose.sha.override.yml'
-          $overrideContent = "services:`n  app:`n    image: para98/ott-backend:`$(`$env:COMMIT_SHA)`n  frontend:`n    image: para98/ott-frontend:`$(`$env:COMMIT_SHA)"
+          $overrideContent = @"
+services:
+  app:
+    image: para98/ott-backend:$($env:COMMIT_SHA)
+  frontend:
+    image: para98/ott-frontend:$($env:COMMIT_SHA)
+"@
           Set-Content -Path $overridePath -Value $overrideContent -Encoding UTF8
           Write-Host "Using override file: $overridePath"
           
