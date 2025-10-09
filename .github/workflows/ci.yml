@@ -72,7 +72,7 @@ jobs:
         env:
           IMAGE_SHA: ${{ github.sha }}
         run: |
-          docker build --pull -t para98/ott-frontend:latest -t para98/ott-frontend:${IMAGE_SHA} -f frontend/Dockerfile frontend/
+          docker build --target production --pull -t para98/ott-frontend:latest -t para98/ott-frontend:${IMAGE_SHA} -f frontend/Dockerfile frontend/
           docker push para98/ott-frontend:latest
           docker push para98/ott-frontend:${IMAGE_SHA}
 
