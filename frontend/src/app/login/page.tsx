@@ -62,7 +62,7 @@ export default function LoginPage() {
     <main className={styles.loginContainer}>
       <PosterWall />
 
-      <Modal open={open} onClose={() => setOpen(false)}>
+      <Modal open={open} onClose={() => setOpen(false)} closeOnBackdropClick={false}>
         <div className={styles.loginModal}>
           <div className={styles.loginLogo}>LAPUTA</div>
           <div className={styles.loginDescription}>
