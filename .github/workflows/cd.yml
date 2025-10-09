@@ -16,9 +16,8 @@ jobs:
         uses: actions/checkout@v4
         
       - name: Deploy to production
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass -File {0}
         run: |
-          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
           Set-StrictMode -Version Latest
           $ProgressPreference = 'SilentlyContinue'
           $ErrorActionPreference = 'Stop'
