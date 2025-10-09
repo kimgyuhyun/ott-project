@@ -18,6 +18,7 @@ jobs:
       - name: Deploy to production
         shell: powershell
         run: |
+          Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force
           Set-StrictMode -Version Latest
           $ProgressPreference = 'SilentlyContinue'
           $ErrorActionPreference = 'Stop'
