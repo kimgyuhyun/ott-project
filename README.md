@@ -1,6 +1,6 @@
 # OTT Project
 
-사용자 취향을 분석해 개인 맞춤형 콘텐츠를 추천하고,
+사용자 취향을 분석해 콘텐츠를 추천하고,
 리뷰·댓글·별점 등 소셜 기능과 멤버십/결제, 에피소드 감상기능을 
 제공하는 애니메이션 OTT 서비스입니다. 
 
@@ -86,8 +86,3 @@
   - dev 로컬에서 DB/Redis 외부 노출 방지: `docker-compose.yml`은 `127.0.0.1:5432:5432`, `127.0.0.1:6379:6379`로 루프백 바인딩.
 - 보안 헤더/HSTS/레이트리밋: `nginx/nginx.prod.conf`에 적용(Strict-Transport-Security, CSP, XFO, XCTO, Referrer-Policy, Permissions-Policy, limit_req 등).
 - 모바일 테스트: LAN에서만 필요 시 `3000/8090` 접근 허용(방화벽 프라이빗만). DB/Redis는 반드시 루프백 유지.
-
-## 라이선스
-MIT
-
--
