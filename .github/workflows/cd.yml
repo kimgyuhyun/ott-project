@@ -31,6 +31,33 @@ jobs:
           # 작업 디렉토리 확인
           Write-Host "Working directory: $PWD"
           
+          # 데이터베이스 백업
+          Write-Host '=== DATABASE BACKUP ==='
+          try {
+            $backupDir = 'C:\solo-project\backups'
+            if (-not (Test-Path $backupDir)) { 
+              New-Item -ItemType Directory -Path $backupDir | Out-Null 
+              Write-Host "Created backup directory: $backupDir"
+            }
+            $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
+            $backupFile = Join-Path $backupDir "db_$timestamp.sql"
+            Write-Host "Backing up database to: $backupFile"
+            docker exec ott-postgres pg_dump -U root ott_project_db | Out-File -FilePath $backupFile -Encoding UTF8
+            Write-Host "Database backup completed: $backupFile"
+            
+            # 7일 이상 된 백업 삭제
+            $oldBackups = Get-ChildItem $backupDir -Filter "db_*.sql" | Where-Object {$_.LastWriteTime -lt (Get-Date).AddDays(-7)}
+            if ($oldBackups) {
+              $oldBackups | ForEach-Object { 
+                Remove-Item $_.FullName
+                Write-Host "Removed old backup: $($_.Name)"
+              }
+            }
+          } catch {
+            Write-Host "Backup failed: $($_.Exception.Message)"
+            Write-Host "Continuing with deployment..."
+          }
+          
           # 배포 마커 생성 (시작)
           try {
             $deployDir = 'C:\solo-project\ott-project\.deploy'
