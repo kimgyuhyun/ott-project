@@ -205,3 +205,10 @@ app:
     namespace: ${REDIS_NAMESPACE:ott}
   recent-search:
     ttl-days: ${RECENT_SEARCH_TTL_DAYS:30}
+
+# Swagger UI 비활성화 (프로덕션)
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
