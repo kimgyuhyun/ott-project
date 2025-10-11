@@ -43,6 +43,14 @@ jobs:
           docker build --pull -t para98/ott-backend:latest -t para98/ott-backend:${IMAGE_SHA} -f backend/Dockerfile backend/
           docker push para98/ott-backend:latest
           docker push para98/ott-backend:${IMAGE_SHA}
+      - name: Scan backend image for vulnerabilities
+        if: github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: para98/ott-backend:${{ github.sha }}
+          severity: 'CRITICAL,HIGH'
+          exit-code: 0
+          format: 'table'
 
   frontend:
     runs-on: ubuntu-latest
@@ -75,4 +83,12 @@ jobs:
           docker build --target production --pull -t para98/ott-frontend:latest -t para98/ott-frontend:${IMAGE_SHA} -f frontend/Dockerfile frontend/
           docker push para98/ott-frontend:latest
           docker push para98/ott-frontend:${IMAGE_SHA}
+      - name: Scan frontend image for vulnerabilities
+        if: github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: para98/ott-frontend:${{ github.sha }}
+          severity: 'CRITICAL,HIGH'
+          exit-code: 0
+          format: 'table'
 
