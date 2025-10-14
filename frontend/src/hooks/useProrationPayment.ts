@@ -14,6 +14,42 @@ import {
   validatePaymentResponse
 } from '@/types/payment';
 
+// SDK 로드 함수 - 스크립트가 로드될 때까지 대기
+async function loadPortOne(): Promise<Window["IMP"] | null> {
+  if (typeof window === "undefined") return null;
+  
+  // 이미 로드되었으면 바로 반환
+  if (window.IMP) return window.IMP;
+  
+  // 스크립트 태그가 있는지 확인
+  const existingScript = document.querySelector('script[src*="iamport.payment"]');
+  
+  if (existingScript) {
+    // 스크립트가 있으면 로드 완료까지 대기 (최대 5초)
+    const maxWait = 5000;
+    const checkInterval = 100;
+    const startTime = Date.now();
+    
+    while (!window.IMP && (Date.now() - startTime) < maxWait) {
+      await new Promise(resolve => setTimeout(resolve, checkInterval));
+    }
+    
+    return window.IMP || null;
+  }
+  
+  // 스크립트가 없으면 동적으로 추가
+  await new Promise<void>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.iamport.kr/js/iamport.payment-1.2.0.js";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load PortOne SDK"));
+    document.head.appendChild(script);
+  });
+  
+  return window.IMP || null;
+}
+
 interface ProrationPaymentRequest {
   planCode: string;
   paymentService: PaymentService;
@@ -74,57 +110,70 @@ export const useProrationPayment = () => {
         providerSessionId: checkoutResponse.providerSessionId
       });
 
-      // 2. 아임포트 SDK 초기화
-      if (typeof window !== 'undefined' && window.IMP) {
-        try {
-          window.IMP.init('imp45866522'); // 아임포트 가맹점 식별코드
-          logPaymentEvent('SDK initialized', { merchantCode: 'imp45866522' });
-        } catch (initError) {
-          logPaymentEvent('SDK initialization failed', { error: initError });
-          throw new PaymentError(
-            PaymentErrorCode.SDK_NOT_LOADED,
-            '아임포트 SDK 초기화에 실패했습니다.',
-            initError as Error
+      // 2. 아임포트 SDK 로드 대기
+      logPaymentEvent('Waiting for SDK to load', {});
+      const IMP = await loadPortOne();
+      
+      if (!IMP) {
+        logPaymentEvent('SDK load failed', {});
+        throw new PaymentError(
+          PaymentErrorCode.SDK_NOT_LOADED,
+          '아임포트 SDK를 불러올 수 없습니다. 페이지를 새로고침해주세요.'
+        );
+      }
+
+      logPaymentEvent('SDK loaded successfully', { hasIMP: !!IMP });
+
+      // 3. SDK 초기화
+      try {
+        IMP.init('imp45866522'); // 아임포트 가맹점 식별코드
+        logPaymentEvent('SDK initialized', { merchantCode: 'imp45866522' });
+      } catch (initError) {
+        logPaymentEvent('SDK initialization failed', { error: initError });
+        throw new PaymentError(
+          PaymentErrorCode.SDK_NOT_LOADED,
+          '아임포트 SDK 초기화에 실패했습니다.',
+          initError as Error
+        );
+      }
+
+      // 4. 차액 결제 요청
+      return new Promise((resolve) => {
+        // PG 코드 검증 및 변환
+        const pg = PG_MAP[request.paymentService] || "kakaopay.TC0ONETIME";
+        
+        if (!isValidPg(pg)) {
+          const error = new PaymentError(
+            PaymentErrorCode.INVALID_PG,
+            `지원하지 않는 PG 코드입니다: ${pg}`
           );
-        }
-
-        // 3. 차액 결제 요청
-        return new Promise((resolve) => {
-          // PG 코드 검증 및 변환
-          const pg = PG_MAP[request.paymentService] || "kakaopay.TC0ONETIME";
-          
-          if (!isValidPg(pg)) {
-            const error = new PaymentError(
-              PaymentErrorCode.INVALID_PG,
-              `지원하지 않는 PG 코드입니다: ${pg}`
-            );
-            logPaymentEvent('Invalid PG code', { pg, paymentService: request.paymentService });
-            resolve({
-              success: false,
-              errorMessage: error.message
-            });
-            return;
-          }
-          
-          const paymentData: IamportRequestPayData = {
-            pg,
-            pay_method: 'card',
-            merchant_uid: checkoutResponse.providerSessionId,
-            amount: checkoutResponse.amount,
-            name: '플랜 업그레이드 차액 결제',
-            buyer_email: user?.email || '',
-            buyer_name: user?.username || '',
-            m_redirect_url: window.location.origin + '/membership/success',
-            popup: false,
-          };
-
-          logPaymentEvent('Proration payment data prepared', {
-            pg,
-            amount: paymentData.amount,
-            merchant_uid: paymentData.merchant_uid
+          logPaymentEvent('Invalid PG code', { pg, paymentService: request.paymentService });
+          resolve({
+            success: false,
+            errorMessage: error.message
           });
+          return;
+        }
+        
+        const paymentData: IamportRequestPayData = {
+          pg,
+          pay_method: 'card',
+          merchant_uid: checkoutResponse.providerSessionId,
+          amount: checkoutResponse.amount,
+          name: '플랜 업그레이드 차액 결제',
+          buyer_email: user?.email || '',
+          buyer_name: user?.username || '',
+          m_redirect_url: window.location.origin + '/membership/success',
+          popup: false,
+        };
 
-          window.IMP.request_pay(paymentData, async (response: IamportResponse) => {
+        logPaymentEvent('Proration payment data prepared', {
+          pg,
+          amount: paymentData.amount,
+          merchant_uid: paymentData.merchant_uid
+        });
+
+        IMP.request_pay(paymentData, async (response: IamportResponse) => {
             // 응답 타입 검증
             const validation = validatePaymentResponse(response);
             if (!validation.isValid) {
@@ -214,13 +263,6 @@ export const useProrationPayment = () => {
             }
           });
         });
-      } else {
-        logPaymentEvent('SDK not available', { windowIMP: !!window.IMP });
-        throw new PaymentError(
-          PaymentErrorCode.SDK_NOT_LOADED,
-          '아임포트 SDK를 불러올 수 없습니다.'
-        );
-      }
     } catch (err) {
       logPaymentEvent('Proration payment process error', { error: err });
       
