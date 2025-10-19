@@ -14,12 +14,35 @@
 - 멤버십/결제(Iamport)
 - 최근 검색어/평균 별점 등 Redis 캐시
 
-## 기술 스택
-- Backend: Java 21, Spring Boot, JPA, Spring Security, OAuth2, Redis, MyBatis
-- DB/Cache: PostgreSQL, Redis
-- Frontend: Next.js 15, React 18, React Query, TypeScript
-- Infra: Nginx, Docker, GitHub Actions, Docker Hub Registry
-- 외부 API: TMDB, Jikan, Iamport
+## 🛠 기술 스택
+
+### Backend
+![Java](https://img.shields.io/badge/Java-21-orange?style=flat-square&logo=openjdk)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.4-green?style=flat-square&logo=spring)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-6.5.4-green?style=flat-square&logo=spring)
+![JPA](https://img.shields.io/badge/JPA-3.5.4-blue?style=flat-square&logo=hibernate)
+![MyBatis](https://img.shields.io/badge/MyBatis-3.0.3-red?style=flat-square&logo=mybatis)
+
+### Frontend
+![Next.js](https://img.shields.io/badge/Next.js-15.0.4-black?style=flat-square&logo=next.js)
+![React](https://img.shields.io/badge/React-18-blue?style=flat-square&logo=react)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
+![React Query](https://img.shields.io/badge/React%20Query-5.85.5-red?style=flat-square&logo=react-query)
+
+### Database & Cache
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=flat-square&logo=postgresql)
+![Redis](https://img.shields.io/badge/Redis-7-alpine-red?style=flat-square&logo=redis)
+
+### Infrastructure
+![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=flat-square&logo=docker)
+![Docker Hub](https://img.shields.io/badge/Docker%20Hub-Registry-blue?style=flat-square&logo=docker)
+![Nginx](https://img.shields.io/badge/Nginx-alpine-green?style=flat-square&logo=nginx)
+![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-black?style=flat-square&logo=github-actions)
+
+### External APIs
+![TMDB](https://img.shields.io/badge/TMDB-API-yellow?style=flat-square)
+![Jikan](https://img.shields.io/badge/Jikan-API-purple?style=flat-square)
+![Iamport](https://img.shields.io/badge/Iamport-Payment-blue?style=flat-square)
 
 ## 주요 기능
 - 개인화 추천 제공 (로그인 시 개인화, 비로그인 시 인기작). 자세한 API는 Swagger 참조.
