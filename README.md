@@ -47,8 +47,8 @@
 ![React Query](https://img.shields.io/badge/React%20Query-5.85.5-red?style=flat-square&logo=react-query)
 
 ### Database & Cache
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=flat-square&logo=postgresql)
-![Redis](https://img.shields.io/badge/Redis-7-alpine-red?style=flat-square&logo=redis)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-316192?style=flat-square&logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white)
 
 ### Infrastructure
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=flat-square&logo=docker)
