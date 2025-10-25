@@ -161,11 +161,7 @@
 - 예시 파일: `env.example`
 - 주요 항목: DB(PostgreSQL), Redis, OAuth2(구글/카카오/네이버), TMDB, BASE_URL/COOKIE_DOMAIN, Iamport 등
 
-## Port Forwarding & Security (운영 가이드)
-- 포트 포워딩(라우터): 운영은 80/443만 포워딩. SSH(22)는 닫고 GitHub Actions self-hosted runner로 배포.
-- Nginx 공개 포트: `docker-compose.prod.yml`에서 `nginx`만 `80:80`, `443:443` 노출.
-- 내부 서비스: 백엔드(8090), 프론트(3000), DB(5432), Redis(6379)는 컨테이너 내부 통신만 사용.
-  - dev 로컬에서 DB/Redis 외부 노출 방지: `docker-compose.yml`은 `127.0.0.1:5432:5432`, `127.0.0.1:6379:6379`로 루프백 바인딩.
-- 보안 헤더/HSTS/레이트리밋: `nginx/nginx.prod.conf`에 적용(Strict-Transport-Security, CSP, XFO, XCTO, Referrer-Policy, Permissions-Policy, limit_req 등).
-- SSL/TLS: Let's Encrypt 인증서, TLSv1.2/1.3, 안전한 사이퍼 스위트 적용.
-- 모바일 테스트: LAN에서만 필요 시 `3000/8090` 접근 허용(방화벽 프라이빗만). DB/Redis는 반드시 루프백 유지.
+## 문서
+
+- [배포 가이드](docs/deployment.md) - Docker 배포, CI/CD, SSL 설정
+- [운영 가이드](docs/operations.md) - 보안 설정, 환경 변수, 모니터링
