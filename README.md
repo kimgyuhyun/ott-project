@@ -45,31 +45,26 @@
 
 ### Backend
 ![Java](https://img.shields.io/badge/Java-21-orange?style=flat-square&logo=openjdk)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.4-green?style=flat-square&logo=spring)
-![Spring Security](https://img.shields.io/badge/Spring%20Security-6.5.4-green?style=flat-square&logo=spring)
-![JPA](https://img.shields.io/badge/JPA-3.5.4-blue?style=flat-square&logo=hibernate)
-![MyBatis](https://img.shields.io/badge/MyBatis-3.0.3-red?style=flat-square&logo=mybatis)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-green?style=flat-square&logo=spring)
+![Spring Security](https://img.shields.io/badge/Spring%20Security-6.5-green?style=flat-square&logo=spring)
+![JPA](https://img.shields.io/badge/JPA-3.5-blue?style=flat-square&logo=hibernate)
+![MyBatis](https://img.shields.io/badge/MyBatis-3.0-red?style=flat-square&logo=mybatis)
 
 ### Frontend
-![Next.js](https://img.shields.io/badge/Next.js-15.0.4-black?style=flat-square&logo=next.js)
+![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
 ![React](https://img.shields.io/badge/React-18-blue?style=flat-square&logo=react)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)
-![React Query](https://img.shields.io/badge/React%20Query-5.85.5-red?style=flat-square&logo=react-query)
+![React Query](https://img.shields.io/badge/React%20Query-5.8-orange?style=flat-square&logo=react-query)
 
 ### Database & Cache
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-316192?style=flat-square&logo=postgresql&logoColor=white)
-![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=flat-square&logo=redis&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=flat-square&logo=postgresql)
+![Redis](https://img.shields.io/badge/Redis-7-red?style=flat-square&logo=redis)
 
 ### Infrastructure
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=flat-square&logo=docker)
 ![Docker Hub](https://img.shields.io/badge/Docker%20Hub-Registry-blue?style=flat-square&logo=docker)
 ![Nginx](https://img.shields.io/badge/Nginx-alpine-green?style=flat-square&logo=nginx)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-black?style=flat-square&logo=github-actions)
-
-### External APIs
-![TMDB](https://img.shields.io/badge/TMDB-API-yellow?style=flat-square)
-![Jikan](https://img.shields.io/badge/Jikan-API-purple?style=flat-square)
-![Iamport](https://img.shields.io/badge/Iamport-Payment-blue?style=flat-square)
 
 ## 주요 기능
 
@@ -119,7 +114,7 @@
 > Iamport 결제 + 환불 정책 + 구독 관리 + 등급별 혜택
 
 - **결제 시스템**: Iamport 연동 - 결제 생성/웹훅 수신, 결제/취소/환불 상태 동기화
-- **환불 정책**: 환불/취소 정책 반영(예: 24시간·시청 시간 기준), 환불 금액/시각 기록
+- **환불 정책**: 24시간 내 환불, 시청 시간 기준 환불 정책 적용
 - **구독 관리**: 구독 해지 - 말일 해지 예약 및 즉시 해지 분기, 멱등키 적용
 - **등급별 혜택**: 멤버십 등급별 화질 제한, 전용 관리/가이드 페이지에서 멤버십 관리
 
@@ -148,11 +143,6 @@
   - Nginx 리버스 프록시/secure_link, Docker 이미지/Compose, Docker Hub Registry, GitHub Actions CD
   - 환경변수/비밀키 관리(`ENV_FILE`/Secrets), 로그/모니터링 기본 설정
 
-## 외부 연동
-- 콘텐츠/메타데이터: TMDB, Jikan
-- 결제: Iamport (카카오/토스/나이스 채널 키)
-- 소셜 로그인: Google, Kakao, Naver
-
 ## 데이터베이스 개요
 - 사용자/작품/에피소드/태그/리뷰/댓글/별점/팔로우/결제 등
 - Redis: 네임스페이스 `ott`, 최근 검색어 TTL 설정
@@ -160,6 +150,11 @@
 ## 환경 변수 참고
 - 예시 파일: `env.example`
 - 주요 항목: DB(PostgreSQL), Redis, OAuth2(구글/카카오/네이버), TMDB, BASE_URL/COOKIE_DOMAIN, Iamport 등
+
+## 외부 연동
+- **콘텐츠/메타데이터**: TMDB, Jikan
+- **결제**: Iamport (카카오/토스/나이스 채널 키)
+- **소셜 로그인**: Google, Kakao, Naver
 
 ## 문서
 
