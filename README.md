@@ -66,6 +66,39 @@
 ![Nginx](https://img.shields.io/badge/Nginx-alpine-green?style=flat-square&logo=nginx)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CI%2FCD-black?style=flat-square&logo=github-actions)
 
+### Frontend Component Structure
+```text
+src/
+  app/                                # Next.js App Router pages
+  components/
+    domains/                          # 도메인 UI
+      anime/                          # AnimeDetailModal, AnimeFullInfoModal
+      auth/                           # EmailAuthForm, SocialButton, LoginRequiredModal, NicknameSetupModal
+      episode/                        # EpisodeCommentList
+      membership/                     # PaymentModal, PlanChangeModal, CardRegistrationModal, ProrationPaymentModal
+      player/                         # PlayerSettingsModal, NextEpisodeOverlay
+      reviews/                        # ReviewList, CommentList
+      search/                         # SearchBar, FilterSidebar, AnimeGrid
+      home/                           # MainBanner, WeeklySchedule, AnimeCard
+    shared/                           # 공통 UI
+      layout/                         # Header, Footer, NotificationDropdown
+      ui/                             # Modal, DropdownMenu, Star
+  hooks/                              # useAuth, usePayment, useCheckout, ...
+  lib/                                # api/*, AuthContext, config
+```
+
+### Backend Package Structure
+```text
+com.ottproject.ottbackend/
+  common/                   # config, exception, util
+  auth/                     # controller, service, repository, dto, security
+  membership/               # controller, service, repository, dto, event
+  payment/                  # controller, service, repository, dto, mybatis, mappers
+  recommendation/           # controller, service, repository, dto, config(redis)
+  content/                  # anime/episode 등 entity 중심 + 관련 계층
+  social/                   # reviews/comments/likes + 관련 계층
+```
+
 ## 주요 기능
 
 ### 개인화 추천
