@@ -200,4 +200,4 @@ com.ottproject.ottbackend/
 ## 문서
 
 - [배포 가이드](docs/deployment.md) - Docker 배포, CI/CD, SSL 설정
-- [운영 가이드](docs/operations.md) - 보안 설정, 환경 변수, 모니터링
+- [운영 가이드](docs/operations.md) - 보안 설정, 환경 변수, 모니터링   
