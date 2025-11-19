@@ -1,5 +1,5 @@
 # Build stage
-FROM openjdk:21-jdk-slim AS builder
+FROM amazoncorretto:21 AS builder
 WORKDIR /app
 
 # Gradle 캐시 레이어 (의존성만)
@@ -19,7 +19,7 @@ COPY src src
 RUN ./gradlew build -x test     # 실제 빌드 실행
 
 # Runtime stage
-FROM openjdk:21-jdk-slim
+FROM amazoncorretto:21
 WORKDIR /app
 COPY --from=builder /app/build/libs/*.jar app.jar
 
