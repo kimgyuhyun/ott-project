@@ -128,11 +128,6 @@ export default function LoginPage() { // 이 함수를 다른 파일에서 impor
   // retunr으로 JSX를 반환, React가 JSX를 화면에 렌더링 -> 렌더링이 완료되면 useEffect 실행
   return (
     <main className={styles.loginContainer}>
-      {/* 페이지의 메인 컨텐츠 영역 */}
-      {/* JSX에서는 모든 태그에 CSS 클래스를 줄려면 className을 사용해야함  
-      className은 React에서 CSS 클래스를 적용하는 속성임 HTML의 class와 동일
-       styles.loginContainer는 CSS 모듈에서 가져온 클래스임 즉 login.module.css 파일에 정의된 
-       loginContainer 스타일을 적용하는것*/}
       <PosterWall /> {/* import PosterWall from "@/components/auth/PosterWall"; 컴포넌트 사용*/}
       <Modal open={open} onClose={() => setOpen(false)} closeOnBackdropClick={false}>
         {/*open={open}의 의미: 왼쪽 open은 Modal 컴포넌트가 받는 prop 이름이고 오른쪽 open은 위에서 만든 open 변수 (값은 ture
