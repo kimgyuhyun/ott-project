@@ -128,7 +128,7 @@ export default function LoginPage() { // 이 함수를 다른 파일에서 impor
   // retunr으로 JSX를 반환, React가 JSX를 화면에 렌더링 -> 렌더링이 완료되면 useEffect 실행
   return (
     <main className={styles.loginContainer}> {/* 페이지의 메인 컨텐츠 영역
-      JSX에서는 모든 태그에 CSS 클래스를 줄려면 className을 사용해야함함
+      JSX에서는 모든 태그에 CSS 클래스를 줄려면 className을 사용해야함
     className은 React에서 CSS 클래스를 적용하는 속성임 HTML에에 class와 동일 styles.LoginContainer는 CSS 모듈에서 가져온 클래스임
     즉 login.module.css 파일에 정의된 loginContainer 스타일을 적용하는것*/}
       <PosterWall /> {/* import PosterWall from "@/components/auth/PosterWall"; 컴포넌트 사용*/}
@@ -179,11 +179,18 @@ export default function LoginPage() { // 이 함수를 다른 파일에서 impor
       </Modal>
 
       {/* 이메일 로그인/회원가입 폼 */}
-      {showEmailForm && (
-        <Modal open={showEmailForm} onClose={handleEmailFormClose}>
+      {showEmailForm && ( // 조건부 렌더링할때 사용 shwEmailForm이 true일떄 렌더링
+        <Modal open={showEmailForm} onClose={handleEmailFormClose}> 
+        {/* open={showEmailForm}의 의미: Modal 컴포넌트가 받는 prop 이름이고 showEmailForm 변수 값이 Modal prop open에 전달된다는 뜻
+        onClose={handleEmailFormClose}의 의미: Modal 컴포넌트가 받는 prop 이름이고 handleEmailFormClose 함수가 전달되고 이게
+        Modal prop onClose에 전달되서 모달이 닫힘 참고로 on은 "~할 때", "~이벤트가 발생했을 때"라는 뜻임
+        그리고 onClose에 컴포넌트 닫는 함수를 넘겨야 esc키로 닫을수가 있음음
+        */}
           <EmailAuthForm 
-            onClose={handleEmailFormClose}
-            onSuccess={handleAuthSuccess}
+            // EmailAuthForm 컴포넌트에 전달할 props 객체
+            onClose={handleEmailFormClose} // 컴포넌트 닫는 함수를 전달 // 이게 이메일 로그인/회원가입 폼에 X 버튼에서 사용됨됨
+            onSuccess={handleAuthSuccess} // 로그인/회원가입 성공 시 실행되는 함수를 전달 // 이메일 폼닫고 메인페이지로 리다이렉트
+            // 부모 컴포넌트가 props로 함수를 전달받았어도 공유가 안되서 자식 컴포넌트가 사용할려면 또 전달받아야함
           />
         </Modal>
       )}
