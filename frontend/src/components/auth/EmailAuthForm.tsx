@@ -249,8 +249,8 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           <button // 버튼
             onClick={onClose} // 로그인 페이지에서 props로 전달받은 함수를 porps 객체(onCLose)에 담아둠, 
             // 그 함수를 버튼의 onClick에 전달함. 정확히 말하면 props 인터페이스에 정의해둔 속성(필드)지만 객체라해도 상관없음음
-            className={styles.closeButton} {/* closeButton css 클래스 적용*/}
-          >
+            className={styles.closeButton}
+          > {/* closeButton css 클래스 적용*/}
             ✕ {/* X 버튼에 클릭이벤트가 연결됨 */}
           </button>
         </div>
@@ -402,14 +402,12 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           )}
 
           {error && ( // error 상태변수가 빈 문자열이 아니면 렌더링
-            <div className={styles.errorMessage}>{error}</div> {/* errorMessage css 클래스 적용
-              {error}은 상태변수의 값을 문자열로 표시함*/}
-          )}
+            <div className={styles.errorMessage}>{error}</div>
+          )}  {/* errorMessage css 클래스 적용 {error}은 상태변수의 값을 문자열로 표시함 407*/}
 
           {successMessage && ( // successMessage 상태변수가 빈 문자열이 아니면 렌더링
-            <div className={styles.successMessage}>{successMessage}</div> {/* successMessage css 클래스 적용
-              {successMessage}은 상태변수의 값을 문자열로 표시함*/}
-          )}
+            <div className={styles.successMessage}>{successMessage}</div>
+          )}  {/* successMessage css 클래스 적용 {successMessage}은 상태변수의 값을 문자열로 표시함*/}
 
           <button
             type="submit" // 타입을 submit으로 설정함 폼제출용 버튼임

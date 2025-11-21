@@ -128,6 +128,11 @@ export default function LoginPage() { // 이 함수를 다른 파일에서 impor
   // retunr으로 JSX를 반환, React가 JSX를 화면에 렌더링 -> 렌더링이 완료되면 useEffect 실행
   return (
     <main className={styles.loginContainer}>
+      {/* 페이지의 메인 컨텐츠 영역 */}
+      {/* JSX에서는 모든 태그에 CSS 클래스를 줄려면 className을 사용해야함  
+      className은 React에서 CSS 클래스를 적용하는 속성임 HTML의 class와 동일
+       styles.loginContainer는 CSS 모듈에서 가져온 클래스임 즉 login.module.css 파일에 정의된 
+       loginContainer 스타일을 적용하는것*/}
       <PosterWall /> {/* import PosterWall from "@/components/auth/PosterWall"; 컴포넌트 사용*/}
       <Modal open={open} onClose={() => setOpen(false)} closeOnBackdropClick={false}>
         {/*open={open}의 의미: 왼쪽 open은 Modal 컴포넌트가 받는 prop 이름이고 오른쪽 open은 위에서 만든 open 변수 (값은 ture
@@ -144,11 +149,15 @@ export default function LoginPage() { // 이 함수를 다른 파일에서 impor
             <br />한 곳에서 편-안하게!
           </div> {/*loginDescription css 클래스 적용 */}
 
-          <SocialButton {/* 소셜 버튼 */}
-            provider="email"  {/* 소셜 로그인 종류가 email이라는 뜻*/}
-            label="이메일로 시작"  {/* 버튼에 표시될 텍스트 */}
-            onClick={handleEmailClick} {/* 버튼 클릭 시 handleEmailClick 함수 호출하고 이메일폼이 오픈됨*/}
-          />
+          <SocialButton
+            provider="email"
+            label="이메일로 시작"  
+            onClick={handleEmailClick}
+          /> 
+          {/* 소셜 버튼 152*/} 
+          {/* 소셜 로그인 종류가 email이라는 뜻 153*/}
+          {/* 버튼에 표시될 텍스트 154 */}
+          {/* 버튼 클릭 시 handleEmailClick 함수 호출하고 이메일폼이 오픈됨 155*/}
 
           <div className={styles.loginDivider}>또는</div> {/*loginDivider css 클래스 적용 */}
 
@@ -180,7 +189,7 @@ export default function LoginPage() { // 이 함수를 다른 파일에서 impor
         {/* open={showEmailForm}의 의미: Modal 컴포넌트가 받는 prop 이름이고 showEmailForm 변수 값이 Modal prop open에 전달된다는 뜻
         onClose={handleEmailFormClose}의 의미: Modal 컴포넌트가 받는 prop 이름이고 handleEmailFormClose 함수가 전달되고 이게
         Modal prop onClose에 전달되서 모달이 닫힘 참고로 on은 "~할 때", "~이벤트가 발생했을 때"라는 뜻임
-        그리고 onClose에 컴포넌트 닫는 함수를 넘겨야 esc키로 닫을수가 있음음
+        그리고 onClose에 컴포넌트 닫는 함수를 넘겨야 esc키로 닫을수가 있음
         */}
           <EmailAuthForm 
             // EmailAuthForm 컴포넌트에 전달할 props 객체
