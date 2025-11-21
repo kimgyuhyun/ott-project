@@ -127,7 +127,8 @@ export default function LoginPage() { // 이 함수를 다른 파일에서 impor
   // useEffect는 렌더링 후 실행 (첫 렌더링에서는 아직 실행 안됨)
   // retunr으로 JSX를 반환, React가 JSX를 화면에 렌더링 -> 렌더링이 완료되면 useEffect 실행
   return (
-    <main className={styles.loginContainer}> {/* 페이지의 메인 컨텐츠 영역 */}
+    <main className={styles.loginContainer}> 
+      {/* 페이지의 메인 컨텐츠 영역 */}
       {/* JSX에서는 모든 태그에 CSS 클래스를 줄려면 className을 사용해야함  
       className은 React에서 CSS 클래스를 적용하는 속성임 HTML에에 class와 동일
        styles.loginContainer는 CSS 모듈에서 가져온 클래스임 즉 login.module.css 파일에 정의된 
