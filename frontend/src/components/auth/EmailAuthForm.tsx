@@ -417,7 +417,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
             // 회원가입 모드에 이메일 단계고 이메일 중복 확인이 안되어있으면 버튼이 비활성화됨
             // 회원가입 모드에  이메일 인증단계고 인증코드가 빈 문자열이면 버튼이 비활성화됨
             className={styles.submitButton} // submitButton css 클래스 적용
-          > {/* 버튼 텍스트를 조건에 따라 다르게 렌더링함 삼항 연산자 체인인*/}
+          > {/* 버튼 텍스트를 조건에 따라 다르게 렌더링함 삼항 연산자 체인*/}
             {isLoading ? '처리중...' : ( // isLoading이 true면 처리중... 표시
               mode === 'login' ? '로그인' :  // mode가 login이면 로그인 표시
               registerStep === 'email' ? '다음' : // registerStep이 email이면 다음 표시
