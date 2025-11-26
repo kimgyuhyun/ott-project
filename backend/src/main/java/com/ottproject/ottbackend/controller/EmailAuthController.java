@@ -36,6 +36,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
  * - PUT /api/auth/change-password: 비밀번호 변경(세션 사용자)
  */
 
+/* 
+ 프론트에서 백엔드로로 JSON을 보내면 컨트롤러에서 DTO로 받고 서비스에서 DTO 내용을 사용해 ENTITY로 생성/조회하고
+ service 레이어에서 엔티티를 저장하고 저장된 엔티티를 DTO로 변환하고 백엔드는 이걸 JSON으로 바꿔서 프론트에 넘겨줌
+ 이걸 직렬화/역직렬화라고함
+ 직렬화는 객체 -> JSON 문자열로 변환히는것
+ 역직렬화는 JSON 문자열을 객체로 변환하는것
+*/
 @RestController // REST API 컨트롤러로 지정 GET, POST, PUIT, DELETE 등 HTTP 메서드 사용
 @RequestMapping("/api/auth") // 모든 엔드포인트의 기본 경로를 /api/auth로 설정함 예: /register -> /api/auth/register
 @RequiredArgsConstructor // final 필드만 생성자 파라미터로 받는 생성자를 자동 생성함

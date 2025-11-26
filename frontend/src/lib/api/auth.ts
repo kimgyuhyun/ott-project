@@ -20,6 +20,7 @@ const API_BASE = ''; // 상대 경로로 요청하면 nginx가 자동으로 백�
 // 경로를 붙임 http://example.com/api/auth/login 이렇게 됨
 // feach 함수는 브라우저에서 HTTP 요청을 보내는 함수임 서버에 데이터를 요청하거나 보낼 때 사용
 // 백엔드 API를 호출할 때 사용하는 함수임
+// 나중에 anime.ts 방식으로 통일해야함함
 
 // 공통 fetch 함수
 
@@ -32,7 +33,7 @@ const API_BASE = ''; // 상대 경로로 요청하면 nginx가 자동으로 백�
 // let/const는 선언 전 접근 불가임
 async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   // 제네릭, 호이스팅이 가능한 비동기함수 apiCall<T> 선언
-  // endpoing에는 '/api/auth/login' 이렇게 문자열로 전달되고고 API 경로 문자열임 즉, 백엔드 API 경로임
+  // endpoint에는 '/api/auth/login' 이렇게 문자열로 전달되고 API 경로 문자열임 즉, 백엔드 API 경로임
   // options에는 HTTP 요청을 초기화할 때 필요한 설정 정보들이 객체 형태로 들어오는데
   // RequestInit는 fetch 함수에서 두 번째 인자로 사용되는 "옵션 객체"의 타입 이름임 이 객체 안에는
   // method: 요청 방식 (GET, POST, PUT, DELETE 등)
@@ -73,7 +74,7 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     // 에러 객체를 만들고 던짐
   }
 
-  // response.ok가 true면 즉 성공한 응답이면면
+  // response.ok가 true면 즉 성공한 응답이면
   return response.json(); // 응답 본문(body)을 JSON 문자열에서 JavaSCript 객체로 변환해서 반환하는것
 }
 

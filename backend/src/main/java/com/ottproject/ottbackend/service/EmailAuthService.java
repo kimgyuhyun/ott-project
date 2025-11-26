@@ -36,7 +36,7 @@ public class EmailAuthService {
 	private final com.ottproject.ottbackend.mappers.UserMapper userMapper; // 사용자 매퍼 주입
 	// User 엔티티를 UserResponseDto로 변환해줌 MapStruct로 자동 매핑 코드 생성
 	// User 엔티티에는 비밀번호 등 민감 정보가 포함되기 때문에 UserResponseDto로 바꿔서 비밀번호를 제외한 안전한 정보만 포함함
-	public UserResponseDto register(AuthRegisterRequestDto requestDto) { // 회원가입 메서드드
+	public UserResponseDto  register(AuthRegisterRequestDto requestDto) { // 회원가입 메서드
 		// 회원가입 처리하는 메서드고 파라미터로 요청Dto를 받고 UserResponseDto로 반환해줌
 		if (userService.existsByEmail(requestDto.getEmail())) {
 			// 만약 existByEmail 메서드에 인자로 requestDto에 담있는 email을 태워보냈는데 true가 나오면 이미 가입된 이메일이란뜻
@@ -44,7 +44,7 @@ public class EmailAuthService {
 			// 상태코드와 에러메시지를 생성자에 인자로 넘겨서 ResponseStatusException 객체를 생성해서 던짐
 			// CONFLCT를 넣으면 409 상태 코드가 생성되고 의미는 리소스 충돌(이미 존재하는 리소스)임
 		}
-		User user = User.createLocalUser(  // existByEmail이 false를 반환하면 중복된게 아니라는 뜻으로 여여기가 실행
+		User user = User.createLocalUser(  // existByEmail이 false를 반환하면 중복된게 아니라는 뜻으로 여기가 실행
 			// createLocalUser는 static 키워드가 붙은 정적 팩토리 메서드이고 객체를 생성하지않고 클래스명으로 직접 호출이 가능함
 			// 생성자로 오버로딩은 파라미터 타입/개수가 달라야하는데 회원가입할 때 필요한 파라미터는 모두 동일함 그래서 생성자 오버로딩은 사용못하고
 			// 정적 팩토리 메서드를 생성자 역할로 사용함 메서드 이름으로 역할도 구분가능
@@ -56,7 +56,7 @@ public class EmailAuthService {
 		User saveUser = userService.saveUser(user);
 		// userService에 saveUser 메서드에 user 객체를 태워보냄
 		// saveUser 메서드는 user 객체를 DB에 저장하고 저장된 객체를 반환함
-		// 반환된 객체를 saveuser 변수에 할당당
+		// 반환된 객체를 saveuser 변수에 할당
 		return userMapper.toUserResponseDto(saveUser);
 		// userMapper에 toUserResponseDto 메서드에 Db에 저장한 user를태워보내면
 		// User 객체가 userResponseDto로 변환되서 반환되고 그 값을 바로 리턴해줌
