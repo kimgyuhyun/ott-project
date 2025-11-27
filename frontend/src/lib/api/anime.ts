@@ -220,26 +220,132 @@ export async function listAnime(params: {
   cursorId?: number; // cursorId는 선택적 속성(optinal)이고 number 타입 또는 null 타입 (유니온 타입)
   cursorRating?: number; // cursorRating는 선택적 속성(optinal)이고 number 타입 또는 null 타입 (유니온 타입)
 } = {}) { // ={}는 paramse에 값이 안들어오면 기본값으로 {}를 사용하겠다는 뜻
-  const qp = new URLSearchParams();
+  const qp = new URLSearchParams(); // 재할당 불가 URLSearchParams 클래스의 인스턴스
+  // URLSearchParamse 인스턴스를 만듬 URLSearchParams는 Web API고 브라우저가 제공하는 전역 객체임
+  // feach, navigator처럼 import 없이 바로 사용 가능함 / JSON같은 거인듯?
+  // URL 쿼리 파라미터를 생성/관리해주는 유틸리티
+  // 여기서 조건문이 있는건 선택 파라미터임 sort, page, size도 선택적이긴하지만 기본값이 있어서 조건 없이 항상 추가됨
   if (params.status) qp.append('status', params.status);
+  // if (params.status)는 params.status가 truthy인지 확인함 
+  // truthy: 존재하고, null / undefined / empty가 아니면 성립
+  // status는 sttring이라 truthy 체크로 충분
+  // string은 빈 문자열이면 falsy, null도 falsy / 값이 있으면 truthy, 0은 truthy
+  // string은 "0"도 유효한 값이고 truthy이므로 if (params.status) 조건으로 추웁ㄴ
+  // year(number)는 0도 유효한 값이지만 falsy로 체크되서 if (params.year) 조건으로 체크하면 0이 제외됨
+  // 그래서 != null로 체크해야 0이 포함함
+  // 조건이 참이면 qp.append('status', params.status)fh qp에 'status' 키로 params.status 값을 추가함
+  // 자바에서는 StringBuilder나 StringBuffer에서 .append를 사용하면 (키,값)형태로 쿼리 파라미터를 추가해줌
+  // List: add / Map: put() / Set: add()
+  // 여기서 쓰인 append 함수는 파라미터에 들어온 값을 키/값쌍으로 저장해줌
   if (params.genreIds && params.genreIds.length) params.genreIds.forEach(id => qp.append('genreIds', String(id)));
+  // if (params.genreIds && params.genreIds.length)는 params.genreIds가 truthy이고, 배열이 0이 아니면 성립
+  // 조건이 참이면 params.genreIds.forEach(id => qp.append('genreIds', String(id)))로 qp에 'genreIds' 키로 id 값을 추가함
+  // forEach는 배열 반복문이고 콜백 함수를 이자로 받음 / params.genreIds.forEach(...)로 체인 호출하고, 콜백 함수를 전달함
+  // 여기서 콜백은 id => qp.append('genreIds', String(id)) 이렇게 작성되었고 화살표 함수 형태의 콜백임
+  // 콜백 함수란 나중에 호출될 함수고 forEach가 배열을 순회하면서 각 요소마다 이 콜백 함수를 호출한다는뜻임
+  // genreIds는 number타입 배열이고 자바의 List<Integer>와 비슷함
+  // 만약 params.genreIds에 [1, 2, 3]이 상태일때 forEach 함수에 콜백함수를 위처럼 작성하고 호출하면
+  // forEach가 배열의 첫 번쨰 요소 1을 가져오고 / 콜백 함수를 호출하면서 id = 1을 전달
+  // 화살표 함수 실행: id => qp.append('genereIds', String(id))
+  // id = 1이므로 qp.append('genereIds', String(1)) 실행함
+  // string(1) = '1'로 변환
+  // qp.append('genereIds', '1') 실행 -> qp에 'genereIds=1' 저장
+  // 그니까 genreIds 배열을 forEach 함수로 순회하고 각 요소마다 콜백 함수를 호출하는데 그때 각 요소는
+  // id 인자에 하나씩 들어가고 그게 qp.append('genreIds', String(id)) 함수 표현식에 id에 들어간다음 문자열로 변환되고
+  // 'genereIds=1' 이런식에 키값쌍으로 저장됨
   if (params.tagIds && params.tagIds.length) params.tagIds.forEach(id => qp.append('tagIds', String(id)));
+  // if (params.tagIds && params.tagIds.length)는 params.tagIds가 truthy이고, 배열이 0이 아니면 성립
+  // tadIds 배열에 각 요소를 forEach 함수로 순회하고 각 요소를 id에 한번씩 넘기고 넘길때마다 콜백함수를 호출함
+  // id에 1이 들어오면 화살표 함수 앞에 인자에 들어가고 그걸 함수 표현식에 전달함
+  // 그럼 qp.append('tagIds', String(id)) 함수 표현식에 id = 1이 되고
+  // string(1) = '1'로 변환
+  // qp.append('tagIds', '1') 실행 -> qp에 'tagIds=1' 키값쌍으로 저장함
   if (params.minRating != null) qp.append('minRating', String(params.minRating));
+  // if (params.minRating != null)는 params.minRating가 null이 아닌지 체크함
+  // (params.mianRating)으로 체크하면 truthy / falshy 체크를 하는데 여기서 0은 falsy로 체크되서 조건이 성립이안됨
+  // number 타입은 0도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 0이 true가 될수있게해줌
+  // 여기서 쓰인 append 함수는 파라미터에 들어온 값을 키/값쌍으로 저장해줌
+  // String(params.minRating)는 params.minRating 값을 문자열로 변환해줘서
+  // qp에 'minRating=1' 키값쌍으로 저장됨 
   if (params.year != null) qp.append('year', String(params.year));
+  // if (params.year != null)는 params.year가 null이 아닌지 체크함
+  // (params.year)로 체크하면 truthy / falshy 체크를 하는데 여기서 0은 falsy로 체크되서 조건이 성립이안됨
+  // number 타입은 0도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 0이 true가 될수있게해줌
+  // String(params.year)는 params.year 값을 문자열로 변환해줘서
+  // qp에 'year=2024' 키값쌍으로 저장됨 
   if (params.quarter != null) qp.append('quarter', String(params.quarter));
+  // if (params.quarter != null)는 params.quarter가 null이 아닌지 체크함
+  // (params.quarter)로 체크하면 truthy / falshy 체크를 하는데 여기서 0은 falsy로 체크되서 조건이 성립이안됨
+  // number 타입은 0도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 0이 true가 될수있게해줌
+  // String(params.quarter)는 params.quarter 값을 문자열로 변환해줘서
+  // qp에 'quarter=3' 키값쌍으로 저장됨 
   if (params.type) qp.append('type', params.type);
+  // if (params.type)는 params.type가 truthy인지 확인함
+  // truthy: 존재하고, null / undefined / empty가 아니면 성립
+  // string은 빈 문자열이면 falsy, null도 falsy / 값이 있으면 truthy, 0은 truthy
+  // string은 "0"도 유효한 값이고 truthy이므로 if (params.type) 조건으로 충분분
+  // 조건이 참이면 qp.append('type', params.type)로 qp에 'type' 키로 params.type 값을 추가함
+  // 여기서 쓰인 append 함수는 파라미터에 들어온 값을 키/값쌍으로 저장해줌
   if (params.isDub != null) qp.append('isDub', String(params.isDub));
+  // if (params.isDub != null)는 params.isDub가 null이 아닌지 체크함
+  // (params.isDub)으로 체크하면 truthy / falshy 체크를 하는데 만약 false가 나올 경우 falsy로 체크되서 조건이 성립이안됨
+  // boolean 타입은 false도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 false가 true가 될수있게해줌
+  // String(params.isDub)는 params.isDub 값을 문자열로 변환해줘서
+  // qp에 'isDub=true' 키값쌍으로 저장됨 
   if (params.isSubtitle != null) qp.append('isSubtitle', String(params.isSubtitle));
+  // if (params.isSubtitle != null)는 params.isSubtitle가 null이 아닌지 체크함
+  // (params.isSubtitle)으로 체크하면 truthy / falshy 체크를 하는데 만약 false가 나올 경우 falsy로 체크되서 조건이 성립이안됨
+  // boolean 타입은 false도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 false가 true가 될수있게해줌
+  // String(params.isSubtitle)는 params.isSubtitle 값을 문자열로 변환해줘서
+  // qp에 'isSubtitle=true' 키값쌍으로 저장됨 
   if (params.isExclusive != null) qp.append('isExclusive', String(params.isExclusive));
+  // if (params.isExclusive != null)는 params.isExclusive가 null이 아닌지 체크함
+  // (params.isExclusive)으로 체크하면 truthy / falshy 체크를 하는데 만약 false가 나올 경우 falsy로 체크되서 조건이 성립이안됨
+  // boolean 타입은 false도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 false가 true가 될수있게해줌
+  // String(params.isExclusive)는 params.isExclusive 값을 문자열로 변환해줘서
+  // qp에 'isExclusive=true' 키값쌍으로 저장됨 
   if (params.isCompleted != null) qp.append('isCompleted', String(params.isCompleted));
+  // if (params.isCompleted != null)는 params.isCompleted가 null이 아닌지 체크함
+  // (params.isCompleted)으로 체크하면 truthy / falshy 체크를 하는데 만약 false가 나올 경우 falsy로 체크되서 조건이 성립이안됨
+  // boolean 타입은 false도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 false가 true가 될수있게해줌
+  // String(params.isCompleted)는 params.isCompleted 값을 문자열로 변환해줘서
+  // qp에 'isCompleted=true' 키값쌍으로 저장됨 
   if (params.isNew != null) qp.append('isNew', String(params.isNew));
+  // if (params.isNew != null)는 params.isNew가 null이 아닌지 체크함
+  // (params.isNew)으로 체크하면 truthy / falshy 체크를 하는데 만약 false가 나올 경우 falsy로 체크되서 조건이 성립이안됨
+  // boolean 타입은 false도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 false가 true가 될수있게해줌
+  // String(params.isNew)는 params.isNew 값을 문자열로 변환해줘서
+  // qp에 'isNew=true' 키값쌍으로 저장됨 
   if (params.isPopular != null) qp.append('isPopular', String(params.isPopular));
+  // if (params.isPopular != null)는 params.isPopular가 null이 아닌지 체크함
+  // (params.isPopular)으로 체크하면 truthy / falshy 체크를 하는데 만약 false가 나올 경우 falsy로 체크되서 조건이 성립이안됨
+  // boolean 타입은 false도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 false가 true가 될수있게해줌
+  // String(params.isPopular)는 params.isPopular 값을 문자열로 변환해줘서
+  // qp에 'isPopular=true' 키값쌍으로 저장됨
+
   qp.append('sort', params.sort ?? 'id');
+  // ?? 연산자는 왼쪽 값이 null 또는 undefiend면 오른쪽 값을 사용한다는 뜻
+  // params.sort가 있으면 그걸 사용하고 없으면 id값을 사용하는것
+  // qp에 'sort' 키로 params.sort 값을 추가하거나 없으면 'id'로 추가함
   qp.append('page', String(params.page ?? 0));
+  // params.page가 있으면 그걸 사용하고 없으면 0값을 사용하는것
+  // qp에 'page' 키로 params.page 값을 추가하거나 없으면 '0'로 추가함
   qp.append('size', String(params.size ?? 20));
+  // params.size가 있으면 그걸 사용하고 없으면 20값을 사용하는것
+  // qp에 'size' 키로 params.size 값을 추가하거나 없으면 '20'로 추가함
   if (params.cursorId != null) qp.append('cursorId', String(params.cursorId));
+  // if (params.cursorId != null)는 params.cursorId가 null이 아닌지 체크함
+  // (params.cursorId)으로 체크하면 truthy / falshy 체크를 하는데 만약 false가 나올 경우 falsy로 체크되서 조건이 성립이안됨
+  // boolean 타입은 false도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 false가 true가 될수있게해줌
+  // String(params.cursorId)는 params.cursorId 값을 문자열로 변환해줘서
+  // qp에 'cursorId=1' 키값쌍으로 저장됨 
   if (params.cursorRating != null) qp.append('cursorRating', String(params.cursorRating));
-  
+  // if (params.cursorRating != null)는 params.cursorRating가 null이 아닌지 체크함
+  // (params.cursorRating)으로 체크하면 truthy / falshy 체크를 하는데 만약 false가 나올 경우 falsy로 체크되서 조건이 성립이안됨
+  // boolean 타입은 false도 유효한 값이라 조건에 포함을 시켜아해서 조건을 != null로 체크해서 false가 true가 될수있게해줌
+  // String(params.cursorRating)는 params.cursorRating 값을 문자열로 변환해줘서
+  // qp에 'cursorRating=1' 키값쌍으로 저장됨 
+
   // getAnimeList와 동일한 응답 처리: 단순히 apiCall만 반환
   const url = `/anime?${qp.toString()}`;
   console.log('[DEBUG] listAnime API 호출 URL:', url);
