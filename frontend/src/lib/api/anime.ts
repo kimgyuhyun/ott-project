@@ -196,8 +196,8 @@ export async function listAnime(params: {
   // { ... } : 객체 타입을 인라인으로 정의 / 자바에서는 별도 클래스가 필요요
   // = {}: 기본값이 빈 객체 {}라는 뜻
   // paramse에는 필터 조건 객체가 들어옴
-  // 필터 조건 객체는 DB에서 오는게 아니라 프론트에서 만든 Javascript 객체임임
-  // paramse 객체에 타입을 여기서 인라인으로 정의함
+  // 필터 조건 객체는 DB에서 오는게 아니라 프론트에서 만든 Javascript 객체임
+  // params에 들어올 필터 객체에 타입을 여기서 인라인으로 정의함
   // 인라인 타입 정의는 이름이 없음 한 곳에서만 쓰면 인라인으로 정의함 재사용은 불가
   // 여로 곳에서 사용할꺼면 별도로 정의해둬야함
   // listAnime 함수에서만 쓰니까 객체 리터럴 + 인라인으로 정의해두고 재사용 안할꺼니 이름도 안붙인것
@@ -224,6 +224,7 @@ export async function listAnime(params: {
   // URLSearchParamse 인스턴스를 만듬 URLSearchParams는 Web API고 브라우저가 제공하는 전역 객체임
   // feach, navigator처럼 import 없이 바로 사용 가능함 / JSON같은 거인듯?
   // URL 쿼리 파라미터를 생성/관리해주는 유틸리티
+  // 예: ?page=&size=20&sort=id 같은 쿼리 문자열을 만들어주는 도구
   // 여기서 조건문이 있는건 선택 파라미터임 sort, page, size도 선택적이긴하지만 기본값이 있어서 조건 없이 항상 추가됨
   if (params.status) qp.append('status', params.status);
   // if (params.status)는 params.status가 truthy인지 확인함 
@@ -348,77 +349,203 @@ export async function listAnime(params: {
 
   // getAnimeList와 동일한 응답 처리: 단순히 apiCall만 반환
   const url = `/anime?${qp.toString()}`;
+  // 백엔드에 /anime?page=0&size=20&sort=id 이렇게 요청됨
+  // 만약 추가되는값이 많으면 to.String() 결과는
+  // status=ongoing&genreIds=1&genreIds=2&genreIds=3&minRating=8.5&year=2024&isDub=true&sort=id&page=0&size=20 이런식으로 나오고
+  // 이걸 url에 할당하면 /anime?status=ongoing&genreIds=1&genreIds=2&genreIds=3&minRating=8.5&year=2024&isDub=true&sort=id&page=0&size=20
+  // 이런 형식으로 apiCall에 enpotin로 전달됨
+  // 참고로 qp.toString()안 key=value&key=value 형식의 문자열을 반환함 page, size, sort는 기본값이 있어서 항상 포함됨
   console.log('[DEBUG] listAnime API 호출 URL:', url);
   return apiCall(url);
+  // apiCall 함수에 endpoint를 생성해서 전달하고 apiCall에서는 이 endpoint에 API_BASE를 붙여서 최종 백엔드 API 경로를 만들고 feach함수로 요청하고
+  // 그 응답값을 바로 반환하는 형식
+  // 그러니까 params에 전달된 필터조건객체에 맞게 쿼리파라미터 객체를 생성하고 이걸 백엔드 경로랑 붙여서 url로 만들어준다음
+  // apiCall 함수에 endpoint에 전달하고 apiCall 함수는 여기에 API_BASE를 붙여서 최종 백엔드 API를 만들어서 feach 함수로 요청함
 }
 
 // 애니메이션 상세 정보 조회
 export async function getAnimeDetail(animeId: number) {
+  // import해서 사용하는 비동기 함수 getAnimeDetail 선언
+  // 파라미터로는 animeId를 number 타입으로 받음
   return apiCall(`/anime/${animeId}`);
+  // 파라미터로받은 animeId를 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/1 이렇게 전달한걸 api/anime/1 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
 }
 
 // 요일별 신작 애니메이션 조회
 export async function getWeeklyAnime(dayOfWeek: string) {
+  // import해서 사용하는 비동기 함수 getWeeklyAnime 선언
+  // 파라미터로는 dayOfWeek를 string 타입으로 받음
   return apiCall(`/anime/weekly/${dayOfWeek}`);
+  // 파라미터로받은 dayOfWeek를 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/weekly/1 이렇게 전달한걸 api/anime/weekly/1 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
 }
 
 // 장르별 애니메이션 검색
 export async function getAnimeByGenre(genre: string, page: number = 0, size: number = 20) {
+  // import해서 사용하는 비동기 함수 getAnimeByGenre 선언
+  // 파라미터로는 genre를 string 타입으로 page, size를 number 타입으로 받고 page, size를 전달받지않으면 기본값 0, 20으로 사용함 
   return apiCall(`/anime/genre/${genre}?page=${page}&size=${size}`);
+  // 파라미터로받은 genre, page, size를 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/genre/1?page=0&size=20 이렇게 전달한걸 api/anime/genre/?page=0&size=20 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // /anime/genre/${genere} 까지는 경로 파라미터에 포함됨 (예: action, comedy)
+  // 그 뒤에 ?page=0&size=20 이건 경로 파라미터
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 // 태그별 애니메이션 검색
 export async function getAnimeByTag(tag: string, page: number = 0, size: number = 20) {
+  // import해서 사용하는 비동기 함수 getAnimeByTag 선언
+  // 파라미터로는 tag를 string 타입으로 page, size를 number 타입으로 받고 page, size를 전달받지않으면 기본값 0, 20으로 사용함 
   return apiCall(`/anime/tag/${tag}?page=${page}&size=${size}`);
+  // 파라미터로받은 tag, page, size를 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/tag/1?page=0&size=20 이렇게 전달한걸 api/anime/tag/?page=0&size=20 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // /anime/tag/${tag} 까지는 경로 파라미터에 포함됨 (예: action, comedy)
+  // 그 뒤에 ?page=0&size=20 이건 경로 파라미터
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 // 애니메이션 검색
 export async function searchAnime(query: string, page: number = 0, size: number = 20) {
+  // import해서 사용하는 비동기 함수 searchAnime 선언
+  // 파라미터로는 query를 string 타입으로 page, size를 number 타입으로 받고 page, size를 전달받지않으면 기본값 0, 20으로 사용함 
   return apiCall(`/anime/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`);
+  // 파라미터로받은 query, page, size를 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/search?query=naruto&page=0&size=20 이렇게 전달한걸 api/anime/search?query=naruto&page=0&size=20 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // /anime/search?query=${encodeURIComponent(query)} 까지는 쿼리 파라미터에 포함됨 (예: naruto)
+  // 그 뒤에 &page=0&size=20 이건 쿼리 파라미터
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
+  // 여기선 쿼리파라미터에 키로 query가 고정되서 시작함
+  // encodeURIComponet는 query에 값이 특수문자, 공백 등을 URL에 안전하게 포함시키기 위해 인코딩해서 전달함
+  //searchAnime('애니메이션 검색', 0, 20)
+  // → endpoint: '/anime/search?query=%EC%95%A0%EB%8B%88%EB%A9%94%EC%9D%B4%EC%85%98%20%EA%B2%80%EC%83%89&page=0&size=20'
 }
 
 // 추천 애니메이션 조회
 export async function getRecommendedAnime() {
+  // import해서 사용하는 비동기 함수 getRecommendedAnime 선언
   return apiCall('/anime/recommended');
+  // 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/recommended 이렇게 전달한걸 api/anime/recommended 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 // 인기 애니메이션 조회
 export async function getPopularAnime() {
+  // import해서 사용하는 비동기 함수 getPopularAnime 선언
   return apiCall('/anime/popular');
+  // 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/popular 이렇게 전달한걸 api/anime/popular 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 // 최신 애니메이션 조회
 export async function getLatestAnime() {
+  // import해서 사용하는 비동기 함수 getLatestAnime 선언
   return apiCall('/anime/latest');
+  // 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/latest 이렇게 전달한걸 api/anime/latest 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 // 실시간 트렌딩(24h) 조회
 export async function getTrendingAnime24h(limit: number = 10) {
+  // import해서 사용하는 비동기 함수 getTrendingAnime24h 선언
+  // 파라미터로는 limit를 number 타입으로 받고 limit를 전달받지않으면 기본값 10으로 사용함 
   return apiCall(`/anime/trending-24h?limit=${limit}`);
+  // 파라미터로받은 limit를 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/trending-24h?limit=10 이렇게 전달한걸 api/anime/trending-24h?limit=10 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 있으므로 쿼리 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 // 마스터: 장르/태그 목록
 export async function getGenres() {
+  // import해서 사용하는 비동기 함수 getGenres 선언
   return apiCall('/anime/genres');
+  // 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/genres 이렇게 전달한걸 api/anime/genres 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 export async function getTags() {
+  // import해서 사용하는 비동기 함수 getTags 선언
   return apiCall('/anime/tags');
+  // 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/tags 이렇게 전달한걸 api/anime/tags 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 // 필터 옵션 목록
 export async function getSeasons() {
+  // import해서 사용하는 비동기 함수 getSeasons 선언
   return apiCall('/anime/seasons');
+  // 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/seasons 이렇게 전달한걸 api/anime/seasons 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 export async function getYearOptions() {
+  // import해서 사용하는 비동기 함수 getYearOptions 선언
   return apiCall('/anime/year-options');
+  // 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/year-options 이렇게 전달한걸 api/anime/year-options 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 export async function getStatuses() {
+  // import해서 사용하는 비동기 함수 getStatuses 선언
   return apiCall('/anime/statuses');
+  // 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/statuses 이렇게 전달한걸 api/anime/statuses 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }
 
 export async function getTypes() {
+  // import해서 사용하는 비동기 함수 getTypes 선언
   return apiCall('/anime/types');
+  // 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
+  // /anime/types 이렇게 전달한걸 api/anime/types 이렇게 만들어서 feacth 함수로 백엔드에 요청함
+  // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임
+  // 쿼리 파라미터는 ?뒤에 key=value 형식이고 여러 조건을 전달할 때 사용함
+  // 경로 파라미터는 경로에 직접 포함을하고 리소스 식별자(ID)를 전달할 때 사용함
+  // 모든 URL은 기본적으로 경로를 가지고 쿼리파라미터가 필요하면 쿼리 파라미터를 붙여서 사용하는것
 }

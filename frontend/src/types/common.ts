@@ -12,28 +12,31 @@ export interface User { // 다른 파일에서 import로 사용 가능
   membershipExpiryDate?: string; // membershipExpiryDate는 string 타입이고 선택 필드 //멤버십 구독을 안했으면 만료일이 없기에
   createdAt: string; // createdAt는 string 타입이고 필수 필드
   updatedAt: string; // updatedAt는 string 타입이고 필수 필드
-  // 날짜도 문자열로 받음 백엔드에서 LocalDateTime -> JSON 변환 시 문자열로 전송 "2024-01-15ㅆ10:30:00" 형태태
+  // 날짜도 문자열로 받음 백엔드에서 LocalDateTime -> JSON 변환 시 문자열로 전송 "2024-01-15ㅆ10:30:00" 형태
 }
 
-export interface Anime {
-  id: number;
-  title: string;
-  titleEn?: string;
-  description?: string;
-  posterUrl?: string;
-  bannerUrl?: string;
-  releaseDate?: string;
-  status?: string;
-  type?: string;
-  genres?: string[];
-  studios?: string[];
-  rating?: number;
-  episodeCount?: number;
-  duration?: number;
-  ageRating?: string;
-  tags?: string[];
-  createdAt: string;
-  updatedAt: string;
+export interface Anime { // 다른 파일에서 import로 사용 가능
+  // TypeScript 타입 정의
+  // ?가 있으면 선택 필드, 없으면 필수 필드
+  id: number; // id는 number 타입이고 필수 필드
+  title: string; // title은 string 타입이고 필수 필드
+  titleEn?: string; // titleEn는 string 타입이고 선택 필드 / 영어 제목 없는 애니도 있기에
+  description?: string; // description는 string 타입이고 선택 필드 / 설명 없는 애니도 있기에
+  posterUrl?: string; // posterUrl는 string 타입이고 선택 필드 / 포스터 이미지 없는 애니도 있기에 / 못가져올수도있고
+  bannerUrl?: string; // bannerUrl는 string 타입이고 선택 필드 / 배너 이미지 없는 애니도 있기에 / 못가져올수도있고
+  releaseDate?: string; // releaseDate는 string 타입이고 선택 필드 / 방영 시작일 없는 애니도 있기에 / 못가져올수도있고
+  status?: string; // status는 string 타입이고 선택 필드 / 방영 상태 없는 애니도 있기에 / 못가져올수도있고
+  type?: string; // type는 string 타입이고 선택 필드 / 타입 없는 애니도 있기에 / 못가져올수도있고 // TV / 영화 / OVA / OAD 등등
+  genres?: string[]; // genres는 string 타입이고 선택 필드 / 장르 없는 애니도 있기에 / 못가져올수도있고 // 예: #가족, #일상
+  studios?: string[]; // studios는 string 타입이고 선택 필드 / 제작사 없는 애니도 있기에 / 못가져올수도있고 
+  rating?: number; // rating는 number 타입이고 선택 필드 / 평점 없는 애니도 있기에 / 못가져올수도있고 // 0.0 ~ 5.0
+  episodeCount?: number; // episodeCount는 number 타입이고 선택 필드 / 에피소드 수 없는 애니도 있기에 / 못가져올수도있고 // 1 ~ 100
+  duration?: number; // duration는 number 타입이고 선택 필드 / 러닝타임 없는 애니도 있기에 / 못가져올수도있고 // 1 ~ 100
+  ageRating?: string; // ageRating는 string 타입이고 선택 필드 / 연령 등급 없는 애니도 있기에 / 못가져올수도있고 // 전체 이용가, 12세이상, 15세이상, 19세이상
+  tags?: string[]; // tags는 string 타입이고 선택 필드 / 태그 없는 애니도 있기에 / 못가져올수도있고 // 예: #가족, #일상
+  createdAt: string; // createdAt는 string 타입이고 필수 필드
+  updatedAt: string; // updatedAt는 string 타입이고 필수 필드
+  // s로 끝나는 복수형 필드는 여러 개를 받을 수 있기에 문자열 배열로 받음
 }
 
 export interface Episode {
