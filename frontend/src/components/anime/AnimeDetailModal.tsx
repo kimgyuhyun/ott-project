@@ -285,23 +285,94 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   useEffect(() => {
     // 익명 함수를 정의해서 useEffect에 인자로 보내 함수를 호출함
     setDetail(anime as ExtendedAnime);
-    // 초기 평점 설정
+    // 의존성 배열에 anime 객체가 들어있고 useEffect에서는 렌더링 사이클마다 의존성 배열의 값들을 이전 렌더링과 비교함
+    // 여기서 변경이 감지되면 콜백 함수를 실행함 / 지속적으로 감시가 아니라 랜더링 마다 비교
+    // anime as ExtendAnime는 anime 객체를 타입 단언해서 ExtendAnime 객체로 취급한다는뜻
+    // 랜더링 사이클이란
+    // 랜더링 단계: 컴포넌트 함수 실행 JSX 반환 Virtual DOm 생성/업데이트
+    // 커밋 단계: 실제 DOM 업데이트, 화면에 반영
+    // Effect 실행 단계: useEffect 콜백 실행, 랜더링이 끝난 후 실행
+    // 랜더링 사이클이 발생하는 경우는 컴포넌트가 처음 마운트될 때, props가 변경될 때, state가 변경될 때 setDetail() 호출, 부모 컴포넌트가 리렌더링될 떄
     if (anime?.rating) {
+      // anime?.rating으로 옵셔널 체이닝을 걸면 anime가 null/undefined면 undefined를 반환하고
+      // anime가 있으면 anime.rating 을 반환함
+      // anime가 있고 rating이 truthy 값이면 조건성립함
+      // 그러니까 anime 객체가있고 rating 속성이 있어야하 조건이 성립함
       setCurrentRating(anime.rating);
+      // anime 객체에 rating을 현재 평점에 세팅함
     }
-  }, [anime]);
+  }, [anime]); // 의존성 배열에 anime 객체 할당
+  // anime prop이 변경될 때마다 detail과 currentRating을 새 값으로 동기화해주는 useEffect임
 
   useEffect(() => {
+    // 익명 함수를 정의해서 useEffect에 인자로 보내 함수를 호출함
     if (!isOpen) return;
+    // 만약 isOpen이 false면 !로  true 치환해서 조건성립후 return 즉, 모달이 닫혀있으면 return 해서 바로 종료
     const id = (anime as any)?.aniId ?? (anime as any)?.id;
-    const needsFetch = !Array.isArray((anime as any)?.genres) || (anime as any).genres.length === 0 || !Array.isArray((anime as any)?.episodes);
-    if (id && needsFetch) {
+    // (anime as any)로 anime를 any타입으로 취급한다음 ?.aniId 옵셔널 체이닝걸어서 객체가 있는지 확인하고
+    // 객체가 있고 aniId 값이 있으면 그걸 사용 만약에 aniId 속성값이 없으면 id를 사용함 
+    // ??는 Nullish Coalescing Operator(널 병합 연산자)고 "truth면 왼쪽, falsh면 오른쪽"
+    // 만약 anime 객체가 null / undefiend면 둘다 조건 성립이 안되면 undefiend가 반환되고 그 값이 id에 할당됨
+    // const needsFetch = !Array.isArray((anime as any)?.genres) || (anime as any).genres.length === 0 || !Array.isArray((anime as any)?.episodes);
+    // Array.isArray()는 JavaScript 내장 함수로, 값이 배열인지 확인하는 함수고 ㅕ기 인자로 anime.generes를 보내면
+    // generes가 배열인지 확인하고 배열이면 true 배열이 아니면 false를 리턴하는데 !를 붙였으므로 배열이 아닐때 false -> true로 치환 조건성립임
+    // 또는 gernes의 길이가 0 즉, 비어있으면 true로 조건 성립
+    // episodes가 배열인지 확인하고 배열이 아니면 false를 리턴할테고 이걸 !로 치환해서 true로바꾸고 조건식 성립
+    // 즉 gerners가 배열이 아니거나, gerners가 비어있거나, episodes가 배열이 아닐경우 실행되는 조건문임
+    // generes가 배열이 아닌 경우, 배열이지만 비어있는 경우, epsodesr가 배열이 아닌 경우에는 needsFetch에 true가 들어가고
+    // generes가 배열이고 비어있지 않은 경우, episodes가 배열인 경우에는 false값이 들어감
+    // 참고로 논리합은 첫 번째 값이 true면 뒤의 값은 평가하지 않음
+    // genere가 배열이고, 비어있지않고, episodes가 배열이면 true를 반환하는데 여기에 부정연산자를 넣어서 false로 치환해서
+    // 조건식을 성립 안시키고 API를 호출하지않음
+    // 즉 API를 호출하는 조건은 id가 truthy고 genres가 배열이아니고고 0이 아니고 epsidoes가 배열이 아닐때 애니 상세정보를 가져옴
+    // 이 조건때문에 Anime 정보가 DB에 새롭게 저장되도 API를 호출을 안해서 주석처리
+    // AnimeDetailModal이 열릴때마다 API를 매번 호출해서 최신 정보를 가져옴
+    if (!id) return;  // id가 없으면 함수 실행 종료 가드
       getAnimeDetail(Number(id))
+      // id값을 Number 타입으로 캐스팅한뒤  getAnimeDetail 함수에 태워보냄
+      // getAnimeDetail 함수는 animeId를 number 타입으로 보내면 그 id에 해당하는 애니메이션의 상세 정보를 반환해주는 함수/ Promise를 반환
+      // Promise는 비동기 작업의 결과를 나타내는 객체. 즉시 값을 반환하지 않고, 나중에 완료되면 값을 제공. async 함수는 항상 Promise를 반환
+      // apiCall() 내부에서 response.json()이 any를 반환하므로 T는 명시적으로 지정히지않으면 Unknown이 됨
+      // 사용하는 곳에서 타입 단언(as)를 사용해야함
         .then((d) => setDetail((prev: ExtendedAnime) => ({ ...prev, ...(d as Partial<ExtendedAnime>) })))
-        .catch(() => {});
-    }
-  }, [isOpen, anime]);
+        // then(() => ...) 는 Promise가 성공하면 d에 API 응답 데이터가 들어옴
+        // setDetail(..) 호출 - SetDetail의 인자는 함수임
+        // setDetail이 내부적으로 이전 상태 prev를 인자로 함수를 호출함
+        // { ...prev, ...(d as Partial<ExtendAnime) } 객체 생성
+        // ...prev: 이전 detail 상태의 모든 속성을 펼침
+        // ...(d as Partial<ExtendAnim): API에서 받은 d의 속성을 펼침
+        // 뒤에 오는 속성이 앞의 속성을 덮어씀(병합)
+        // 생성된 객체로 detail state 업데이트
+        // d에는 Promise가 성공적으로(resolve)되었을때 반환된 값이 들어감 / animeId로 가져온 애니메이션의 상세 정보가 있는 객체
+        // 그니까 상태 변경 함수는 인자로 함수를 받으면 React가 해당 상태 변경 함수에 state 값을 가져오고 그 값을 함수의 첫 번째 인자로 전달한뒤 함수를 호출함
+        // 그 다음 함수가 반환한 값을 새로운 state로 설정함
 
+        // Promise가 성공하면 Promise의 .then 메서드를 호출함
+        // Promse가 reslove한 객체를 첫 번째 인자로 전달함 그럼 d에 전달되는것
+        // 여기에 함수본문을 작성하는데 setDetail() 함수 호출을함
+        // 익명함수는 prev 인자자를 ExtendAnime 타입으로 받겠다는 거고 prev에는 React가 자동으로 상태 변경 함수에 state값을 가져오고
+        // 그 값을 함수의 첫 번째 인자로 전달한뒤 함수를 호출하고 반환한 값을 새로운 state로 설정
+        // Partial<T>는 타입 T의 모든 속성을 선택적(Optional)으로 만든다는것
+        // 그니까 d를 모든 속성이 Otpinal인 ExtendAnime 타입으로 취급하는 타입 단언임
+        // 따라서 d가 일부 속성만 있어도 타입 체크를 통과
+        // id로 가져온 애니메이션 상세정보에 모든 속성을 Optional로 만들어줌 이 값을 prev값과 병합해서 반환함
+        // prev는 전에 있던 값이고 현재 아직 안바뀐 anime 객체임 현재 state / d는 API로 새로 받아온 값
+
+        .catch(() => {}); // Promise가 실패(recject)되면 호출되고 인자 없는 빈 함수를 전달 / 에러를 무시하고 아무 동작도 하지 않음
+        // 이렇게 하는 이유는 API 호출 실패 시 에러를 무시하고 조용히 처리하기 위해
+    
+  }, [isOpen, anime?.id]); // 의존성 배열
+  // anime prop에 새로운 anime 객체가 들어오면 감지하고 실행
+  // isOpen이 변경되면 실행
+  // 모달이 닫힐 때는 실행할 필요가 없는데 실행됨 리펙토링 필요함
+  // anime를 anime?.id로 변경
+  // 다른 애니면 감지 후 함수 실행에서
+  // 다른 애니 클릭 -> 다른 id니까 실행됨 거기다 옵셔널 체인을 사용해서 더 방어적인 코드
+  //   refactor: 애니메이션 상세 정보 fetch 로직 개선
+  // - needsFetch 조건 제거하여 모달 열릴 때마다 최신 데이터 가져오기
+  // - 의존성 배열을 [isOpen, anime?.id]로 최적화 - 2025-11-29
+  // 나중에 Redis 캐싱 전략 추가해야함
+  
   // 비슷한 작품 로드
   useEffect(() => {
     if (activeTab === 'similar' && similarAnimes.length === 0) {
