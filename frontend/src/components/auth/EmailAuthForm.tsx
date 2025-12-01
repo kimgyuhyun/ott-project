@@ -25,7 +25,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
   // // :EmailAuthFormProps는 props 객체가 EmailAuthFormProps 타입이어햔다는 뜻 TypeScript 타입 검증임
   const { login: setAuthUser } = useAuth(); // 인증 상태 관리 훅 login을 setAuthUser로 이름 변경
   // useAuth가 는 객체를 반환함 그 객체에는 login이라는 함수가 있고 login 함수는 사용자 정보(user 객체)를 받아서 전역 상태에 저장하는 함수임
-  // 이 함수를 setAuthUser라는 이름으로 사용한다는뜻뜻
+  // 이 함수를 setAuthUser라는 이름으로 사용한다는뜻
   // useState는 {값, 함수}에 배열을 반환하고 useAuth는 {값들, 함수들}에 객체를 반환함
   // JavaScript는 함수도 객체라고함 보통 함수라고하는거같긴한데 const로 구현한거에 따라서 객체라부를지 함수라 부를지 나뉘어지는듯
   // const 로 시작은 하는데 = { } 중괄호로 화살표 함수 안쓰고 객체를 만듬 코드보면 자바랑 비슷해서 바로 이해 가능함
@@ -52,30 +52,30 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
   // useEffect가 없으니 콜백 함수 개념은 없음
   const handleSubmit = async (e: React.FormEvent) => { // 사용자가 폼 제출시 실행되는 비동기 함수
     // e: React.FormEvent는 폼 제출 이벤트 객체의 타입이고 브라우저가 폼 제출시 자동으로 전달함
-    e.preventDefault(); // 폼 제출시 브라우저가 기본적으로 페에지를 새로고침하는데
+    e.preventDefault(); // 폼 제출시 브라우저가 기본적으로 페이지를 새로고침하는데
     // e.preventDefault()는 폼 제출시 기본 동작을 막는 메서드임 폼 제출시 새로고침 방지함
     // React에서는 SPA라 페이지 새로고침을 막아야함 SPA는 단일 페이지 애플리케이션임(페이지 새로고침 없이 부분만 업데이트)
     setError(''); // 폼 제출시마다 에러메시지 초기화
     setIsLoading(true); // 폼 제출시 로딩 상태를 true로 설정 API 호출은 시간이 걸리고 로딩 표시가 없으면
-    // 사용자가 반응이 없다고 느낄 수 있기에 로딩 표시로 "처리 중"임을 알림 사용자 경험을 위해 권장한다는듯함함
+    // 사용자가 반응이 없다고 느낄 수 있기에 로딩 표시로 "처리 중"임을 알림 사용자 경험을 위해 권장한다는듯함
 
-    try { // ===는 값과 타입 모두 비교하는것 // try는 handleSubmit 실행 시 바로 truy 블록을 실행함
+    try { // ===는 값과 타입 모두 비교하는것 // try는 handleSubmit 실행 시 바로 try 블록을 실행함
       // 폼 제출시 try 블록 안의 코드를 실행한다는 뜻
       if (mode === 'login') { // mode가 'login'일때 실행
-        const user = await login(email, password); // login 함수는 lib/api/auth에 정의되어있음 백엔드 API를 호출하는 함수임임
+        const user = await login(email, password); // login 함수는 lib/api/auth에 정의되어있음 백엔드 API를 호출하는 함수임
         // loing 함수 호출함 email, password는 위에서 useState로 구조 분해 할당해서 만든 변수들
         // await으로 응답이 올 때까지 대기함 이 아래라인은 일정시간동안 계속 대기함 다른 함수는 실행 가능 (비동기)
         // 사용자가 폼 제출하면 handleSubmit 함수가 실행되고 try 블록이 실행됨
         // login 함수에 사용자가 입력한 값인 email, password를 전달함 그럼 백엔드에서 사용자 정보를 반환해줌
         // 예를 들면 예: { id: 1, username: "홍길동", email: "test@example.com" } 이런 형식으로
         // 저 응답정보를 user 변수에 할당하면 user는 백앤드가 반환한 응답 객체가됨
-        if (user) { // 만약 user 객체가 있으면, (null이 아니고, undefined도 아니면) // 여기는 user 객체가 있을때만 실행됨됨
+        if (user) { // 만약 user 객체가 있으면, (null이 아니고, undefined도 아니면) // 여기는 user 객체가 있을때만 실행됨
           // 백엔드에서 받은 user 객체를 그대로 사용하지않고 그 정보를 기반으로 새 객체를 만드는 이유는
           // 데이터 구조 차이, 데이터 변환 필요, 필드명 차이 처리, 기본값 처리, 타입 안전성
           // 필드명과 타입을 완전히 맞췄어도 백앤드 응답 타입이 명확하지 않을 수 있기에 변환 과정에서 타입 체크를 할 수 있게 변환하는게나음
           setAuthUser({ // useAuth()로 가져온 login 함수를 구조분해 할당 받은 변수로 사용
             // {}는 배열이 아니라 객체를 만드는 문법이고 setAUthUser는 본디 login() 함수였고 이 함수는
-            // 하나의 인자만 받는데, 그 인자가user 타입의 객체라서 {}로 객체를 만들고 인자로 넘기려는것임임
+            // 하나의 인자만 받는데, 그 인자가 user 타입의 객체라서 {}로 객체를 만들고 인자로 넘기려는것임
             id: String((user as any).id ?? ''), // id는 객체의 속성임 만들 객체에 id라는 속성을 추가한다는뜻
             // Stirng(...)은 JavaScript 내장 함수로 값을 문자열로 변환함
             // (user as any).id에서 user as any: TypeScript에서 user를 any 타입으로 취급(타입 체크 우회)
@@ -103,7 +103,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           }); // setAuthUser 함수 호출 후 사용자 정보 저장
           // 백엔드에 반환된 user 객체를 프론트에서 사용할 user 객체로 반환종료
         } // if문 종료
-        onSuccess(); // EmailAuthForm 컴포넌트 닫고 메인페이지로 redirct하는 함수 호출 user 객체 여부에 상관없이 실행됨
+        onSuccess(); // EmailAuthForm 컴포넌트 닫고 메인페이지로 redirect 하는 함수 호출 user 객체 여부에 상관없이 실행됨
         // user 객체가 없어도 실행되서 user 객체가 있을 때만 onSuccess()를 호출하도록 수정하는 것이 좋을듯
       } else { // mode가 login이 아니라 register 일 때 실행
         if (registerStep === 'email') { // 만약 회원가입 단계가 email 단계일 때 실행
@@ -412,7 +412,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           <button
             type="submit" // 타입을 submit으로 설정함 폼제출용 버튼임
             disabled={isLoading || (mode === 'register' && registerStep === 'email' && !emailChecked) || (mode === 'register' && registerStep === 'verification' && !verificationCode)}
-            // disabled는 비활성화를 뜻함 버튼은 렌더링되지만, disabled={true}일 뗴 클릭할 수 없음
+            // disabled는 비활성화를 뜻함 버튼은 렌더링되지만, disabled={true}일 때 클릭할 수 없음
             // isLoading이 ture 면 조건식이 true가 되고 disalbed가 true가 되서 버튼이 비활성화됨
             // 회원가입 모드에 이메일 단계고 이메일 중복 확인이 안되어있으면 버튼이 비활성화됨
             // 회원가입 모드에  이메일 인증단계고 인증코드가 빈 문자열이면 버튼이 비활성화됨

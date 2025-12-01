@@ -376,9 +376,10 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // 비슷한 작품 로드
   useEffect(() => {
     if (activeTab === 'similar' && similarAnimes.length === 0) {
-      loadSimilarAnimes();
+        // 만약 activeTab고 similarAnimes.length가 0이면
+      loadSimilarAnimes(); // 작품 로딩
     }
-  }, [activeTab]);
+  }, [activeTab]); // activeTab을 의존성 배열에 넣었으니 이 탭이 변경될때마다 콜백됨
 
   const loadSimilarAnimes = async () => {
     setIsLoadingSimilar(true);
