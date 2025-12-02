@@ -41,8 +41,8 @@ interface AnimeDetailModalProps { // 여기 컴포넌트가 받을 props의 타�
 export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetailModalProps) {
   // import해서 사용할 수 있는 함수 default는 기본 내보기이고 이름 변경해서 사용 가능함
   // default가 없으면 다른 파일에서 가져올때 { AnimeDetailModal } 이렇게 정확한 이름을 사용해야함
-  // 파라미터로 전달받은 props 객체 값에 구조 분해 할당 문법을 사용해서 anime, isOpen, onClose 속성을을 추출해해 각각 변수에 할당함
-  // : AnimeDetailModalProps는 이 props 객체에 탕비을 정의한것
+  // 파라미터로 전달받은 props 객체 값에 구조 분해 할당 문법을 사용해서 anime, isOpen, onClose 속성을 추출해 각각 변수에 할당함
+  // : AnimeDetailModalProps는 이 props 객체에 타입을 정의한것
   // 결론은 props 객체를 받아서 구조 분해로 바로 할당해서 사용하는 방식
   // React는 props를 구조 분해로 받는 것이 관례임
   // TypeScript에서는 : AnmimeDetailModalProps로 타입 체크가 가능함
@@ -376,10 +376,12 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // 비슷한 작품 로드
   useEffect(() => {
     if (activeTab === 'similar' && similarAnimes.length === 0) {
-        // 만약 activeTab고 similarAnimes.length가 0이면
+        // 만약 activeTab이 similar고 similarAnimes.length가 0이면 즉, similarAnimes가 아직 비어있으면
       loadSimilarAnimes(); // 작품 로딩
     }
-  }, [activeTab]); // activeTab을 의존성 배열에 넣었으니 이 탭이 변경될때마다 콜백됨
+  }, [activeTab]); // activateTab이 변경될 때마다 이 useEffect가 다시 실행되고, 조건을 만족하면 loadSimilarAnimes 함수를 호출함
+  // 함수가 실행문보다 아래에있는데 호출되는 이유는 리엑트의 실행 순서(컴포넌트 전체 실행 -> 그 안에서 함수들 정의 -> 렌더 끝
+  // 이후에 useEffect 콜백 실행)때문이다.
 
   const loadSimilarAnimes = async () => {
     setIsLoadingSimilar(true);
