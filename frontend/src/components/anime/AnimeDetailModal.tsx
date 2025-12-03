@@ -348,9 +348,9 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
         // 그 다음 함수가 반환한 값을 새로운 state로 설정함
 
         // Promise가 성공하면 Promise의 .then 메서드를 호출함
-        // Promse가 reslove한 객체를 첫 번째 인자로 전달함 그럼 d에 전달되는것
+        // Promise가 reslove한 객체를 첫 번째 인자로 전달함 그럼 d에 전달되는것
         // 여기에 함수본문을 작성하는데 setDetail() 함수 호출을함
-        // 익명함수는 prev 인자자를 ExtendAnime 타입으로 받겠다는 거고 prev에는 React가 자동으로 상태 변경 함수에 state값을 가져오고
+        // 익명함수는 prev 인자를 ExtendAnime 타입으로 받겠다는 거고 prev에는 React가 자동으로 상태 변경 함수에 state값을 가져오고
         // 그 값을 함수의 첫 번째 인자로 전달한뒤 함수를 호출하고 반환한 값을 새로운 state로 설정
         // Partial<T>는 타입 T의 모든 속성을 선택적(Optional)으로 만든다는것
         // 그니까 d를 모든 속성이 Otpinal인 ExtendAnime 타입으로 취급하는 타입 단언임
@@ -384,11 +384,21 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // 이후에 useEffect 콜백 실행)때문이다.
 
   const loadSimilarAnimes = async () => {
-    setIsLoadingSimilar(true);
-    try {
+    // 함수 본문을 작성해 재할당 불가 변수 loadSimilarAnimes 에 할당함
+    // 이 함수는 비동기 함수임임
+    setIsLoadingSimilar(true); // 탭이 Simaila고 similarAnimes가 비어있을때 loadSimilarAnimes 함수를 호출해서
+    // 로딩 상태를 true로 설정함
+    try { // try 블록은 예외가 발생할 수 있는 코드 블록임
       // 현재 작품과 장르가 겹치는 작품 목록을 조회
       const genreIds: number[] = Array.isArray(detail?.genres)
+      // detail?.genres가 배열이면 그 배열을 number 배열에 넘기고 genereIds 변수에 할당
+      // detail.genres가 객체 배열 일수도, 문자열이 섞여 있을 수도 있는데
+      // listAnime는 gerneIds에 숫자 배열만 오기를 원하니 깨끗한 number[] 배열로 변환해서 넘겨줘야함
+      // 배열이 아니면 Array.isArray에서 fasle가 나와서 number는 빈 배열 상태 그대로 유지
         ? (detail.genres as any[])
+        // 여기서 쓰인 ?은 삼항 연산자
+        // Array.isArray(detail.genres)가 true이면 detail.genres를 any[] 타입으로 단언하고
+        // 
             .map((g: { id: number } | number) => Number(typeof g === 'object' ? g?.id : g))
             .filter((v: number) => Number.isFinite(v))
         : [];
