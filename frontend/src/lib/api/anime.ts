@@ -193,7 +193,7 @@ export async function getAnimeList(page: number = 0, size: number = 20, sort: st
 // 범용 목록 조회(필터/정렬/페이지) - 필터링 기능 유지, 응답 처리만 getAnimeList와 동일
 export async function listAnime(params: {
   // import해서 사용하는 비동기 함수 
-  // { ... } : 객체 타입을 인라인으로 정의 / 자바에서는 별도 클래스가 필요요
+  // { ... } : 객체 타입을 인라인으로 정의 / 자바에서는 별도 클래스가 필요
   // = {}: 기본값이 빈 객체 {}라는 뜻
   // paramse에는 필터 조건 객체가 들어옴
   // 필터 조건 객체는 DB에서 오는게 아니라 프론트에서 만든 Javascript 객체임
@@ -231,7 +231,7 @@ export async function listAnime(params: {
   // truthy: 존재하고, null / undefined / empty가 아니면 성립
   // status는 sttring이라 truthy 체크로 충분
   // string은 빈 문자열이면 falsy, null도 falsy / 값이 있으면 truthy, 0은 truthy
-  // string은 "0"도 유효한 값이고 truthy이므로 if (params.status) 조건으로 추웁ㄴ
+  // string은 "0"도 유효한 값이고 truthy이므로 if (params.status) 조건으로 충분
   // year(number)는 0도 유효한 값이지만 falsy로 체크되서 if (params.year) 조건으로 체크하면 0이 제외됨
   // 그래서 != null로 체크해야 0이 포함함
   // 조건이 참이면 qp.append('status', params.status)fh qp에 'status' 키로 params.status 값을 추가함

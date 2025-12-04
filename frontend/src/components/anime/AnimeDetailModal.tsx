@@ -385,7 +385,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
   const loadSimilarAnimes = async () => {
     // 함수 본문을 작성해 재할당 불가 변수 loadSimilarAnimes 에 할당함
-    // 이 함수는 비동기 함수임임
+    // 이 함수는 비동기 함수임
     setIsLoadingSimilar(true); // 탭이 Simaila고 similarAnimes가 비어있을때 loadSimilarAnimes 함수를 호출해서
     // 로딩 상태를 true로 설정함
     try { // try 블록은 예외가 발생할 수 있는 코드 블록임
@@ -397,24 +397,61 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       // 배열이 아니면 Array.isArray에서 fasle가 나와서 number는 빈 배열 상태 그대로 유지
         ? (detail.genres as any[])
         // 여기서 쓰인 ?은 삼항 연산자
-        // Array.isArray(detail.genres)가 true이면 detail.genres를 any[] 타입으로 단언하고
-        // 
+        // Array.isArray(detail.genres)가 true이면 detail.genres를 any[] 타입으로 단언
             .map((g: { id: number } | number) => Number(typeof g === 'object' ? g?.id : g))
+            // .map 함수는 배열의 각 요소를 변환해서 새 배열을 만드는 함수
+            // JavaSCript에서 Array.prototype.map (배열 메서드)로 사용
+            // g는 { id: number } 형태의 객체 또는 그냥 number 타입임
+            // 그니까 g에 파라미터 타입은 { id: number } 형태의 객체거나 number 둘 중 하나란 의미
+            // g에는 배열의 각 요소를 map이 하나씩 꺼내서 함수 실행함
+            // typeof g === 'object' ? g?.id : g는
+            // g가 객체면 g.id를 사용 / g가 숫자면 숫자 그대로 사용한다는 의미
+            // 그리고 이 조건식을 Number 함수로 감싸뒀으니 객체든 숫자돈 마지막에 Number로 숫자로 변환함
             .filter((v: number) => Number.isFinite(v))
-        : [];
+            // filter는 조건에 맞는 값만 넘기는 함수
+            // 파라미터 v는 number 타입임
+            // v는 map(..)의 결과로 나온 number[] 배열을 filter가 다시 순회하면서 각 욧를 v에 넣고 콜백을 호출하는 형식
+            //  Number.isFinite(v) 는 v가 유한한 숫자(finite number)일 때만 ture
+            // NaN, Infinity, -Infinit ㅏ같은 값은 fasle
+            // filter는 콜백이 true를 반환하는 요소만 넘기고, false인 요소는 제거함
+            // 전체 흐름은
+            // .map(...)에서 g를 숫자로 변환해서 number[] 배열을 얻음
+            // 그 다음 이 배열에서 이상한 숫자들을 제거하고 깨끗한 number[] (정상적인 장르 ID들만) 남김
+        : []; // detail?.genres가 배열이 아니면 빈배열만 반환
 
-      if (genreIds.length === 0) {
-        console.log('⚠️ 비슷한 작품 로드: 장르 정보 없음');
-        setSimilarAnimes([]);
-        return;
+      if (genreIds.length === 0) { // 만약 detail?gneres가 배열이 아니면 genreIds에 빈 배열이 들어가게 되는데 이때 실행됨
+        console.log('⚠️ 비슷한 작품 로드: 장르 정보 없음'); // 콘솔 로그 출력
+        setSimilarAnimes([]); // 비슷한 작품 목록을 빈 배열로 초기화
+        return; // 함수 실행을 여기서 바로 종료료
       }
-
+      // gerneIds 배열에 하나 이상에 값이 있으면 실행
       const response: any = await listAnime({ genreIds, sort: 'rating', page: 0, size: 30 });
+      // listAnime는 Proimise를 반환하는 비동기 함수고 Promise가 완료될 때까지 기다렸다가 결과값이 오면 response에 할당함
+      // listAnime에 파라미터로 아까 만든 깨끗한 number[] (장르 ID)들을 넘기고
+      // 정령른 평점 기준으로 page는 0번 size즈는 한 번에 30개 가져와라고 기본값 세팅해서 태워보냄
+      // response는 any 타입으로 선언해둠
+      
+      // 응답이 대기하다가 응답이 오면 실행
       const rawItems: ExtendedAnime[] = Array.isArray(response?.items)
-        ? (response.items as ExtendedAnime[])
-        : (Array.isArray(response) ? (response as ExtendedAnime[]) : []);
+      // response?.items가 배열이면 ExtendedAnime[] 타입으로 단언해서 rawItems에 할당함
+      // 그리고 ?.은 옵셔널 체인을 건것으로 response가 null이나 undefiend면 undefined를 반환해서 오류가안뜨게함 방어코딩임
+      // 1차로 response가 null / unidefined인지 아닌지 검증하고 2차로 resposne.items이 배열인지 아닌지 검증해서 반환해주는것
+      // 재할당 불가 변수 rawImtes는 ExtendedAMNime[] 타입으로 정의
+        ? (response.items as ExtendedAnime[]) // response.itmes가 배열이면 여기가 실행
+        // response.items를 ExtendAnime[] 타입으로 단언함
+        // rawImtes가 ExtendedAnime[] 타입이라 할당할려면 타입을 단언해줘야함
+        : (Array.isArray(response) ? (response as ExtendedAnime[]) : []); // response.items가 배열이 아니면 여기가 실행
+        // response.items가 배열인 경우는
+        // 백앤드가 { imtes: [...], total, page, size } 이런 DTO를 보내는 경우에 해당
+        // response 자체가 배열인 경우는
+        // 백앤드가 그냥 [...] 배열만 보내는 경우(옜날 코드거나, 다른 API일 수도 있음)
 
       const baseId = Number((detail as any)?.aniId ?? (detail as any)?.id);
+      // 여기서 쓰인 ??는 Nulish Coalescing이고 왼쪽이 null 또는 undefind일 떄만 오른쪽 사용함 flasy 전체가 아니라 null/undefined만 체크
+      // ?.로 옵셔널 체인을 걸었으니 null/undefiend면 undefined를 반환함 detail이 null/undefeind이면
+      // 양쪽 조건 둘다 false가 뜨고 ?. 옵셔널 체인이 undefined를 반환한 상태일태니 baseId에는 NAN이 들어감 (NUmber(undefined)) 결과
+      // 만약 detail에 값이 있으면 detail.aniId를 쓰는데 여기 값이 없으면 undefined로 취급해서 detail.id를 사용하고
+      // Number 타입으로 변환해서 baseId에 할당함
       const filtered = rawItems.filter((a: ExtendedAnime) => Number((a as any)?.aniId ?? (a as any)?.id) !== baseId);
 
       // 중복 제거 (aniId 기준)
