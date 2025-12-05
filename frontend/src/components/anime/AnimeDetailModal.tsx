@@ -386,8 +386,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   const loadSimilarAnimes = async () => {
     // 함수 본문을 작성해 재할당 불가 변수 loadSimilarAnimes 에 할당함
     // 이 함수는 비동기 함수임
-    setIsLoadingSimilar(true); // 탭이 Simaila고 similarAnimes가 비어있을때 loadSimilarAnimes 함수를 호출해서
-    // 로딩 상태를 true로 설정함
+    setIsLoadingSimilar(true); // 탭이 Simaila고 similarAnimes가 비어있을때 setIsLoadingSimilar 함수를 호출해서
+    // 로딩 상태를 true로 설정함 그 다음 loadSimilarAnimes 호출해서 비슷한 작품 목록을 가져옴
     try { // try 블록은 예외가 발생할 수 있는 코드 블록임
       // 현재 작품과 장르가 겹치는 작품 목록을 조회
       const genreIds: number[] = Array.isArray(detail?.genres)
@@ -412,11 +412,14 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             // 파라미터 v는 number 타입임
             // v는 map(..)의 결과로 나온 number[] 배열을 filter가 다시 순회하면서 각 욧를 v에 넣고 콜백을 호출하는 형식
             //  Number.isFinite(v) 는 v가 유한한 숫자(finite number)일 때만 ture
-            // NaN, Infinity, -Infinit ㅏ같은 값은 fasle
+            // NaN, Infinity, -Infinity같은 값은 fasle
             // filter는 콜백이 true를 반환하는 요소만 넘기고, false인 요소는 제거함
             // 전체 흐름은
             // .map(...)에서 g를 숫자로 변환해서 number[] 배열을 얻음
             // 그 다음 이 배열에서 이상한 숫자들을 제거하고 깨끗한 number[] (정상적인 장르 ID들만) 남김
+
+            // Genres는 백엔드에서 객체배열로 내려와서 map으로 id만 추출해서 숫자 배열로 변환해줘야함
+            //왜냐하면 listAnime는 숫자 배열만 받기때문에 객체배열로 주면 받지를 못함
         : []; // detail?.genres가 배열이 아니면 빈배열만 반환
 
       if (genreIds.length === 0) { // 만약 detail?gneres가 배열이 아니면 genreIds에 빈 배열이 들어가게 되는데 이때 실행됨
@@ -453,24 +456,56 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       // 만약 detail에 값이 있으면 detail.aniId를 쓰는데 여기 값이 없으면 undefined로 취급해서 detail.id를 사용하고
       // Number 타입으로 변환해서 baseId에 할당함
       const filtered = rawItems.filter((a: ExtendedAnime) => Number((a as any)?.aniId ?? (a as any)?.id) !== baseId);
+      // 백엔드에서 받아온 비슷한 애니 목록인 rawItems에 filter 함수를 호출하고 인자로 익명 함수를 작성해서 태워보냄
+      // 익명함수는 ExtendAnime 타입을 a로 받고 함수 본문은 a.aniID를 쓰고 없으면 a.id를 사용함 그 다음 그결과를 Number 타입으로 변환
+      // baseId는 현재 열려있는 애니의 ID임
+      // 그다음 !== baseId로 비교를하는데  가져온 각 애니의 ID가 baseId와 다르면 true로 필터링 되지않고 비슷한 작품 목록에 포함됨
+      // 만약 가져온 애니의 ID가 baseId와 같으면 fasle로 필터링되고 제거됨 비슷한 작품 목록에서 제외
+      // filter는 콜백함수가 true를 반환하면 그 요소를 남기고 false를 반환하면 그 요소를 제거함
+      // 그러면 filtered에는 현재 열려있는 애니와 겹치지 않는 비슷한 작품 목록이 들어가게됨
+    // 여기는 현재 띄워둔 애니메이션을 비슷한 작품 목록에서 제외시키는 로직
 
       // 중복 제거 (aniId 기준)
+    // 가져온 비슷한 작품목록에서 같은 작품이 여러 번 나올 경우 하나만 남기는 로직
       const seen = new Set<number>();
+      // Number 타입만 받을수 있는 Set 자료 구조를 seen 변수에 할당
+      // Set은 중복 없는 값들의 집합을 표현할때 사용
       const unique = filtered.filter((a: ExtendedAnime) => {
+        // 위에서 현재 열려있는 애니를 제외한 비슷한 작품 목록인 filtered에 filter 함수를 호출하고 익명함수를 작성해서 태워보냄
+        // 익명함수는 인자 ExtendedAnime 타입을 a로 받음 이걸 함수 본문에서 사용할것
+        // filter 함수가 filtered 배열의 각 요소를 a로 꺼내와서 콜백함수를 호출함
+        // ture면 포함 false면 제거하는 식으로해서 조건을 통과해 true가 나온 요소를 unique 변수에 할당함
         const id = Number((a as any)?.aniId ?? (a as any)?.id);
+        // ?.은 옵셔널 체인이고 설명은 생략
+        // a가 있다고 가정시 aniId가 있으면 aniID를 사용 없으면 id를 사용함 
+        // ??는 Nulish Coalescing 연산자고 왼쪽이 null 또는 undefiend 일 때 오른쪽 사용함
+        // a에서 aniId 또는 id꺼내서 Number 타입으로 캐스팅후 재할당 불가 변수 id에 할당
         if (!Number.isFinite(id) || seen.has(id)) return false;
-        seen.add(id);
-        return true;
+        // 만약 id가 유한숫자가 아니거나 seen 변수에 id가 있으면 fasle를 반환해서 제거됨
+        seen.add(id); // 유한숫자고 seen 변수에 id가 없으면 여기가 실행
+        // seen 변수에 위에서 가져온 id를 추가함
+        return true; // true를 반환해서 포함됨
+        // 여기서 unique는 최종적으로 화면에 보여줄 중복 없는 비슷한 작품 목록배열이고
+        // seen은 중복 파별에만 사용하는 임시 변수임
+        // 배열에서 중복인지 찾으려면 id로 직접 접근할 수 없어서
+        // 매번 배열 전체를 순회해야해서 O(n)이 걸리지만
+        // Set을 사용하면 O(1)로 중복 여부를 확인할 수 있으니 효율적임
+        // seen.add(id)에서 id를 해쉬인덱스로바꿔서 그대로 내부 배열에 들어감
+        // 이 다음 seen.has(id)를 호출하면 id를 해쉬인덱스로 사용해서 바로 접근하기때문에 O(1)로 중복 여부를 확인할 수 있음
+        // 대용량이거나 중복체크를 반복적으로 자주 할수록 Set 방식을 같이 써야함
       });
 
       const limited = unique.slice(0, 6);
+      // slice 함수는 첫번째 인자를 여기서부터 자르라는 기준으로 쓰고, 두 번째 인자를 여기 인덱스 '앞'까지 잘라낸다는 의미로 사용
+      // unique 배열에 0번 인겍스부터 6번 인덱스에 앞까지 자르란뜻 그러면 0 1 2 3 4 5 즉 6개가 짤려나옴
+      // 그러면 비슷한 작품 목록이 13개가 불려와도 앞에 최대 6개까지만 제한되게 나오게됨 
       console.log('📦 비슷한 작품 로드 결과:', limited.length, '(장르 기반)');
-      setSimilarAnimes(limited);
+      setSimilarAnimes(limited); // 비슷한 작품 목록 상태에 최종적으로 화면에 보여줄 작품 목록 limited 배열을 할당함
     } catch (error) {
       console.error('비슷한 작품 로드 실패:', error);
-      setSimilarAnimes([]);
-    } finally {
-      setIsLoadingSimilar(false);
+      setSimilarAnimes([]); // 빈 배열로 초기화
+    } finally { // try/catch가 성공하든 실패하든 무조건 마지막에 실행됨
+      setIsLoadingSimilar(false); // 로딩 상태를 false로 세팅하고 함수 마무리
     }
   };
 
