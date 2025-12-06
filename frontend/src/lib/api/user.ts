@@ -100,7 +100,7 @@ export async function getUserRecentAnime(params?: { page?: number; size?: number
 }
 
 // 특정 애니메이션의 시청 기록 조회
-export async function getAnimeWatchHistory(animeId: number) {
+export async function getAnimeWatchHistory(animeId: number) { // Promise<number>를 명시하는게 더 편의성을 높이기 가능
   try {
     // 캐시 방지를 위해 타임스탬프 추가
     const history = await getUserWatchHistory(0, 1000);

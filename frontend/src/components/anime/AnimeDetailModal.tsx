@@ -509,25 +509,40 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     }
   };
 
-  // 사용자의 시청 기록 가져오기
+  // 특정 애니메이션의 시청 기록 조회
   useEffect(() => {
+    // 익명함수 정의해서 useEffect에게 넘기는 형식
     if (!isOpen || !(detail as any)?.aniId) return;
-    
+    // 만약 isOpen이 false이거나 detail.aniId가 없으면 함수 종료
     console.log('🔍 시청 기록 조회 시작 - animeId:', (detail as any).aniId);
     setIsLoadingHistory(true);
+    // 시청기록 로딩 상태를 true로 설정
     getAnimeWatchHistory(Number((detail as any).aniId))
-      .then((history: any) => {
+    // user.ts 파일에 getAnimeWatchHistory 함수에 detail.aniId를 넘겨서 호출함 이 함수는 비동기함수임
+      .then((history: any) => { 
+        // .then()은 Promise가 성공적으로 끝난 다음 그 결과값을 가지고 추가 작업(콜백 함수)을 실행할 때 사용하는 함수임
+        // 비동기 함수는 항상 Promise를 리턴하고 .then() 함수 체인연결이 가능함
+        // 인자로 익며함수를 정의해서 보내는 형식
+        // history를 any타입으로 받을것임
+        // history에는 특정 애니의 여러 에피소드 시청기록이 배열로 들어오는 구조임
         console.log('🔍 시청 기록 조회 결과:', history);
+        // 시청기록 상태를 업데이트하고 화면에 보여줌
         setWatchHistory(history as WatchHistory);
+        // 가져온 특정 애니의 시청기록을 WatchHistory 타입으로 단언한뒤 watchHistory 상태에 할당함
       })
       .catch((error) => {
+        // .catch()는 Promise가 실패한 다음 그 에러를 가지고 추가 작업(콜백 함수)을 실행할 때 사용하는 함수임
         console.error('시청 기록 조회 실패:', error);
         setWatchHistory(null);
+        // 시청기록 상태를 null로 초기화
       })
       .finally(() => {
+        // .finally()는 Promise가 성공하든 실패하든 무조건 마지막에 실행됨
         setIsLoadingHistory(false);
+        // 시청기록 로딩 상태를 false로 설정
       });
   }, [isOpen, detail?.aniId]);
+  // 의존성 배열로 isOpen과 detail?.aniId를 받고 렌더링 사이클마다 이 값들을 확인하고 변경시 useEEffect에 콜백함수를 실행함
 
   // 보고싶다 상태 확인
   useEffect(() => {
