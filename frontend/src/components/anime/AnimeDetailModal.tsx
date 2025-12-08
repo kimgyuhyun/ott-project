@@ -549,8 +549,10 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       // 익명함수 만들어서 useEffect에 넘기는 형식
     if (!isOpen || !(detail as any)?.aniId) return;
     // 만약 isOpen이 false로 들어오거나 또는 detail.aniId가 없을때 함수 종료
-    isFavorited(Number((detail as any).aniId))
+    isFavorited(Number((detail as any).aniId)) // isOpen이 true 또는 detail.aniId가 있으면 여기부터 실행
+    // 특정 애니메이션의 보고싶다 상태를 확인하는 함수 isFavorited에 detail.aniId를 any 타입으로 단언하고 Number로 캐스팅해서 넘김
       .then((favorited) => {
+          // 비동기 함수가 올바른 응답에 성공해 Promise를 리턴하면 .then이 호출됨
         setIsFavoritedState(favorited);
       })
       .catch((error) => {
