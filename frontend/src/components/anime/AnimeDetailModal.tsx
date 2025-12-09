@@ -552,14 +552,20 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     isFavorited(Number((detail as any).aniId)) // isOpen이 true 또는 detail.aniId가 있으면 여기부터 실행
     // 특정 애니메이션의 보고싶다 상태를 확인하는 함수 isFavorited에 detail.aniId를 any 타입으로 단언하고 Number로 캐스팅해서 넘김
       .then((favorited) => {
-          // 비동기 함수가 올바른 응답에 성공해 Promise를 리턴하면 .then이 호출됨
+          // 비동기 함수가 올바른 응답에 성공해 Promise가 resolve되면 그 값이
+          // .then 콜백의 첫 번째 인자로 전달됨 즉, isFavorited에 응답값이 favorited 인자에 값이 전달됨 
+          // .then 함수에 익명함수를 정의해서 넘기는 형식임
+          // 익명함수는 인자로 favorited를 받고 화살표 함수를 사용해 함수 본문을 작성
         setIsFavoritedState(favorited);
+        // 보고싶다 상태값에 favorited 값을 할당함 / ture / false
       })
-      .catch((error) => {
-        console.error('보고싶다 상태 조회 실패:', error);
+      .catch((error) => { // .catch()는 Promise가 실패한 다음 그 에러를 가지고 추가 작업(콜백 함수)을 실행할 때 사용하는 함수임
+        console.error('보고싶다 상태 조회 실패:', error); // 보고싶다 상태 조회 실패 에러 출력
         setIsFavoritedState(false);
+        // 보고싶다 상태값을 false로 설정함
       });
   }, [isOpen, detail?.aniId]);
+  // 의존성 배열로 isOpen과 detail?.aniId를 받고 렌더링 사이클마다 이 값들을 확인하고 변경시 useEEffect에 콜백함수를 실행함
 
   // 라프텔 방식: 모달 열 때 CSS 동적 주입
   useEffect(() => {
