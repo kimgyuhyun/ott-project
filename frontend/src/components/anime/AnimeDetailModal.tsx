@@ -570,6 +570,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // 라프텔 방식: 모달 열 때 CSS 동적 주입
   useEffect(() => {
     if (isOpen) {
+        // 만약 모달이 열려있으면
       // html 태그에 data-theme="light" 추가
       document.documentElement.setAttribute('data-theme', 'light');
       
