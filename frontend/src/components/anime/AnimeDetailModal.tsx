@@ -578,6 +578,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       document.body.style.overflow = 'hidden';
       document.body.style.setProperty('overflow', 'hidden', 'important');
     } else {
+        // 모달이 열려있지 않으면
       // 모달 닫을 때 원래 상태로 복원
       document.documentElement.removeAttribute('data-theme');
       document.body.style.overflow = 'auto';
