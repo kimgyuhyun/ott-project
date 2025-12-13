@@ -573,10 +573,12 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
         // 만약 모달이 열려있으면
       // html 태그에 data-theme="light" 추가
       document.documentElement.setAttribute('data-theme', 'light');
+      //
       
       // body에 overflow: hidden !important 적용
       document.body.style.overflow = 'hidden';
       document.body.style.setProperty('overflow', 'hidden', 'important');
+      //
     } else {
         // 모달이 열려있지 않으면
       // 모달 닫을 때 원래 상태로 복원
