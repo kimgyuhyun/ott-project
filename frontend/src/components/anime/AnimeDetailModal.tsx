@@ -588,6 +588,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     }
 
     // 컴포넌트 언마운트 시 정리
+    // 
     return () => {
       document.documentElement.removeAttribute('data-theme');
       document.body.style.overflow = 'auto';
