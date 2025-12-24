@@ -565,7 +565,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
         // 보고싶다 상태값을 false로 설정함
       });
   }, [isOpen, detail?.aniId]);
-  // 의존성 배열로 isOpen과 detail?.aniId를 받고 렌더링 사이클마다 이 값들을 확인하고 변경시 useEEffect에 콜백함수를 실행함
+  // 의존성 배열로 isOpen과 detail?.aniId를 받고 렌더링 사이클마다 이 값들을 확인하고 변경시 useEffect에 콜백함수를 실행함
 
   // 라프텔 방식: 모달 열 때 CSS 동적 주입
   useEffect(() => {
@@ -588,7 +588,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     }
 
     // 컴포넌트 언마운트 시 정리
-    // 
+    //
     return () => {
       document.documentElement.removeAttribute('data-theme');
       document.body.style.overflow = 'auto';
