@@ -542,7 +542,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
         // 시청기록 로딩 상태를 false로 설정
       });
   }, [isOpen, detail?.aniId]);
-  // 의존성 배열로 isOpen과 detail?.aniId를 받고 렌더링 사이클마다 이 값들을 확인하고 변경시 useEEffect에 콜백함수를 실행함
+  // 의존성 배열로 isOpen과 detail?.aniId를 받고 렌더링 사이클마다 이 값들을 확인하고 변경시 usEffect에 콜백함수를 실행함
 
   // 보고싶다 상태 확인
   useEffect(() => {
