@@ -471,7 +471,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       // Number 타입만 받을수 있는 Set 자료 구조를 seen 변수에 할당
       // Set은 중복 없는 값들의 집합을 표현할때 사용
       const unique = filtered.filter((a: ExtendedAnime) => {
-        // 위에서 현재 열려있는 애니를 제외한 비슷한 작품 목록인 filtered에 filter 함수를 호출하고 익명함수를 작성해서 태워보냄
+        // 위에서 현재 열려있는 애니를 제외한 비슷한 작품 목록인 filtered filter 함수를 호출하고 익명함수를 작성해서 태워보냄
         // 익명함수는 인자 ExtendedAnime 타입을 a로 받음 이걸 함수 본문에서 사용할것
         // filter 함수가 filtered 배열의 각 요소를 a로 꺼내와서 콜백함수를 호출함
         // ture면 포함 false면 제거하는 식으로해서 조건을 통과해 true가 나온 요소를 unique 변수에 할당함
