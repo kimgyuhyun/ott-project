@@ -443,7 +443,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
         ? (response.items as ExtendedAnime[]) // response.itmes가 배열이면 여기가 실행
         // response.items를 ExtendAnime[] 타입으로 단언함
         // rawImtes가 ExtendedAnime[] 타입이라 할당할려면 타입을 단언해줘야함
-        : (Array.isArray(response) ? (response as ExtendedAnime[]) : []); // response.items가 배열이 아니면 여기가 실행
+        : (Array.isArray(response) ? (response as ExtendedAnime[]) : []); // response.items이 배열이 아니면 여기가 실행
         // response.items가 배열인 경우는
         // 백앤드가 { imtes: [...], total, page, size } 이런 DTO를 보내는 경우에 해당
         // response 자체가 배열인 경우는
