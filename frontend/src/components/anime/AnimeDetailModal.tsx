@@ -429,7 +429,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       }
       // gerneIds 배열에 하나 이상에 값이 있으면 실행
       const response: any = await listAnime({ genreIds, sort: 'rating', page: 0, size: 30 });
-      // listAnime는 Proimise를 반환하는 비동기 함수고 Promise가 완료될 때까지 기다렸다가 결과값이 오면 response에 할당함
+      // listAnime는 Promise를 반환하는 비동기 함수고 Promise가 완료될 때까지 기다렸다가 결과값이 오면 response에 할당함
       // listAnime에 파라미터로 아까 만든 깨끗한 number[] (장르 ID)들을 넘기고
       // 정령른 평점 기준으로 page는 0번 size는 한 번에 30개 가져와라고 기본값 세팅해서 태워보냄
       // response는 any 타입으로 선언해둠
