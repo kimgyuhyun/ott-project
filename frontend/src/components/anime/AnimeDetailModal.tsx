@@ -371,7 +371,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   //   refactor: 애니메이션 상세 정보 fetch 로직 개선
   // - needsFetch 조건 제거하여 모달 열릴 때마다 최신 데이터 가져오기
   // - 의존성 배열을 [isOpen, anime?.id]로 최적화 - 2025-11-29
-  // 나중에 Redis 캐싱 전략 추가해야함
+  // 나중에 Redis 캐싱 전략 추가할것
   
   // 비슷한 작품 로드
   useEffect(() => {
