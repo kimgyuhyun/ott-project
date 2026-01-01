@@ -28,10 +28,10 @@ import java.util.List;
  * - GET /api/anime: 목록 조회(필터/정렬/페이지)
  * - GET /api/anime/{aniId}: 상세 조회(로그인 시 isFavorited 포함)
  */
-@RequiredArgsConstructor // final 필드 기반 생성자 자동 생성(의존성 주입)
-@RestController // JSON 기반 REST 컨트롤러로 등록
-@RequestMapping("/api/anime") // 공통 URL prefix 설정
-public class AnimeController { // 애니 목록/상세 조회 컨트롤러
+@RequiredArgsConstructor
+@RestController 
+@RequestMapping("/api/anime") 
+public class AnimeController {
 
     private final AnimeQueryService queryService; // 조회 서비스 의존성
     private final SecurityUtil securityUtil; // 현재 사용자 ID 해석용(로그인 여부 반영)
