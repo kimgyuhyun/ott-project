@@ -33,10 +33,10 @@ import java.util.List;
 @RequestMapping("/api/anime") 
 public class AnimeController {
 
-    private final AnimeQueryService queryService; // 조회 서비스 의존성
-    private final SecurityUtil securityUtil; // 현재 사용자 ID 해석용(로그인 여부 반영)
-    private final PersonalizedRecommendationService personalizedRecommendationService; // 개인화 추천 서비스
-    private final RedisTemplate<String, Object> redisTemplate; // 트렌드 조회용
+    private final AnimeQueryService queryService; 
+    private final SecurityUtil securityUtil; 
+    private final PersonalizedRecommendationService personalizedRecommendationService;
+    private final RedisTemplate<String, Object> redisTemplate;
 
     /**
      * 애니 목록 조회(페이지네이션)
