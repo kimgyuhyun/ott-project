@@ -44,8 +44,8 @@ public class AnimeController {
     @Operation(summary = "애니 목록 조회", description = "필터/정렬/페이지네이션을 적용해 애니 목록을 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping // GET /api/anime -> 목록 조회
-    public PagedResponse<AnimeListDto> list( // 표준 페이지 포맷으로 목록 반환
-            @RequestParam(required = false) AnimeStatus status, // 쿼리스트링 ?status=COMPLETED -> ENUM 으로 바인딩(옵션)
+    public PagedResponse<AnimeListDto> list( 
+            @RequestParam(required = false) AnimeStatus status,
             @RequestParam(required = false, name = "genreIds") List<Long> genreIds, // ?genreIds=1%genreIds=2 ...
             @RequestParam(required = false) Double minRating, // ?minRating=4.0 최소 평점 필터(옵션)
             @RequestParam(required = false) Integer year, // ?year=2024 방영 연도 필터(옵션)
