@@ -46,7 +46,7 @@ public class AnimeController {
     @GetMapping // GET /api/anime -> 목록 조회
     public PagedResponse<AnimeListDto> list( 
             @RequestParam(required = false) AnimeStatus status,
-            @RequestParam(required = false, name = "genreIds") List<Long> genreIds, // ?genreIds=1%genreIds=2 ...
+            @RequestParam(required = false, name = "genreIds") List<Long> genreIds,
             @RequestParam(required = false) Double minRating, // ?minRating=4.0 최소 평점 필터(옵션)
             @RequestParam(required = false) Integer year, // ?year=2024 방영 연도 필터(옵션)
             @RequestParam(required = false) Integer quarter, // ?quarter=3 분기 필터(옵션)
