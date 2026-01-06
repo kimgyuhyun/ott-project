@@ -48,8 +48,8 @@ public class AnimeController {
             @RequestParam(required = false) AnimeStatus status,
             @RequestParam(required = false, name = "genreIds") List<Long> genreIds,
             @RequestParam(required = false) Double minRating,
-            @RequestParam(required = false) Integer year, // ?year=2024 방영 연도 필터(옵션)
-            @RequestParam(required = false) Integer quarter, // ?quarter=3 분기 필터(옵션)
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer quarter,
             @RequestParam(required = false) String type, // 출시 타입 필터(옵션)
             @RequestParam(required = false) Boolean isDub, // ?isDub=true 더빙 여부(옵션)
             @RequestParam(required = false) Boolean isSubtitle, // ?isSubtitle=true 자막 여부(옵션)
