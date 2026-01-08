@@ -52,8 +52,8 @@ public class AnimeController {
             @RequestParam(required = false) Integer quarter,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) Boolean isDub,
-            @RequestParam(required = false) Boolean isSubtitle, // ?isSubtitle=true 자막 여부(옵션)
-            @RequestParam(required = false) Boolean isExclusive, // ?isExclusive=true 독점 여부(옵션)
+            @RequestParam(required = false) Boolean isSubtitle,
+            @RequestParam(required = false) Boolean isExclusive,
             @RequestParam(required = false) Boolean isCompleted, // ?isCompleted=true 완결 여부(옵션)
             @RequestParam(required = false) Boolean isNew, // ?isNew=true 신작 여부(옵션)
             @RequestParam(required = false) Boolean isPopular, //?isPopular=true 인기 여부(옵션)
