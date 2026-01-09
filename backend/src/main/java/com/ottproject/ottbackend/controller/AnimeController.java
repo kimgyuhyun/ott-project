@@ -54,9 +54,9 @@ public class AnimeController {
             @RequestParam(required = false) Boolean isDub,
             @RequestParam(required = false) Boolean isSubtitle,
             @RequestParam(required = false) Boolean isExclusive,
-            @RequestParam(required = false) Boolean isCompleted, // ?isCompleted=true 완결 여부(옵션)
-            @RequestParam(required = false) Boolean isNew, // ?isNew=true 신작 여부(옵션)
-            @RequestParam(required = false) Boolean isPopular, //?isPopular=true 인기 여부(옵션)
+            @RequestParam(required = false) Boolean isCompleted,
+            @RequestParam(required = false) Boolean isNew,
+            @RequestParam(required = false) Boolean isPopular,
             @RequestParam(defaultValue = "id") String sort, //?sort-rating|year|popular|id 정렬 키(기본 id)
             @RequestParam(defaultValue = "0") int page, // ?page=0 페이지 번호(0-base, 기본 0)
             @RequestParam(defaultValue = "20") int size, // ?size=20 페이지 크기 (기본 20)
