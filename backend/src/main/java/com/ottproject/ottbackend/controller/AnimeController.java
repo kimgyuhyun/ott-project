@@ -57,10 +57,10 @@ public class AnimeController {
             @RequestParam(required = false) Boolean isCompleted,
             @RequestParam(required = false) Boolean isNew,
             @RequestParam(required = false) Boolean isPopular,
-            @RequestParam(defaultValue = "id") String sort, //?sort-rating|year|popular|id 정렬 키(기본 id)
-            @RequestParam(defaultValue = "0") int page, // ?page=0 페이지 번호(0-base, 기본 0)
-            @RequestParam(defaultValue = "20") int size, // ?size=20 페이지 크기 (기본 20)
-            @RequestParam(required = false, name = "tagIds") List<Long> tagIds // NEW: 태그 OR 필터
+            @RequestParam(defaultValue = "id") String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false, name = "tagIds") List<Long> tagIds
     ) {
         // 위 필터/정렬/페이지 정보를 서비스에 위임하여 MyBatis 쿼리 실행 후 페이지 응답으로 반환
         return queryService.list(
