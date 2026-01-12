@@ -62,7 +62,7 @@ public class AnimeController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false, name = "tagIds") List<Long> tagIds
     ) {
-        // 위 필터/정렬/페이지 정보를 서비스에 위임하여 MyBatis 쿼리 실행 후 페이지 응답으로 반환
+        
         return queryService.list(
             status, genreIds, minRating, year, quarter, type,
             isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular,
