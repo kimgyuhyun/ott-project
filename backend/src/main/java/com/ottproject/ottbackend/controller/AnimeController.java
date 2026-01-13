@@ -75,10 +75,10 @@ public class AnimeController {
      */
     @Operation(summary = "애니 상세 조회", description = "에피소드/장르/제작사 포함 단건 상세 정보를 반환합니다. 로그인 시 isFavorited 포함")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping("/{aniId}") // GET /api/anime/{aniId} -> 상세 조회
-    public AnimeDetailDto detail( // 단건 상세 DTO 반환
-            @Parameter(description = "애니 ID", required = true) @PathVariable Long aniId, // 경로 변수{aniId}를 Long 타입으로 바인딩
-            HttpSession session // 로그인 사용자 여부 확인
+    @GetMapping("/{aniId}")
+    public AnimeDetailDto detail(
+            @Parameter(description = "애니 ID", required = true) @PathVariable Long aniId, 
+            HttpSession session
     ) {
         Long userId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
         return queryService.detail(aniId, userId); // isFavorited 포함 상세 반환
