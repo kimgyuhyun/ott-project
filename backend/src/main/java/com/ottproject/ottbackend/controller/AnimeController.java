@@ -80,8 +80,8 @@ public class AnimeController {
             @Parameter(description = "애니 ID", required = true) @PathVariable Long aniId, 
             HttpSession session
     ) {
-        Long userId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
-        return queryService.detail(aniId, userId); // isFavorited 포함 상세 반환
+        Long userId = securityUtil.getCurrentUserIdOrNull(session);
+        return queryService.detail(aniId, userId);
     }
 
     /**
