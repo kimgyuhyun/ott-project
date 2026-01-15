@@ -89,7 +89,7 @@ public class AnimeController {
      */
     @Operation(summary = "개인화 추천 애니메이션 조회", description = "사용자 찜/시청/평점 기반 개인화 추천 애니메이션 목록을 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping("/recommended") // GET /api/anime/recommended -> 개인화 추천 애니메이션 조회
+    @GetMapping("/recommended")
     public List<AnimeListDto> getRecommended(
             @RequestParam(defaultValue = "6") int size
     ) {
