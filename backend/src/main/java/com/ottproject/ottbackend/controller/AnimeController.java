@@ -126,7 +126,7 @@ public class AnimeController {
      */
     @Operation(summary = "인기 애니메이션 조회", description = "평점과 조회수를 기준으로 인기 애니메이션 목록을 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping("/popular") // GET /api/anime/popular -> 인기 애니메이션 조회
+    @GetMapping("/popular")
     public List<AnimeListDto> getPopular() {
         // 평점 기준으로 정렬하여 상위 10개 반환
         return queryService.list(
