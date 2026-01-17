@@ -169,7 +169,6 @@ public class AnimeController {
                 })
                 .map(Long::valueOf)
                 .toList();
-        // ID 목록으로 상세 카드 조회 (입력 순서 보존)
         return queryService.listByIds(ids);
     }
 
