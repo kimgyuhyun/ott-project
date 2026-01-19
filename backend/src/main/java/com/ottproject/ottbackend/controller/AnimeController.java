@@ -238,7 +238,7 @@ public class AnimeController {
     @PostMapping("/activity")
     public void recordActivity(
             @RequestParam Long animeId,
-            @RequestParam String activityType // view, favorite, rating
+            @RequestParam String activityType
     ) {
         Long userId = securityUtil.getCurrentUserIdOrNull(null);
         if (userId != null) {
