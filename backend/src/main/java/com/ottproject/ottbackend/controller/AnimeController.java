@@ -96,7 +96,7 @@ public class AnimeController {
         Long userId = securityUtil.getCurrentUserIdOrNull(null);
         
         if (userId != null) {
-            // 로그인 사용자: 개인화 추천
+            //
             return personalizedRecommendationService.getPersonalizedRecommendations(userId, size);
         } else {
             // 비로그인 사용자: 기본 추천 (인기작)
