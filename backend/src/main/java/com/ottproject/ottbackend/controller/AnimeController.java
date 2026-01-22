@@ -99,7 +99,7 @@ public class AnimeController {
             //
             return personalizedRecommendationService.getPersonalizedRecommendations(userId, size);
         } else {
-            // 비로그인 사용자: 기본 추천 (인기작)
+            //
             return queryService.list(
                     null, // status
                     null, // genreIds
