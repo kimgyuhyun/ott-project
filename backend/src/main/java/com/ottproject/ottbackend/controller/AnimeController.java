@@ -96,7 +96,6 @@ public class AnimeController {
         Long userId = securityUtil.getCurrentUserIdOrNull(null);
         
         if (userId != null) {
-            //
             return personalizedRecommendationService.getPersonalizedRecommendations(userId, size);
         } else {
             //
