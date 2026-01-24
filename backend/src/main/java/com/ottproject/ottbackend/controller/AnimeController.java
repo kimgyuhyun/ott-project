@@ -98,7 +98,6 @@ public class AnimeController {
         if (userId != null) {
             return personalizedRecommendationService.getPersonalizedRecommendations(userId, size);
         } else {
-            //
             return queryService.list(
                     null, // status
                     null, // genreIds
