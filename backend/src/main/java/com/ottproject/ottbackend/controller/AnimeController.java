@@ -43,7 +43,7 @@ public class AnimeController {
      */
     @Operation(summary = "애니 목록 조회", description = "필터/정렬/페이지네이션을 적용해 애니 목록을 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
-    @GetMapping // GET /api/anime -> 목록 조회
+    @GetMapping
     public PagedResponse<AnimeListDto> list( 
             @RequestParam(required = false) AnimeStatus status,
             @RequestParam(required = false, name = "genreIds") List<Long> genreIds,
