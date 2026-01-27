@@ -194,7 +194,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
   // 시청 기록 초기화 핸들러
   const handleDeleteWatchHistory = async () => {
-    // 화살표 함수로 함수를 정의해서 재할당 불가 변수 handleDeleteWatchHistory에 비동기 함수를 할당함
+    // 화살표 함수로 async 비동기 함수를 정의해서 재할당 불가 변수 handleDeleteWatchHistory에 비동기 함수를 할당함
     try { // try-catch 문으로 예외 처리를 함
       console.log('🗑️ 시청 기록 초기화 시작 - aniId:', (detail as any)?.aniId);
       // '시청 기록 초기화 시작 - aniId:' 메시지에 (detal as any)?.aniId값을 추가해서 콘솔로 출력함
@@ -498,7 +498,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       const limited = unique.slice(0, 6);
       // slice 함수는 첫번째 인자를 여기서부터 자르라는 기준으로 쓰고, 두 번째 인자를 여기 인덱스 '앞'까지 잘라낸다는 의미로 사용
       // unique 배열에 0번 인겍스부터 6번 인덱스에 앞까지 자르란뜻 그러면 0 1 2 3 4 5 즉 6개가 짤려나옴
-      // 그러면 비슷한 작품 목록이 13개가 불려와도 앞에 최대 6개까지만 제한되게 나오게됨 
+      // 그러면 비슷한 작품 목록이 13개가 불려와도 앞에 최대 6개까지만 제한되서 나오게됨 
       console.log('📦 비슷한 작품 로드 결과:', limited.length, '(장르 기반)');
       setSimilarAnimes(limited); // 비슷한 작품 목록 상태에 최종적으로 화면에 보여줄 작품 목록 limited 배열을 할당함
     } catch (error) {
@@ -569,37 +569,86 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
   // 라프텔 방식: 모달 열 때 CSS 동적 주입
   useEffect(() => {
+    // 화살표 함수로 익명 함수 만들어서 useEffect에 넘기는 형식
     if (isOpen) {
         // 만약 모달이 열려있으면
-      // html 태그에 data-theme="light" 추가
       document.documentElement.setAttribute('data-theme', 'light');
-      //
-      
-      // body에 overflow: hidden !important 적용
+      // document: DOM(Document Object Model)에서 웹페이지 전체 문서를 가리키는 전역 객체
+      // 자바스크립트 실행환경(특히 브라우저)에서 현재 웹페이지의 HTML을 조작할 때 사용함
+      // document.docuemntElement: document의 최상위(html) 요소 즉, <html> 태그 자체를 의미
+      // setAttribute: 특정 DOM 요소에 새로운 속성(attribute)을 추가하거나, 기존 속성 값을 변경할 때 사용하는 메서드
+      // theme 속성 이름에 light라는 속성값을 추가한다는 의미
+      // 즉, 이 코드는 웹페이지의 <html> 태그에 theme="lgiht"라는 값을 동적으로 추가하거나 있으면 속성값을 "light"로 변경한다는 의미
       document.body.style.overflow = 'hidden';
+      // document.body: document의 최상위(html) 요소인 <html> 태그 안에 있는 <body> 태그 자체를 의미
+      // style: 특정 DOM 요소의 CSS 스타일을 조작할 때 사용하는 속성
+      // overflow: CSS 속성 중 하나로, 요소의 콘텐츠가 박스보다 커질 때내용을 어떻게 보여줄지 결정함 
+      // 기본값은 visible: 넘치는 내용이 그대로 보임
+      // hidden: 넘치는 내용이 숨겨짐 
+      // scroll: 넘치는 내용이 있든 없든 스크롤바가 항상 표시됨 /auto: 넘치는 경우에만자동으로 스크롤이 생김
+      // 즉, 이 코드는 스크롤바가 사라지고 body의 모든 넘치는 콘텐츠가 화면에 보이지 않게한다는 의미
+      // 주로 모달, 팝입이 열렸을때 배경 스크롤을 막으려고 많이 쓰는 패턴
+      // 이 코드는 JS 프로퍼리명을 직접 겁근해서 값을 할당한 형식
+      // bacground-color 같은 CSS 속성 이름을 카멜케이스(backgroundColor) 형식으로 변환해야함
+      // 일부 CSS 속성에는 바로 접근할 수 없음 예:CSS 변수, 커스텀 속성 등등
+      // 일반적인 CSS 속성 조작은 .style.속성명 사용하면됨
+      // CSS 변수나 속성명을 문자열 그대로 쓰고 싶거나 중요도를 지정해야하면 setProperty 사용해야함
       document.body.style.setProperty('overflow', 'hidden', 'important');
-      //
+      // setProperty:CSSStyleDeclaration의 메서드임
+      // CSS 변수(property)나 원래 그대로의 속성명을 직접 지정할 수 있음
+      // 주로 커스텀 속성(변수)을 사용할 때 꼭 필여ㅛ하고, 기존 CSS 속성도 문자열 그대로 지정 가능
+      // 이 코드는 body 태그의 overflow 속성을 hidden으로, 그리고 important를적용해서 어떤 다른 CSS 설정보다 우선적으로 스크롤을 막는다는 의미
     } else {
         // 모달이 열려있지 않으면
-      // 모달 닫을 때 원래 상태로 복원
       document.documentElement.removeAttribute('data-theme');
+      // <html> 태그에 theme에 속성값을 제거함
+      // 즉 <html data-theme="light"> -> <html> 태그로 변경하는 코드
+      // 이러면 기본 테마 스타일이적용되거나 테마 관련 부수효과를 없에기 가능
       document.body.style.overflow = 'auto';
+      // <html> 태그 안에 <body> 태그에 ovverflow 속성을 auto로 변경함
+      // 그럼 요소의 컨텐츠가 박스보다 커질경우에만 스크롤이 보여지게함
+      // 배경의 스크롤을 원상 복구하려고 "auto"로 바꾼것
+      // 그 뒤에 바로 removeProperty를 사용해 인라인 스타일로 덧씌웠던던 속성을 삭제해서 style 속성이 깔끔하게 정리됨
+      // 인라인 스타일로 덮어쓰는 방식은 강제로 UI 효과를 원할 때 자주 쓰이고 모달이 닫힌 상태 즉, 정상 상태에선
+      // 임의의 인라인(즉JS가 수동으로 지정했던 값)을 아예 없에서 원래의 CSS 상태로 정확히 들어가도록 한 번 더 안전장치를 거는 것임
       document.body.style.removeProperty('overflow');
+      // <html> 태그 안에 <body> 태그에 overflow 속성을 제거함
     }
-
     // 컴포넌트 언마운트 시 정리
-    //
-    return () => {
+    // 컴포넌트 마운트: 모달 컴포넌트가 화면에 처음나타날 때, 즉 DOM에 렌더링될때
+    // 컴포넌트 언마운트: 모달 컴포넌트가 화면에서 사라질 때, 즉 DOM에서 제거될때
+    // 위에서 등록했던 스타일, 이벤트, 타이머 등을 정리해서 원상복구해야함
+    return () => { // 익명함수를 그대로 리턴 / 언마운트용 클린업 함수
       document.documentElement.removeAttribute('data-theme');
+      // <html>태그에 data-theme 속성을 제거함
       document.body.style.overflow = 'auto';
+      // <html> 태그 안에 <body> 태그에 overflow 속성을 auto로 변경함
       document.body.style.removeProperty('overflow');
+      // <html> 태그 안에 <body> 태그에 overflow 속성을 제거함
     };
-  }, [isOpen]);
+  }, [isOpen]); // 의존성 배열로 isOen을 받음 isPoen 값이 변경될때마다 내부 useEffect 함수가 실행됨
+  // 최초 실행시에는 if(isOpen)쪽이 실행 만약 isPoen값이 false로바뀌면 클린업 함수 실행후 else쪽이 실행됨
+  // 언마운트 시에는 클린업 함수를 한번 더 호출함
+  // else는 isOpen 값이 false가 되면 바로 실행 즉, 모달이 닫힌 순간 body 속성 등 원상 복구
+  // else와 클린업 함수는 중복이라고 볼수도있지만
+  // 기대흐름은 isOpen이 false로 변경시 의존성 배열이 감지해서 useEffect 함수 호출해서 else 본문 실행해서 코드정리를 기대하지만
+  // React의 조건부 렌더링 구조, 부모 컴포넌트의 상태 변화, 최적화/빠른 삭제 등이 개입되면 else 본문이 실행되지않고 곧바로 언마운트가
+  // 되는 상황이 발생할 수 있어서 안전장치로 return에 클린업함수를 작성해둬야함 
+  // 클린업 함수는 언마운트시 반드시 호출되는 함수기때문
 
   // 디버깅: anime 객체 확인
   console.log('🔍 AnimeDetailModal - anime 객체:', detail);
+  // anime 객체체
   console.log('🔍 AnimeDetailModal - anime.aniId:', (detail as any)?.aniId);
+  // as any로 타입체크 우회한 상태에서 detal.aniId 속성값을 출력
+  // ?.은 옵셔널 체이닝이고 객체가 null,undefined 일 경우 오류 없이 안전하게 하위 속성에 접근할수 있는 자바/타입스크립트 문법
+  // detail이 존재하면 detail.aniId 값을 반환하고
+  // detail이 undefiend거나 null이면 오류 없이 undefined 반환
   console.log('🔍 AnimeDetailModal - anime 타입:', typeof detail);
+  // typeof는 자바스크립트에서 변수의자료형을 확인할 때 쓰는 연산자임 // stirng, number object, boolean 등등
+  // 근데 배열도 objec로 나오고 null도 object로나오기 때문에 정확히 객체인지, 어떤 타입인지 확인에 한계가 있음
+  // 정확하게 확인하려면  Array.isArray(something) 혹은
+  // something !== null && typeof something === 'object을 사용해서 확인해야함
   console.log('🔍 장르 정보:', (detail as any)?.genres);
   console.log('🔍 평점 정보:', detail?.rating);
   console.log('🔍 관람등급:', detail?.ageRating);
@@ -617,8 +666,18 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   });
 
   if (!isOpen) return null;
+  // isOpen이 fasle로 변경되면 이 조건이 성립되며 null을 return하고 렌더함수가 중단됨
+  // 그 다음 클린업 함수가 마지막으로 실행됨
+  // 클린업함수는 프로그래밍적으로 남아 있을 수 있는 사이드이펙트(인라인 스타일, 이벤트, setTimeout 등)를 직접 코드로 정리
+  // null 반환은 DOM 트리에서 컴포넌트에 해당하는 DOM 요소를 완전히 지워주는것
 
   const tabs: { id: 'episodes' | 'reviews' | 'shop' | 'similar'; label: string; count: number | null }[] = [
+    // 재할당 불가한 tabs를 선언 tabs는 객체들의 배열임
+    // tabs에 들어올 객체를 여러개 허락해야해서 객체 리터롤로 감싸서 작성해야함
+    // id 값은 오직 episodes, reviews, shop, similar 타입 중 하나만 가능
+    // lable 값은 string 타입만 가능
+    // count 값은 nulber 또는 null만 가능
+    // id, lable, count 값을 객체 리터럴로 묶어서 타입 단언해두고 배열을 정의해서 tabs 객체배열에 할당한것
     { id: 'episodes', label: '에피소드', count: null },
     { id: 'reviews', label: '사용자 평', count: null },
     { id: 'shop', label: '상점', count: null },
@@ -626,36 +685,67 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   ];
 
   const episodes = Array.isArray((detail as any)?.episodes) ? ((detail as any).episodes as Episode[]) : [];
+  // Array.isArray 함수는 해당 값이 자바스크립트 배열인지 확인하는 기능함 배열이면 true 아니면 false 반환
+  // detail.episodes 속성에 옵셔널 체이닝 걸고 undefiend나 null이면 undefiend 반환
+  // 삼항 연산자는 true일시 detail.episodes as Episode[]) / episodes가 배열임이 확실할 때만 이값을 그대로 episodes 변수에 할당
+  // false면 []을 할당당
+  // detail.eposdes에 값이 있고, 그 값이 배열이면 true
+  // undefiend, null, 객체, 문자열, 숫자 등 배열이 아니면 false
+  // true인 경우는 (detail as any).epsodes as Episode[]
+  // epsides가배열임이 확정되었으니, 타입스크립트에 "이건 Epsodes[]라고 봐도 돼"라고 타입 단언하고 해당 배열 자체를 결과로 할당
+  // false 인 경우 빈 배열 []을 episodes에 할당함
   const getFallbackEpisodeThumb = (episodeNumber?: number) => {
+    // epsodeNumbe 값을 인자로 받는데, ?가 있으므로 이 인자는 "옵셔널", 즉 전달해도 되고 안해도 된다는뜻 옵셔널 파라미터라는 뜻임
+    // 즉 epsodeNumbe 변수에 값을 number 타입으로 받을껀데 옵셔널 파라미터를 걸어놨으니
+    // 이 함수를 사용할떄 episodeNumber를 넘겨도 되고, 안 넘겨도 됨을 의미함
     const n = Number(episodeNumber);
+    // Number9)는 자바스크립트의 생성자(함수)임
+    // 괄호 안에 들어온 값을 숫자타입(nubmer)으로 변환하는 역할을함
+    // 위에 인자부분에 타입단언을 해뒀지만 타입스크립트는 컴파일시에만 체크하므로 실제 호출 시에 즉, 런타임 타입이 다를 수 있으니
+    // 항상 Number()로 한 번 더 "숫자 변환"을 통해 방어하는 코드임
     if (n === 1) return 'https://placehold.co/120x80/111827/ffffff?text=EP1+Thumbnail';
+    // 에피소드 1일때
     if (n === 2) return 'https://placehold.co/120x80/1f2937/ffffff?text=EP2+Thumbnail';
+    // 에피소드 2일때
     return 'https://placehold.co/120x80/374151/ffffff?text=Episode';
+    // 그 외 에피소드에 기본 이미지 적용
   };
 
-  return (
-    <div className={styles.animeDetailModalOverlay}>
-      {/* 배경 오버레이 */}
+  return ( // JSX 반환 구문, 즉 AnimeDetailModal 컴포넌트의 화면(UI, DOM 구조 등)을 실제로 만들어내는 JSX 반환부에 해당
+    // JSX는 JavaScript XML의 줄임말로 자바스크립트 코드에서 HTML 같은 구조를 직접 작성할 수 있게 해주는 React의 특별한 문법임
+    <div className={styles.animeDetailModalOverlay}>  {/* 최상단 div에 animeDetailModalOverlay css 클래스 적용 */}
       <div 
         className={styles.animeDetailModalBackdrop}
         onClick={onClose}
-      />
+      /> {/* 이 div에 배경(반투명, 흐려진 효과, 본문과 분리된 느낌)을 주는 CSS 클래스 적용
+      onClick={oncCLose}는 이 div=백드롭을 클릭하면 onClsoe 함수가 실행됨
+      즉, 모달이 열렸을 때 사용자가 바깥(배경)을 클릭하면 onCLsoe가 호출되어 모달이 닫히는 구조임
+      onCLose는 부모나 props로 받은 "모달 닫기"용 함수*/}
       
       {/* 모달 컨테이너 */}
       <div className={`${styles.animeDetailModalContainer} ${isFullInfoOpen ? styles.dimTabs : ''}`}>
-        {/* 점3개 메뉴 버튼 - X버튼 왼쪽 */}
-        <div className={styles.menuButtonContainer}>
+        {/* 템플릿 리터럴 `${}을 사용하고 있고 그 안에 변수나 표현식을 넣을 수 있음 여기선 기본 스타일과 조건부 스타일을 적용하기 위해 사용*/}
+        {/* 삼항 연산자를 사용해서 isFullInfoOpen 값이 true면 dimTabs 클래스를 추가해서 탭 메뉴를 어둡게 만듬 false면 빈 문자열이 들어감*/}
+        {/* isFullInfoOpen이 true가 되는 순간 상세정보 모달이 열리고 모달 본체에 dimTabs 스타일 클래스가 추가됨*/}
+        <div className={styles.menuButtonContainer}> {/* 메뉴 버튼 컨테이너 div에 menuButtonContainer css 클래스 적용  
+        점 3개 드롭다운 버튼임*/}
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className={styles.menuButton}
-            aria-label="메뉴"
+            aria-label="메뉴" // 스크린 리더 등 보조기기에 메뉴 버튼이라고 알림 실제 화면에 나타나지는 않음
           >
             <svg fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
             </svg>
           </button>
+          {/* onCLick은 버튼이 클릭될 때 실행되는 이벤트 리스너임 사용할려면 꼭 콜백 함수를 넘겨야함 
+          isDropdownOpen은 드롭다운 메뉴 버튼이 열려있냐 닫혀있냐 여부를 나타냄
+          닫혀있으면 false인 상태 닫혀있는 상태에서 클릭하면 부정연산자로 true로바뀌고 상태변경함수로 변경되서 드롭다운 메뉴가 열리게됨
+          열려있는 상테면 isDroptdownOpen이 true인 상태에서 부정연산자로 false로 바뀌고 상태변경함수로 변경해서 드롭다운 메뉴가 닫힘 */}
           
-          {/* 드롭다운 메뉴 */}
+          {/* &&는 앞의 값이true면, 뒤에 JSX(코드 블록)가 렌더링 되고
+          앞의 값이 false면 Reactr가 아예 뒤에 JSX를 스크린에 렌더링하지않고 무시함 
+          즉, 점 3개 누른상태면 보이고 안눌렀으면 안보임*/}
           {isDropdownOpen && (
             <div className={styles.dropdownMenu}>
               <button
@@ -670,6 +760,11 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             </div>
           )}
         </div>
+        {/* 드롭다운이 열린 상태면 div에 dropdownMenu css 클래스 적용하고
+        시청 기록 초기화 버튼을 만듬 이벤트 리스너한텐 상태변경함수 두개를 넘김
+        시청 기록 초기화 버튼을 누르면 setShowDeleteConfirm(true)가 실행되고
+        시청 기록을 정말로 초기화하시겠습니다? 같은 확인용/경고 모달이나 팝업이 화면에 나타남 
+        이때 setIsDropdownOpen(false) 점 3개 드롭다운 메뉴는 닫힘*/}
 
         {/* 닫기 버튼 - 상단 오른쪽 */}
         <button
@@ -682,11 +777,14 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
           </svg>
         </button>
 
-        {/* 상단 정보 섹션 */}
+
         <div className={styles.topInfoSection}>
-          {/* 배경 이미지: DB의 backdropUrl을 우선 사용, 없으면 다크 배경만 */}
+          {/* 상단 정보 섹션 */}
           <div className={styles.backgroundImage}>
+            {/* 상단 배경 이미지 섹션 상단 배경구역에 컨테이너 역할할
+            여기가 컨테이너고 아래를 이미지로 바꾸는게 더명확할듯 */}
             <div className={styles.backgroundContainer}>
+              {/* 여기가 실제 이미지가 들어가는 div*/}
               {detail?.backdropUrl ? (
                 <div
                   className={styles.characterImage}
@@ -697,6 +795,14 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               )}
             </div>
           </div>
+          {/* 삼항 연산자를사용해서 
+          detail.backdropUrl이 존재하면 div에 characterImage CSS 적용하고
+          style로 div의 인라인 스타일을 지정함 중괄호 ({})는 JSX에서 JS 객체를 전달할 때 필요
+          clssName={}: CSS파일이나 모듈에서 정의해둔걸 그대로 적용할 때 사용
+          style={{}} -> JSX에서 직접 인라인으로 "특정 스타일 한 두 개만 동적으로"줄 때 사용함
+          여기서 사용한 bacgroundImage는 CSS의 ㅛ준 속성 이름
+          한 div에 동적으로 다른 이미지 주소를 넣고 싶을떄     style={{ backgroundImage: `url(이미지주소)` }} 이 형식이 고정됨
+          bacdropUrl이 없으면 false 부분이 실행되고 noBackdrop css 클래스 적용되어 다크 네이비 배경이 적용됨*/}
 
           {/* 작은 포스터 - 오른쪽 중간에 위치 */}
           <div className={styles.smallPoster}>
@@ -708,6 +814,12 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               />
             </div>
           </div>
+          {/* div를 2겹으로 사용하는건 외부 외부 div는 포스터의 위치나 정렬, absolute/relative 등 외부 배치를 담당하고
+          내부 div는 포스터 자체 크기, border, overflow, 그림자, 마우스이벤트 등 내부 UI 세부 제어를 담당하기 위해서임
+          이렇게하면 역할분리와 유지보수와 확장성이 용이하고 스타일 재활용도 가능함
+          src는 deatail.posterUrl 값이 있으면 사용하고 없으면 기본 플레이스홀더 이미지 사용
+          alt는 detail.title 한국어 제목이 있으면 사용하고 없으면 영어, 없으으면 일본어, 없으면 애니메이션 포스터로 fallback
+          CSS는 posterImage 적용*/}
 
           {/* 상단 정보 오버레이 */}
           <div className={styles.topInfoOverlay}>
@@ -723,28 +835,56 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                   {Array.isArray((detail as any)?.badges) ? (detail as any).badges[0] : 'ONLY'}
                 </span>
               </div>
+              {/* div 2겹으로 만들고 각각 css 모듈 적용함
+              span은 inline 요소라 텍스트나 아이콘등을 자연스럽게 이어 붙이기 좋음 각각의 span에 적용한 className으로
+              색상, 크기, 여백 폰트 스타일등 세부디자인을 개별적으로 다르게 할 수 있음
+              보통 div로 만들기엔 너무 크거나 줄바꿈이 생길때나
+              여러인라인 요소들을 "한 줄에, 가로로" 나열하고 싶을 때 사용함
+              삼항연산자를사용해서 currentRating이 number 타입이면 currntRating.toFixed(1)을 보여줌
+              .toFixed는 소수점 아래 첫째 자리까지 표시하라는 뜻임
+              number 타입이 아니면 N/A를 보여줌 
+              그 다음 관람등급뱃지 부분인데 detail.badges가 존재하고 배열이면 detail.badges[0]을 사용하고
+              아니면 ONLY를 사용함*/}
 
               {/* 애니메이션 제목 */}
               <h1 className={styles.animeTitle}>
                 {(() => {
-                  // 더빙과 자막 여부 확인
-                  const isDub = (detail as any)?.isDub === true;
-                  const isSubtitle = (detail as any)?.isSubtitle === true;
-                  
-                  let prefix = '';
+                  // {(() => { ... })()} 구조
+                  // () => { ... } 로 콜백함수 정의하고
+                  // (() => { ... }) 로 위에서 만든 함수를 괄호로 한 번 감싼것 "이게 하나의 표현식이야"라고 묶어준 상태임
+                  // (() => { ... })() 방금 만든 함수 표현식 뒤에 ()를 붙여서 "지금 당장 실행" 그래서 이 전체의 결과값이 return 값이됨
+                  // { ... } (JSX 중괄호) JSX 입장에서 보면, { ... } 안에는 "어떤 자바스크립트 표현식의 값"이 들어가야하는데
+                  // 우리가 만든(() => { ... }()의 실행 결과가 그대로 들어가는 것
+                  // 즉, 매개변수 없는 화살표 함수를 하나 정의하고, 그걸 즉시 실행해서 나온 값을 JSX의 {} 안에 넣는다 라고 보면됨
+                  // ()가 즉시 실행인 이유는 함수 이름(또는 함수 표현식)뒤에 ()를 붙이면 "그 함수를 실행한다"는 자바스크립트 문법이기 때문
+                  const isDub = (detail as any)?.isDub === true; // 더빙여부
+                  // detail.isDub 속성이 true면 === true로 비교연산을 하고 isDub 변수에 true를 할당함 false면 false를 할당
+                  const isSubtitle = (detail as any)?.isSubtitle === true; // 자막여부
+                  // detail.isSubtitle 속성이 true면 === true로 비교연산을 하고 isSubtitle 변수에 true를 할당함 false면 false를 할당                  
+                  let prefix = ''; // 재할당 가능한 변수를 선언하고 빈문자열로 초기화
                   if (isDub && isSubtitle) {
-                    // 둘 다 true인 경우 자막으로 표시
+                    // 만약 isDub과 isSubtitle 둘 다 true면 prefix에 '(자막) '을 할당
                     prefix = '(자막) ';
                   } else if (isDub) {
+                    // 만약 isDub가 true이고 isSubtitle가 false면 prefix에 '(더빙) '을 할당
                     prefix = '(더빙) ';
                   } else if (isSubtitle) {
+                    // 만약 isSubtitle가 true이고 isDub가 false면 prefix에 '(자막) '을 할당
                     prefix = '(자막) ';
                   }
                   
-                  const title = (detail as any)?.title || (detail as any)?.titleEn || (detail as any)?.titleJp || '제목 없음';
+                  const title = 
+                  (detail as any)?.title || 
+                  (detail as any)?.titleEn || 
+                  (detail as any)?.titleJp ||
+                   '제목 없음';
+                   // 옵셔널 체인걸어서 한국어 제목 있으면 한국어 없으면 영어제목
+                   // 영어 제목도 없으면 일본어 제목
+                   // 일본어 제목도 없으면 제목 없음을 사용하는 구조조
                   return `${prefix}${title}`;
+                  // 접두어와 타이틀을 템플릿 리터럴로 감싸서 retunr 해주는 구조
                 })()}
-              </h1>
+              </h1> {/* 그럼 JSX에서 받아서 h1 안의 텍스트로 사용함*/}
 
               {/* 장르 및 정보 */}
               <div className={styles.genreSection}>
