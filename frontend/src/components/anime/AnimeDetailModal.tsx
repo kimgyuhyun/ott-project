@@ -885,7 +885,6 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                   // 접두어와 타이틀을 템플릿 리터럴로 감싸서 retunr 해주는 구조
                 })()}
               </h1> {/* 그럼 JSX에서 받아서 h1 안의 텍스트로 사용함*/}
-
               {/* 장르 및 정보 */}
               <div className={styles.genreSection}>
                 {Array.isArray((detail as any)?.genres) && (detail as any).genres.length > 0 ? (
