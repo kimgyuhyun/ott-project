@@ -882,20 +882,40 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                    // 영어 제목도 없으면 일본어 제목
                    // 일본어 제목도 없으면 제목 없음을 사용하는 구조조
                   return `${prefix}${title}`;
-                  // 접두어와 타이틀을 템플릿 리터럴로 감싸서 retunr 해주는 구조
+                  // 접두어와 타이틀을 템플릿 리터럴로 감싸서 retunrn 해주는 구조
                 })()}
               </h1> {/* 그럼 JSX에서 받아서 h1 안의 텍스트로 사용함*/}
+
               {/* 장르 및 정보 */}
-              <div className={styles.genreSection}>
+              <div className={styles.genreSection}> {/* CSS 모듈 적용*/}
                 {Array.isArray((detail as any)?.genres) && (detail as any).genres.length > 0 ? (
+                  // Array.isArray 함수로 detail.gernes가 배열인지 아닌지 확인하고 배열이면 true, 아니면 false를 반환해줌
+                  // 만약 false면 %% 특성 때문에 뒤는 아예 평가도 안하고 전체 결과를 false로 결정함
+                  // 만약 true면 그 다음 detail.geners.length > 0를 평가하고 그 결과값(boolean)이 최종 값이됨
+                  // detail.geners가 배열이면서, 그 길이가 0보다 큰 경우에만 true가 나오게되는거임
                   ((detail as any).genres as Array<string | { name?: string }>).slice(0, 6).map((g: any, idx: number) => (
-                    <span key={idx} className={styles.genreTag}>
+                    // () => {}는 일반적인 화살표 함수
+                    // 여기서 사용한 () => ()는 "바로 이 표현식을 return 하겠다"라는 축약 문법임
+                    // detail.genres는 배열이고 {'액션', { name: '코미디' }, ...} 처럼 문자열이랑 객체가 섞여 있을 수 있는 배열이라고 타입 단언함
+                    // name?: string은 정확히 ?라는 옵셔널을 걸었기때문에 name이라는 프로퍼티가 있을 수도 있고, 없을 수도 있다라는 뜻
+                    // 그 다음 .slice(0, 6)은 그 배열에 대해 앞에서부터 최대 6개만 잘라서 새 배열을 만듬
+                    // 새 배열이 ['액션', name: '코미디' , '판타지'] 라고 가정을 해서 이해를 해보면
+                    // 위에 배열에 .map을 돌리면 배열의 각 요소가 하나씩 들어가게되는데
+                    // 첫번째 요소인 '액션'이 g로 들어가고 idx = 0
+                    // 두 번째 요소 'name: 코미디'가 g, idx = 1
+                    // 세 번째 요소 '판타지'가 g, idx = 2
+                    // 이런식으로 요소 하나하나가 g로 들어가서 가공됨
+                    // .map은 JS에서 배열 전용 메서드고 어떤배열.map(콜백) 형태로만 사용하고고
+                    // 배열에 각 요소를 하나씩 꺼내서 가공해주고 그 가공값을 새배열로 만들어주는것 콜백함수는 꼭 넘겨야함
+                    <span key={idx} className={styles.genreTag}> {/* CSS 모듈 적용*/}
                       {typeof g === 'string' ? g : (g?.name || '')}
                     </span>
+                    // g에 타입이 string이면 g를 사용하고 string이 아니면 g.name을 사용 없으면 ''를 사용함
                   ))
                 ) : (
                   <span className={styles.genreTag}>장르 정보 없음</span>
-                )}
+                )} {/* 만약 detail.geners가 배열이 아니거나 길이가0이면 장르 정보 없음을 출력
+                값이 있어도 배열이 아니면 fail, 배열이여도 값이 0이면 fail이라는 뜻*/}
                 
                 {/* 애니메이션 타입·상태 */}
                 <span className={styles.typeStatusBadge}>
