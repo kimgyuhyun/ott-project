@@ -900,7 +900,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                     // name?: string은 정확히 ?라는 옵셔널을 걸었기때문에 name이라는 프로퍼티가 있을 수도 있고, 없을 수도 있다라는 뜻
                     // 그 다음 .slice(0, 6)은 그 배열에 대해 앞에서부터 최대 6개만 잘라서 새 배열을 만듬
                     // 새 배열이 ['액션', name: '코미디' , '판타지'] 라고 가정을 해서 이해를 해보면
-                    // 위에 배열에 .map을 돌리면 배열의 각 요소가 하나씩 들어가게되는데
+                    // 위에 배열에 .map을 돌리면 배열의 각 요소가 하나씩 들어가게 되는데
                     // 첫번째 요소인 '액션'이 g로 들어가고 idx = 0
                     // 두 번째 요소 'name: 코미디'가 g, idx = 1
                     // 세 번째 요소 '판타지'가 g, idx = 2
