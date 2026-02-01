@@ -918,11 +918,19 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                 값이 있어도 배열이 아니면 fail, 배열이여도 값이 0이면 fail이라는 뜻*/}
                 
                 {/* 애니메이션 타입·상태 */}
-                <span className={styles.typeStatusBadge}>
+                <span className={styles.typeStatusBadge}> {/* CSS 모듈 적용 */}
                   {(detail as any)?.type || 'TV'}·{(detail as any)?.animeStatus === 'COMPLETED' ? '완결' : 
+                  // 중첩 삼항연산자를 사용한식임
+                  // detail.type이 truthy면 그 값을 사용하고 값이 없거나 falsy(undefiend, null, '')면 'TV'를사용
+                  // 중간에 .은 그냥 화면에 표시하는것. detail.animeStatus가 'COMPLETED'이면 '완결'을 사용하고
+                  // 아니면 false부분에 삼항연산자를 다시쓴 구조를 사용함
+                  // 자바의 case/ switch문을 자바스크립트에서 삼항연산자로 구현한 느낌
                    (detail as any)?.animeStatus === 'ONGOING' ? '방영중' : 
-                   (detail as any)?.animeStatus === 'UPCOMING' ? '예정' : 
+                   // detail.animeStatus가 'ONGOING'이면 '방영중'을 사용하고
+                   (detail as any)?.animeStatus === 'UPCOMING' ? '예정' :
+                   // detail.animeStatus가 'UPCOMING'이면 '예정'을 사용하고
                    (detail as any)?.animeStatus === 'CANCELLED' ? '중단' : '완결'}
+                   {/* detail.animeStatus가 'CANCELLED'이면 '중단'을 사용하고 그 외에는 '완결'을 사용함*/}
                 </span>
                 
                 {/* 관람등급 */}
