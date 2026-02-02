@@ -933,6 +933,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                    {/* detail.animeStatus가 'CANCELLED'이면 '중단'을 사용하고 그 외에는 '완결'을 사용함*/}
                 </span>
                 
+                
                 {/* 관람등급 */}
                 <div className={styles.ageRatingBadge}>
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
