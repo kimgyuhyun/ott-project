@@ -938,15 +938,22 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                   <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="10" cy="10" r="9" fill="#E9B62F" stroke="#FFFFFF" strokeWidth="2" />
                     <text x="10" y="10" textAnchor="middle" dominantBaseline="central" fill="#000" fontSize="7" fontWeight="700">
+                      {/* 관름등급 뱃지를 인라인으로 동그란 뱃지(SVG)로 만들고 그 안에 텍스트로등급을 적는 형식*/}
                       {(() => {
-                        const rating = detail?.ageRating;
-                        if (rating === '전체 이용가') return 'ALL';
-                        if (rating === '15세이상') return '15';
-                        if (rating === '12세이상') return '12';
-                        if (rating === '19세이상') return '19';
+                        const rating = detail?.ageRating; // detail.ageRating 값을 rating 변수에 할당함
+                        if (rating === '전체 이용가') return 'ALL'; // rating 값이 '전체 이용가'이면 'ALL'을 반환함
+                        if (rating === '15세이상') return '15'; // rating 값이 '15세이상'이면 '15'을 반환함
+                        if (rating === '12세이상') return '12'; // rating 값이 '12세이상'이면 '12'을 반환함
+                        if (rating === '19세이상') return '19'; // rating 값이 '19세이상'이면 '19'을 반환함
                         if (rating === 'ALL') return 'ALL';
-                        return 'ALL';
+                        return 'ALL'; // 그 외에는 'ALL'을 반환함
                       })()}
+                      {/* {(() => { ... })()} 형식이고
+                      (() => { ... }): 화살표 함수로 콜백함수 정의
+                      ()는 그 함수를 즉시 호출하기 위해 사용
+                      젤 바깥{ ... } 는 JSX 안에서 자바스크립트 표현식을 쓰기 위한 중괄호임
+                      IIFE(함수 표현식 + 즉시 실행)로 감싸고 그 안에서 중첩 if + 각각의 return로 분기 처리를 한것
+                      바로 위에처럼 삼항 연산자로 분기문 작성도 가능*/}
                     </text>
                   </svg>
                 </div>
