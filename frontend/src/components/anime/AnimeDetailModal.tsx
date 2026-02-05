@@ -957,7 +957,6 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                     </text>
                   </svg>
                 </div>
-                
               </div>
 
               {/* 액션 버튼들 */}
