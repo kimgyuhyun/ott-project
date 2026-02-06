@@ -960,68 +960,88 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               </div>
 
               {/* 액션 버튼들 */}
-              <div className={styles.animeDetailModalActionButtons}>
+              <div className={styles.animeDetailModalActionButtons}> {/* CSS 모듈 적용 */}
                 {/* 로딩 중일 때 */}
-                {isLoadingHistory && (
+                {isLoadingHistory && ( // isLoadingHistory가 true면 여기가 렌더링되고 false면 렌더링 안됨
                   <div className={styles.loadingMessage}>시청 기록을 불러오는 중...</div>
                 )}
                 
-                {/* 이어보기 버튼 - 시청 기록이 있고 완료되지 않은 경우 */}
+                {/* 이어보기 버튼 - 시청 기록이 있고 다 보지 않은 경우*/}
                 {!isLoadingHistory && watchHistory && !watchHistory.completed && (
-                  <div className={styles.playButtonContainer}>
+                  // isLoadingHistory가 false, watchHistory가 truthy, wathchHistory.completed가 false인걸 다 성립하면 여기가 렌더링됨
+                  // 즉 로딩중이지 않고, 시청기록이 있으며, 시청기록이 완료되지 않은 경우(이어볼 게 있음) 모든 조건을 성립함
+                  <div className={styles.playButtonContainer}> {/* CSS 모듈 적용 */}
                     <button 
-                      onClick={() => {
-                        console.log('🎬 이어보기 버튼 클릭:', {
-                          episodeId: (watchHistory as any).episodeId,
-                          animeId: (detail as any)?.aniId,
-                          positionSec: (watchHistory as any).positionSec,
-                          episodeNumber: (watchHistory as any).episodeNumber
+                      onClick={() => { // 이어보기 버튼 클릭시 실행되는 콜백함수를 화살표 함수로 작성해서 onClick에 넘겨주는 형식
+                        console.log('🎬 이어보기 버튼 클릭:', { // 이어보기 버튼 클릭시 콘솔에 출력되는 메시지
+                          episodeId: (watchHistory as any).episodeId, // watchHistory.episodeId 값을 콘솔에 출력
+                          animeId: (detail as any)?.aniId, // detail.aniId 값을 콘솔에 출력
+                          positionSec: (watchHistory as any).positionSec, // watchHistory.positionSec 값을 콘솔에 출력
+                          episodeNumber: (watchHistory as any).episodeNumber // watchHistory.episodeNumber 값을 콘솔에 출력
                         });
                         // 이어보기: 마지막으로 본 에피소드부터 재생
                         const position = (watchHistory as any).positionSec > 0 ? `&position=${(watchHistory as any).positionSec}` : '';
+                        // positionSec이 0보다크면 &position=positionSec 형식으로 쿼리 파라미터에 추가하고 아니면  빈 문자열로 초기화해서 변수에 할당
+                        // 백틱으로 감싼 템플릿 리터러에 뜻은 문자열 %position= 뒤에 positionSec 값을 이어 붙인다는 뜻
+                        // 예를 들어 positionSec이 120이면 변수에는 %position=120 형식으로 추가됨
                         const url = `/player?episodeId=${(watchHistory as any).episodeId}&animeId=${(detail as any)?.aniId}${position}`;
+                        // player 페이지로 이동 url를 생성하는 구조임
+                        // /player?episodeId=13&animeId=50&position=120 형식으로 추가됨
                         console.log('🔗 이동할 URL:', url);
-                        router.push(url);
-                        onClose();
+                        router.push(url); // roter.push()에 url을넘겨주면 브라우저가 그 주소로 이동함
+                        // 보통 전체 새로고침 없이SPA처럼 전환됨
+                        onClose(); // 사용자가 이어보기 버튼 클릭 -> player 페이지로 이동 -> 지금 떠있는 애니 상세 모달을 닫기위해 onClose() 함수를 호출한것
                       }}
-                      className={styles.playButton}
+                      className={styles.playButton} // 이어보기 버튼에 CSS 모듈 적용
                     >
-                      <div className={styles.playButtonIcon}>
+                      <div className={styles.playButtonIcon}> {/* svg로 그린 ▶ 아이콘 감싸기 위한 컨테이너임 */} 
                         <svg fill="currentColor" viewBox="0 0 24 24">
                           <path d="M8 5v14l11-7z"/>
                         </svg>
                       </div>
                       <span className={styles.playButtonText}>{watchHistory.episodeNumber}화 이어보기</span>
+                      {/* watchHistory.episodeNumber 값을 화면에 출력함 3화 이어보기 이런식으로 출력됨*/}
                     </button>
                   </div>
                 )}
                 
-                {/* 처음보기 또는 완료된 경우 보러가기 버튼 */}
+                {/* 처음보기 또는 시청완료된 경우 보러가기 버튼 */}
                 {!isLoadingHistory && (!watchHistory || watchHistory.completed) && (
+                  // isLoadingHistory가 false, watchHistory가 falsy(null, undefined, '') 또는 watchHistory.completed가 true인걸 다 성립하면 여기가 렌더링됨
                   <div className={styles.playButtonContainer}>
                     <button 
-                      onClick={() => {
+                      onClick={() => { // 재생하기 버튼 클릭시 실행되는 콜백함수를 화살표 함수로 작성해서 onClick에 넘겨주는 형식
                         console.log('🎬 재생하기 버튼 클릭:', {
-                          watchHistory,
-                          hasWatchHistory: !!watchHistory,
-                          isCompleted: (watchHistory as any)?.completed,
-                          animeId: (detail as any)?.aniId
+                          watchHistory, // watchHistory 값을 콘솔에 출력
+                          hasWatchHistory: !!watchHistory, // !!는 자바스크립트에서 값을 boolean으로 바꿀 때 쓰는 패턴임
+                          // !watchHistory는 watchHistory가 truthy면 false, falsy면 true를 반환함
+                          // 이중 부정을 사용해야 논리가 맞음
+                          // !!watchHistory는 watchHistory가 truthy면 true, falsy면 false를 반환
+                          // 객체 그대로가 아니라 true/false로 찍으려고 한것
+                          // 부정연산자 자체를 안쓰면 객체라 전체 값이 뜨고 없으면 null / undefined가 나오게됨
+                          isCompleted: (watchHistory as any)?.completed, // watchHistory.completed 값을 콘솔에 출력
+                          animeId: (detail as any)?.aniId, // detail.aniId 값을 콘솔에 출력
                         });
                         
                         // 시청 기록이 있지만 완료된 경우: 다음 에피소드부터 시작
                         // 시청 기록이 없는 경우: 1화부터 시작
-                        let nextEpisodeId = 1;
+                        let nextEpisodeId = 1; // 시청기록이 없는 상태면 여기를 사용 1화부터 시작
                         if (watchHistory && (watchHistory as any).completed) {
-                          // 완료된 경우 다음 에피소드
+                          // 시청기록이 있고 정주행한 상태면면
                           nextEpisodeId = (watchHistory as any).episodeNumber + 1;
+                          // 현재 시청기록에있는 에피소드번호에 +1해서 nextEpisodeId 변수에 할당함
                         }
                         
                         const url = `/player?episodeId=${nextEpisodeId}&animeId=${(detail as any)?.aniId}`;
+                        // player 페이지로 이동 url를 생성하는 구조임
+                        // /player?episodeId=14%anmieId=50 형식으로 추가됨
+                        // 만약 처음 시청하는거면 /player?epsodeId=1%anmieId=50 형식으로 추가됨
                         console.log('🔗 이동할 URL:', url);
-                        router.push(url);
-                        onClose();
+                        router.push(url); // roter.push()에 url을넘겨주면 브라우저가 그 주소로 이동함
+                        // 보통 전체 새로고침 없이SPA처럼 전환됨
+                        onClose(); // 사용자가 재생하기 버튼 클릭 -> player 페이지로 이동 -> 지금 떠있는 애니 상세 모달을 닫기위해 onClose() 함수를 호출한것
                       }}
-                      className={styles.playButton}
+                      className={styles.playButton} // 재생하기 버튼에 CSS 모듈 적용
                     >
                       <div className={styles.playButtonIcon}>
                         <svg fill="currentColor" viewBox="0 0 24 24">
@@ -1033,31 +1053,38 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                           ? `${(watchHistory as any).episodeNumber + 1}화 재생하기`
                           : '1화 재생하기'
                         }
+                        {/* 시청기록이 있고 정주행 완료한 상태면 시청기록에 있는 에피소드 번호에 +1하고 그 값+화 재생하기라고 랜더링
+                        시청기록이 없으면 1화 재생하기 텍스트를 렌더링해줌*/}
                       </span>
                     </button>
                   </div>
                 )}
                 
                 {/* 보고싶다 버튼 */}
-                <div className={styles.favoriteButtonContainer}>
+                <div className={styles.favoriteButtonContainer}> {/* CSS 모듈 적용 */}
                   <button 
-                    onClick={async () => {
-                      if (isLoadingFavorite) return;
+                    onClick={async () => { // 보고싶다 버튼 클릭시 실행되는 콜백함수를 비동기 화살표 함수로 작성해서 onClick에 넘겨주는 형식
+                      if (isLoadingFavorite) return; // 로딩중이면 바로 return해서 함수 종료 중복 중복 요청을 막는것임
                       
                       try {
-                        setIsLoadingFavorite(true);
+                        setIsLoadingFavorite(true); // 로딩 상태를 true로 설정해서 로딩중으로 표시함
                         const newState = await toggleFavorite(Number((detail as any)?.aniId));
-                        setIsFavoritedState(newState);
+                        // toggleFavorite 함수는 다른곳에 작성해서 import해서 쓰는 비동기 함수고
+                        // 여기에 detail.aniId를 Number 타입으로 캐스팅해서 넘겨주면 그 aniId로 API가 호출되고
+                        // 서버가 보고싶다를 토글한 뒤 새 boolean 상태를 반환하고 그 값이 newState에 할당됨
+                        setIsFavoritedState(newState); // newState 값을 isFavoritedState 상태값에 할당함
                         console.log('보고싶다 토글 완료:', newState);
-                      } catch (error) {
+                      } catch (error) { // try 블록에서 예외가 발생하면 catch 블록이 실행되고 error 인자에 예외 객체가 전달됨
                         console.error('보고싶다 토글 실패:', error);
-                        alert('보고싶다 기능을 사용할 수 없습니다.');
+                        alert('보고싶다 기능을 사용할 수 없습니다.'); // 예외 발생시 알림 메시지를 띄움
                       } finally {
-                        setIsLoadingFavorite(false);
+                        setIsLoadingFavorite(false); // 로딩 상태를 false로 설정해서 로딩중이 아닌 상태로 표시함
                       }
                     }}
-                    disabled={isLoadingFavorite}
+                    disabled={isLoadingFavorite} // 로딩중이면 버튼 비활성화 상태로 표시함
                     className={`${styles.favoriteButton} ${isFavoritedState ? styles.favorited : ''}`}
+                    // 템플릿 리털로 감싸서 기본 css favoriteButton 적용
+                    // 만약 isFavoriteState가 true면 favorited css까지 붙여서 적용 false면 ''빈 문자열 적용해서 기본 css만 사용
                   >
                     <div className={styles.favoriteButtonContent}>
                       {isFavoritedState ? (
