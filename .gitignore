@@ -30,6 +30,7 @@ backend/.gradle/
 com.ottproject.ottbackend.build/
 backend/com.ottproject.ottbackend.build/
 backend/build/
+backend/bin/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/com.ottproject.ottbackend.build/
 !**/src/test/**/com.ottproject.ottbackend.build/
