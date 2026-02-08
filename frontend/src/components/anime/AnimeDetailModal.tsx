@@ -1086,7 +1086,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                     // 템플릿 리털로 감싸서 기본 css favoriteButton 적용
                     // 만약 isFavoriteState가 true면 favorited css까지 붙여서 적용 false면 ''빈 문자열 적용해서 기본 css만 사용
                   >
-                    <div className={styles.favoriteButtonContent}>
+                    <div className={styles.favoriteButtonContent}> {/* CSS 모듈 적용 */}
                       {isFavoritedState ? (
                         <svg 
                           className={styles.checkIcon} 
