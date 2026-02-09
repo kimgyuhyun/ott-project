@@ -1027,7 +1027,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                         // 시청 기록이 없는 경우: 1화부터 시작
                         let nextEpisodeId = 1; // 시청기록이 없는 상태면 여기를 사용 1화부터 시작
                         if (watchHistory && (watchHistory as any).completed) {
-                          // 시청기록이 있고 정주행한 상태면면
+                          // 시청기록이 있고 정주행한 상태면
                           nextEpisodeId = (watchHistory as any).episodeNumber + 1;
                           // 현재 시청기록에있는 에피소드번호에 +1해서 nextEpisodeId 변수에 할당함
                         }
@@ -1087,7 +1087,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                     // 만약 isFavoriteState가 true면 favorited css까지 붙여서 적용 false면 ''빈 문자열 적용해서 기본 css만 사용
                   >
                     <div className={styles.favoriteButtonContent}> {/* CSS 모듈 적용 */}
-                      {isFavoritedState ? (
+                      {isFavoritedState ? ( // 삼항연산자를 사용 isFavoriteState가 true면 여기가 렌더링
                         <svg 
                           className={styles.checkIcon} 
                           fill="currentColor" 
@@ -1095,7 +1095,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                         >
                           <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                         </svg>
-                      ) : (
+                      ) : ( // isFavoriteState가 false면 여기가 렌더링
                         <span className={styles.plusIcon}>+</span>
                       )}
                       <span className={styles.favoriteButtonText}>
