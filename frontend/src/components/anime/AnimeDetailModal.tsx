@@ -1099,7 +1099,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                         <span className={styles.plusIcon}>+</span>
                       )}
                       <span className={styles.favoriteButtonText}>
-                        {isFavoritedState ? '보관중' : '보고싶다'}
+                        {isFavoritedState ? '보관중' : '보고싶다'} 
+                        {/*isFavoriteState가 true면 '보관중' 텍스트를 false면 '보고싶다' 텍스트를 렌더링 */}
                       </span>
                     </div>
                   </button>
