@@ -1106,6 +1106,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                   </button>
                   <div className={styles.favoriteTooltip}>
                     {isFavoritedState ? '보관함에서 제거' : '보관함에 추가'}
+                    {/* isFavoritedState가 true면 '보관함에서 제거' 텍스트를, false면 '보관함에 추가' 텍스트를 렌더링*/}
                   </div>
                 </div>
                 
