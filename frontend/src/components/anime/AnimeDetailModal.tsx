@@ -1106,7 +1106,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                   </button>
                   <div className={styles.favoriteTooltip}>
                     {isFavoritedState ? '보관함에서 제거' : '보관함에 추가'}
-                    {/* isFavoritedState가 true면 '보관함에서 제거' 텍스트를, false면 '보관함에 추가' 텍스트를 렌더링*/}
+                    {/* isFavoritedState가 true면 '보관함에서 제거' 텍스트를, false면 '보관함에 추가' 텍스트를 렌더링
+                    onClick()과 api 로직이 없는건 임시로 만들어둔 버튼이기 때문임*/}
                   </div>
                 </div>
                 
@@ -1118,6 +1119,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                   <span>공유</span>
                 </button>
               </div>
+              {/* animeDetailModalActionButton은 베이스 css animeDetailModalActionButton은 버튼 마다 css 다른걸 적용하기위해 나눈것 */}
 
               {/* 줄거리 */}
               <div className={styles.synopsisSection}>
