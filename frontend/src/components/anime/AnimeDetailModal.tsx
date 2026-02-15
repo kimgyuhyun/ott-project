@@ -1120,7 +1120,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               </div>
               {/* animeDetailModalActionButton은 베이스 css로 버튼 형태
               animeDetailModalActionButton은 베이스는 그대로 놔두고 버튼마다 다른 스타일을 적용하기위해 만든것것
-              onClick()과 api 로직이 없는건 임시로 만들어둔 버튼이기 때문임 */}
+              onClick()과 api 로직이 없는건 임시로 만들어둔 버튼이기 때문임*/}
 
               {/* 줄거리 */}
               <div className={styles.synopsisSection}>
