@@ -30,6 +30,11 @@ jobs:
           
           # 작업 디렉토리 확인
           Write-Host "Working directory: $PWD"
+
+          # docker-compose의 상대경로 마운트(예: ./nginx/nginx.prod.conf)를 보장하기 위해
+          # 작업 디렉토리를 프로젝트 루트로 고정
+          Set-Location 'C:\solo-project\ott-project'
+          Write-Host "Adjusted working directory: $(Get-Location)"
           
           # 데이터베이스 백업
           Write-Host '=== DATABASE BACKUP ==='
