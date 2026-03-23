@@ -116,6 +116,13 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath --env-file .env up -d app frontend --force-recreate --no-deps --pull always
           if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
           
+          # CSP 헤더 반영: nginx 설정만 reload
+          Write-Host '=== NGINX RELOAD ==='
+          docker exec ott-nginx nginx -t
+          if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed' }
+          docker exec ott-nginx nginx -s reload
+          if ($LASTEXITCODE -ne 0) { throw 'nginx reload failed' }
+          
           # 배포 검증
           Write-Host '=== VERIFY DEPLOYMENT ==='
           docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
