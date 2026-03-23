@@ -20,32 +20,55 @@ async function loadPortOne(): Promise<Window["IMP"] | null> {
   
   // 이미 로드되었으면 바로 반환
   if (window.IMP) return window.IMP;
-  
-  // 스크립트 태그가 있는지 확인
-  const existingScript = document.querySelector('script[src*="iamport.payment"]');
-  
-  if (existingScript) {
-    // 스크립트가 있으면 로드 완료까지 대기 (최대 5초)
-    const maxWait = 5000;
-    const checkInterval = 100;
-    const startTime = Date.now();
-    
-    while (!window.IMP && (Date.now() - startTime) < maxWait) {
-      await new Promise(resolve => setTimeout(resolve, checkInterval));
-    }
-    
-    return window.IMP || null;
-  }
-  
-  // 스크립트가 없으면 동적으로 추가
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://cdn.iamport.kr/js/iamport.payment-1.2.0.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load PortOne SDK"));
-    document.head.appendChild(script);
-  });
+
+  const scriptSrc = "https://cdn.iamport.kr/js/iamport.payment-1.2.0.js";
+  const existingScript = document.querySelector(`script[src="${scriptSrc}"]`) as HTMLScriptElement | null;
+
+  const maxWaitMs = 30000;
+  const checkIntervalMs = 100;
+  const start = Date.now();
+
+  const waitForScriptLoad = (scriptE1: HTMLScriptElement) => {
+    return new Promise<void>((resolve, reject) => {
+      const onload = () => resolve();
+      const onerror = () => reject(new Error("Failed to load PortOne SDK"));
+      scriptE1.addEventListener("load", onload, { once: true });
+      scriptE1.addEventListener("error", onerror, { once: true });
+    })
+  };
+
+  const timeoutPromise = (ms: number) =>
+    new Promise<void>((_, reject) => {
+      window.setTimeout(() => reject(new Error('Timed out Waiting For PortOne SDK to load')) , ms);
+    });
+
+    // 스크립트 로드(onload) 시도(기존 스크립트면 기존 걸 기다리고, 없으면 생성)
+    try {
+      if (existingScript) {
+        await Promise.race([waitForScriptLoad(existingScript), timeoutPromise(maxWaitMs)]);
+      } else {
+        await Promise.race(
+          [
+            new Promise<void>((resolve, reject) => {
+              const script= document.createElement("script");
+              script.src = scriptSrc;
+              script.async = true;
+              script.onload = () => resolve();
+              script.onerror = () => reject(new Error("Failed to load PortOne SDK"));
+              document.head.appendChild(script);
+            }),
+            timeoutPromise(maxWaitMs),
+          ],
+        );
+      }
+    } catch {
+        // 스크립트 로드 자체는 실패/지연일 수 있으니, 아래에서 window/IMP 생길 때 까지 풀링으로 커버버
+      }
+
+      while (!window.IMP && Date.now() - start < maxWaitMs) {
+        await new Promise((r) => setTimeout(r, checkIntervalMs))
+      }
+
   
   return window.IMP || null;
 }
