@@ -31,9 +31,9 @@ jobs:
           # 작업 디렉토리 확인
           Write-Host "Working directory: $PWD"
 
-          # docker-compose의 상대경로 마운트(예: ./nginx/nginx.prod.conf)를 보장하기 위해
-          # 작업 디렉토리를 프로젝트 루트로 고정
-          Set-Location 'C:\solo-project\ott-project'
+          # docker-compose 상대경로 마운트가 항상 현재 run의 최신 checkout을 가리키도록
+          # 작업 디렉토리를 GitHub Actions workspace로 고정
+          Set-Location $env:GITHUB_WORKSPACE
           Write-Host "Adjusted working directory: $(Get-Location)"
           
           # 데이터베이스 백업
