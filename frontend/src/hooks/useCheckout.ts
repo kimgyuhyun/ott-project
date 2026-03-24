@@ -1,25 +1,16 @@
 "use client";
 import { createCheckout, checkPaymentStatus } from "@/lib/api/membership";
+import {
+  loadPortOne,
+  preferPortOnePopup,
+  getPortOneMerchantCode,
+} from "@/lib/portone/loadPortOne";
 import type { IamportRequestPayData, IamportResponse } from "@/types/iamport";
 import type { PaymentService } from "@/types/payment";
 
-async function loadPortOne(): Promise<Window["IMP"] | null> {
-  if (typeof window === "undefined") return null;
-  if (window.IMP) return window.IMP;
-  await new Promise<void>((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://cdn.iamport.kr/js/iamport.payment-1.2.0.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load PortOne SDK"));
-    document.head.appendChild(script);
-  });
-  return window.IMP;
-}
-
 const PG_MAP: Record<string, string> = {
-  kakao: "kakaopay",
-  kakaopay: "kakaopay",
+  kakao: "kakaopay.TC0ONETIME",
+  kakaopay: "kakaopay.TC0ONETIME",
   toss: "tosspayments",
   tosspay: "tosspayments", 
   tosspayments: "tosspayments",
@@ -49,22 +40,13 @@ export function useCheckout() {
     const IMP = await loadPortOne();
     if (!IMP) throw new Error("PortOne SDK를 불러오지 못했습니다.");
 
-    // 환경별 아임포트 가맹점 코드 설정
-    const isProduction = (globalThis as any).process?.env?.NODE_ENV === 'production';
-    const merchantCode = (globalThis as any).process?.env?.NEXT_PUBLIC_PORTONE_MERCHANT_CODE || 
-      (isProduction ? '' : 'imp45866522'); // 개발용 코드
-    
-    if (!merchantCode) {
-      throw new Error(`아임포트 가맹점 코드가 설정되지 않았습니다. ${isProduction ? '프로덕션' : '개발'} 환경에서 NEXT_PUBLIC_PORTONE_MERCHANT_CODE를 설정하세요.`);
-    }
-
-    IMP.init(merchantCode);
+    IMP.init(getPortOneMerchantCode());
 
     // paymentService가 유효한지 확인하고 pg 값 설정
     const normalizedPaymentService = paymentService?.toLowerCase?.()?.trim();
     const pg = normalizedPaymentService && PG_MAP[normalizedPaymentService] 
       ? PG_MAP[normalizedPaymentService] 
-      : "kakaopay"; // 기본값 설정 (PG_MAP과 일치)
+      : "kakaopay.TC0ONETIME";
     
     console.log('Payment Service:', paymentService, 'Normalized:', normalizedPaymentService, 'PG:', pg);
 
@@ -75,7 +57,8 @@ export function useCheckout() {
         merchant_uid: providerSessionId,
         amount,
         name: `Membership ${planCode}`,
-        m_redirect_url: successUrl, // 모바일 복귀 URL
+        m_redirect_url: successUrl,
+        popup: preferPortOnePopup(),
       };
 
       IMP.request_pay(

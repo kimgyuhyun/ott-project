@@ -1,5 +1,10 @@
 import { useState } from 'react';
 import { createCheckout, checkPaymentStatus } from '@/lib/api/membership';
+import {
+  loadPortOne,
+  preferPortOnePopup,
+  getPortOneMerchantCode,
+} from '@/lib/portone/loadPortOne';
 import { useAuth } from './useAuth';
 import type { IamportRequestPayData, IamportResponse } from '@/types/iamport';
 import { 
@@ -13,65 +18,6 @@ import {
   delay,
   validatePaymentResponse
 } from '@/types/payment';
-
-// SDK 로드 함수 - 스크립트가 로드될 때까지 대기
-async function loadPortOne(): Promise<Window["IMP"] | null> {
-  if (typeof window === "undefined") return null;
-  
-  // 이미 로드되었으면 바로 반환
-  if (window.IMP) return window.IMP;
-
-  const scriptSrc = "https://cdn.iamport.kr/js/iamport.payment-1.2.0.js";
-  const existingScript = document.querySelector(`script[src="${scriptSrc}"]`) as HTMLScriptElement | null;
-
-  const maxWaitMs = 30000;
-  const checkIntervalMs = 100;
-  const start = Date.now();
-
-  const waitForScriptLoad = (scriptE1: HTMLScriptElement) => {
-    return new Promise<void>((resolve, reject) => {
-      const onload = () => resolve();
-      const onerror = () => reject(new Error("Failed to load PortOne SDK"));
-      scriptE1.addEventListener("load", onload, { once: true });
-      scriptE1.addEventListener("error", onerror, { once: true });
-    })
-  };
-
-  const timeoutPromise = (ms: number) =>
-    new Promise<void>((_, reject) => {
-      window.setTimeout(() => reject(new Error('Timed out Waiting For PortOne SDK to load')) , ms);
-    });
-
-    // 스크립트 로드(onload) 시도(기존 스크립트면 기존 걸 기다리고, 없으면 생성)
-    try {
-      if (existingScript) {
-        await Promise.race([waitForScriptLoad(existingScript), timeoutPromise(maxWaitMs)]);
-      } else {
-        await Promise.race(
-          [
-            new Promise<void>((resolve, reject) => {
-              const script= document.createElement("script");
-              script.src = scriptSrc;
-              script.async = true;
-              script.onload = () => resolve();
-              script.onerror = () => reject(new Error("Failed to load PortOne SDK"));
-              document.head.appendChild(script);
-            }),
-            timeoutPromise(maxWaitMs),
-          ],
-        );
-      }
-    } catch {
-        // 스크립트 로드 자체는 실패/지연일 수 있으니, 아래에서 window/IMP 생길 때 까지 풀링으로 커버버
-      }
-
-      while (!window.IMP && Date.now() - start < maxWaitMs) {
-        await new Promise((r) => setTimeout(r, checkIntervalMs))
-      }
-
-  
-  return window.IMP || null;
-}
 
 interface PaymentRequest {
   planCode: string;
@@ -150,8 +96,9 @@ export const usePayment = () => {
 
       // 3. SDK 초기화
       try {
-        IMP.init('imp45866522'); // 아임포트 가맹점 식별코드
-        logPaymentEvent('SDK initialized', { merchantCode: 'imp45866522' });
+        const merchantCode = getPortOneMerchantCode();
+        IMP.init(merchantCode);
+        logPaymentEvent('SDK initialized', { merchantCode });
       } catch (initError) {
         logPaymentEvent('SDK initialization failed', { error: initError });
         throw new PaymentError(
@@ -188,7 +135,7 @@ export const usePayment = () => {
           buyer_email: user?.email || '',
           buyer_name: user?.username || '',
           m_redirect_url: window.location.origin + '/membership/success',
-          popup: false
+          popup: preferPortOnePopup(),
         };
 
         logPaymentEvent('Payment data prepared', {
