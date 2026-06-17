@@ -2,6 +2,7 @@ services:                         # 서비스 정의 시작
   postgres:                       # PostgreSQL 데이터베이스 서비스
     image: postgres:15            # PostgreSQL 15 버전 이미지
     container_name: ott-postgres  # 컨테이너 이름
+    restart: unless-stopped
     env_file: # .env 파일에서 환경변수 로드
       - .env
     environment:                  # 환경 변수 설정
@@ -18,6 +19,7 @@ services:                         # 서비스 정의 시작
   redis: # Redis 캐시 서비스
     image: redis:7-alpine
     container_name: ott-redis
+    restart: unless-stopped
     ports:
       - "127.0.0.1:6379:6379"
     command: ["redis-server", "--save", "", "--appendonly", "no"]
@@ -27,6 +29,7 @@ services:                         # 서비스 정의 시작
   app: # Spring Boot 애플리케이션 서비스
     image: ${APP_IMAGE:-para98/ott-backend:latest}
     container_name: ott-app # 컨테이너 이름
+    restart: unless-stopped
     ports: # 포트 매핑
       - "8090:8090"
     depends_on: # 의존성 설정
@@ -87,6 +90,7 @@ services:                         # 서비스 정의 시작
   frontend: # Next.js 프론트엔드 서비스
     image: ${FRONT_IMAGE:-para98/ott-frontend:latest}
     container_name: ott-frontend
+    restart: unless-stopped
     env_file: # .env 파일에서 환경변수 로드
       - .env
     environment:
@@ -102,6 +106,7 @@ services:                         # 서비스 정의 시작
   nginx: # Nginx 리버스 프록시
     image: nginx:alpine
     container_name: ott-nginx
+    restart: unless-stopped
     ports:
       - "80:80"
     depends_on:
