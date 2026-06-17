@@ -212,3 +212,13 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+# Actuator 헬스체크 설정 (UptimeRobot 모니터링용)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
