@@ -26,14 +26,17 @@ CMD ["npm", "run", "dev"]
 FROM node:20-alpine AS production
 WORKDIR /app
 
-# 프로덕션 의존성만 설치
-COPY package.json package-lock.json ./
-RUN npm ci --only=production --no-audit --no-fund
+ENV NODE_ENV=production
+# standalone 출력은 실행에 필요한 최소 node_modules를 자체 포함하므로 별도 설치 불필요
+# (불필요한 npm ci 제거 → 공격 표면/이미지 크기 감소)
 
-# 빌드된 애플리케이션 복사
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
+# 빌드 산출물 복사 — 비root(node) 소유로 복사
+COPY --from=builder --chown=node:node /app/.next/standalone ./
+COPY --from=builder --chown=node:node /app/.next/static ./.next/static
+COPY --from=builder --chown=node:node /app/public ./public
+
+# 비root 사용자로 실행 (침해 시 root 권한 탈취 방지)
+USER node
 
 EXPOSE 3000
 CMD ["node", "server.js"]

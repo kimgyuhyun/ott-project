@@ -96,8 +96,10 @@ services:                         # 서비스 정의 시작
     environment:
        NEXT_PUBLIC_BACKEND_ORIGIN: http://ott-app:8090  # 컨테이너 내부 통신
        NEXT_PUBLIC_FRONTEND_ORIGIN: http://127.0.0.1  # 외부 접속용
+    # 보안 하드닝: 3000 포트를 외부(0.0.0.0)로 노출하지 않고 루프백에만 바인딩
+    # (외부 진입점은 nginx 80/443뿐. nginx는 내부 도커 네트워크로 ott-frontend:3000 접근)
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - app
     networks:
