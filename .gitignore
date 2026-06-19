@@ -1,3 +1,6 @@
+# Security incident forensic evidence (contains malware config/IOCs — do not commit)
+_incident_*/
+
 # Compiled class file
 *.class
 
