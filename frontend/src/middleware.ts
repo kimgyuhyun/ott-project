@@ -50,7 +50,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public 정적 자산 폴더(banners/icons/images/videos)
+     *   → 배너/아이콘 등 자산 요청마다 미들웨어가 도는 불필요한 오버헤드 제거
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|banners|icons|images|videos).*)',
   ],
 };

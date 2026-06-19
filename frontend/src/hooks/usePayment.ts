@@ -119,6 +119,7 @@ export const usePayment = () => {
             `지원하지 않는 PG 코드입니다: ${pg}`
           );
           logPaymentEvent('Invalid PG code', { pg, paymentService: request.paymentService });
+          setPaymentState(prev => ({ ...prev, status: 'error', error }));
           resolve({
             success: false,
             errorMessage: error.message
@@ -242,9 +243,10 @@ export const usePayment = () => {
         success: false,
         errorMessage: paymentError.message
       };
-    } finally {
-      setPaymentState(prev => ({ ...prev, status: 'idle' }));
     }
+    // 로딩 상태는 결제 콜백(성공/실패)과 catch에서 종료시킨다.
+    // (과거 버그) finally에서 즉시 status를 idle로 되돌려, IMP.request_pay 콜백이
+    // 끝나기 전에 isLoading이 꺼지면서 결제창이 떠 있는 동안 결제 버튼이 다시 활성화됐다.
   };
 
   const checkPayment = async (paymentId: number): Promise<boolean> => {

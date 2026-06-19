@@ -498,7 +498,9 @@
 }
 
 /* 반응형 스타일 */
-@media (max-width: 1024px) {
+/* 데스크탑(min-width:1024px)에서 .headerNav를 flex로 표시하므로,
+   모바일 경계는 1023px로 두어 정확히 1024px에서 네비가 사라지던 충돌을 제거 */
+@media (max-width: 1023px) {
   .headerContent {
     display: flex;
     justify-content: flex-start; /* 모바일도 좌측 정렬 */
