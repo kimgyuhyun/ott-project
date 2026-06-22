@@ -13,14 +13,14 @@
     "hls.js": "^1.6.10",
     "next": "15.0.4",
     "react": "^18",
-    "react-dom": "^18",
+    "react-dom": "^19",
     "zod": "^4.0.17"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@types/node": "^20",
     "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.5.0",
     "typescript": "^5"
