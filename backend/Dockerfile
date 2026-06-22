@@ -1,5 +1,5 @@
 # Build stage
-FROM amazoncorretto:21 AS builder
+FROM amazoncorretto:26 AS builder
 WORKDIR /app
 
 # Gradle 캐시 레이어 (의존성만)
@@ -21,7 +21,7 @@ RUN ./gradlew build -x test --no-daemon     # 실제 빌드 실행
 RUN cp "$(ls build/libs/*.jar | grep -v -- '-plain.jar' | head -n1)" /app/app.jar
 
 # Runtime stage
-FROM amazoncorretto:21
+FROM amazoncorretto:26
 WORKDIR /app
 COPY --from=builder /app/app.jar app.jar
 
