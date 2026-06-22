@@ -61,6 +61,16 @@ services:
       RECENT_SEARCH_TTL_DAYS: ${RECENT_SEARCH_TTL_DAYS}
       # CORS 허용 오리진 (프로덕션 도메인 명시)
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-https://laputa.kozow.com}
+    # 보안 하드닝(재침해 방어): 능력 제거 + 권한상승 차단 + /tmp만 쓰기 + 리소스 상한
+    # (비root는 이미지의 USER 1001로 적용됨. JVM 호환 위해 read_only는 미적용)
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:nosuid,nodev,size=256m
+    mem_limit: 2g
+    cpus: 2.0
 
   frontend: # Next.js 프론트엔드 서비스
     image: para98/ott-frontend:latest  # 이미지 사용
@@ -70,6 +80,17 @@ services:
       NODE_ENV: production
     # 프로덕션에서는 볼륨 마운트 제거 (정적 파일로 실행)
     # volumes: 제거됨
+    # 보안 하드닝(재침해 방어): 비root(이미지) + 읽기전용 FS + 능력 제거 + 권한상승 차단 + 리소스 상한
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /tmp:noexec,nosuid,nodev,size=64m
+      - /app/.next/cache:size=256m
+    mem_limit: 1g
+    cpus: 1.5
 
   postgres: # PostgreSQL 데이터베이스 서비스
     environment:
