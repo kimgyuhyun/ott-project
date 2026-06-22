@@ -67,6 +67,54 @@
   font-weight: 600;
 }
 
+/* 모바일 메뉴(햄버거) 버튼 — 모바일에서만 표시, 데스크탑(>=1024px)에선 숨김 */
+.menuToggleMobile {
+  display: block;
+}
+
+@media (min-width: 1024px) {
+  .menuToggleMobile {
+    display: none;
+  }
+}
+
+/* 모바일 네비게이션 드롭다운 (햄버거 클릭 시 헤더 아래로 펼쳐짐) */
+.mobileMenu {
+  position: absolute;
+  top: 4rem;            /* 헤더 바(4rem) 바로 아래 */
+  left: -2rem;          /* 컨테이너 좌측 패딩(2rem) 상쇄 → 화면 끝까지 */
+  right: -1rem;         /* 컨테이너 우측 패딩(1rem) 상쇄 */
+  background-color: #121212;
+  border-bottom: 1px solid #333333;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0;
+  z-index: 1000;        /* 오버레이(998)보다 위 */
+}
+
+.mobileMenuItem {
+  padding: 0.875rem 2rem;
+  color: #ffffff;
+  font-size: 0.95rem;
+  text-decoration: none;
+}
+
+.mobileMenuItem:hover {
+  background-color: #1f1f1f;
+}
+
+.mobileMenuItem.active {
+  color: var(--foreground-slight);
+  font-weight: 600;
+}
+
+/* 데스크탑에선 모바일 메뉴 자체를 렌더링하지 않음 */
+@media (min-width: 1024px) {
+  .mobileMenu {
+    display: none;
+  }
+}
+
 .headerActions {
   position: relative;
   display: flex;

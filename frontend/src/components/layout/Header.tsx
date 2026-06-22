@@ -14,6 +14,7 @@ export default function Header() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [userStats, setUserStats] = useState<any>(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const pathname = usePathname();
@@ -124,6 +125,21 @@ export default function Header() {
 
           {/* 우측 버튼들 */}
           <div className={styles.headerActions}>
+            {/* 모바일 메뉴(햄버거) 버튼 — 모바일에서만 보임 */}
+            <button
+              className={`${styles.headerButton} ${styles.menuToggleMobile}`}
+              onClick={() => {
+                setIsMenuOpen((v) => !v);
+                setIsSearchOpen(false);
+                setIsProfileOpen(false);
+              }}
+              aria-label="메뉴 열기"
+            >
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
             {/* 검색 버튼 */}
             <button
               className={`${styles.headerButton} ${styles.searchToggleMobile}`}
@@ -358,13 +374,41 @@ export default function Header() {
 
       </div>
 
+      {/* 모바일 네비게이션 메뉴 (햄버거 클릭 시) */}
+      {isMenuOpen && (
+        <nav className={styles.mobileMenu}>
+          <Link
+            href="/tags"
+            onClick={() => setIsMenuOpen(false)}
+            className={`${styles.mobileMenuItem} ${isActiveLink('/tags') ? styles.active : ''}`}
+          >
+            태그검색
+          </Link>
+          <Link
+            href="/weekly"
+            onClick={() => setIsMenuOpen(false)}
+            className={`${styles.mobileMenuItem} ${isActiveLink('/weekly') ? styles.active : ''}`}
+          >
+            요일별 신작
+          </Link>
+          <Link
+            href={getMembershipLink()}
+            onClick={() => setIsMenuOpen(false)}
+            className={`${styles.mobileMenuItem} ${isActiveLink('/membership') ? styles.active : ''}`}
+          >
+            멤버십
+          </Link>
+        </nav>
+      )}
+
       {/* 프로필 드롭다운 외부 클릭 시 닫기 */}
-      {(isProfileOpen || isSearchOpen) && (
-        <div 
+      {(isProfileOpen || isSearchOpen || isMenuOpen) && (
+        <div
           className={styles.headerOverlay}
           onClick={() => {
             setIsProfileOpen(false);
             setIsSearchOpen(false);
+            setIsMenuOpen(false);
           }}
         />
       )}
