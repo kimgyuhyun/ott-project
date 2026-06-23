@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
     <!-- 콘솔 출력 설정 -->
+    <!-- [%X{requestId}] [%X{clientIp}] : MdcLoggingFilter 가 심은 요청 추적 ID/클라이언트 IP -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{requestId:-}] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -18,9 +19,32 @@
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{requestId:-}] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
+
+    <!-- 인증 감사 로그 전용 파일 설정 -->
+    <!-- AuthEventService 가 사용하는 "AUTH_AUDIT" 로거 전용. 로그인/로그아웃/실패 이력을 별도 파일로 분리해 추적성을 높인다. -->
+    <appender name="AUTH_AUDIT" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/auth-audit.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/auth-audit.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+            <timeBasedFileNamingAndTriggeringPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
+                <maxFileSize>100MB</maxFileSize>
+            </timeBasedFileNamingAndTriggeringPolicy>
+            <!-- 보안 감사 로그는 더 오래 보관(90일) -->
+            <maxHistory>90</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{requestId:-}] [%X{clientIp:-}] %-5level - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- 인증 감사 전용 로거: 콘솔과 전용 파일에만 출력(루트로 전파하지 않음) -->
+    <logger name="AUTH_AUDIT" level="INFO" additivity="false">
+        <appender-ref ref="AUTH_AUDIT" />
+        <appender-ref ref="CONSOLE" />
+    </logger>
 
     <!-- 결제 관련 로그를 INFO 레벨로 설정 -->
     <logger name="com.ottproject.ottbackend.service.PaymentCommandService" level="INFO" additivity="false">
