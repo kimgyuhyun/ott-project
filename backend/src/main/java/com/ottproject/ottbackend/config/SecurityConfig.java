@@ -117,6 +117,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/search/**").permitAll() // 검색(자동완성/본검색) 익명 허용
                         .requestMatchers("/api/payments/webhook", "/api/payments/*/webhook").permitAll() // 결제 웹훅은 인증 없이 수신
                         .requestMatchers("/api/admin/contents/**").hasRole("ADMIN") // Admin DB 관리 전용
+                        .requestMatchers("/api/admin/stats/**").hasRole("ADMIN") // 관리자 통계/감사 로그 조회 전용
                         .requestMatchers("/api/anime/*/reviews").permitAll() // 리뷰 조회는 누구나 접근 가능
                         .requestMatchers("/api/reviews/*/comments").permitAll() // 댓글 조회는 누구나 접근 가능
                         .requestMatchers("/api/episodes/*/comments").permitAll() // 에피소드 댓글 조회는 누구나 접근 가능

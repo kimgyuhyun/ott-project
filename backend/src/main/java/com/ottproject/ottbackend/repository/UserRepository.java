@@ -3,8 +3,11 @@ package com.ottproject.ottbackend.repository;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -60,6 +63,17 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // email에 해당되는 user 값을 찾고 auth_provider까지 일치하는 조건을 user 테이블에서 찾고
     // Optional<User> 타입으로 반환함
     // AND를 쓰는 이유는 이메일은 같아도 소셜 제공자가 다를 수 있어서임 그래서 AND 조건식으로 이메일 + 소셜 제공자 조합인 유저 하나만 찾는것
+    /**
+     * 기간 내 신규 가입자 수 집계 (일일 통계 스냅샷용)
+     * - 경계 중복 방지를 위해 [start, end) (start 이상, end 미만) 조건을 사용한다.
+     *
+     * @param start 시작 시각(포함)
+     * @param end 종료 시각(미포함)
+     * @return 해당 기간에 생성된 사용자 수
+     */
+    @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt >= :start AND u.createdAt < :end")
+    long countSignupsBetween(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
     List<User> findByEmailVerified(boolean emailVerified); // 메서드 선언 JPA가 자동으로 구현을 제공
     // 다중 조회용 메서드 / 관리자 전용 메서드
     // 메서드 이름을 파싱해 자동으로 쿼리를 생성함 (Query Method)
