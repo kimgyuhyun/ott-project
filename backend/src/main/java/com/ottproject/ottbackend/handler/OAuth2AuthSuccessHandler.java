@@ -1,12 +1,17 @@
 package com.ottproject.ottbackend.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ottproject.ottbackend.enums.AuthEventType;
+import com.ottproject.ottbackend.enums.AuthProvider;
+import com.ottproject.ottbackend.service.AuthEventService;
+import com.ottproject.ottbackend.util.ClientRequestUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 
@@ -30,6 +35,7 @@ import java.util.Map;
 public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHandler {
 
     private final ObjectMapper objectMapper;
+    private final AuthEventService authEventService; // 소셜 로그인 성공 감사 로그 기록 주입
 
     /**
      * OAuth2 소셜 로그인 성공 시 호출되는 메서드
@@ -42,6 +48,11 @@ public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHand
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
                                         Authentication authentication) throws IOException, ServletException {
         log.info("OAuth2 로그인 성공: {}", authentication.getName());
+
+        // 소셜 로그인 성공 감사 로그 기록(비동기) - 통계 스냅샷의 원천 데이터가 됨
+        authEventService.record(AuthEventType.LOGIN_SUCCESS, resolveProvider(authentication), authentication.getName(),
+                ClientRequestUtil.clientIp(request), ClientRequestUtil.userAgent(request),
+                request.getSession(true).getId(), null);
 
         // 요청 헤더에서 Accept 타입 확인 (AJAX 요청인지 일반 요청인지 판단)
         String acceptHeader = request.getHeader("Accept");
@@ -126,5 +137,32 @@ public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHand
         // JSON 응답 전송
         String jsonResponse = objectMapper.writeValueAsString(successResponse);
         response.getWriter().write(jsonResponse);
+    }
+
+    /**
+     * 인증 객체에서 소셜 제공자(AuthProvider)를 산출한다.
+     * - OAuth2AuthenticationToken 의 registrationId("google"/"kakao"/"naver")를 enum 으로 매핑한다.
+     * - 매핑 불가 시 null 을 반환한다(감사 로그의 provider 는 nullable).
+     *
+     * @param authentication 인증 성공 정보
+     * @return 매핑된 AuthProvider 또는 null
+     */
+    private AuthProvider resolveProvider(Authentication authentication) {
+        if (authentication instanceof OAuth2AuthenticationToken token) {
+            String registrationId = token.getAuthorizedClientRegistrationId(); // 소셜 등록 ID
+            if (registrationId != null) {
+                switch (registrationId.toLowerCase()) {
+                    case "google":
+                        return AuthProvider.GOOGLE;
+                    case "kakao":
+                        return AuthProvider.KAKAO;
+                    case "naver":
+                        return AuthProvider.NAVER;
+                    default:
+                        return null;
+                }
+            }
+        }
+        return null;
     }
 }

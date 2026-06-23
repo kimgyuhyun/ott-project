@@ -1,6 +1,9 @@
 package com.ottproject.ottbackend.handler;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ottproject.ottbackend.enums.AuthEventType;
+import com.ottproject.ottbackend.service.AuthEventService;
+import com.ottproject.ottbackend.util.ClientRequestUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,6 +33,7 @@ import java.util.Map;
 public class OAuth2AuthFailureHandler extends SimpleUrlAuthenticationFailureHandler {
 
     private final ObjectMapper objectMapper;
+    private final AuthEventService authEventService; // 소셜 로그인 실패 감사 로그 기록 주입
 
     /**
      * OAuth2 소셜 로그인 실패 시 호출되는 메서드
@@ -42,6 +46,13 @@ public class OAuth2AuthFailureHandler extends SimpleUrlAuthenticationFailureHand
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
                                         AuthenticationException exception) throws IOException, ServletException {
         log.error("OAuth2 로그인 실패: {}", exception.getMessage(), exception);
+
+        // 소셜 로그인 실패 감사 로그 기록(비동기)
+        // - 실패 단계에서는 이메일/제공자를 신뢰성 있게 알 수 없어 null 로 두고, 사유만 남긴다.
+        authEventService.record(AuthEventType.LOGIN_FAIL, null, null,
+                ClientRequestUtil.clientIp(request), ClientRequestUtil.userAgent(request),
+                request.getSession(false) != null ? request.getSession(false).getId() : null,
+                exception.getMessage());
 
         // 요청 헤더에서 Accept 타입 확인 (AJAX 요청인지 일반 요청인지 판단)
         String acceptHeader = request.getHeader("Accept");

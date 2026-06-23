@@ -4,13 +4,22 @@ import com.ottproject.ottbackend.dto.AuthLoginRequestDto;
 import com.ottproject.ottbackend.dto.ChangePasswordRequestDto;
 import com.ottproject.ottbackend.dto.AuthRegisterRequestDto;
 import com.ottproject.ottbackend.dto.UserResponseDto;
+import com.ottproject.ottbackend.enums.AuthEventType;
+import com.ottproject.ottbackend.enums.AuthProvider;
+import com.ottproject.ottbackend.security.SessionEventListener;
+import com.ottproject.ottbackend.service.AuthEventService;
 import com.ottproject.ottbackend.service.EmailAuthService;
+import com.ottproject.ottbackend.service.LoginAttemptService;
 import com.ottproject.ottbackend.service.VerificationEmailService;
+import com.ottproject.ottbackend.util.ClientRequestUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -49,6 +58,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 public class EmailAuthController {
     private final EmailAuthService emailAuthService; // 인증 관련 비즈니스 로직 (회원가입,로그인 등) 주입
     private final VerificationEmailService verificationEmailService;  // 이메일 인증 코드 발송/검증 주입
+    private final AuthEventService authEventService; // 인증 이벤트(로그인/로그아웃 등) 감사 로그 기록 주입
+    private final LoginAttemptService loginAttemptService; // 로그인 실패 횟수 기반 계정 잠금(brute-force 방어) 주입
 
     @Operation(summary = "회원가입", description = "이메일/비밀번호/프로필 정보로 신규 계정을 생성합니다.")
     @ApiResponse(responseCode = "200", description = "성공",
@@ -116,7 +127,7 @@ public class EmailAuthController {
     @ApiResponse(responseCode = "200", description = "성공", 
             content = @Content(schema = @Schema(implementation = UserResponseDto.class))) // Swagger 문서에 표시할 내용들
     @PostMapping("/login") // POST 요청을 처리하는 엔드포인트 /api/auth/login 
-    public ResponseEntity<UserResponseDto> login(@Valid @RequestBody AuthLoginRequestDto requestDto, HttpSession session) {
+    public ResponseEntity<UserResponseDto> login(@Valid @RequestBody AuthLoginRequestDto requestDto, HttpSession session, HttpServletRequest request) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // UserResponseDto를 타입 매게변수로 넘기면 login 메서드는 ResponseEntity<UserResponseDto) 타입만 반환가능
         // @Valid는 입력 데이터 유효성 검증 에너테이션임 스프링이 검증을 수행해줌
@@ -129,9 +140,31 @@ public class EmailAuthController {
         // 그니까 프론트에서 보내준 쿠키에서 세션 ID를 읽고 그걸로 서버에 저장된 세션을 찾아서 HttpSession 객체로 주입해준다는거임
         // 세션은 브라우저에서 웹서버에 연결될때 자동으로 생성되고 연결이 끊기지 않는한 유지
         // 세션 종료 조건은 타임아웃, 브라우저 종료, 명시적 무효화가 있음
-        UserResponseDto responseDto = emailAuthService.login(requestDto.getEmail(), requestDto.getPassword());
-        // service에 login 함수에 requestDto객체에 Email값과 Password 값을 넘기면 DB까지 가서 로그인 처리를하고
-        // UserResponseDto 객체를 반환하고 그 값을 responseDto에 저장함
+        // 감사 로그용 접속 메타데이터를 비동기 호출 전에 미리 추출(요청 스코프 객체는 비동기 스레드에서 만료될 수 있음)
+        String clientIp = ClientRequestUtil.clientIp(request);
+        String userAgent = ClientRequestUtil.userAgent(request);
+
+        // 로그인 시도 전 잠금 확인: 실패 횟수가 임계치를 넘어 잠긴 계정이면 즉시 거부(무차별 대입 방어)
+        if (loginAttemptService.isBlocked(requestDto.getEmail())) {
+            authEventService.record(AuthEventType.LOGIN_FAIL, AuthProvider.LOCAL, requestDto.getEmail(),
+                    clientIp, userAgent, session.getId(), "계정 잠금(로그인 실패 횟수 초과)");
+            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+                    "로그인 시도가 너무 많아 일시적으로 잠겼습니다. 잠시 후 다시 시도해주세요.");
+        }
+
+        UserResponseDto responseDto;
+        try {
+            responseDto = emailAuthService.login(requestDto.getEmail(), requestDto.getPassword());
+            // service에 login 함수에 requestDto객체에 Email값과 Password 값을 넘기면 DB까지 가서 로그인 처리를하고
+            // UserResponseDto 객체를 반환하고 그 값을 responseDto에 저장함
+        } catch (RuntimeException ex) {
+            // 로그인 실패(잘못된 비밀번호/비활성 계정 등): 실패 횟수 누적 후, 통계/보안 추적용 기록하고 예외 재전파
+            loginAttemptService.recordFailure(requestDto.getEmail());
+            authEventService.record(AuthEventType.LOGIN_FAIL, AuthProvider.LOCAL, requestDto.getEmail(),
+                    clientIp, userAgent, session.getId(), ex.getMessage());
+            throw ex;
+        }
+        loginAttemptService.reset(requestDto.getEmail()); // 로그인 성공 시 실패 카운터 초기화
         session.setAttribute("userEmail", requestDto.getEmail());
         // setAttribute 메서드는 세션에 키와 값을 저장하는 메서드임
         // setAttribue 메서드에 인자로 키 "userEmail" 에 값으로로 요청본문에 json을 Java 객체로 바꿔서넣은 변수에서 Email을 값으로 태워보냄
@@ -140,6 +173,11 @@ public class EmailAuthController {
         // 이후 요청은 세션에서 이메일을 조회해서 처리함
         // 또 이이걸로 사용자 식별해서 회원탈퇴/비밀번호 변경 등 처리가 가능
         // 그러니까 로그인 시 요청 본문에서 이메일을 받아서 세션에 저장해두면 이후 요청 시 세션에서 이메일을 가져와서 사용가능함
+
+        // 로그인 성공 감사 로그 기록(비동기) - 통계 스냅샷의 원천 데이터가 됨
+        authEventService.record(AuthEventType.LOGIN_SUCCESS, AuthProvider.LOCAL, requestDto.getEmail(),
+                clientIp, userAgent, session.getId(), null);
+
         return ResponseEntity.ok(responseDto);
         // ResponseEntity.ok(responseDto)를 리턴해주는데 이때 상태코드로 200이 들어가고
         // 응답 본문에는 responseDto 객체를 JSON 문자열로 변환해서 넣어줌 이걸 전송
@@ -149,7 +187,7 @@ public class EmailAuthController {
     @Operation(summary = "로그아웃", description = "세션 무효화")
     @ApiResponse(responseCode = "200", description = "성공") // Swagger 문서에 표시할 내용들
     @PostMapping("/logout") // POST 요청을 처리하는 엔드포인트 /api/auth/logout 
-    public ResponseEntity<String> logout(HttpSession session) {
+    public ResponseEntity<String> logout(HttpSession session, HttpServletRequest request) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // String을 타입 매게변수로 넘기면 logout 메서드는 ResponseEntity<String) 타입만 반환가능
         // HttpSession은 세션 데이터 저장/조회를함 프론트에서 credentials: 'include' 옵션으로 쿠키를 보내면
@@ -158,7 +196,20 @@ public class EmailAuthController {
         // GET은 브라우저 히스토리에 남거나 캐시될 수 있고 POST는 상태 변경 작업에 더 안전함
         // 로그인/로그아웃 같은 인증 작업은 보통 POST 사용함
         // POST는 변경이나 생성 작업을함
+        // 세션 무효화 전에 감사 로그용 정보(이메일/세션ID)를 미리 확보
+        String userEmail = (String) session.getAttribute("userEmail");
+        String sessionId = session.getId();
+        String clientIp = ClientRequestUtil.clientIp(request);
+        String userAgent = ClientRequestUtil.userAgent(request);
+
+        // 명시적 로그아웃임을 표시 → SessionEventListener 가 SESSION_EXPIRED 로 중복 기록하지 않도록 함
+        session.setAttribute(SessionEventListener.EXPLICIT_INVALIDATION_FLAG, Boolean.TRUE);
         session.invalidate(); // 프론트에서 전달받은 세션을 무효화해서 로그아웃 처리함
+
+        // 로그아웃 감사 로그 기록(비동기)
+        authEventService.record(AuthEventType.LOGOUT, AuthProvider.LOCAL, userEmail,
+                clientIp, userAgent, sessionId, null);
+
         return ResponseEntity.ok("로그아웃되었습니다.");
         // ResponseEntity.ok("로그아웃되었습니다.")를 리턴해주는데 이때 상태코드로 200이 들어가고
         // 응답 본문에는 "로그아웃되었습니다." 문자열이 들어있고 전송됨
@@ -216,7 +267,7 @@ public class EmailAuthController {
             @ApiResponse(responseCode = "400", description = "로그인 필요") // Swagger 문서에 표시할 내용들
     })
     @DeleteMapping("/withdraw") // DELETE 요청을 처리하는 엔드포인트 /api/auth/withdraw 
-    public ResponseEntity<String> withdraw(HttpSession session) {
+    public ResponseEntity<String> withdraw(HttpSession session, HttpServletRequest request) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // String을 타입 매게변수로 넘기면 withdraw 메서드는 ResponseEntity<String) 타입만 반환가능
         // HttpSession은 세션 데이터 저장/조회를함 프론트에서 credentials: 'include' 옵션으로 쿠키를 보내면
@@ -230,6 +281,14 @@ public class EmailAuthController {
         emailAuthService.withdraw(userEmail); // userEmail 값이 null이 아니면 실행
         // emailAuthService에 withdraw 메서드에 userEmail 값을 태워보냄
         // withdraw 메서드는 userEmail을 키로 사용해 해당 사용자의 계정을 비활성화(탈퇴) 처리함
+
+        // 세션 무효화 전에 감사 로그용 정보 확보 후 기록(비동기)
+        String sessionId = session.getId();
+        authEventService.record(AuthEventType.WITHDRAW, AuthProvider.LOCAL, userEmail,
+                ClientRequestUtil.clientIp(request), ClientRequestUtil.userAgent(request), sessionId, null);
+
+        // 명시적 탈퇴임을 표시 → SessionEventListener 가 SESSION_EXPIRED 로 중복 기록하지 않도록 함
+        session.setAttribute(SessionEventListener.EXPLICIT_INVALIDATION_FLAG, Boolean.TRUE);
         session.invalidate(); // 연결된 세션을 무효화함
         return ResponseEntity.ok("회원탈퇴가 완료되었습니다.");
         // 프론트에 응답을 보내줌
