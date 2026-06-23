@@ -205,6 +205,10 @@ app:
     namespace: ${REDIS_NAMESPACE:ott}
   recent-search:
     ttl-days: ${RECENT_SEARCH_TTL_DAYS:30}
+  # 로그인 실패 임계치 기반 계정 잠금(brute-force 방어)
+  login:
+    max-fail-attempts: ${LOGIN_MAX_FAIL_ATTEMPTS:5} # 잠금 임계치(실패 횟수)
+    lock-minutes: ${LOGIN_LOCK_MINUTES:15}          # 잠금 지속 시간(분)
 
 # Swagger UI 비활성화 (프로덕션)
 springdoc:
