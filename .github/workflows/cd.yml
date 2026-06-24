@@ -3,12 +3,13 @@ name: CD
 # ============================================================================
 # 보안 재설계 (2026-06-24, XMRig 재감염 대응)
 # ----------------------------------------------------------------------------
-# 변경 전: Docker Hub(para98)에서 이미지를 pull 해 그대로 실행 → 침해 이미지 재배포 위험.
-# 변경 후: self-hosted 러너가 "소스에서 직접" 클린 이미지를 빌드(Hub pull 없음) →
-#          멀웨어 IOC 스캔 게이트 → egress 차단 보안 스택(docker-compose.netlock.yml)으로 배포 →
-#          백엔드 헬스 + 프론트엔드 egress 차단을 검증(실패 시 배포 중단).
-#   * 수동 배포와 동일한 compose 조합을 사용해 환경 일관성 유지.
-#   * 이미지가 혹시 오염돼도 frontend는 인터넷 egress가 없어 드로퍼/채굴 불가(다층 방어).
+# CI(ci.yml)가 ghcr.io 비공개 레지스트리로 push + Trivy 스캔 통과한 이미지를,
+# self-hosted 러너가 commit-sha 태그로 pull → "digest로 고정" → egress 차단 보안
+# 스택(docker-compose.netlock.yml)으로 배포 → 백엔드 헬스 + 프론트엔드 egress
+# 차단을 검증(둘 중 하나라도 실패하면 배포 실패 처리).
+#   * 인증: GITHUB_TOKEN(단기). 장기 자격증명 불필요.
+#   * digest 고정: 태그 덮어쓰기 공격 무력화 + 스캔한 그 이미지 그대로 배포.
+#   * 이미지가 혹시 오염돼도 frontend는 egress가 없어 드로퍼/채굴 불가(다층 방어).
 # ============================================================================
 on:
   workflow_run:
@@ -16,6 +17,10 @@ on:
     types:
       - completed
   workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: read          # ghcr pull (GITHUB_TOKEN)
 
 jobs:
   deploy:
@@ -25,18 +30,29 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
-      - name: Deploy (local clean build + egress-locked secure stack)
+      - name: Deploy (ghcr digest-pinned + egress-locked secure stack)
         shell: powershell -ExecutionPolicy Bypass -File {0}
+        env:
+          GHCR_USER: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          OWNER: ${{ github.repository_owner }}
+          ENV_FILE_CONTENT: ${{ toJSON(secrets.ENV_FILE) }}
         run: |
           Set-StrictMode -Version Latest
           $ProgressPreference = 'SilentlyContinue'
           $ErrorActionPreference = 'Stop'
           Set-Location $env:GITHUB_WORKSPACE
-          Write-Host '=== CD START (secure) ==='
-          $sha = (git rev-parse HEAD).Trim()
-          Write-Host "commit=$sha  workdir=$PWD"
+          Write-Host '=== CD START (ghcr digest) ==='
 
-          # --- 1) 데이터베이스 백업 (실패해도 배포는 계속) ---
+          $sha = $env:HEAD_SHA
+          if (-not $sha) { $sha = (git rev-parse HEAD).Trim() }
+          $owner   = $env:OWNER.ToLower()
+          $appTag  = "ghcr.io/$owner/ott-backend:$sha"
+          $frontTag= "ghcr.io/$owner/ott-frontend:$sha"
+          Write-Host "commit=$sha"
+
+          # --- 1) DB 백업 (실패해도 진행) ---
           try {
             $backupDir = 'C:\solo-project\backups'
             if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
@@ -47,37 +63,47 @@ jobs:
           } catch { Write-Host "DB backup skipped: $($_.Exception.Message)" }
 
           # --- 2) .env 생성 (GitHub Secret) ---
-          $envJson = '${{ toJSON(secrets.ENV_FILE) }}'
+          $envJson = $env:ENV_FILE_CONTENT
           if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') {
             $envContent = [System.Text.RegularExpressions.Regex]::Unescape($envJson.Trim('"'))
             Set-Content -Path .env -Value $envContent -NoNewline
             Write-Host '.env written from secret'
           } else { throw 'ENV_FILE secret missing' }
 
-          # --- 3) 클린 이미지 로컬 빌드 (Docker Hub pull 없음. 빌드는 Dockerfile 내부에서 격리 실행) ---
-          Write-Host '=== BUILD clean images from source ==='
-          docker build --target production --pull -t ott-frontend:clean -f frontend/Dockerfile frontend/
-          if ($LASTEXITCODE -ne 0) { throw 'frontend image build failed' }
-          docker build --pull -t ott-backend:clean -f backend/Dockerfile backend/
-          if ($LASTEXITCODE -ne 0) { throw 'backend image build failed' }
+          # --- 3) ghcr 로그인 + commit-sha 태그로 pull ---
+          Write-Host '=== PULL from ghcr ==='
+          $env:GHCR_TOKEN | docker login ghcr.io -u $env:GHCR_USER --password-stdin
+          if ($LASTEXITCODE -ne 0) { throw 'ghcr login failed' }
+          docker pull $appTag;   if ($LASTEXITCODE -ne 0) { throw "pull failed: $appTag" }
+          docker pull $frontTag; if ($LASTEXITCODE -ne 0) { throw "pull failed: $frontTag" }
 
-          # --- 4) 보안 게이트: 빌드 이미지에 마이너 IOC가 없는지 스캔 (있으면 배포 중단) ---
-          Write-Host '=== SCAN GATE (malware IOC) ==='
+          # --- 4) digest 고정 (RepoDigests) ---
+          $appImage   = (docker inspect --format '{{index .RepoDigests 0}}' $appTag).Trim()
+          $frontImage = (docker inspect --format '{{index .RepoDigests 0}}' $frontTag).Trim()
+          if (-not $appImage -or -not $frontImage) { throw 'failed to resolve image digests' }
+          Write-Host "pinned backend : $appImage"
+          Write-Host "pinned frontend: $frontImage"
+
+          # --- 5) 보안 게이트: pull된 이미지에 마이너 IOC 없는지 스캔 ---
           $ioc = '221.156.167.200|supportxmr|grepb32|xmrig|javae'
-          foreach ($img in 'ott-frontend:clean','ott-backend:clean') {
+          foreach ($img in $appImage, $frontImage) {
             $hit = docker run --rm --network none --entrypoint sh $img -c "grep -raoiE '$ioc' /app 2>/dev/null | head -1"
             if ($hit) { throw "MALWARE IOC detected in $img ($hit) -> DEPLOY ABORTED" }
             Write-Host "scan clean: $img"
           }
 
-          # --- 5) 보안 스택 배포 (egress 차단 + 하드닝 + 클린 이미지) ---
-          Write-Host '=== DEPLOY (egress-locked stack) ==='
+          # --- 6) 배포: digest 고정 이미지 + egress 차단 스택 ---
+          Write-Host '=== DEPLOY (digest-pinned, egress-locked) ==='
+          $env:APP_IMAGE = $appImage
+          $env:FRONT_IMAGE = $frontImage
+          $env:APP_PULL_POLICY = 'never'      # 이미 pull됨
+          $env:FRONT_PULL_POLICY = 'never'
           docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.netlock.yml --env-file .env up -d --remove-orphans
           if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
           docker exec ott-nginx nginx -t; if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed' }
           docker exec ott-nginx nginx -s reload
 
-          # --- 6) 검증: 백엔드 헬스 + 프론트엔드 egress 차단(보안 불변식) ---
+          # --- 7) 검증: 백엔드 헬스 + 프론트엔드 egress 차단(보안 불변식) ---
           Write-Host '=== VERIFY ==='
           $healthy = $false
           foreach ($i in 1..20) {
@@ -90,7 +116,7 @@ jobs:
 
           $egress = docker exec ott-frontend node -e "const s=require('net').connect({host:'1.1.1.1',port:443,timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
           if ($egress -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend egress is NOT blocked' }
-          Write-Host "frontend egress check: $egress (expected BLOCKED)"
+          Write-Host "frontend egress: $egress (expected BLOCKED)"
 
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.netlock.yml ps
+          docker image prune -f --filter "until=168h" | Out-Null
           Write-Host '=== CD END (secure) ==='

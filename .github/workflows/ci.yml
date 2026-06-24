@@ -1,9 +1,23 @@
 name: CI
 
+# ============================================================================
+# 보안 재설계 (2026-06-24): Docker Hub(para98, 공개·침해이력) → GitHub Container
+# Registry(ghcr.io, 비공개) 전환. 인증은 GITHUB_TOKEN(단기 토큰) → 장기 자격증명
+# (REGISTRY_USER/PASSWORD) 불필요. main push 시에만 이미지를 :<commit-sha>로 push하고
+# Trivy로 스캔(수정 가능한 CRITICAL이 있으면 실패 → CD로 진행 안 됨).
+# 배포(CD)는 cd.yml이 이 이미지를 digest로 고정해 받아간다.
+# ============================================================================
 on:
   push:
     branches: [ main ]
   pull_request:
+
+permissions:
+  contents: read
+  packages: write          # ghcr push (GITHUB_TOKEN)
+
+env:
+  REGISTRY: ghcr.io
 
 jobs:
   backend:
@@ -15,10 +29,6 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@v3
         continue-on-error: true
-      - name: Diagnose wrapper files
-        run: |
-          ls -al backend/gradle/wrapper || true
-          test -f backend/gradle/wrapper/gradle-wrapper.jar || (echo "gradle-wrapper.jar is missing. Ensure it's committed (not ignored) or fetched via LFS." && exit 1)
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -29,27 +39,29 @@ jobs:
           cd backend
           chmod +x gradlew || true
           ./gradlew clean build -x test
-      - name: Docker login
+      - name: Compute lowercase image ref
+        id: img
+        run: echo "ref=${REGISTRY}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/ott-backend" >> "$GITHUB_OUTPUT"
+      - name: Login to ghcr
         if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v4
         with:
-          username: ${{ secrets.REGISTRY_USER }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-      - name: Build & Push backend image
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & Push backend image (by commit SHA)
         if: github.ref == 'refs/heads/main'
-        env:
-          IMAGE_SHA: ${{ github.sha }}
         run: |
-          docker build --pull -t para98/ott-backend:latest -t para98/ott-backend:${IMAGE_SHA} -f backend/Dockerfile backend/
-          docker push para98/ott-backend:latest
-          docker push para98/ott-backend:${IMAGE_SHA}
-      - name: Scan backend image for vulnerabilities
+          docker build --pull -t ${{ steps.img.outputs.ref }}:${{ github.sha }} -f backend/Dockerfile backend/
+          docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
+      - name: Scan backend image (gate on fixable CRITICAL)
         if: github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: para98/ott-backend:${{ github.sha }}
-          severity: 'CRITICAL,HIGH'
-          exit-code: 0
+          image-ref: ${{ steps.img.outputs.ref }}:${{ github.sha }}
+          severity: 'CRITICAL'
+          ignore-unfixed: true
+          exit-code: '1'
           format: 'table'
 
   frontend:
@@ -69,26 +81,27 @@ jobs:
           cd frontend
           npm ci
           npm run build
-      - name: Docker login
+      - name: Compute lowercase image ref
+        id: img
+        run: echo "ref=${REGISTRY}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/ott-frontend" >> "$GITHUB_OUTPUT"
+      - name: Login to ghcr
         if: github.ref == 'refs/heads/main'
         uses: docker/login-action@v4
         with:
-          username: ${{ secrets.REGISTRY_USER }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-      - name: Build & Push frontend image
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & Push frontend image (by commit SHA)
         if: github.ref == 'refs/heads/main'
-        env:
-          IMAGE_SHA: ${{ github.sha }}
         run: |
-          docker build --target production --pull -t para98/ott-frontend:latest -t para98/ott-frontend:${IMAGE_SHA} -f frontend/Dockerfile frontend/
-          docker push para98/ott-frontend:latest
-          docker push para98/ott-frontend:${IMAGE_SHA}
-      - name: Scan frontend image for vulnerabilities
+          docker build --target production --pull -t ${{ steps.img.outputs.ref }}:${{ github.sha }} -f frontend/Dockerfile frontend/
+          docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
+      - name: Scan frontend image (gate on fixable CRITICAL)
         if: github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: para98/ott-frontend:${{ github.sha }}
-          severity: 'CRITICAL,HIGH'
-          exit-code: 0
+          image-ref: ${{ steps.img.outputs.ref }}:${{ github.sha }}
+          severity: 'CRITICAL'
+          ignore-unfixed: true
+          exit-code: '1'
           format: 'table'
-
