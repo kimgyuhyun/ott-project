@@ -307,3 +307,5 @@ security/ALERT.txt
 
 # Discord 웹훅 URL(비밀) — 커밋 금지
 security/discord-webhook.txt
+security/uptime.log
+security/uptime.state

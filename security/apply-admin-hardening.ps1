@@ -40,7 +40,21 @@ else {
 }
 # 되돌리기: Unregister-ScheduledTask -TaskName "OTT Security Watchdog" -Confirm:$false
 
+Write-Host "=== 3) ott-uptime 스케줄 작업 등록(1분 주기) ===" -ForegroundColor Cyan
+$uptimeName   = "OTT Uptime Monitor"
+$uptimeScript = "C:\solo-project\ott-project\security\ott-uptime.ps1"
+if (-not (Test-Path $uptimeScript)) { Write-Host "[경고] 업타임 스크립트 없음: $uptimeScript" -ForegroundColor Yellow }
+else {
+  $uAction  = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$uptimeScript`""
+  $uTrigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 1)
+  $uPrincipal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType S4U -RunLevel Highest
+  $uSettings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -Hidden -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
+  Register-ScheduledTask -TaskName $uptimeName -Action $uAction -Trigger $uTrigger -Principal $uPrincipal -Settings $uSettings -Force | Out-Null
+  Write-Host "[OK] 등록/갱신: '$uptimeName' (S4U 백그라운드 1분 주기, 다운/복구 시 Discord 알림)"
+}
+# 되돌리기: Unregister-ScheduledTask -TaskName "OTT Uptime Monitor" -Confirm:$false
+
 Write-Host "=== 검증 ===" -ForegroundColor Cyan
 Get-NetFirewallRule -DisplayName "Block MySQL * inbound (incident 2026-06)" -ErrorAction SilentlyContinue | Select-Object DisplayName, Enabled, Action | Format-Table -AutoSize
-Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue | Select-Object TaskName, State | Format-Table -AutoSize
-Write-Host "완료. 워치독 로그: C:\solo-project\ott-project\security\watchdog.log" -ForegroundColor Green
+Get-ScheduledTask -TaskName $taskName, $uptimeName -ErrorAction SilentlyContinue | Select-Object TaskName, State | Format-Table -AutoSize
+Write-Host "완료. 로그: security\watchdog.log / security\uptime.log" -ForegroundColor Green
