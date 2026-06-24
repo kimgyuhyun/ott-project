@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # ott-watchdog.ps1  —  컨테이너 재감염(XMRig 등) 탐지 & 자동 격리
 # ----------------------------------------------------------------------------
 # 2026-06-24 재감염 대응. 5분마다 스케줄 실행(또는 수동).
@@ -28,8 +28,10 @@ function Send-DiscordAlert($content) {
     $url = ([regex]::Match((Get-Content $whFile -Raw), 'https://\S+')).Value
     if (-not $url) { return }
     if ($content.Length -gt 1800) { $content = $content.Substring(0,1800) }
-    $body = @{ content = $content } | ConvertTo-Json
-    Invoke-RestMethod -Uri $url -Method Post -ContentType 'application/json; charset=utf-8' -Body $body -TimeoutSec 10 | Out-Null
+    $json  = @{ content = $content } | ConvertTo-Json
+    # 한글 깨짐 방지: 본문을 UTF-8 바이트로 직접 전송(PS 5.1 기본 인코딩 우회)
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+    Invoke-RestMethod -Uri $url -Method Post -ContentType 'application/json; charset=utf-8' -Body $bytes -TimeoutSec 10 | Out-Null
     Log 'Discord alert sent'
   } catch { Log "Discord alert failed: $($_.Exception.Message)" }
 }
