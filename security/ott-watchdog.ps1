@@ -11,12 +11,30 @@
 #   2) IOC 프로세스명(xmrig/javae/minerd/cpuminer/kdevtmpfsi/kinsing/xRaPNJ 등) — docker top(호스트측)
 #   3) /tmp 내 위장 점(.)폴더에 들어있는 파일(.ICEi-unix/javae 패턴)
 # ============================================================================
+param([switch]$Test)   # -Test: 디스코드 알림만 한 번 보내고 종료(웹훅 동작 확인용)
 $ErrorActionPreference = 'Continue'
 $base  = 'C:\solo-project\ott-project\security'
 $log   = Join-Path $base 'watchdog.log'
 $alert = Join-Path $base 'ALERT.txt'
 if (-not (Test-Path $base)) { New-Item -ItemType Directory -Path $base -Force | Out-Null }
 function Log($m){ $line = "$(Get-Date -Format o)  $m"; Add-Content -Path $log -Value $line -Encoding utf8; Write-Output $line }
+
+# 디스코드 웹훅 알림. URL은 security\discord-webhook.txt 한 줄에 저장(깃 제외). 없으면 조용히 skip.
+function Send-DiscordAlert($content) {
+  try {
+    $whFile = Join-Path $base 'discord-webhook.txt'
+    if (-not (Test-Path $whFile)) { return }
+    $url = (Get-Content $whFile | Where-Object { $_ -match '^\s*https://' } | Select-Object -First 1)
+    if (-not $url) { return }
+    $url = $url.Trim()
+    if ($content.Length -gt 1800) { $content = $content.Substring(0,1800) }
+    $body = @{ content = $content } | ConvertTo-Json
+    Invoke-RestMethod -Uri $url -Method Post -ContentType 'application/json; charset=utf-8' -Body $body -TimeoutSec 10 | Out-Null
+    Log 'Discord alert sent'
+  } catch { Log "Discord alert failed: $($_.Exception.Message)" }
+}
+
+if ($Test) { Send-DiscordAlert ':white_check_mark: OTT 워치독 테스트 알림 — 이 메시지가 보이면 알림 설정 완료!'; Log 'test alert sent'; exit 0 }
 
 $targets    = @('ott-frontend','ott-app')
 $iocRegex   = 'xmrig|javae|minerd|cpuminer|kdevtmpfsi|kinsing|supportxmr|xRaPNJ'
@@ -65,6 +83,6 @@ foreach ($c in $hitContainers) {
   } catch { Log "CONTAIN error on ${c}: $($_.Exception.Message)" }
 }
 Set-Content -Path $alert -Value $summary -Encoding utf8
-try { msg * "OTT WATCHDOG: 컨테이너 침해 탐지·격리됨. $alert 확인" 2>$null } catch {}
+Send-DiscordAlert (":rotating_light: **OTT 보안 경보** — 컨테이너 침해 감지 & 자동 격리됨`n`n$summary`n조치: 네트워크 분리 + 컨테이너 정지(증거 보존). 서버 점검 필요.")
 Log "ALERT written to $alert"
 exit 1
