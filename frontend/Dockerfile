@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 WORKDIR /app
 
 # 패키지 파일 복사 및 의존성 설치 (캐싱 최적화)
@@ -11,7 +11,7 @@ COPY . .
 RUN npm run build
 
 # Development stage
-FROM node:20-alpine AS development
+FROM node:26-alpine AS development
 WORKDIR /app
 
 # 패키지 파일 복사 및 의존성 설치
@@ -23,7 +23,7 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:26-alpine AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
