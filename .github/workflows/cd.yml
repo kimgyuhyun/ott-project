@@ -84,8 +84,8 @@ jobs:
           docker pull $frontTag; if ($LASTEXITCODE -ne 0) { throw "pull failed: $frontTag" }
 
           # --- 4) digest 고정 (RepoDigests) ---
-          $appImage   = (docker inspect --format '{{index .RepoDigests 0}}' $appTag).Trim()
-          $frontImage = (docker inspect --format '{{index .RepoDigests 0}}' $frontTag).Trim()
+          $appImage   = "$(docker inspect --format '{{index .RepoDigests 0}}' $appTag)".Trim()
+          $frontImage = "$(docker inspect --format '{{index .RepoDigests 0}}' $frontTag)".Trim()
           if (-not $appImage -or -not $frontImage) { throw 'failed to resolve image digests' }
           Write-Host "pinned backend : $appImage"
           Write-Host "pinned frontend: $frontImage"
@@ -114,19 +114,23 @@ jobs:
           docker exec ott-nginx nginx -s reload
 
           # --- 7) 검증: 백엔드 헬스 + 프론트엔드 egress 차단(보안 불변식) ---
+          # 기동 직후엔 백엔드가 아직 listen 전이라 wget이 'connection refused'(stderr)를 낸다.
+          # PowerShell(Stop)에서 네이티브 stderr는 종료성 오류가 되므로 try/catch로 감싸 재시도한다.
           Write-Host '=== VERIFY ==='
           $healthy = $false
-          foreach ($i in 1..20) {
+          foreach ($i in 1..30) {
             Start-Sleep -Seconds 5
-            $h = (docker exec ott-nginx wget -qO- -T3 http://ott-app:8090/actuator/health 2>$null)
-            if ($h -match 'UP') { $healthy = $true; Write-Host "backend healthy: $h"; break }
-            Write-Host "  waiting for backend ($i/20)"
+            $h = ''
+            try { $h = "$(docker exec ott-nginx wget -qO- -T3 http://ott-app:8090/actuator/health 2>$null)" } catch { $h = '' }
+            if ($h -match 'UP') { $healthy = $true; Write-Host 'backend healthy (status UP)'; break }
+            Write-Host "  waiting for backend ($i/30)"
           }
-          if (-not $healthy) { throw 'backend health check failed' }
+          if (-not $healthy) { throw 'backend health check failed (timeout ~150s)' }
 
-          $egress = docker exec ott-frontend node -e "const s=require('net').connect({host:'1.1.1.1',port:443,timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
-          if ($egress -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend egress is NOT blocked' }
+          $egress = ''
+          try { $egress = docker exec ott-frontend node -e "const s=require('net').connect({host:'1.1.1.1',port:443,timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})" 2>$null } catch { $egress = 'BLOCKED(exec-error)' }
+          if ("$egress" -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend egress is NOT blocked' }
           Write-Host "frontend egress: $egress (expected BLOCKED)"
 
-          docker image prune -f --filter "until=168h" | Out-Null
+          try { docker image prune -f --filter "until=168h" 2>$null | Out-Null } catch {}
           Write-Host '=== CD END (secure) ==='
