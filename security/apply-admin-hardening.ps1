@@ -28,17 +28,15 @@ $taskName = "OTT Security Watchdog"
 $script   = "C:\solo-project\ott-project\security\ott-watchdog.ps1"
 if (-not (Test-Path $script)) { Write-Host "[경고] 워치독 스크립트 없음: $script" -ForegroundColor Yellow }
 else {
-  if (Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue) {
-    Write-Host "[skip] 이미 등록됨: $taskName"
-  } else {
-    $action  = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`""
-    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5)
-    # 현재 사용자 컨텍스트로 실행(Docker Desktop 접근 가능). 로그온 시 동작.
-    $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Highest
-    $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 4)
-    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings | Out-Null
-    Write-Host "[OK] 등록됨: '$taskName' (5분마다 ott-frontend/ott-app 점검)"
-  }
+  $action  = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$script`""
+  $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5)
+  # S4U = '로그온 여부와 무관하게 실행' → 백그라운드(세션0)에서 동작하여 콘솔 창이 뜨지 않음.
+  # (Interactive로 하면 -WindowStyle Hidden이어도 powershell 창이 매번 깜빡인다.)
+  $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType S4U -RunLevel Highest
+  $settings  = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -Hidden -ExecutionTimeLimit (New-TimeSpan -Minutes 4)
+  # -Force: 이미 있으면 덮어써서 갱신(재실행 시 설정 교정)
+  Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+  Write-Host "[OK] 등록/갱신: '$taskName' (S4U 백그라운드 5분 주기, 창 안 뜸)"
 }
 # 되돌리기: Unregister-ScheduledTask -TaskName "OTT Security Watchdog" -Confirm:$false
 
