@@ -91,10 +91,14 @@ jobs:
           Write-Host "pinned frontend: $frontImage"
 
           # --- 5) 보안 게이트: pull된 이미지에 마이너 IOC 없는지 스캔 ---
-          $ioc = '221.156.167.200|supportxmr|grepb32|xmrig|javae'
+          # 오탐 방지를 위해 "특정성 높은 IOC만 대소문자 구분"으로 검사한다.
+          #  - 내용(content) grep: C2 IP / 채굴풀 / 드로퍼명처럼 정상 코드엔 없는 문자열만.
+          #    ('javae'는 Java의 'JavaE/JavaEE'에 오탐되므로 content에서 제외)
+          #  - 파일명(find): 실제 마이너 바이너리가 베이크됐는지 정확한 이름으로만 검사.
+          $iocContent = '221\.156\.167\.200|supportxmr|grepb32'
           foreach ($img in $appImage, $frontImage) {
-            $hit = docker run --rm --network none --entrypoint sh $img -c "grep -raoiE '$ioc' /app 2>/dev/null | head -1"
-            if ($hit) { throw "MALWARE IOC detected in $img ($hit) -> DEPLOY ABORTED" }
+            $scan = (docker run --rm --network none --entrypoint sh $img -c "grep -raoE '$iocContent' /app 2>/dev/null | head -1; find / -xdev -type f \( -name javae -o -name 'xmrig*' -o -name cpuminer \) 2>/dev/null | head -1" | Out-String).Trim()
+            if ($scan) { throw "MALWARE IOC detected in $img ($scan) -> DEPLOY ABORTED" }
             Write-Host "scan clean: $img"
           }
 
