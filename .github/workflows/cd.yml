@@ -30,11 +30,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v7
 
+      # CI와 동일하게 공식 액션으로 ghcr 로그인(러너에 자격증명 저장).
+      # 수동 docker login --password-stdin은 Windows PowerShell 파이프에서 토큰 전달이
+      # 불안정해 'denied'가 발생할 수 있어 사용하지 않는다.
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Deploy (ghcr digest-pinned + egress-locked secure stack)
         shell: powershell -ExecutionPolicy Bypass -File {0}
         env:
-          GHCR_USER: ${{ github.actor }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           OWNER: ${{ github.repository_owner }}
           ENV_FILE_CONTENT: ${{ toJSON(secrets.ENV_FILE) }}
@@ -70,10 +78,8 @@ jobs:
             Write-Host '.env written from secret'
           } else { throw 'ENV_FILE secret missing' }
 
-          # --- 3) ghcr 로그인 + commit-sha 태그로 pull ---
+          # --- 3) commit-sha 태그로 pull (러너는 직전 'Log in to ghcr' 스텝에서 인증됨) ---
           Write-Host '=== PULL from ghcr ==='
-          $env:GHCR_TOKEN | docker login ghcr.io -u $env:GHCR_USER --password-stdin
-          if ($LASTEXITCODE -ne 0) { throw 'ghcr login failed' }
           docker pull $appTag;   if ($LASTEXITCODE -ne 0) { throw "pull failed: $appTag" }
           docker pull $frontTag; if ($LASTEXITCODE -ne 0) { throw "pull failed: $frontTag" }
 
