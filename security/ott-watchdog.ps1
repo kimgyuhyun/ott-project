@@ -24,9 +24,9 @@ function Send-DiscordAlert($content) {
   try {
     $whFile = Join-Path $base 'discord-webhook.txt'
     if (-not (Test-Path $whFile)) { return }
-    $url = (Get-Content $whFile | Where-Object { $_ -match '^\s*https://' } | Select-Object -First 1)
+    # 파일 어디에 있든 https://... 토큰을 추출(앞에 다른 텍스트가 붙어 있어도 동작)
+    $url = ([regex]::Match((Get-Content $whFile -Raw), 'https://\S+')).Value
     if (-not $url) { return }
-    $url = $url.Trim()
     if ($content.Length -gt 1800) { $content = $content.Substring(0,1800) }
     $body = @{ content = $content } | ConvertTo-Json
     Invoke-RestMethod -Uri $url -Method Post -ContentType 'application/json; charset=utf-8' -Body $body -TimeoutSec 10 | Out-Null
