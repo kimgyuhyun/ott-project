@@ -1,5 +1,15 @@
 name: CD
 
+# ============================================================================
+# 보안 재설계 (2026-06-24, XMRig 재감염 대응)
+# ----------------------------------------------------------------------------
+# 변경 전: Docker Hub(para98)에서 이미지를 pull 해 그대로 실행 → 침해 이미지 재배포 위험.
+# 변경 후: self-hosted 러너가 "소스에서 직접" 클린 이미지를 빌드(Hub pull 없음) →
+#          멀웨어 IOC 스캔 게이트 → egress 차단 보안 스택(docker-compose.netlock.yml)으로 배포 →
+#          백엔드 헬스 + 프론트엔드 egress 차단을 검증(실패 시 배포 중단).
+#   * 수동 배포와 동일한 compose 조합을 사용해 환경 일관성 유지.
+#   * 이미지가 혹시 오염돼도 frontend는 인터넷 egress가 없어 드로퍼/채굴 불가(다층 방어).
+# ============================================================================
 on:
   workflow_run:
     workflows: ["CI"]
@@ -14,149 +24,73 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
-        
-      - name: Deploy to production
+
+      - name: Deploy (local clean build + egress-locked secure stack)
         shell: powershell -ExecutionPolicy Bypass -File {0}
         run: |
           Set-StrictMode -Version Latest
           $ProgressPreference = 'SilentlyContinue'
           $ErrorActionPreference = 'Stop'
-          Write-Host '=== CD START ==='
-          
-          # 현재 커밋 SHA 획득
-          $env:COMMIT_SHA = (git rev-parse HEAD).Trim()
-          if (-not $env:COMMIT_SHA) { throw 'cannot resolve commit sha' }
-          Write-Host "Deploying commit $env:COMMIT_SHA"
-          
-          # 작업 디렉토리 확인
-          Write-Host "Working directory: $PWD"
-
-          # docker-compose 상대경로 마운트가 항상 현재 run의 최신 checkout을 가리키도록
-          # 작업 디렉토리를 GitHub Actions workspace로 고정
           Set-Location $env:GITHUB_WORKSPACE
-          Write-Host "Adjusted working directory: $(Get-Location)"
-          
-          # 데이터베이스 백업
-          Write-Host '=== DATABASE BACKUP ==='
+          Write-Host '=== CD START (secure) ==='
+          $sha = (git rev-parse HEAD).Trim()
+          Write-Host "commit=$sha  workdir=$PWD"
+
+          # --- 1) 데이터베이스 백업 (실패해도 배포는 계속) ---
           try {
             $backupDir = 'C:\solo-project\backups'
-            if (-not (Test-Path $backupDir)) { 
-              New-Item -ItemType Directory -Path $backupDir | Out-Null 
-              Write-Host "Created backup directory: $backupDir"
-            }
-            $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
-            $backupFile = Join-Path $backupDir "db_$timestamp.sql"
-            Write-Host "Backing up database to: $backupFile"
-            docker exec ott-postgres pg_dump -U root ott_project_db | Out-File -FilePath $backupFile -Encoding UTF8
-            Write-Host "Database backup completed: $backupFile"
-            
-            # 7일 이상 된 백업 삭제
-            $oldBackups = Get-ChildItem $backupDir -Filter "db_*.sql" | Where-Object {$_.LastWriteTime -lt (Get-Date).AddDays(-7)}
-            if ($oldBackups) {
-              $oldBackups | ForEach-Object { 
-                Remove-Item $_.FullName
-                Write-Host "Removed old backup: $($_.Name)"
-              }
-            }
-          } catch {
-            Write-Host "Backup failed: $($_.Exception.Message)"
-            Write-Host "Continuing with deployment..."
-          }
-          
-          # 배포 마커 생성 (시작)
-          try {
-            $deployDir = 'C:\solo-project\ott-project\.deploy'
-            if (-not (Test-Path $deployDir)) { New-Item -ItemType Directory -Path $deployDir | Out-Null }
-            $marker = "deployed_sha=STARTING`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
-            Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
-          } catch {
-            try {
-              $publicDir = 'C:\Users\Public\ott_cd'
-              if (-not (Test-Path $publicDir)) { New-Item -ItemType Directory -Path $publicDir | Out-Null }
-              $marker = "deployed_sha=STARTING`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
-              Set-Content -Path (Join-Path $publicDir 'last_cd.txt') -Value $marker -Encoding UTF8
-            } catch { Write-Host 'marker write failed (STARTING)' }
-          }
-          
-          # SHA 이미지 강제 적용용 임시 override 파일 생성
-          $overridePath = Join-Path $env:TEMP 'compose.sha.override.yml'
-          $overrideContent = "services:`n  app:`n    image: para98/ott-backend:$($env:COMMIT_SHA)`n  frontend:`n    image: para98/ott-frontend:$($env:COMMIT_SHA)"
-          Set-Content -Path $overridePath -Value $overrideContent -Encoding UTF8
-          Write-Host "Using override file: $overridePath"
-          
-          # Docker 인증 설정
-          $registry = 'https://index.docker.io/v1/'
-          $username = '${{ secrets.REGISTRY_USER }}'
-          $password = '${{ secrets.REGISTRY_PASSWORD }}'
-          $pair = $username + ':' + $password
-          $b64 = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pair))
-          $authObj = @{ auths = @{ $registry = @{ auth = $b64 } } }
-          $env:DOCKER_AUTH_CONFIG = ($authObj | ConvertTo-Json -Compress)
-          Write-Host "Docker auth configured for registry: $registry"
-          
-          # Docker 진단
-          Write-Host '=== Docker diagnostics ==='
-          docker version
-          if ($LASTEXITCODE -ne 0) { Write-Host 'docker version failed' }
-          docker compose version
-          if ($LASTEXITCODE -ne 0) { Write-Host 'docker compose version failed' }
-          docker info -f 'Server: {{.ServerVersion}}, OS: {{.OperatingSystem}}'
-          if ($LASTEXITCODE -ne 0) { Write-Host 'docker info failed' }
-          
-          # .env 파일 생성
+            if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
+            $bf = Join-Path $backupDir ("db_{0}.sql" -f (Get-Date -Format 'yyyyMMdd_HHmmss'))
+            docker exec ott-postgres pg_dump -U root ott_project_db | Out-File -FilePath $bf -Encoding UTF8
+            Write-Host "DB backup -> $bf"
+            Get-ChildItem $backupDir -Filter 'db_*.sql' | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) } | ForEach-Object { Remove-Item $_.FullName -Force }
+          } catch { Write-Host "DB backup skipped: $($_.Exception.Message)" }
+
+          # --- 2) .env 생성 (GitHub Secret) ---
           $envJson = '${{ toJSON(secrets.ENV_FILE) }}'
           if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') {
             $envContent = [System.Text.RegularExpressions.Regex]::Unescape($envJson.Trim('"'))
             Set-Content -Path .env -Value $envContent -NoNewline
-            Write-Host '.env file created'
+            Write-Host '.env written from secret'
+          } else { throw 'ENV_FILE secret missing' }
+
+          # --- 3) 클린 이미지 로컬 빌드 (Docker Hub pull 없음. 빌드는 Dockerfile 내부에서 격리 실행) ---
+          Write-Host '=== BUILD clean images from source ==='
+          docker build --target production --pull -t ott-frontend:clean -f frontend/Dockerfile frontend/
+          if ($LASTEXITCODE -ne 0) { throw 'frontend image build failed' }
+          docker build --pull -t ott-backend:clean -f backend/Dockerfile backend/
+          if ($LASTEXITCODE -ne 0) { throw 'backend image build failed' }
+
+          # --- 4) 보안 게이트: 빌드 이미지에 마이너 IOC가 없는지 스캔 (있으면 배포 중단) ---
+          Write-Host '=== SCAN GATE (malware IOC) ==='
+          $ioc = '221.156.167.200|supportxmr|grepb32|xmrig|javae'
+          foreach ($img in 'ott-frontend:clean','ott-backend:clean') {
+            $hit = docker run --rm --network none --entrypoint sh $img -c "grep -raoiE '$ioc' /app 2>/dev/null | head -1"
+            if ($hit) { throw "MALWARE IOC detected in $img ($hit) -> DEPLOY ABORTED" }
+            Write-Host "scan clean: $img"
           }
-          
-          # Docker Compose로 이미지 pull
-          Write-Host '=== COMPOSE PULL (by SHA tag) ==='
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath pull app frontend
-          if ($LASTEXITCODE -ne 0) { throw 'docker compose pull failed' }
-          
-          # Docker Compose로 컨테이너 재생성 및 시작
-          Write-Host '=== COMPOSE UP ==='
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath --env-file .env up -d app frontend --force-recreate --no-deps --pull always
+
+          # --- 5) 보안 스택 배포 (egress 차단 + 하드닝 + 클린 이미지) ---
+          Write-Host '=== DEPLOY (egress-locked stack) ==='
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.netlock.yml --env-file .env up -d --remove-orphans
           if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
-          
-          # CSP 헤더 반영: nginx 설정만 reload
-          Write-Host '=== NGINX RELOAD ==='
-          docker exec ott-nginx nginx -t
-          if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed' }
+          docker exec ott-nginx nginx -t; if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed' }
           docker exec ott-nginx nginx -s reload
-          if ($LASTEXITCODE -ne 0) { throw 'nginx reload failed' }
-          
-          # 배포 검증
-          Write-Host '=== VERIFY DEPLOYMENT ==='
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
-          
-          $inspectApp = docker inspect -f "app: {{.Config.Image}} | started={{.State.StartedAt}}" ott-app 2>$null
-          if ($inspectApp) { Write-Host $inspectApp } else { Write-Host 'ott-app not found' }
-          
-          $inspectFe = docker inspect -f "frontend: {{.Config.Image}} | started={{.State.StartedAt}}" ott-frontend 2>$null
-          if ($inspectFe) { Write-Host $inspectFe } else { Write-Host 'ott-frontend not found' }
-          
-          $ha = docker image inspect ("para98/ott-backend:" + $env:COMMIT_SHA) -f 'id={{.Id}} digests={{.RepoDigests}}'
-          $hf = docker image inspect ("para98/ott-frontend:" + $env:COMMIT_SHA) -f 'id={{.Id}} digests={{.RepoDigests}}'
-          Write-Host "hub app: $ha"
-          Write-Host "hub fe:  $hf"
-          
-          Write-Host '=== RESOLVED COMPOSE IMAGES ==='
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml -f $overridePath config --images
-          
-          # 배포 마커 생성 (완료)
-          try {
-            $marker = "deployed_sha=$env:COMMIT_SHA`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
-            Set-Content -Path (Join-Path $deployDir 'last_cd.txt') -Value $marker -Encoding UTF8
-          } catch {
-            try {
-              $publicDir = 'C:\Users\Public\ott_cd'
-              if (-not (Test-Path $publicDir)) { New-Item -ItemType Directory -Path $publicDir | Out-Null }
-              $marker = "deployed_sha=$env:COMMIT_SHA`nrun_at=$(Get-Date -Format o)`nuser=$(whoami)"
-              Set-Content -Path (Join-Path $publicDir 'last_cd.txt') -Value $marker -Encoding UTF8
-            } catch { Write-Host 'marker write failed (DONE)' }
+
+          # --- 6) 검증: 백엔드 헬스 + 프론트엔드 egress 차단(보안 불변식) ---
+          Write-Host '=== VERIFY ==='
+          $healthy = $false
+          foreach ($i in 1..20) {
+            Start-Sleep -Seconds 5
+            $h = (docker exec ott-nginx wget -qO- -T3 http://ott-app:8090/actuator/health 2>$null)
+            if ($h -match 'UP') { $healthy = $true; Write-Host "backend healthy: $h"; break }
+            Write-Host "  waiting for backend ($i/20)"
           }
-          
-          Write-Host '=== CD END ==='
+          if (-not $healthy) { throw 'backend health check failed' }
+
+          $egress = docker exec ott-frontend node -e "const s=require('net').connect({host:'1.1.1.1',port:443,timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
+          if ($egress -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend egress is NOT blocked' }
+          Write-Host "frontend egress check: $egress (expected BLOCKED)"
+
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.netlock.yml ps
+          Write-Host '=== CD END (secure) ==='

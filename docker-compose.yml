@@ -31,7 +31,9 @@ services:                         # 서비스 정의 시작
     container_name: ott-app # 컨테이너 이름
     restart: unless-stopped
     ports: # 포트 매핑
-      - "8090:8090"
+      # [SECURITY 2026-06-24] 공인(0.0.0.0) 노출 제거 → 루프백 전용.
+      # 외부 진입점은 nginx(80/443)뿐이며, nginx는 내부 도커 네트워크로 ott-app:8090에 접근한다.
+      - "127.0.0.1:8090:8090"
     depends_on: # 의존성 설정
       - postgres # postgres 서비스가 먼저 시작되어야 함
       - redis

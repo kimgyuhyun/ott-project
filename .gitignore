@@ -301,3 +301,6 @@ application-dev.properties
 *.vtt
 *.sub
 *.ass
+# Security tooling runtime artifacts (do not commit)
+security/watchdog.log
+security/ALERT.txt

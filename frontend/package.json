@@ -11,7 +11,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.101.0",
     "hls.js": "^1.6.16",
-    "next": "15.0.4",
+    "next": "15.5.19",
     "react": "^18",
     "react-dom": "^18",
     "zod": "^4.4.3"

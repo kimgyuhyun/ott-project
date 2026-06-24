@@ -1,0 +1,49 @@
+# ============================================================================
+# [SECURITY 2026-06-24] 네트워크 격리(egress 차단) + 로컬 클린 이미지 고정
+# ----------------------------------------------------------------------------
+# 배경: 2026-06-24 ott-frontend 컨테이너가 런타임에 XMRig 크립토마이너에 재감염됨.
+#       이미지/호스트/레지스트리는 깨끗했고, 마이너가 런타임에 외부에서 /tmp로 투입됨.
+#       마이너·드로퍼는 반드시 인터넷(C2 221.156.167.200, pool.supportxmr.com)으로
+#       나가야 동작한다 → 프론트엔드의 아웃바운드를 끊으면 침해돼도 무력화된다.
+#
+# 설계:
+#   - default 네트워크를 internal(인터넷 불가, 컨테이너 간 통신만)로 전환
+#   - 인터넷이 꼭 필요한 backend(app: OAuth/메일/결제/TMDB)만 별도 egress 브리지에 연결
+#   - frontend/postgres/redis/nginx는 default(internal)에만 존재 → 인터넷 egress 없음
+#   - 공개 진입은 nginx의 published 포트(80/443)뿐 (published 포트는 internal과 무관하게 동작)
+#
+# 적용(배포):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.netlock.yml up -d
+#
+# 검증:
+#   docker exec ott-frontend sh -c "wget -T5 -qO- http://1.1.1.1 || echo BLOCKED_OK"   # → BLOCKED_OK 여야 정상
+#   docker exec ott-app      sh -c "getent hosts oauth2.googleapis.com && echo APP_EGRESS_OK"
+# ============================================================================
+services:
+  app:                                  # Spring Boot 백엔드
+    image: ott-backend:clean            # Docker Hub(para98) 대신 로컬 클린 이미지
+    pull_policy: never                  # 레지스트리 pull 금지(트로이 이미지 재유입 차단)
+    networks:
+      - default                         # 내부: postgres/redis/frontend/nginx와 통신
+      - egress                          # 외부: OAuth/메일/결제/TMDB 아웃바운드(백엔드만 허용)
+
+  frontend:                             # Next.js 프론트엔드 (이번 감염 대상)
+    image: ott-frontend:clean           # 클린 재빌드 이미지(Next 15.5.19 — CVE-2025-29927 패치)
+    pull_policy: never
+    environment:
+      # Next standalone 서버가 컨테이너ID 호스트명을 DNS로 해석하려다 실패(EAI_AGAIN)하는 것 방지.
+      # 0.0.0.0으로 바인딩 고정 → 네트워크 일시 변동에도 기동 견고.
+      HOSTNAME: "0.0.0.0"
+    # networks 미지정 → base의 default(=internal)에만 연결. 인터넷 egress 전면 차단.
+
+  nginx:                                # 리버스 프록시 (공개 진입점)
+    networks:
+      - default                         # 내부: ott-frontend:3000 / ott-app:8090 프록시
+      - egress                          # 호스트 포트 publish(80/443)는 non-internal 네트워크가 필요
+    # 주의: internal 전용 컨테이너는 호스트로 포트 publish가 불가하므로 nginx는 egress에도 연결한다.
+
+networks:
+  default:
+    internal: true                      # 인터넷 차단(컨테이너 상호 통신은 유지)
+  egress:
+    driver: bridge                      # 인터넷 가능(backend 전용 아웃바운드 경로)
