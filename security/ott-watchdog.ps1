@@ -51,10 +51,22 @@ foreach ($c in $targets) {
   if ($dropped) { $detections += [PSCustomObject]@{ c=$c; kind='DROPPED_BINARY'; detail=($dropped -join '; ') } }
 
   # (2) 호스트측 프로세스 목록에서 IOC (in-container ps 불필요 → distroless도 커버)
-  $procs = & docker top $c 2>$null | Out-String
-  if ($procs -match $iocRegex) {
-    $bad = ($procs -split "`n" | Where-Object { $_ -match $iocRegex }) -join ' | '
-    $detections += [PSCustomObject]@{ c=$c; kind='IOC_PROCESS'; detail=$bad }
+  #   주의: CMD 전체(인자 포함)가 아니라 "실행 파일 basename"에만 매칭한다.
+  #   그렇지 않으면 find/grep 등 보안 스캔 명령이 인자로 키워드(xmrig 등)를 갖는 순간
+  #   자기 자신을 마이너로 오탐한다(2026-06-26 오탐 사례). 실제 마이너는 실행 파일명이
+  #   xmrig/javae/… 이므로 basename 매칭으로 충분히 잡힌다.
+  $procLines = (& docker top $c 2>$null) -split "`n" | Select-Object -Skip 1   # 헤더 제외
+  $bad = foreach ($line in $procLines) {
+    if (-not $line.Trim()) { continue }
+    # docker top 컬럼: UID PID PPID C STIME TTY TIME CMD...  → CMD는 8번째 필드부터
+    $fields = $line -split '\s+' | Where-Object { $_ }
+    if ($fields.Count -lt 8) { continue }
+    $exe = $fields[7]                          # 실행 파일(경로 포함 가능)
+    $exeName = ($exe -split '[\\/]')[-1]       # basename
+    if ($exeName -match $iocRegex) { $line.Trim() }
+  }
+  if ($bad) {
+    $detections += [PSCustomObject]@{ c=$c; kind='IOC_PROCESS'; detail=($bad -join ' | ') }
   }
 
   # (3) /tmp 의 위장 점(.)폴더 안의 파일 (정상적으로는 비어있거나 소켓뿐)
