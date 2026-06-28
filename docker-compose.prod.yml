@@ -88,7 +88,9 @@ services:
       - ALL
     tmpfs:
       - /tmp:noexec,nosuid,nodev,size=64m
-      - /app/.next/cache:size=256m
+      # mode=1777 필수: tmpfs 기본은 root:root 0755라 비root(uid 1000 node)가 못 써서
+      # Next의 fetch-cache mkdir이 EACCES로 실패한다. sticky+world-writable로 캐시 쓰기 허용.
+      - /app/.next/cache:size=256m,mode=1777
     mem_limit: 1g
     cpus: 1.5
 
