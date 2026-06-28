@@ -8,6 +8,10 @@ const nextConfig: NextConfig = {
   output: 'standalone', // Docker 빌드를 위한 standalone 모드 활성화
   experimental: {
     forceSwcTransforms: true,
+    // 보안 하드닝으로 컨테이너 루트FS가 read-only(.next/server/app 쓰기 불가)이므로
+    // ISR 재생성 결과를 디스크에 flush하지 않고 메모리 캐시만 사용한다.
+    // (미설정 시 매 revalidate마다 EROFS: read-only file system 에러가 반복 발생)
+    isrFlushToDisk: false,
   },
   // 개발 모드에서 콘솔 로그 활성화
   logging: {
@@ -26,6 +30,11 @@ const nextConfig: NextConfig = {
     return config;
   },
   images: {
+    // 보안 하드닝으로 frontend 컨테이너 egress(아웃바운드 인터넷)가 완전 차단돼 있어,
+    // next/image 서버 최적화기가 외부 포스터(cdn.myanimelist.net 등)를 가져오지 못해 500 → 액박이 났다.
+    // unoptimized=true 로 서버 프록시를 끄면 브라우저가 원본 이미지를 직접 로드(CSP img-src https: 허용)하므로
+    // egress 차단(채굴기 방어)을 그대로 유지하면서 포스터가 정상 표시된다.
+    unoptimized: true,
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
