@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "OTT Postgres (docker)",
+      "Group": "Servers",
+      "Host": "ott-postgres",
+      "Port": 5432,
+      "MaintenanceDB": "ott_project_db",
+      "Username": "root",
+      "SSLMode": "prefer",
+      "Comment": "egress 락 유지. 비밀번호는 .env 의 DB_PASSWORD 입력."
+    }
+  }
+}

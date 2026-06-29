@@ -1,0 +1,49 @@
+# ============================================================================
+# pgAdmin GUI (opt-in) — egress 락(netlock)을 유지하면서 GUI로 DB 접근
+# ----------------------------------------------------------------------------
+# 설계:
+#   - pgAdmin을 default(internal) 네트워크에 붙여 ott-postgres:5432 로 직접 도달.
+#   - internal 네트워크 컨테이너는 호스트로 포트 publish가 불가하므로,
+#     nginx와 동일한 패턴으로 별도 bridge(pgadmin-egress)에도 연결해 포트를 연다.
+#   - 호스트 노출은 127.0.0.1(루프백)에만 → 외부에서는 접근 불가.
+#   - 항상 켜두지 말고 GUI가 필요할 때만 올리는 것을 권장(공격면 최소화).
+#
+# 올리기:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     -f docker-compose.netlock.yml -f docker-compose.pgadmin.yml up -d --no-deps pgadmin
+#
+# 내리기(필요 없을 때):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     -f docker-compose.netlock.yml -f docker-compose.pgadmin.yml rm -sf pgadmin
+#
+# 접속: http://127.0.0.1:5050
+#   - 로그인: PGADMIN_EMAIL / PGADMIN_PASSWORD (아래 기본값 또는 .env 로 override)
+#   - 좌측에 'OTT Postgres (docker)' 서버가 미리 등록되어 있음 → 클릭 후
+#     DB 비밀번호(.env 의 DB_PASSWORD)만 입력하면 연결됨.
+# ============================================================================
+services:
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: ott-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@ott-project.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin1234}
+      PGADMIN_LISTEN_PORT: 80
+    ports:
+      - "127.0.0.1:5050:80"   # 루프백 전용 노출 (외부 X)
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro   # postgres 연결 사전 등록
+    networks:
+      - default          # internal: ott-postgres 도달용
+      - pgadmin-egress   # 호스트 포트 publish용
+    depends_on:
+      - postgres
+
+volumes:
+  pgadmin_data:
+
+networks:
+  pgadmin-egress:
+    driver: bridge
