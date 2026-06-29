@@ -118,6 +118,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/payments/webhook", "/api/payments/*/webhook").permitAll() // 결제 웹훅은 인증 없이 수신
                         .requestMatchers("/api/admin/contents/**").hasRole("ADMIN") // Admin DB 관리 전용
                         .requestMatchers("/api/admin/stats/**").hasRole("ADMIN") // 관리자 통계/감사 로그 조회 전용
+                        .requestMatchers("/api/admin/anime/**").hasRole("ADMIN") // 애니메이션 동기화(단일/대량) 관리자 전용
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // 그 외 모든 admin 작업(환불 구독 정리 등) 관리자 전용
                         .requestMatchers("/api/anime/*/reviews").permitAll() // 리뷰 조회는 누구나 접근 가능
                         .requestMatchers("/api/reviews/*/comments").permitAll() // 댓글 조회는 누구나 접근 가능
                         .requestMatchers("/api/episodes/*/comments").permitAll() // 에피소드 댓글 조회는 누구나 접근 가능

@@ -6,11 +6,13 @@ interface User {
   username: string;
   email: string;
   profileImage?: string;
+  role?: 'USER' | 'ADMIN';
 }
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean | undefined;
+  isAdmin: boolean;
   isInitialized: boolean;
   login: (user: User) => void;
   logout: () => void;
@@ -45,6 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             username: prof.username ?? prof.name ?? '',
             email: prof.email ?? '',
             profileImage: undefined as string | undefined,
+            role: (prof.role === 'ADMIN' ? 'ADMIN' : 'USER') as 'USER' | 'ADMIN',
           };
           if (serverUser.username) {
             setUser(serverUser);
@@ -97,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = {
     user,
     isAuthenticated: isInitialized ? !!user : undefined,
+    isAdmin: user?.role === 'ADMIN',
     isInitialized,
     login,
     logout,

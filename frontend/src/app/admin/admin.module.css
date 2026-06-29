@@ -1,0 +1,262 @@
+/* 관리자 영역 공통 스타일 */
+
+.adminGate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  color: #9aa0aa;
+  font-size: 15px;
+}
+
+.adminShell {
+  display: flex;
+  min-height: 100vh;
+  background: #0e0f13;
+  color: #e8e9ec;
+}
+
+.adminSidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #15171d;
+  border-right: 1px solid #23262e;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.adminBrand {
+  font-size: 18px;
+  font-weight: 800;
+  color: #816bff;
+  padding: 4px 8px 16px;
+  letter-spacing: 0.3px;
+}
+
+.adminNav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adminNavLink {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  color: #c7cad1;
+  text-decoration: none;
+  font-size: 14px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.adminNavLink:hover {
+  background: #20232c;
+  color: #fff;
+}
+
+.adminBackLink {
+  margin-top: auto;
+  padding: 10px 12px;
+  color: #7a7f8a;
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.adminBackLink:hover {
+  color: #c7cad1;
+}
+
+.adminMain {
+  flex: 1;
+  padding: 32px 40px;
+  min-width: 0;
+}
+
+/* 페이지 공통 */
+.pageTitle {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0 0 6px;
+}
+
+.pageSubtitle {
+  color: #9aa0aa;
+  font-size: 14px;
+  margin: 0 0 28px;
+}
+
+.cardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: block;
+  background: #15171d;
+  border: 1px solid #23262e;
+  border-radius: 12px;
+  padding: 20px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.15s, transform 0.1s;
+}
+
+.card:hover {
+  border-color: #816bff;
+  transform: translateY(-1px);
+}
+
+.cardTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.cardDesc {
+  font-size: 13px;
+  color: #9aa0aa;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* 동기화 패널 */
+.panel {
+  background: #15171d;
+  border: 1px solid #23262e;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.panelTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.panelHint {
+  font-size: 13px;
+  color: #9aa0aa;
+  margin: 0 0 16px;
+}
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.input {
+  background: #0e0f13;
+  border: 1px solid #2c2f38;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #e8e9ec;
+  font-size: 14px;
+  width: 200px;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #816bff;
+}
+
+.button {
+  background: #816bff;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.button:hover:not(:disabled) {
+  background: #6a52f5;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.result {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.resultOk {
+  background: rgba(70, 200, 120, 0.12);
+  border: 1px solid rgba(70, 200, 120, 0.4);
+  color: #6fe0a0;
+}
+
+.resultErr {
+  background: rgba(230, 80, 80, 0.12);
+  border: 1px solid rgba(230, 80, 80, 0.4);
+  color: #ff9b9b;
+}
+
+/* 카탈로그 테이블 */
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #23262e;
+}
+
+.table th {
+  color: #9aa0aa;
+  font-weight: 600;
+}
+
+.thumb {
+  width: 40px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #23262e;
+}
+
+.pager {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+.pagerBtn {
+  background: #20232c;
+  color: #c7cad1;
+  border: 1px solid #2c2f38;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pagerBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
