@@ -165,6 +165,10 @@ public class EmailAuthController {
             throw ex;
         }
         loginAttemptService.reset(requestDto.getEmail()); // 로그인 성공 시 실패 카운터 초기화
+        // 세션 고정(Session Fixation) 방어: 로그인 성공 시점에 세션 ID 를 새로 발급한다.
+        // 수동 로그인 흐름은 Spring Security 표준 인증(formLogin)을 거치지 않아 자동 세션 회전이 적용되지 않으므로,
+        // 공격자가 미리 심어둔 세션 ID 가 인증 후에도 그대로 유지되는 것을 막기 위해 명시적으로 회전시킨다.
+        request.changeSessionId();
         session.setAttribute("userEmail", requestDto.getEmail());
         // setAttribute 메서드는 세션에 키와 값을 저장하는 메서드임
         // setAttribue 메서드에 인자로 키 "userEmail" 에 값으로로 요청본문에 json을 Java 객체로 바꿔서넣은 변수에서 Email을 값으로 태워보냄

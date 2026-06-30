@@ -12,6 +12,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.ottproject.ottbackend.security.SessionAuthenticationFilter;
@@ -87,11 +88,22 @@ public class SecurityConfig {
                     boolean csrfEnabled = Boolean.parseBoolean(System.getProperty("app.security.csrf.enabled",
                             System.getenv().getOrDefault("APP_SECURITY_CSRF_ENABLED", "false")));
                     if (csrfEnabled) {
-                        // 기본 CSRF 활성화: 필요시 ignoringRequestMatchers로 예외 등록 가능
+                        // 더블 서브밋 쿠키 패턴: 서버가 XSRF-TOKEN 쿠키를 내려주고,
+                        // 프론트(SPA/fetch)가 그 값을 X-XSRF-TOKEN 헤더로 되돌려 보내면 검증한다.
+                        // SPA 에서 JS 로 토큰을 읽어 헤더에 실어야 하므로 HttpOnly=false 로 발급한다.
+                        csrf
+                                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                                // 서버-서버 호출/리다이렉트 콜백은 CSRF 토큰을 보낼 수 없으므로 예외 처리
+                                .ignoringRequestMatchers(
+                                        "/api/payments/webhook", "/api/payments/*/webhook", // 결제 PG 웹훅(서버→서버)
+                                        "/oauth2/**", "/login/oauth2/**", "/api/oauth2/**"   // OAuth2 인가/콜백
+                                );
                     } else {
+                        // 기본값: CSRF 비활성화. 세션 쿠키의 SameSite=Lax 로 교차 사이트 위조 요청을 1차 방어한다.
+                        // (프론트가 fetch 기반이라 X-XSRF-TOKEN 헤더 전송 적용 전까지는 비활성 유지)
                         csrf.disable();
                     }
-                }) // 환경 변수/시스템 프로퍼티로 전환
+                }) // 환경 변수/시스템 프로퍼티(APP_SECURITY_CSRF_ENABLED)로 전환
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll() // 모든 인증 관련 경로 허용
                         .requestMatchers("/oauth2/**").permitAll() // OAuth2 관련 경로 허용 (소셜 로그인)

@@ -1,6 +1,18 @@
 # 개발 환경 설정
 server:
   port: 8090 # Spring Boot 애플리케이션 포트 설정
+  # 세션 쿠키 설정 (올바른 prefix: server.servlet.session.cookie.*)
+  # 주의: 기존 spring.session.cookie.* 는 Spring Boot 가 인식하지 못해 실제로는 무시되고 있었음
+  servlet:
+    session:
+      timeout: 86400 # 서버 세션 만료(초) - 쿠키 max-age 와 일치 (24시간)
+      cookie:
+        name: JSESSIONID
+        domain: ${COOKIE_DOMAIN:127.0.0.1}
+        secure: ${COOKIE_SECURE:false}       # 로컬 개발은 HTTP 라 false
+        same-site: ${COOKIE_SAME_SITE:lax}
+        http-only: true
+        max-age: 86400 # 24시간
 
 # 애니메이션 데이터 자동 동기화 설정
 anime:
@@ -97,14 +109,14 @@ spring:
     transport:
       protocol: smtp
 
-  # 세션 설정
+  # 세션 설정 (Spring Session + Redis: 분산/영속 세션 저장소)
+  # 톰캣 인메모리 세션과 달리 재배포·다중 인스턴스에서도 세션이 유지됨
   session:
-    cookie:
-      domain: ${COOKIE_DOMAIN:127.0.0.1}
-      secure: ${COOKIE_SECURE:false}
-      same-site: ${COOKIE_SAME_SITE:lax}
-      http-only: true
-      max-age: 86400 # 24시간
+    store-type: redis        # 세션을 Redis 에 저장
+    timeout: 86400           # 세션 만료(초) - 쿠키 max-age 와 일치 (24시간)
+    redis:
+      namespace: ott:session # Redis 키 네임스페이스
+      flush-mode: on-save
 
   # OAuth2 클라이언트 설정
   security:
