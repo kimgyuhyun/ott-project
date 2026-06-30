@@ -7,6 +7,8 @@ import com.ottproject.ottbackend.service.LocalUserDetailsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -49,6 +51,17 @@ public class SecurityConfig {
     @Bean // PasswordEncoder Bean 등록
     public PasswordEncoder passwordEncoder() { // 비밀번호 암호화를 위한 BCrypt 인코더
         return new BCryptPasswordEncoder();
+    }
+
+    /**
+     * AuthenticationManager Bean 등록
+     * - 로컬 로그인을 Spring Security 표준 인증 흐름에 위임하기 위해 노출한다.
+     * - 컨텍스트의 UserDetailsService(LocalUserDetailsService) + PasswordEncoder(BCrypt)를 사용하는
+     *   DaoAuthenticationProvider 가 자동 구성되어, 비밀번호/계정 상태 검증을 표준 규칙으로 처리한다.
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
+        return configuration.getAuthenticationManager();
     }
 
     /**

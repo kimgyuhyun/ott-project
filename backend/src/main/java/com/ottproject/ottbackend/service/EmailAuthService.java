@@ -6,6 +6,10 @@ import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -31,8 +35,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class EmailAuthService {
 
 	private final UserService userService; // 사용자 서비스 주입
-	private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder; // 비밀번호 암호화 주입
+	private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder; // 비밀번호 암호화 주입(비밀번호 변경 시 사용)
 	// SPring Security 에서 제공하는 암호화 인터페이스임
+	private final AuthenticationManager authenticationManager; // 표준 인증 위임(로컬 로그인)
 	private final com.ottproject.ottbackend.mappers.UserMapper userMapper; // 사용자 매퍼 주입
 	// User 엔티티를 UserResponseDto로 변환해줌 MapStruct로 자동 매핑 코드 생성
 	// User 엔티티에는 비밀번호 등 민감 정보가 포함되기 때문에 UserResponseDto로 바꿔서 비밀번호를 제외한 안전한 정보만 포함함
@@ -63,55 +68,24 @@ public class EmailAuthService {
 	}
 
 	public UserResponseDto login(String email, String password) { // 로그인 메서드
-		// 로그인 처리하는 메서드고 파라미터로 email이랑 password를 받고 UserResponseDto로 반환해줌
+		// 인증을 Spring Security 표준 흐름에 위임한다.
+		// AuthenticationManager -> DaoAuthenticationProvider -> LocalUserDetailsService + PasswordEncoder(BCrypt)
+		// 가 비밀번호 일치/계정 활성화(enabled) 여부를 표준 규칙으로 검증한다.
+		// 기존의 수동 비밀번호/활성화 검증(passwordEncoder.matches, isEnabled) 중복 로직을 제거했다.
+		try {
+			authenticationManager.authenticate(
+					new UsernamePasswordAuthenticationToken(email, password));
+		} catch (DisabledException ex) {
+			// 비활성화/탈퇴(enabled=false) 계정 → 403
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비활성화된 계정입니다.");
+		} catch (AuthenticationException ex) {
+			// 이메일 없음/비밀번호 불일치 등 → 계정 존재 여부를 노출하지 않도록 동일한 메시지로 401
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
+		}
+		// 인증 성공 → 응답용 사용자 정보 조회 후 DTO 변환
 		User user = userService.findByEmail(email)
-				.orElseThrow(() -> new RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다."));
-		// userService에 findByEmail 메서드에 email을 태워보냄
-		// finByEamil 메서드는 email을 키로 넣으면 해당 이메일 매칭되는 user 객체를 Optional<User>로 감싸서 반환하고
-		// 이걸 user 변수에 저장함 DB에서 조회할 때 값이 없을 수 있고 User를 직접 반환하면 null이 될 수 있음
-		// null 체크를 깜빢하면 NullPointerException이 발생해버림 이걸 방지하기위해 Optional<User>로 감싸써 반환하는거임
-		// 값이 있으면 optional로 감싸고 없으면 빈 Optional을 반환하는 것
-		// 서비스레이어에 모든 메서드가 Optional을 반환하는건 아니고 DB에 값이 없을 수 있는 단건 조회에만 사용함
-		// 저장/수정은 저장할 객체가 이미 있으므로 null일 수 없음
-		// 존재 여부는 true/false라 사용안해도됨
-		// 목록 조회는 List를 반환해서 빈값은 ([])을 반환해서 사용 안해도됨
-		//  .orElseThrow()는 Optional이 비어있으면 예외를 던지고 값이 있으면 그 값을 반환해준다는뜻
-		// 그리고 .orElseThorw()에 인자로 람다식을 써서 인자로 태워보내야하는 이유는 
-		// .orElseThrow의 파라미터가 타입이 Suppler<>라 그럼  이 타입은 함수를 인자로 받음 이 인자로 넘긴 함수는 값을 받지않음
-		// 직접 객체로 넘기거나 값이 있어도 예외가 생성되어버리고 타입도 안맞음
-		// 람다식으로 넘기면 값이 없을 때만 함수가 실행되어 예외 생성 값이 있으면 함수가 실행 안됨(지연 평가)
-		// 람다식은 함수형 인터페이스들에 구현체임 각 함수형 인터페이스 맞춰 작성하고 넘기면됨
-		// Suppller = 인자 없이 값을 반환하는 함수
-		// Function = 인자를 받아서 값을 반환하는 함수
-		// Consumer = 인자를 받지만 반환값 없는 함수
-		// 자바의 람다식은 한 줄일떄 중괄호 생략이 가능하고 68라인이 바로 그 형식으로 작성한것
-		// 그러니까 람다식으로 익명함수를 만들고 그 안에 에러메시지 생성하는 객체를 넣어둬서 익명함수 호출하면 에러메시지가 나오는 형식임
-		// 그걸 파라미터로 넘긴것
-		// 67 ~ 68 라인을 정리하면 userService.findByEmail 메서드에 email을 인자로 태워보내면 Otpional<User>로 감싸서 반환되는데
-		// 이 값이 비어있으면 메서드채이닝으로 붙여서 부른 .orElseThrow()메서드에 인자로 보낸 익명 함수에 정의된 에러객체가 생성되고
-		// 예외를 던져서 login 메서드 중단됨
-		// Optional<User>에 값이 있면 그대로 user 변수에 할당됨
-		// 참고로 자바에 람다식은 인자로 함수를 보내야할때 사용됨
-		if (!passwordEncoder.matches(password, user.getPassword())) {
-			// passwodEncoder.matches 메서드는 인자로 원본 비밀번호(평문) - 로그인 시 입력한 비밀번호,
-			// 암호화된 비밀번호- DB에 저장된 해시값을 받아서 비교해주고 일치하면 true, 불일치하면 false를 리턴해줌
-			// 그리고 이 조건식은 입력한 비밀번호와 DB에 비밀번호가 불일치하면 false를 반환할텐데 그걸 부정연산자로 true로 바꿔서 실행
-			// 즉 비밀번호가 불일치할때 실행되는곳임임
-			throw new RuntimeException("이메일 또는 비밀번호가 올바르지 않습니다.");
-		}
-		// 비밀번호가 맞으면 아래 실행
-		if (!user.isEnabled()) {
-			// isEnalbed() 메서드는 계정 활성화 여부를 확인하는 메서드임
-			// USer 엔티티의의 enabled 필드 값을 반환함
-			// true가 나오면  계정 활성화 상태고 false가 나오면 비활성화된 상태임
-			// false면 비활성화고 이걸 부정연산자로 true로 치환해서 조건 성립시켜서 실행시킴
-			// 즉 비활성화된 계정일때 실행하는것것
-			throw new RuntimeException("비활성화된 계정입니다.");
-			// 예외객체 던져서 login 메서드 중단시킴
-		}
-		// 활성화 유저면 실행됨
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."));
 		return userMapper.toUserResponseDto(user);
-		// 로그인 정보로 찾은 user 객체를 userMapper로 유저응답객체로 바꿔서 리턴해줌
 	}
 
 	public boolean checkEmailDuplicate(String email) {

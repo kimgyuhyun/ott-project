@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,15 +70,24 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             String email = extractEmail(oAuth2User.getAttributes(), provider); // 이메일 추출
             String name = extractName(oAuth2User.getAttributes(), provider); // 이름 추출
             String providerId = extractProviderId(oAuth2User.getAttributes(), provider); // 소셜 로그인 제공자에서의 고유 ID 추출
+            boolean emailVerified = extractEmailVerified(oAuth2User.getAttributes(), provider); // 제공자의 이메일 검증 여부
 
             // 추출된 정보를 로그로 출력
-            log.info("OAuth2 사용자 정보 추출 - Email: {}, Name: {}, Provider: {}", email, name, providerId); // 로그 출력 - 추출된 정보 확인
+            log.info("OAuth2 사용자 정보 추출 - Email: {}, Name: {}, Provider: {}, EmailVerified: {}", email, name, providerId, emailVerified); // 로그 출력 - 추출된 정보 확인
+
+            // [#6] 이메일 미제공 차단: 임시 이메일을 만들지 않고 로그인을 실패시킨다.
+            // (이메일 동의를 받지 않으면 비밀번호 찾기/중복 식별이 불가능한 깨진 계정이 생기므로)
+            if (email == null || email.isBlank()) {
+                log.warn("OAuth2 로그인 차단 - 이메일 미제공 (Provider: {})", provider);
+                throw new OAuth2AuthenticationException(new OAuth2Error("email_required"),
+                        "이메일 제공에 동의해야 로그인할 수 있습니다.");
+            }
 
             // 사용자 정보 처리 (기존 사용자 조회 또는 신규 사용자 생성)
             // 같은 이메일이라도 다른 소셜 로그인으로 가입한 경우를 구분하기 위해 인증 제공자도 함께 확인
             // 기본값
             isNewUserFlag.set(Boolean.FALSE);
-            User user = processOAuth2User(email, name, providerId, authProvider); // 사용자 정보 처리 메서드 호출
+            User user = processOAuth2User(email, name, providerId, authProvider, emailVerified); // 사용자 정보 처리 메서드 호출
 
             // OAuth2User 객체 생성 및 반환 (Spring Security에서 사용할 수 있는 형태로 반환)
             return createOAuth2User(oAuth2User, user); // OAuth2User 객체 생성 메서드 호출
@@ -101,45 +111,54 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
      * @return 추출된 이메일
      */
     private String extractEmail(Map<String, Object> attributes, String provider) { // private 메서드 - 클래스 내부에서만 사용
+        // [#6] 임시 이메일을 생성하지 않는다. 이메일을 받지 못하면 null 을 반환하고 호출부에서 로그인을 실패시킨다.
         try {
             switch (provider.toLowerCase()) { // 소셜 로그인 제공자를 소문자로 변환하여 비교
-                case "google": // Google 의 경우
-                    String email = (String) attributes.get("email"); // Google 은 바로 email 필드에 이메일이 있음
-                    if (email == null) { // 이메일이 null인 경우 처리
-                        log.warn("Google에서 이메일 정보를 받지 못했습니다."); // 경고 로그 출력
-                        return "google_" + attributes.get("sub") + "@temp.com"; // 임시 이메일 생성
-                    }
-                    return email; // 정상적인 이메일 반환
-                case "kakao": // Kakao 의 경우
-                    Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account"); // Kakao는 kakao_account 안의 email 필드에서 이메일 추출
-                    if (kakaoAccount == null) { // kakao_account가 null인 경우 처리
-                        log.warn("Kakao에서 kakao_account 정보를 받지 못했습니다."); // 경고 로그 출력
-                        return "kakao_" + attributes.get("id") + "@temp.com"; // 임시 이메일 생성
-                    }
-                    String kakaoEmail = (String) kakaoAccount.get("email"); // kakao_account 에서 email 필드 추출
-                    if (kakaoEmail == null) { // 이메일이 null인 경우 처리
-                        log.warn("Kakao에서 이메일 정보를 받지 못했습니다."); // 경고 로그 출력
-                        return "kakao_" + attributes.get("id") + "@temp.com"; // 임시 이메일 생성
-                    }
-                    return kakaoEmail; // 정상적인 이메일 반환
-                case "naver": // Naver의 경우
-                    Map<String, Object> response = (Map<String, Object>) attributes.get("response"); // Naver 는 response 객체 안에 정보가 있음
-                    if (response == null) { // response가 null인 경우 처리
-                        log.warn("Naver에서 response 정보를 받지 못했습니다."); // 경고 로그 출력
-                        return "naver_" + System.currentTimeMillis() + "@temp.com"; // 임시 이메일 생성
-                    }
-                    String naverEmail = (String) response.get("email"); // response 안의 email 필드에서 이메일 추출
-                    if (naverEmail == null) { // 이메일이 null인 경우 처리
-                        log.warn("Naver에서 이메일 정보를 받지 못했습니다."); // 경고 로그 출력
-                        return "naver_" + response.get("id") + "@temp.com"; // 임시 이메일 생성
-                    }
-                    return naverEmail; // 정상적인 이메일 반환
+                case "google": // Google 은 바로 email 필드에 이메일이 있음
+                    return (String) attributes.get("email");
+                case "kakao": // Kakao 는 kakao_account 안의 email 필드에서 이메일 추출
+                    Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+                    return kakaoAccount == null ? null : (String) kakaoAccount.get("email");
+                case "naver": // Naver 는 response 객체 안에 정보가 있음
+                    Map<String, Object> response = (Map<String, Object>) attributes.get("response");
+                    return response == null ? null : (String) response.get("email");
                 default: // 지원하지 않는 소셜 로그인 제공자인 경우
                     throw new IllegalArgumentException("지원하지 않는 소셜 로그인 제공자: " + provider); // 예외 발생
             }
         } catch (Exception e) {
             log.error("이메일 추출 중 오류 발생 - Provider: {}, Error: {}", provider, e.getMessage()); // 에러 로그 출력
-            return provider + "_" + System.currentTimeMillis() + "@temp.com"; // 임시 이메일 생성
+            return null; // 추출 실패 시 null (호출부에서 로그인 실패 처리)
+        }
+    }
+
+    /**
+     * 소셜 로그인 제공자별 이메일 검증 여부 추출
+     * - 제공자가 "이 이메일의 소유권이 검증되었다"고 단언하는지 확인한다.
+     * - 검증되지 않은 이메일을 기존 계정에 자동 연동하면 계정 탈취 위험이 있으므로 [#7] 에서 사용한다.
+     *
+     * @param attributes 소셜 로그인 제공자에서 받은 사용자 정보
+     * @param provider 소셜 로그인 제공자 (google, kakao, naver)
+     * @return 제공자가 이메일을 검증했으면 true
+     */
+    private boolean extractEmailVerified(Map<String, Object> attributes, String provider) {
+        try {
+            switch (provider.toLowerCase()) {
+                case "google": // Google 은 email_verified 플래그 제공
+                    Object googleVerified = attributes.get("email_verified");
+                    return Boolean.TRUE.equals(googleVerified) || "true".equalsIgnoreCase(String.valueOf(googleVerified));
+                case "kakao": // Kakao 는 kakao_account.is_email_verified 플래그 제공
+                    Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
+                    if (kakaoAccount == null) return false;
+                    Object kakaoVerified = kakaoAccount.get("is_email_verified");
+                    return Boolean.TRUE.equals(kakaoVerified) || "true".equalsIgnoreCase(String.valueOf(kakaoVerified));
+                case "naver": // Naver 는 별도 플래그가 없으며 계정 이메일은 검증된 것으로 간주
+                    return true;
+                default:
+                    return false;
+            }
+        } catch (Exception e) {
+            log.error("이메일 검증 여부 추출 중 오류 - Provider: {}, Error: {}", provider, e.getMessage());
+            return false; // 불확실하면 미검증으로 간주(보수적)
         }
     }
 
@@ -256,7 +275,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
      * @return 처리된 사용자 정보 (기존 사용자 또는 신규 생성된 사용자)
      */
     @Transactional
-    public User processOAuth2User(String email, String name, String providerId, AuthProvider authProvider) {
+    public User processOAuth2User(String email, String name, String providerId, AuthProvider authProvider, boolean emailVerified) {
         // 1) (provider, providerId)로 연동 우선 조회
         Optional<SocialAccount> linked =
                 socialAccountRepository.findByProviderAndProviderId(authProvider, providerId);
@@ -267,17 +286,23 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             if (managed.getName() == null || managed.getName().isBlank()) {
                 managed.setName(name);
             }
-            managed.setEmailVerified(true);
             isNewUserFlag.set(Boolean.FALSE);
             return userRepository.save(managed);
         }
 
-        // 2) 이메일 기준 기존 사용자 존재 → 자동 연동(정책에 따라 동의 플로우로 변경 가능)
+        // 2) 이메일 기준 기존 사용자 존재 → 자동 연동
         Optional<User> existingUserByEmail = userRepository.findByEmail(email);
         if (existingUserByEmail.isPresent()) {
             User user = existingUserByEmail.get();
-            // 연동 중복 방지 체크 후 추가
+            // [#7] 미검증 이메일 자동 연동 차단:
+            // 공격자가 피해자의 이메일로 소셜 계정을 만들어 기존 계정에 자동 연동되면 계정 탈취가 가능하다.
+            // 제공자가 이메일 소유권을 검증한 경우에만 자동 연동을 허용한다.
             if (!socialAccountRepository.existsByUserAndProvider(user, authProvider)) {
+                if (!emailVerified) {
+                    log.warn("OAuth2 자동 연동 차단 - 미검증 이메일 (email: {}, provider: {})", email, authProvider);
+                    throw new OAuth2AuthenticationException(new OAuth2Error("email_not_verified"),
+                            "이미 가입된 이메일입니다. 소셜 제공자에서 이메일이 검증되지 않아 자동 연동할 수 없습니다.");
+                }
                 SocialAccount account = SocialAccount.createSocialAccount(
                         user,
                         authProvider,
@@ -290,7 +315,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             if (user.getName() == null || user.getName().isBlank()) {
                 user.setName(name);
             }
-            user.setEmailVerified(true);
+            user.setEmailVerified(true); // 검증된 이메일로 연동되었으므로 true
             isNewUserFlag.set(Boolean.FALSE);
             return userRepository.save(user);
         }
@@ -303,6 +328,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
                 providerId,
                 null // profileImage는 null로 설정
         );
+        newUser.setEmailVerified(emailVerified); // 제공자의 실제 검증 여부를 반영(기본 팩토리는 true 로 설정함)
         User saved = userRepository.save(newUser);
         SocialAccount firstLink = SocialAccount.createSocialAccount(
                 saved,
