@@ -22,7 +22,7 @@ const TYPES: { key: ContentType; label: string; hint: string }[] = [
 
 const LOCALES = ["ko", "en"];
 
-// 폼 초깃값 (position 은 백엔드 생성 검증상 1~5 필요 → 기본 1)
+// 폼 초깃값 (position 은 0 이상 노출 순서, 기본 1)
 function emptyForm(type: ContentType): AdminContentRequest {
   return {
     type,
@@ -41,7 +41,7 @@ function emptyForm(type: ContentType): AdminContentRequest {
  * - 유형 탭 전환, 로케일 필터, 목록 조회
  * - 생성 / 수정 / 삭제 / 공개 토글
  *
- * 참고: 생성 시 백엔드(AdminContent.createAdminContent)가 position 1~5, 제목/본문 필수를 검증한다.
+ * 참고: 생성 시 백엔드(AdminContent.createAdminContent)가 position 0 이상, 제목/본문 필수를 검증한다.
  */
 export default function AdminContentsPage() {
   const [type, setType] = useState<ContentType>("FAQ");
@@ -108,8 +108,8 @@ export default function AdminContentsPage() {
       setResult({ ok: false, text: "본문을 입력하세요." });
       return;
     }
-    if (editingId === null && (form.position < 1 || form.position > 5)) {
-      setResult({ ok: false, text: "생성 시 순서(position)는 1~5 범위여야 합니다." });
+    if (form.position < 0) {
+      setResult({ ok: false, text: "순서(position)는 0 이상이어야 합니다." });
       return;
     }
     setSaving(true);
@@ -238,7 +238,7 @@ export default function AdminContentsPage() {
       {form && (
         <section className={styles.panel}>
           <h2 className={styles.panelTitle}>{editingId === null ? `${activeType.label} 새로 만들기` : `${activeType.label} 수정 (#${editingId})`}</h2>
-          <p className={styles.panelHint}>제목·본문은 필수입니다. 생성 시 순서는 1~5 범위만 허용됩니다.</p>
+          <p className={styles.panelHint}>제목·본문은 필수입니다. 순서(0 이상)는 오름차순으로 노출됩니다.</p>
 
           <div className={styles.formGrid}>
             <label className={styles.field}>
@@ -252,12 +252,11 @@ export default function AdminContentsPage() {
               </select>
             </label>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>순서 (1~5)</span>
+              <span className={styles.fieldLabel}>순서 (0 이상)</span>
               <input
                 className={styles.input}
                 type="number"
-                min={1}
-                max={5}
+                min={0}
                 value={form.position}
                 onChange={(e) => setForm({ ...form, position: Number(e.target.value) })}
               />

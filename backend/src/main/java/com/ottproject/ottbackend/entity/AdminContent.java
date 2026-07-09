@@ -81,11 +81,11 @@ public class AdminContent { // 엔티티 시작
      * @param title 제목
      * @param content 내용
      * @param contentType 콘텐츠 유형
-     * @param priority 우선순위 (1-5)
+     * @param position 노출 순서 (0 이상, 오름차순)
      * @return 생성된 AdminContent 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static AdminContent createAdminContent(String title, String content, String contentType, Integer priority) {
+    public static AdminContent createAdminContent(String title, String content, String contentType, Integer position) {
         // 필수 필드 검증
         if (title == null || title.trim().isEmpty()) {
             throw new IllegalArgumentException("제목은 필수입니다.");
@@ -96,8 +96,8 @@ public class AdminContent { // 엔티티 시작
         if (contentType == null || contentType.trim().isEmpty()) {
             throw new IllegalArgumentException("콘텐츠 유형은 필수입니다.");
         }
-        if (priority == null || priority < 1 || priority > 5) {
-            throw new IllegalArgumentException("우선순위는 1-5 범위 내여야 합니다.");
+        if (position == null || position < 0) {
+            throw new IllegalArgumentException("노출 순서(position)는 0 이상이어야 합니다.");
         }
 
         // AdminContent 엔티티 생성
@@ -105,7 +105,7 @@ public class AdminContent { // 엔티티 시작
         adminContent.title = title.trim();
         adminContent.content = content.trim();
         adminContent.type = contentType.trim();
-        adminContent.position = priority;
+        adminContent.position = position;
         adminContent.locale = "ko"; // 기본값
         adminContent.published = false; // 기본값은 비공개
 
