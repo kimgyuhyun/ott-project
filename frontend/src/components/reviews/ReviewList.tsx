@@ -10,6 +10,7 @@ import CommentList from "./CommentList";
 import styles from "./ReviewList.module.css";
 // 리뷰 캐노니컬 타입(ReviewResponseDto 대응)
 import type { Review } from "@/types/review";
+import type { CurrentUser } from "@/types/common";
 
 interface ReviewListProps {
   animeId: number;
@@ -19,7 +20,7 @@ interface ReviewListProps {
 export default function ReviewList({ animeId, onRatingChange }: ReviewListProps) {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [editingReview, setEditingReview] = useState<Review | null>(null);
   const [newReview, setNewReview] = useState({ content: '' });
   const [newComment, setNewComment] = useState({ content: '' });
@@ -689,7 +690,7 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
                   <div className={styles.userRating}>
                     <div className={styles.userRatingStars}>
                       {[1, 2, 3, 4, 5].map((star) => {
-                        const isMine = !!(currentUser && review.userName === (currentUser as any).username);
+                        const isMine = !!(currentUser && review.userName === currentUser.username);
                         const scoreVal = isMine && typeof myRating === 'number' && myRating > 0 ? myRating as number : (Number(review.rating) || 0);
                         const filled = scoreVal >= star ? 1 : Math.max(0, Math.min(1, scoreVal - (star - 1)));
                         return <Star key={star} value={filled} size={18} color="#8B5CF6" emptyColor="#E5E7EB" />;
@@ -697,7 +698,7 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
                     </div>
                     <span className={styles.userRatingValue}>{
                       (() => {
-                        const isMine = !!(currentUser && review.userName === (currentUser as any).username);
+                        const isMine = !!(currentUser && review.userName === currentUser.username);
                         const scoreVal = isMine && typeof myRating === 'number' && myRating > 0 ? myRating as number : (Number(review.rating) || 0);
                         return scoreVal.toFixed(1);
                       })()
@@ -717,7 +718,7 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
                       <span className={styles.userName}>{review.userName}</span>
                     </div>
 
-                    {currentUser && ((typeof review.userId === 'number' && (currentUser as any).id === review.userId) || review.userName === (currentUser as any).username) && (
+                    {currentUser && ((typeof review.userId === 'number' && currentUser.id === review.userId) || review.userName === currentUser.username) && (
                       <DropdownMenu
                         items={[
                           {

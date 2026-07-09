@@ -1,3 +1,4 @@
+import type { CurrentUser } from "@/types/common";
 // 동일 오리진 경유 // 프론트엔드와 백엔드가 같은 도메인/포트에서 서비스된다는 뜻
 // 1. 클라이언트가 http://example.com/ -> nginx (80/443 포트)
 // http://exmaple.com/api/auth/login -> nginx (80/443 포트)
@@ -161,9 +162,9 @@ export async function logout() {
 }
 
 // 현재 사용자 정보 가져오기
-export async function getCurrentUser() { // import 해서 사용 가능한 비동기 함수 호이스팅은 불가
+export async function getCurrentUser(): Promise<CurrentUser | null> { // import 해서 사용 가능한 비동기 함수 호이스팅은 불가
   try { // 에외처리할려고 try catch문 사용
-    return await apiCall('/api/oauth2/user-info'); // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
+    return await apiCall<CurrentUser>('/api/oauth2/user-info'); // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
     // apiCall이 성공하면 JavaSCript 객체를 그대로 반환함
     // credentials: 'include', // 세션 쿠키 포함 이 옵션이 있으면 브라우저가 자동으로 세션 쿠키를 포함해서 요청을 보내서
     // 서버는 이 쿠키로 현재 로그인한 사용자를 식별 가능. 그래서 여기서는 따로 HTTP 요청 정보를 안보내줘도됨.

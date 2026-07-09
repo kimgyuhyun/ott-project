@@ -8,6 +8,16 @@ export interface PagedResponse<T> {
   size: number;
 }
 
+// 현재 로그인 사용자 정보 (/api/oauth2/user-info 의 동적 Map 응답)
+export interface CurrentUser {
+  authenticated?: boolean;
+  id?: number;
+  username?: string;
+  email?: string;
+  provider?: string;
+  oauth2User?: boolean;
+}
+
 export interface User { // 다른 파일에서 import로 사용 가능
   // TypeScript 타입 정의
   // ?가 있으면 선택 필드, 없으면 필수 필드

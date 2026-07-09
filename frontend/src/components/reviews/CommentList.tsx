@@ -6,6 +6,7 @@ import DropdownMenu from "@/components/ui/DropdownMenu";
 import styles from "./CommentList.module.css";
 // 리뷰 댓글 캐노니컬 타입(ReviewCommentsResponseDto 대응)을 로컬 별칭 Comment 로 사용
 import type { ReviewComment as Comment } from "@/types/review";
+import type { CurrentUser } from "@/types/common";
 
 interface CommentListProps {
   reviewId: number;
@@ -17,7 +18,7 @@ interface CommentListProps {
 export default function CommentList({ reviewId, myRating = 0, onCommentCreated, refreshTrigger }: CommentListProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState<number | null>(null);
   const [editingComment, setEditingComment] = useState<Comment | null>(null);

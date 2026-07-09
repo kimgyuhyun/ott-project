@@ -6,6 +6,7 @@ import DropdownMenu from "@/components/ui/DropdownMenu";
 import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
 import styles from "./EpisodeCommentList.module.css";
 import { EpisodeComment } from "@/types/episodeComments";
+import type { CurrentUser } from "@/types/common";
 
 interface EpisodeCommentListProps {
   episodeId: number;
@@ -14,7 +15,7 @@ interface EpisodeCommentListProps {
 export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProps) {
   const [comments, setComments] = useState<EpisodeComment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showReplyForm, setShowReplyForm] = useState<number | null>(null);
   const [editingComment, setEditingComment] = useState<EpisodeComment | null>(null);
