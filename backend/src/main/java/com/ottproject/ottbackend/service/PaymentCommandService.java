@@ -67,6 +67,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final PaymentQueryMapper paymentQueryMapper; // 결제 조회 매퍼
 	private final PaymentMethodService paymentMethodService; // 결제수단 서비스
 	private final ApplicationEventPublisher eventPublisher; // 이벤트 발행자
+	private final MembershipCommandService membershipCommandService; // 멤버십 구독 생성(동기 직접 호출)
 
 	// 테스트 결제 금액(원). 0이면 실제 플랜 금액으로 결제
 	@Value("${payments.test-amount:0}")
@@ -600,12 +601,19 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			log.warn("결제수단 확정 중 세부정보 조회 실패 - imp_uid: {}", providerPaymentId, ex);
 		}
 
-		// 멤버십 구독 생성 이벤트 발행(리스너가 구독 저장)
-		eventPublisher.publishEvent(new com.ottproject.ottbackend.event.MembershipSubscriptionRequestedEvent(
-			payment.getUser().getId(),
-			payment.getMembershipPlan().getCode()
-		));
-		log.info("멤버십 구독 생성 이벤트 발행 - userId: {}, planCode: {}", payment.getUser().getId(), payment.getMembershipPlan().getCode());
+		// 멤버십 구독 생성(동기·직접 호출): 실패 시 예외를 전파해 결제 확정과 함께 롤백하고 원인을 응답에 노출한다.
+		// (과거: 이벤트 발행 + 리스너의 블랭킷 catch로 구독 생성 실패가 조용히 묻혀 결제만 SUCCEEDED로 남았음)
+		try {
+			MembershipSubscribeRequestDto subscribeDto = new MembershipSubscribeRequestDto();
+			subscribeDto.planCode = payment.getMembershipPlan().getCode();
+			membershipCommandService.subscribe(payment.getUser().getId(), subscribeDto);
+			log.info("멤버십 구독 생성 완료 - userId: {}, planCode: {}", payment.getUser().getId(), subscribeDto.planCode);
+		} catch (ResponseStatusException e) {
+			throw e; // 이미 상태/사유가 있는 예외는 그대로 전파
+		} catch (Exception e) {
+			log.error("멤버십 구독 생성 실패 - paymentId: {}", payment.getId(), e);
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "멤버십 구독 생성 실패: " + e.getMessage(), e);
+		}
 	}
 
 	/**

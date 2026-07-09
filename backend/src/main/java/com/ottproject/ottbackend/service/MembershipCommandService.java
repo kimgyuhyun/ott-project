@@ -263,20 +263,4 @@ public class MembershipCommandService {
         return Math.max(0, prorationAmount); // 음수 방지
     }
 
-    /**
-     * 멤버십 구독 요청 이벤트 리스너
-     * - 결제 성공 시 발행된 이벤트를 처리하여 구독 생성
-     */
-    @EventListener
-    @Transactional
-    public void handleMembershipSubscriptionRequested(com.ottproject.ottbackend.event.MembershipSubscriptionRequestedEvent event) {
-        try {
-            MembershipSubscribeRequestDto dto = new MembershipSubscribeRequestDto();
-            dto.planCode = event.getPlanCode();
-            subscribe(event.getUserId(), dto);
-            log.info("이벤트 기반 멤버십 구독 생성 완료 - userId: {}, planCode: {}", event.getUserId(), event.getPlanCode());
-        } catch (Exception e) {
-            log.error("이벤트 기반 멤버십 구독 생성 실패 - userId: {}, planCode: {}", event.getUserId(), event.getPlanCode(), e);
-        }
-    }
 }
