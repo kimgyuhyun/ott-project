@@ -76,7 +76,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           setAuthUser({ // useAuth()로 가져온 login 함수를 구조분해 할당 받은 변수로 사용
             // {}는 배열이 아니라 객체를 만드는 문법이고 setAUthUser는 본디 login() 함수였고 이 함수는
             // 하나의 인자만 받는데, 그 인자가 user 타입의 객체라서 {}로 객체를 만들고 인자로 넘기려는것임
-            id: String((user as any).id ?? ''), // id는 객체의 속성임 만들 객체에 id라는 속성을 추가한다는뜻
+            id: String(user.id ?? ''), // id는 객체의 속성임 만들 객체에 id라는 속성을 추가한다는뜻
             // Stirng(...)은 JavaScript 내장 함수로 값을 문자열로 변환함
             // (user as any).id에서 user as any: TypeScript에서 user를 any 타입으로 취급(타입 체크 우회)
             // .id: user 객체의 id 속성에 접근 
@@ -90,14 +90,14 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
             // Promise<LoginResponse>: 나중에 LoginResponse 타입의 값이 올 거야 라는 뜻 나중에 값이 올 것을 나타내는 객체이며
             // 비동기 작업(시간이 걸리는 작업)의 결과를 다루는 방식임
             // 지금 당장은 없지만 나중에 LoginResponse 타입의 값이 올거야, 즉 비동기 작업이 완료되면 LoginResponse 형태의 데이터를 반환한다는 뜻
-            username: (user as any).username ?? (user as any).name ?? email,
+            username: user.name ?? email,
             // ?? 연산자를 연쇄 사용하면 왼쪽부터 순서대로 평가하고 null/undefined가 아닌 첫 번쨰 값을 반환하고 
             // 모두가 null/undefined이면 마지막 값을 반환함
             // username이라는 속성을 추가할꺼고 값은 user.username에 값이 있으면 그걸 사용 없으면 user.name을 사용,
             // 그것도 없으면 사용자 폼엥 입력한 email을 사용함함
-            email: (user as any).email ?? email,
+            email: user.email ?? email,
             // email이라는 속성을 추가할꺼고 백엔드에서 반환된 user.email이 있으면 그걸 사용하고 없으면 사용자 폼애 입력한 email변수를 사용한다는뜻
-            profileImage: (user as any).profileImage ?? undefined,
+            profileImage: undefined, // UserResponseDto 에는 프로필 이미지가 없어 초기값 없음
             // profileImage이라는 속성을 추가할꺼고 백엔드에서 반환된 user.profileImage이 있으면 그걸 사용하고 없으면 undefined를 사용함
             // profiledImage는 선택적 속성이라 있어도 되고 없어도 되는 속성임 그래서 값이 없을때 undefiend를 명시적으로 설정정
           }); // setAuthUser 함수 호출 후 사용자 정보 저장

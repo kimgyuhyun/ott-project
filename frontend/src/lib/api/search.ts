@@ -61,8 +61,8 @@ export interface PagedResponse<T> {
 
 function normalizeArray<T = any>(data: any): T[] {
   const isArr = Array.isArray(data);
-  const hasContent = data && Array.isArray((data as any).content);
-  const hasItems = data && Array.isArray((data as any).items);
+  const hasContent = data && Array.isArray(data.content);
+  const hasItems = data && Array.isArray(data.items);
   console.log('[API normalizeArray] typeof=', typeof data, 'isArray=', isArr, 'keys=', data ? Object.keys(data) : null);
   if (isArr) return data as T[];
   if (hasContent) return (data as PagedResponse<T>).content as T[];

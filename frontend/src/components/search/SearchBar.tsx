@@ -40,7 +40,7 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
     if (query.trim().length === 0) {
       getTrendingAnime24h(10)
         .then((items: unknown) => {
-          const arr = Array.isArray(items) ? items : [] as any[];
+          const arr = Array.isArray(items) ? items : [];
           const titles = arr.map((i: any) => i.title).filter(Boolean);
           setTrending(titles);
         })

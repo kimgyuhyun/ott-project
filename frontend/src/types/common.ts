@@ -8,6 +8,19 @@ export interface PagedResponse<T> {
   size: number;
 }
 
+// 인증 응답 사용자 (UserResponseDto: 로그인/회원가입 응답)
+export interface UserResponse {
+  id: number;
+  email: string;
+  name: string;
+  role?: string;
+  authProvider?: string;
+  emailVerified?: boolean;
+  enabled?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // 현재 로그인 사용자 정보 (/api/oauth2/user-info 의 동적 Map 응답)
 export interface CurrentUser {
   authenticated?: boolean;

@@ -1,4 +1,4 @@
-import type { CurrentUser } from "@/types/common";
+import type { CurrentUser, UserResponse } from "@/types/common";
 // 동일 오리진 경유 // 프론트엔드와 백엔드가 같은 도메인/포트에서 서비스된다는 뜻
 // 1. 클라이언트가 http://example.com/ -> nginx (80/443 포트)
 // http://exmaple.com/api/auth/login -> nginx (80/443 포트)
@@ -80,11 +80,11 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 // 로그인 API
-export async function login(email: string, password: string) {
+export async function login(email: string, password: string): Promise<UserResponse> {
   // 외부에서 import해서 사용가능한 비동기 함수 function이 붙으면 호이스팅,제네릭이 가능하지만 export여서 호이스팅 불가함
   // email 파라미터는 String 형식으로 받아야함, password 파라미터도 string 형식으로 받아야함
   // 참고로 자바스크립트 함수는 리턴 타입이 지정 불가하고 타입스크립트는 리턴타입을 타입추론해서 생략 가능함
-  return apiCall('/api/auth/login', { // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
+  return apiCall<UserResponse>('/api/auth/login', { // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
     // 파라미터로 백엔드 api 경로, 요청 본문을 apiCall 함수에 태워보냄
     method: 'POST', // 요청형식 POST로 지정
     body: JSON.stringify({ email, password }), // JSON.stringify는 Javascript 내장 함수임
@@ -96,10 +96,10 @@ export async function login(email: string, password: string) {
 }
 
 // 회원가입 API
-export async function register(email: string, password: string, name: string) {
+export async function register(email: string, password: string, name: string): Promise<UserResponse> {
   // import 해서 사용 가능한 비동기 함수 호이스팅은 불가
   // 파라미터로 email, password, name을 받고 이건 모두 String 타입이어야함 함수명은 register
-  return apiCall('/api/auth/register', { // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
+  return apiCall<UserResponse>('/api/auth/register', { // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
     method: 'POST', // 요청형식 POST로 
     body: JSON.stringify({ email, password, name }),
     // 함수 호출할때 파라미터로 받은 email, password, name을 Javascript 객체로 만들고 이걸 문자열로 변환해서 요청본문(Body)에 저장
