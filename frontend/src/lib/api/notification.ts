@@ -1,5 +1,7 @@
 // 알림 관련 API 함수들
 
+import { getErrorStatus } from "@/lib/errorMessage";
+
 // API 기본 설정: 항상 동일 오리진 프록시 사용
 const API_BASE = '';
 
@@ -20,10 +22,7 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     const errorText = await response.text();
     if (response.status === 401) {
       // 401 에러는 리다이렉트하지 않고 에러로만 처리
-      const err: any = new Error('UNAUTHORIZED');
-      err.status = 401;
-      err.body = errorText;
-      throw err;
+      throw Object.assign(new Error('UNAUTHORIZED'), { status: 401, body: errorText });
     }
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
@@ -35,8 +34,8 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 export async function getNotifications(page: number = 0, size: number = 20) {
   try {
     return await apiCall(`/api/notifications?page=${page}&size=${size}`);
-  } catch (error: any) {
-    if (error?.status === 401) {
+  } catch (error: unknown) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 알림 목록 조회 실패: 로그인 필요 (401)');
       return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
     }
@@ -48,8 +47,8 @@ export async function getNotifications(page: number = 0, size: number = 20) {
 export async function getUnreadNotificationCount() {
   try {
     return await apiCall('/api/notifications/unread-count');
-  } catch (error: any) {
-    if (error?.status === 401) {
+  } catch (error: unknown) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 읽지 않은 알림 개수 조회 실패: 로그인 필요 (401)');
       return 0;
     }

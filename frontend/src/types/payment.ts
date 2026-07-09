@@ -54,19 +54,19 @@ export const delay = (ms: number): Promise<void> =>
   new Promise(resolve => setTimeout(resolve, ms));
 
 // IamportResponse 타입 검증 함수
-export const isValidIamportResponse = (response: any): response is import('@/types/iamport').IamportResponse => {
+export const isValidIamportResponse = (response: unknown): response is import('@/types/iamport').IamportResponse => {
+  if (typeof response !== 'object' || response === null) return false;
+  const r = response as { success?: unknown; error_msg?: unknown; imp_uid?: unknown; merchant_uid?: unknown };
   return (
-    response &&
-    typeof response === 'object' &&
-    typeof response.success === 'boolean' &&
-    (response.error_msg === undefined || typeof response.error_msg === 'string') &&
-    (response.imp_uid === undefined || typeof response.imp_uid === 'string') &&
-    (response.merchant_uid === undefined || typeof response.merchant_uid === 'string')
+    typeof r.success === 'boolean' &&
+    (r.error_msg === undefined || typeof r.error_msg === 'string') &&
+    (r.imp_uid === undefined || typeof r.imp_uid === 'string') &&
+    (r.merchant_uid === undefined || typeof r.merchant_uid === 'string')
   );
 };
 
 // 결제 응답 안전성 검증
-export const validatePaymentResponse = (response: any): { isValid: boolean; error?: string } => {
+export const validatePaymentResponse = (response: unknown): { isValid: boolean; error?: string } => {
   if (!isValidIamportResponse(response)) {
     return {
       isValid: false,

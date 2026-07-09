@@ -48,7 +48,7 @@ export const useProrationPayment = () => {
   };
 
   // 로깅 함수
-  const logPaymentEvent = (event: string, data: any) => {
+  const logPaymentEvent = (event: string, data: Record<string, unknown>) => {
     console.log(`[ProrationPayment] ${event}:`, {
       timestamp: new Date().toISOString(),
       userId: user?.id,

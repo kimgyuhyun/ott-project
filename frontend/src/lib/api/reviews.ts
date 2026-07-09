@@ -94,8 +94,3 @@ export async function reportReview(animeId: number, reviewId: number) {
     method: 'POST',
   });
 }
-
-// Type guard to validate review response structure
-export function isValidReviewResponse(data: any): data is { content: any[] } {
-  return data && typeof data === 'object' && 'content' in data && Array.isArray(data.content);
-}

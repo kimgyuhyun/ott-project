@@ -217,7 +217,7 @@ export default function HomeClient({
     anime: Anime | { aniId?: number; id?: number; title?: string; titleEn?: string; titleJp?: string; posterUrl?: string; isNew?: boolean },
   ) => {
     // 모달 오픈에 필요한 최소 정보(AnimeListItem)로 변환한다.
-    const coerceToAnime = (src: any): AnimeListItem => {
+    const coerceToAnime = (src: Partial<AnimeListItem> & { id?: number }): AnimeListItem => {
       const aniId = Number(src?.aniId ?? src?.id ?? 0);
       return {
         aniId,

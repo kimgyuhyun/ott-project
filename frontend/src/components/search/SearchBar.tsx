@@ -39,9 +39,9 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
   useEffect(() => {
     if (query.trim().length === 0) {
       getTrendingAnime24h(10)
-        .then((items: unknown) => {
+        .then((items) => {
           const arr = Array.isArray(items) ? items : [];
-          const titles = arr.map((i: any) => i.title).filter(Boolean);
+          const titles = arr.map((i) => i.title).filter(Boolean);
           setTrending(titles);
         })
         .catch(() => setTrending([]));
@@ -74,7 +74,7 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
           setIsLoading(true);
           setError(null);
           const results = await getSearchSuggestions(query, 8);
-          const titles = Array.isArray(results) ? results.map((item: any) => item.title) : [];
+          const titles = Array.isArray(results) ? results.map((item) => item.title) : [];
           setSuggestions(titles.filter(Boolean));
           setShowSuggestions(true);
         } catch (error) {
@@ -233,7 +233,7 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
                       setIsLoading(true);
                       getSearchSuggestions(query, 8)
                         .then(results => {
-                          const titles = Array.isArray(results) ? results.map((item: any) => item.title) : [];
+                          const titles = Array.isArray(results) ? results.map((item) => item.title) : [];
                           setSuggestions(titles.filter(Boolean));
                         })
                         .catch(() => setError('자동완성 로드에 실패했습니다.'))

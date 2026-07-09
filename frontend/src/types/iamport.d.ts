@@ -31,7 +31,7 @@ export interface IamportRequestPayData {
   currency?: string;
   vbank_due?: string;
   biz_num?: string;
-  custom_data?: any;
+  custom_data?: unknown;
   period?: {
     from: string;
     to: string;
@@ -93,7 +93,7 @@ export interface IamportResponse {
   buyer_tel?: string;
   buyer_addr?: string;
   buyer_postcode?: string;
-  custom_data?: any;
+  custom_data?: unknown;
   paid_at?: number;
   receipt_url?: string;
   card_name?: string;

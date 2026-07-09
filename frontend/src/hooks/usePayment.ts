@@ -48,7 +48,7 @@ export const usePayment = () => {
   };
 
   // 로깅 함수
-  const logPaymentEvent = (event: string, data: any) => {
+  const logPaymentEvent = (event: string, data: Record<string, unknown>) => {
     console.log(`[Payment] ${event}:`, {
       timestamp: new Date().toISOString(),
       userId: user?.id,

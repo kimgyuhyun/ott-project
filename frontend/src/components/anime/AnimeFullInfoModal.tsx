@@ -13,16 +13,19 @@ interface AnimeFullInfoModalProps {
 
 function parseVoiceActors(voiceActorsRaw: unknown): string[] {
   if (!voiceActorsRaw) return [];
+  // 문자열이면 그대로, 객체면 name 필드를 추출
+  const nameOf = (v: unknown): string =>
+    typeof v === 'string' ? v : String((v as { name?: unknown })?.name ?? '');
   try {
     // JSON 문자열 형태라면 배열/객체에서 이름 필드를 추출
-    const parsed = typeof voiceActorsRaw === 'string' ? JSON.parse(voiceActorsRaw) : voiceActorsRaw;
+    const parsed: unknown = typeof voiceActorsRaw === 'string' ? JSON.parse(voiceActorsRaw) : voiceActorsRaw;
     if (Array.isArray(parsed)) {
-      return parsed.map((v) => (typeof v === 'string' ? v : (v?.name ?? ''))).filter(Boolean);
+      return parsed.map(nameOf).filter(Boolean);
     }
     if (parsed && typeof parsed === 'object') {
-      return Object.values(parsed as Record<string, any>).map((v) => (typeof v === 'string' ? v : (v?.name ?? ''))).filter(Boolean);
+      return Object.values(parsed as Record<string, unknown>).map(nameOf).filter(Boolean);
     }
-  } catch (_) {
+  } catch {
     // JSON 파싱 실패 시 줄바꿈/쉼표 기준 단순 분리
   }
   const text = String(voiceActorsRaw);

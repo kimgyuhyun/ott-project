@@ -472,10 +472,10 @@ export async function getLatestAnime() {
 }
 
 // 실시간 트렌딩(24h) 조회
-export async function getTrendingAnime24h(limit: number = 10) {
+export async function getTrendingAnime24h(limit: number = 10): Promise<AnimeListItem[]> {
   // import해서 사용하는 비동기 함수 getTrendingAnime24h 선언
-  // 파라미터로는 limit를 number 타입으로 받고 limit를 전달받지않으면 기본값 10으로 사용함 
-  return apiCall(`/anime/trending-24h?limit=${limit}`);
+  // 파라미터로는 limit를 number 타입으로 받고 limit를 전달받지않으면 기본값 10으로 사용함
+  return apiCall<AnimeListItem[]>(`/anime/trending-24h?limit=${limit}`) as Promise<AnimeListItem[]>;
   // 파라미터로받은 limit를 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
   // /anime/trending-24h?limit=10 이렇게 전달한걸 api/anime/trending-24h?limit=10 이렇게 만들어서 feacth 함수로 백엔드에 요청함
   // 이건 ?가 있으므로 쿼리 파라미터임

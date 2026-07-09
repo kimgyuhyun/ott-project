@@ -114,7 +114,7 @@ function cleanupTimeouts() {
 export async function saveEpisodeProgress(episodeId: number, progressData: {
   positionSec: number;
   durationSec: number;
-}, retryCount: number = 0): Promise<any> {
+}, retryCount: number = 0): Promise<unknown> {
   console.log('🌐 saveEpisodeProgress API 호출:', {
     url: `/api/episodes/${episodeId}/progress`,
     method: 'POST',

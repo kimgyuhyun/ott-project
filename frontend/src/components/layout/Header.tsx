@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useMembershipData } from "@/hooks/useMembershipData";
 import { getUserStats } from "@/lib/api/user";
+import type { MypageStats } from "@/types/mypage";
 import { getUnreadNotificationCount } from "@/lib/api/notification";
 import SearchBar from "@/components/search/SearchBar";
 import NotificationDropdown from "./NotificationDropdown";
@@ -15,7 +16,7 @@ export default function Header() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [userStats, setUserStats] = useState<any>(null);
+  const [userStats, setUserStats] = useState<MypageStats | null>(null);
   const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();

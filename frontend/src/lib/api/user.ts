@@ -3,6 +3,7 @@
 // 사용자 관련 API 함수들
 
 import type { PagedResponse } from "@/types/common";
+import { getErrorStatus } from "@/lib/errorMessage";
 import type {
   UserProfile,
   RecentAnimeResponse,
@@ -35,10 +36,7 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     const errorText = await response.text();
     if (response.status === 401) {
       // 401 에러는 리다이렉트하지 않고 에러로만 처리
-      const err: any = new Error('UNAUTHORIZED');
-      err.status = 401;
-      err.body = errorText;
-      throw err;
+      throw Object.assign(new Error('UNAUTHORIZED'), { status: 401, body: errorText });
     }
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
@@ -52,7 +50,7 @@ export async function getUserProfile(): Promise<UserProfile> {
 }
 
 // 사용자 프로필 정보 수정
-export async function updateUserProfile(profileData: any) {
+export async function updateUserProfile(profileData: Record<string, unknown>) {
   return apiCall('/api/users/me/profile', {
     method: 'PUT',
     body: JSON.stringify(profileData),
@@ -65,7 +63,7 @@ export async function getUserSettings() {
 }
 
 // 사용자 설정 수정
-export async function updateUserSettings(settings: any) {
+export async function updateUserSettings(settings: Record<string, unknown>) {
   return apiCall('/api/users/me/settings', {
     method: 'PUT',
     body: JSON.stringify(settings),
@@ -78,9 +76,9 @@ export async function getUserWatchHistory(page: number = 0, size: number = 20): 
     // 캐시 방지를 위해 타임스탬프 추가
     const timestamp = Date.now();
     return await apiCall<WatchHistoryPage>(`/api/episodes/mypage/watch-history?page=${page}&size=${size}&t=${timestamp}`);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
-    if (error?.status === 401) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 시청 기록 조회 실패: 로그인 필요 (401)');
       return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
     }
@@ -100,9 +98,9 @@ export async function getUserRecentAnime(params?: { page?: number; size?: number
     if (params?.cursorAnimeId != null) qp.append('cursorAnimeId', String(params.cursorAnimeId));
     qp.append('t', String(Date.now()));
     return await apiCall<RecentAnimeResponse>(`/api/episodes/mypage/recent-anime?${qp.toString()}`);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
-    if (error?.status === 401) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 최근 본 목록 조회 실패: 로그인 필요 (401)');
       return { items: [] };
     }
@@ -182,9 +180,9 @@ export async function getAnimeWatchHistory(animeId: number) { // Promise<number>
     
     console.log('🔍 반환할 시청 기록:', result);
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 null 반환
-    if (error?.status === 401) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 시청 기록 조회 실패: 로그인 필요 (401)');
       return null;
     }
@@ -201,9 +199,9 @@ export async function getUserWantList(page: number = 0, size: number = 20): Prom
     const result = await apiCall<PagedResponse<FavoriteAnime>>(`/api/mypage/favorites/anime?page=${page}&size=${size}`);
     console.log('🌐 [FRONTEND] getUserWantList 응답:', result);
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
-    if (error?.status === 401) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 보고싶다 목록 조회 실패: 로그인 필요 (401)');
       return { items: [], total: 0, page, size };
     }
@@ -217,9 +215,9 @@ export async function getUserStats(): Promise<MypageStats> {
   try {
     // 백엔드 집계 API 호출
     return await apiCall<MypageStats>('/api/mypage/stats');
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 통계 반환
-    if (error?.status === 401) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 사용자 통계 조회 실패: 로그인 필요 (401)');
       return { ratingCount: 0, reviewCount: 0, commentCount: 0 };
     }
@@ -228,7 +226,7 @@ export async function getUserStats(): Promise<MypageStats> {
 }
 
 // 비밀번호 변경
-export async function changePassword(passwordData: any) {
+export async function changePassword(passwordData: { currentPassword: string; newPassword: string }) {
   return apiCall('/api/settings/change-password', {
     method: 'PUT',
     body: JSON.stringify(passwordData),
@@ -236,7 +234,7 @@ export async function changePassword(passwordData: any) {
 }
 
 // 이메일 변경
-export async function changeEmail(emailData: any) {
+export async function changeEmail(emailData: Record<string, unknown>) {
   return apiCall('/api/user/change-email', {
     method: 'POST',
     body: JSON.stringify(emailData),
@@ -251,9 +249,9 @@ export async function getUserBingeList(): Promise<BingeWatch[]> {
     const result = await apiCall<BingeWatch[]>('/api/mypage/binge');
     console.log('🌐 [FRONTEND] getUserBingeList 응답:', result);
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
-    if (error?.status === 401) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 정주행 목록 조회 실패: 로그인 필요 (401)');
       return [];
     }
@@ -271,7 +269,7 @@ export async function hideFromRecent(aniId: number) {
       method: 'DELETE'
     });
     console.log('🌐 [FRONTEND] hideFromRecent 성공');
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('🌐 [FRONTEND] hideFromRecent 에러:', error);
     throw error;
   }
@@ -286,7 +284,7 @@ export async function removeFromWantList(aniId: number) {
       method: 'POST'
     });
     console.log('🌐 [FRONTEND] removeFromWantList 성공');
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('🌐 [FRONTEND] removeFromWantList 에러:', error);
     throw error;
   }
@@ -301,7 +299,7 @@ export async function deleteFromBinge(aniId: number) {
       method: 'DELETE'
     });
     console.log('🌐 [FRONTEND] deleteFromBinge 성공');
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('🌐 [FRONTEND] deleteFromBinge 에러:', error);
     throw error;
   }
@@ -315,8 +313,8 @@ export async function getMyRatings(page: number = 0, size: number = 20): Promise
     const res = await apiCall<MyRating[]>(`/api/mypage/ratings?${qs}`);
     console.log('🌐 [FRONTEND] getMyRatings 응답:', res);
     return res;
-  } catch (error: any) {
-    if (error?.status === 401) {
+  } catch (error: unknown) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 내 별점 조회 실패: 로그인 필요 (401)');
       return [];
     }
@@ -333,8 +331,8 @@ export async function getMyReviews(page: number = 0, size: number = 20): Promise
     const res = await apiCall<MyReview[]>(`/api/mypage/reviews?${qs}`);
     console.log('🌐 [FRONTEND] getMyReviews 응답:', res);
     return res;
-  } catch (error: any) {
-    if (error?.status === 401) {
+  } catch (error: unknown) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 내 리뷰 조회 실패: 로그인 필요 (401)');
       return [];
     }
@@ -351,8 +349,8 @@ export async function getMyComments(page: number = 0, size: number = 20): Promis
     const res = await apiCall<MyComment[]>(`/api/mypage/comments?${qs}`);
     console.log('🌐 [FRONTEND] getMyComments 응답:', res);
     return res;
-  } catch (error: any) {
-    if (error?.status === 401) {
+  } catch (error: unknown) {
+    if (getErrorStatus(error) === 401) {
       console.log('🔍 내 댓글 조회 실패: 로그인 필요 (401)');
       return [];
     }

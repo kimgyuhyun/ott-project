@@ -34,11 +34,11 @@ export default function FilterModal({
     onItemToggle(item);
   };
 
-  const getItemKey = (item: any) => {
+  const getItemKey = (item: { id?: number; key?: string; name: string; label?: string }) => {
     return item.id || item.key || item.name;
   };
 
-  const getItemLabel = (item: any) => {
+  const getItemLabel = (item: { name: string; label?: string }) => {
     return item.label || item.name;
   };
 

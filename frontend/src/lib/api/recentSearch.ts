@@ -10,7 +10,7 @@ interface RecentSearchRequest {
 }
 
 // 진행 중 요청 관리 (중복 방지)
-const inFlightRequests = new Map<string, Promise<any>>();
+const inFlightRequests = new Map<string, Promise<unknown>>();
 
 // 공통 fetch 함수
 async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -47,7 +47,8 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 // 중복 요청 방지 래퍼
 function deduplicateRequest<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
   if (inFlightRequests.has(key)) {
-    return inFlightRequests.get(key)!;
+    // 캐시는 이질적(Promise<unknown>)이므로 이 키의 T 로 단언
+    return inFlightRequests.get(key)! as Promise<T>;
   }
   
   const promise = requestFn().finally(() => {

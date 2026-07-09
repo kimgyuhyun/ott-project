@@ -49,7 +49,7 @@ export interface SearchResultItem {
   rating?: number;
   badges?: string[];
   episode?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface PagedResponse<T> {
@@ -59,14 +59,11 @@ export interface PagedResponse<T> {
   total?: number;
 }
 
-function normalizeArray<T = any>(data: any): T[] {
-  const isArr = Array.isArray(data);
-  const hasContent = data && Array.isArray(data.content);
-  const hasItems = data && Array.isArray(data.items);
-  console.log('[API normalizeArray] typeof=', typeof data, 'isArray=', isArr, 'keys=', data ? Object.keys(data) : null);
-  if (isArr) return data as T[];
-  if (hasContent) return (data as PagedResponse<T>).content as T[];
-  if (hasItems) return (data as PagedResponse<T>).items as T[];
+function normalizeArray<T = unknown>(data: unknown): T[] {
+  if (Array.isArray(data)) return data as T[];
+  const obj = (data ?? {}) as { content?: unknown; items?: unknown };
+  if (Array.isArray(obj.content)) return obj.content as T[];
+  if (Array.isArray(obj.items)) return obj.items as T[];
   console.warn('[API normalizeArray] 예상치 못한 구조, 빈 배열 반환');
   return [] as T[];
 }

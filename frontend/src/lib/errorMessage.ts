@@ -10,3 +10,15 @@ export function getErrorMessage(err: unknown): string | undefined {
   }
   return undefined;
 }
+
+// 캐치된 unknown 에러에서 HTTP 상태 코드를 안전하게 추출한다(예: 401 판별).
+// - err.status(커스텀) 또는 err.response.status(axios 스타일) 모두 처리
+export function getErrorStatus(err: unknown): number | undefined {
+  if (err && typeof err === "object") {
+    const direct = (err as { status?: unknown }).status;
+    if (typeof direct === "number") return direct;
+    const respStatus = (err as { response?: { status?: unknown } }).response?.status;
+    if (typeof respStatus === "number") return respStatus;
+  }
+  return undefined;
+}
