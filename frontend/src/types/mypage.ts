@@ -40,6 +40,31 @@ export interface RecentAnimeResponse {
   items: RecentAnimeWatch[];
 }
 
+// 전체 시청 기록 항목 (/api/episodes/mypage/watch-history 의 content 요소)
+export interface WatchHistoryEntry {
+  animeId?: number;
+  episodeId?: number;
+  episodeNumber?: number;
+  positionSec?: number;
+  durationSec?: number;
+  completed?: boolean;
+  updatedAt?: string;
+  watchedAt?: string;
+  createdAt?: string;
+  episode?: { episodeNumber?: number };
+}
+
+// 전체 시청 기록 페이지 (Spring Page 형태)
+export interface WatchHistoryPage {
+  content: WatchHistoryEntry[];
+  totalElements?: number;
+  totalPages?: number;
+  size?: number;
+  number?: number;
+  first?: boolean;
+  last?: boolean;
+}
+
 // 최근 시청 화면용(상세 조인으로 aniId/title/posterUrl 보강)
 export type WatchHistoryItem = RecentAnimeWatch & {
   aniId?: number;

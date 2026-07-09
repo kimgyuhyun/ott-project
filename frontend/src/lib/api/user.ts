@@ -12,6 +12,7 @@ import type {
   MyRating,
   MyReview,
   MyComment,
+  WatchHistoryPage,
 } from "@/types/mypage";
 
 // API 기본 설정: 항상 동일 오리진 프록시 사용
@@ -72,11 +73,11 @@ export async function updateUserSettings(settings: any) {
 }
 
 // 사용자 시청 기록 조회
-export async function getUserWatchHistory(page: number = 0, size: number = 20) {
+export async function getUserWatchHistory(page: number = 0, size: number = 20): Promise<WatchHistoryPage> {
   try {
     // 캐시 방지를 위해 타임스탬프 추가
     const timestamp = Date.now();
-    return await apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}&t=${timestamp}`);
+    return await apiCall<WatchHistoryPage>(`/api/episodes/mypage/watch-history?page=${page}&size=${size}&t=${timestamp}`);
   } catch (error: any) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
     if (error?.status === 401) {
@@ -116,9 +117,9 @@ export async function getAnimeWatchHistory(animeId: number) { // Promise<number>
     const history = await getUserWatchHistory(0, 1000);
     console.log('🔍 전체 시청 기록:', history);
     
-    const animeHistory = (history as any).content?.filter((item: any) => item.animeId === animeId) || [];
+    const animeHistory = history.content?.filter((item) => item.animeId === animeId) || [];
     console.log('🔍 해당 애니메이션 시청 기록:', animeHistory);
-    console.log('🔍 시청 기록 상세:', animeHistory.map((item: any) => ({
+    console.log('🔍 시청 기록 상세:', animeHistory.map((item) => ({
       episodeId: item.episodeId,
       episodeNumber: item.episodeNumber,
       positionSec: item.positionSec,
@@ -131,7 +132,7 @@ export async function getAnimeWatchHistory(animeId: number) { // Promise<number>
     })));
     
     // 각 시청 기록의 상세 정보를 개별적으로 출력
-    animeHistory.forEach((item: any, index: number) => {
+    animeHistory.forEach((item, index: number) => {
       console.log(`🔍 시청 기록 ${index + 1}:`, {
         episodeId: item.episodeId,
         episodeNumber: item.episodeNumber,
@@ -146,9 +147,9 @@ export async function getAnimeWatchHistory(animeId: number) { // Promise<number>
     if (animeHistory.length === 0) return null;
     
     // 가장 최근에 본 에피소드 찾기 (마지막 시청 시간 기준)
-    const latestEpisode = animeHistory.sort((a: any, b: any) => 
-      new Date(b.updatedAt || b.watchedAt || b.createdAt).getTime() - 
-      new Date(a.updatedAt || a.watchedAt || a.createdAt).getTime()
+    const latestEpisode = animeHistory.sort((a, b) =>
+      new Date(b.updatedAt || b.watchedAt || b.createdAt || 0).getTime() -
+      new Date(a.updatedAt || a.watchedAt || a.createdAt || 0).getTime()
     )[0];
     
     console.log('🔍 가장 최근 에피소드:', latestEpisode);

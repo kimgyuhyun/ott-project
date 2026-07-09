@@ -83,10 +83,7 @@ function TagsPageContent() {
         // 장르/태그 데이터 구조 확인
         console.log('장르 데이터 샘플:', Array.isArray(gs) ? gs[0] : null);
         console.log('태그 데이터 샘플:', Array.isArray(ts) ? ts[0] : null);
-        
-        // window 객체에 직접 저장
-        (window as any).debugGenres = gs;
-        (window as any).debugTags = ts;
+
         setGenreOptions(Array.isArray(gs) ? gs : []);
         setTagOptions(Array.isArray(ts) ? ts : []);
         setSeasonOptions(Array.isArray(ss) ? ss : []);

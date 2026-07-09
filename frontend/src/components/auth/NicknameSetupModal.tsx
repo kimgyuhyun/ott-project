@@ -3,6 +3,7 @@ import { useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { api } from "@/lib/api/index";
 import { useAuth } from "@/lib/AuthContext";
+import { getErrorMessage } from "@/lib/errorMessage";
 
 interface NicknameSetupModalProps {
   isOpen: boolean;
@@ -39,9 +40,9 @@ export default function NicknameSetupModal({ isOpen, onClose, onSuccess }: Nickn
 
     try {
       // 닉네임 업데이트 API 호출
-      const response = (await api.put('/oauth2/nickname', {
+      const response = await api.put<{ success: boolean; newNickname?: string; message?: string }>('/oauth2/nickname', {
         nickname: nickname.trim()
-      })) as unknown as { success: boolean; newNickname?: string; message?: string };
+      });
 
       if (response && response.success) {
         console.log('닉네임 설정 완료:', response.newNickname);
@@ -62,9 +63,7 @@ export default function NicknameSetupModal({ isOpen, onClose, onSuccess }: Nickn
     } catch (err: unknown) {
       console.error('닉네임 설정 오류:', err);
 
-      const message = (err && typeof err === 'object' && 'response' in err && (err as any).response?.data?.message)
-        ? String((err as any).response.data.message)
-        : '닉네임 설정 중 오류가 발생했습니다.';
+      const message = getErrorMessage(err) ?? '닉네임 설정 중 오류가 발생했습니다.';
       setError(message);
     } finally {
       setIsLoading(false);

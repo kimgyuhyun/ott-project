@@ -92,9 +92,8 @@ export async function searchContent(query: string, genreIds?: number[], tagIds?:
   params.append('page', page.toString());
   params.append('size', size.toString());
   
-  const raw = await apiCall(`/api/search?${params.toString()}`);
   // 원형이 필요할 수도 있어 원본을 반환하되, 상위에서 normalizeArray로 처리 가능
-  return raw as any;
+  return apiCall<SearchResultItem[] | PagedResponse<SearchResultItem>>(`/api/search?${params.toString()}`);
 }
 
 // 애니메이션 전용 검색 (기존 anime.ts와 중복 방지)

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { changePassword, getUserProfile } from "@/lib/api/user";
 import type { UserProfile } from "@/types/mypage";
+import { getErrorMessage } from "@/lib/errorMessage";
 import styles from "./password.module.css";
 
 /**
@@ -97,9 +98,7 @@ export default function PasswordChangePage() {
       
     } catch (err: unknown) {
       console.error('비밀번호 변경 실패:', err);
-      const message = (err && typeof err === 'object' && 'message' in err)
-        ? String((err as any).message)
-        : '비밀번호 변경에 실패했습니다.';
+      const message = getErrorMessage(err) ?? '비밀번호 변경에 실패했습니다.';
       setError(message);
     } finally {
       setIsSubmitting(false);
