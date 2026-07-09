@@ -37,6 +37,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className={styles.adminNav}>
           <Link href="/admin" className={styles.adminNavLink}>대시보드</Link>
           <Link href="/admin/anime" className={styles.adminNavLink}>애니 카탈로그/동기화</Link>
+          <Link href="/admin/stats" className={styles.adminNavLink}>통계/감사 로그</Link>
+          <Link href="/admin/contents" className={styles.adminNavLink}>콘텐츠 관리</Link>
         </nav>
         <Link href="/" className={styles.adminBackLink}>← 서비스로 돌아가기</Link>
       </aside>

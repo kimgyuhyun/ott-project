@@ -17,6 +17,14 @@ export default function AdminHome() {
           <h2 className={styles.cardTitle}>애니 카탈로그 / 동기화</h2>
           <p className={styles.cardDesc}>Jikan API로 애니메이션을 수집·등록하고, 등록된 카탈로그를 조회합니다.</p>
         </Link>
+        <Link href="/admin/stats" className={styles.card}>
+          <h2 className={styles.cardTitle}>통계 / 감사 로그</h2>
+          <p className={styles.cardDesc}>일일 통계 스냅샷(로그인·가입·DAU)과 최근 인증 이벤트 감사 로그를 조회합니다.</p>
+        </Link>
+        <Link href="/admin/contents" className={styles.card}>
+          <h2 className={styles.cardTitle}>콘텐츠 관리</h2>
+          <p className={styles.cardDesc}>랜딩 페이지의 FAQ · 혜택 · CTA를 DB로 생성·수정·공개 관리합니다.</p>
+        </Link>
       </div>
     </div>
   );
