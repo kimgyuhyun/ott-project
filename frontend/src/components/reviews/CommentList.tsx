@@ -4,19 +4,8 @@ import { getReviewComments, createComment, updateComment, deleteComment, toggleC
 import { getCurrentUser } from "@/lib/api/auth";
 import DropdownMenu from "@/components/ui/DropdownMenu";
 import styles from "./CommentList.module.css";
-
-interface Comment {
-  id: number;
-  userId?: number;
-  userName: string;
-  userProfileImage?: string;
-  content: string;
-  likeCount: number;
-  isLikedByCurrentUser: boolean;
-  replacesCount?: number;
-  createdAt?: string;
-  updatedAt?: string;
-}
+// 리뷰 댓글 캐노니컬 타입(ReviewCommentsResponseDto 대응)을 로컬 별칭 Comment 로 사용
+import type { ReviewComment as Comment } from "@/types/review";
 
 interface CommentListProps {
   reviewId: number;
@@ -117,26 +106,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
       }
       const data = await getReviewComments(reviewId);
       console.log('📡 댓글 API 응답:', data);
-      let commentsData: Comment[] = [];
-      if (data && typeof data === 'object') {
-        if ('items' in (data as any) && Array.isArray((data as any).items)) {
-          console.log('✅ Comments: items 구조로 파싱');
-          commentsData = (data as any).items as Comment[];
-        } else if ('content' in (data as any) && Array.isArray((data as any).content)) {
-          console.log('✅ Comments: content 구조로 파싱');
-          commentsData = (data as any).content as Comment[];
-        } else if (Array.isArray(data)) {
-          console.log('✅ Comments: 배열 응답으로 파싱');
-          commentsData = data as unknown as Comment[];
-        } else {
-          console.warn('⚠️ 예상치 못한 댓글 데이터 구조:', data);
-          commentsData = [];
-        }
-      } else {
-        console.warn('⚠️ 댓글 데이터가 null/undefined');
-        commentsData = [];
-      }
-      setComments(commentsData);
+      setComments(data.items);
     } catch (error) {
       console.error('댓글 로드 실패:', error);
     } finally {
@@ -265,28 +235,8 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
     try {
       const data = await getCommentReplies(reviewId, parentId);
       console.log('📡 대댓글 API 응답:', data);
-      
-      let repliesData: Comment[] = [];
-      if (data && typeof data === 'object') {
-        if ('items' in (data as any) && Array.isArray((data as any).items)) {
-          console.log('✅ Replies: items 구조로 파싱');
-          repliesData = (data as any).items as Comment[];
-        } else if ('content' in (data as any) && Array.isArray((data as any).content)) {
-          console.log('✅ Replies: content 구조로 파싱');
-          repliesData = (data as any).content as Comment[];
-        } else if (Array.isArray(data)) {
-          console.log('✅ Replies: 배열 응답으로 파싱');
-          repliesData = data as unknown as Comment[];
-        } else {
-          console.warn('⚠️ 예상치 못한 대댓글 데이터 구조:', data);
-          repliesData = [];
-        }
-      } else {
-        console.warn('⚠️ 대댓글 데이터가 null/undefined');
-        repliesData = [];
-      }
-      
-      setReplies(prev => ({ ...prev, [parentId]: repliesData }));
+
+      setReplies(prev => ({ ...prev, [parentId]: data }));
     } catch (e) {
       console.log('대댓글 로드 실패:', e);
       setReplies(prev => ({ ...prev, [parentId]: [] }));

@@ -1,5 +1,13 @@
 // 공통 타입 정의
 
+// 페이지 응답 래퍼 (백엔드 PagedResponse<T>)
+export interface PagedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
+}
+
 export interface User { // 다른 파일에서 import로 사용 가능
   // TypeScript 타입 정의
   // ?가 있으면 선택 필드, 없으면 필수 필드

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getAnimeReviews, createReview, toggleReviewLike, updateReview, deleteReview, isValidReviewResponse } from "@/lib/api/reviews";
+import { getAnimeReviews, createReview, toggleReviewLike, updateReview, deleteReview } from "@/lib/api/reviews";
 import { createOrUpdateRating, getMyRating, getRatingStats, deleteMyRating } from "@/lib/api/rating";
 import { createComment } from "@/lib/api/comments";
 import Star from "@/components/ui/Star";
@@ -8,19 +8,8 @@ import DropdownMenu from "@/components/ui/DropdownMenu";
 import { getCurrentUser } from "@/lib/api/auth";
 import CommentList from "./CommentList";
 import styles from "./ReviewList.module.css";
-
-interface Review {
-  id: number;
-  userName: string;
-  userProfileImage?: string;
-  content: string;
-  rating: number;
-  likeCount: number;
-  isLikedByCurrentUser: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  userId?: number;
-}
+// 리뷰 캐노니컬 타입(ReviewResponseDto 대응)
+import type { Review } from "@/types/review";
 
 interface ReviewListProps {
   animeId: number;
@@ -98,16 +87,16 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
         getRatingStats(animeId).catch(() => ({ distribution: { '1.0':0,'1.5':0,'2.0':0,'2.5':0,'3.0':0,'3.5':0,'4.0':0,'4.5':0,'5.0':0 }, average: 0 })),
         getMyRating(animeId).catch(() => null),
       ]);
-      const distRaw = (stats as any)?.distribution || {};
+      const distRaw: Record<string, number> = stats?.distribution || {};
       const dist: Record<string, number> = { '1.0':0,'1.5':0,'2.0':0,'2.5':0,'3.0':0,'3.5':0,'4.0':0,'4.5':0,'5.0':0 };
       Object.keys(distRaw).forEach(k => {
         const key = String(k);
-        if (halfKeys.includes(key as any)) {
-          const v = (distRaw as any)[k];
+        if ((halfKeys as readonly string[]).includes(key)) {
+          const v = distRaw[k];
           dist[key] = typeof v === 'number' ? v : Number(v) || 0;
         }
       });
-      const avg = (stats as any)?.average;
+      const avg = stats?.average;
       setRatingStats(dist);
       setAverageFromApi(typeof avg === 'number' ? avg : 0);
       if (typeof mine === 'number' && mine > 0) setMyRating(mine as number);
@@ -143,31 +132,10 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
       
       const data = await getAnimeReviews(animeId, sortBy);
       console.log('📡 API 응답 데이터:', data);
-      console.log('📊 데이터 타입:', typeof data);
-      console.log('🔑 데이터 키들:', data ? Object.keys(data) : 'null');
-      
-      // 백엔드 응답 구조에 맞춰 정확히 파싱
-      let reviewsData: Review[] = [];
-      
-      if (data && typeof data === 'object') {
-        if ('content' in data && Array.isArray(data.content)) {
-          console.log('✅ PagedResponse 구조로 파싱됨');
-          reviewsData = data.content;
-        } else if ('items' in data && Array.isArray(data.items)) {
-          console.log('✅ Items 구조로 파싱됨');
-          reviewsData = data.items;
-        } else if (Array.isArray(data)) {
-          console.log('✅ 직접 배열로 파싱됨');
-          reviewsData = data;
-        } else {
-          console.warn('⚠️ 예상치 못한 데이터 구조:', data);
-          reviewsData = [];
-        }
-      } else {
-        console.warn('⚠️ 데이터가 null이거나 undefined');
-        reviewsData = [];
-      }
-      
+
+      // PagedResponse<Review> 이므로 items 를 그대로 사용
+      const reviewsData: Review[] = data.items;
+
       console.log('🎯 최종 파싱된 리뷰 데이터:', reviewsData);
       console.log('📝 리뷰 개수:', reviewsData.length);
       

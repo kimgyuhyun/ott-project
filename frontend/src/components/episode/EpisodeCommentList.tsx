@@ -100,26 +100,7 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
       saveScroll();
       const data = await getEpisodeComments(episodeId);
       console.log('📡 댓글 API 응답:', data);
-      let commentsData: EpisodeComment[] = [];
-      if (data && typeof data === 'object') {
-        if ('items' in (data as any) && Array.isArray((data as any).items)) {
-          console.log('✅ Comments: items 구조로 파싱');
-          commentsData = (data as any).items as EpisodeComment[];
-        } else if ('content' in (data as any) && Array.isArray((data as any).content)) {
-          console.log('✅ Comments: content 구조로 파싱');
-          commentsData = (data as any).content as EpisodeComment[];
-        } else if (Array.isArray(data)) {
-          console.log('✅ Comments: 배열 응답으로 파싱');
-          commentsData = data as unknown as EpisodeComment[];
-        } else {
-          console.warn('⚠️ 예상치 못한 댓글 데이터 구조:', data);
-          commentsData = [];
-        }
-      } else {
-        console.warn('⚠️ 댓글 데이터가 null/undefined');
-        commentsData = [];
-      }
-      setComments(commentsData);
+      setComments(data.items);
     } catch (error) {
       console.error('댓글 로드 실패:', error);
     } finally {
@@ -242,27 +223,9 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
     try {
       const data = await getEpisodeCommentReplies(episodeId, parentId);
       console.log('📡 대댓글 API 응답:', data);
-      
-      let repliesData: EpisodeComment[] = [];
-      if (data && typeof data === 'object') {
-        if ('items' in (data as any) && Array.isArray((data as any).items)) {
-          console.log('✅ Replies: items 구조로 파싱');
-          repliesData = (data as any).items as EpisodeComment[];
-        } else if ('content' in (data as any) && Array.isArray((data as any).content)) {
-          console.log('✅ Replies: content 구조로 파싱');
-          repliesData = (data as any).content as EpisodeComment[];
-        } else if (Array.isArray(data)) {
-          console.log('✅ Replies: 배열 응답으로 파싱');
-          repliesData = data as unknown as EpisodeComment[];
-        } else {
-          console.warn('⚠️ 예상치 못한 대댓글 데이터 구조:', data);
-          repliesData = [];
-        }
-      } else {
-        console.warn('⚠️ 대댓글 데이터가 null/undefined');
-        repliesData = [];
-      }
-      
+
+      const repliesData: EpisodeComment[] = data;
+
       setReplies(prev => ({ ...prev, [parentId]: repliesData }));
     } catch (e) {
       console.log('대댓글 로드 실패:', e);

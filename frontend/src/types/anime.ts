@@ -108,13 +108,8 @@ export interface AnimeDetail {
   isFavorited?: boolean;
 }
 
-// 페이지 응답 래퍼 (PagedResponse<T>)
-export interface PagedResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  size: number;
-}
+// 페이지 응답 래퍼는 공용 타입에서 재export (하위 호환)
+export type { PagedResponse } from "./common";
 
 // 애니 목록 아이템 (AnimeListDto)
 export interface AnimeListItem {

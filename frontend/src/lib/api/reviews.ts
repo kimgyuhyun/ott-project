@@ -2,6 +2,9 @@
 
 // 리뷰 관련 API 함수들
 
+import type { Review } from "@/types/review";
+import type { PagedResponse } from "@/types/common";
+
 // API 기본 설정: 항상 동일 오리진 프록시 사용
 const API_BASE = '';
 
@@ -30,13 +33,13 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 // 애니메이션별 리뷰 목록 조회
-export async function getAnimeReviews(animeId: number, sort: string = 'latest', page: number = 0, size: number = 10) {
+export async function getAnimeReviews(animeId: number, sort: string = 'latest', page: number = 0, size: number = 10): Promise<PagedResponse<Review>> {
   console.log('🚀 getAnimeReviews 호출:', { animeId, sort, page, size });
   const endpoint = `/api/anime/${animeId}/reviews?sort=${sort}&page=${page}&size=${size}`;
   console.log('🔗 API 엔드포인트:', endpoint);
-  
+
   try {
-    const result = await apiCall(endpoint);
+    const result = await apiCall<PagedResponse<Review>>(endpoint);
     console.log('✅ getAnimeReviews 성공:', result);
     return result;
   } catch (error) {

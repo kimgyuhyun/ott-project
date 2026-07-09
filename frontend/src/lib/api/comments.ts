@@ -2,6 +2,9 @@
 
 // 댓글 관련 API 함수들
 
+import type { ReviewComment } from "@/types/review";
+import type { PagedResponse } from "@/types/common";
+
 // API 기본 설정: 항상 동일 오리진 프록시 사용
 const API_BASE = '';
 
@@ -49,8 +52,8 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 // 리뷰별 댓글 목록 조회
-export async function getReviewComments(reviewId: number, page: number = 0, size: number = 10, sort: string = 'latest') {
-  return apiCall(`/api/reviews/${reviewId}/comments?page=${page}&size=${size}&sort=${sort}`);
+export async function getReviewComments(reviewId: number, page: number = 0, size: number = 10, sort: string = 'latest'): Promise<PagedResponse<ReviewComment>> {
+  return apiCall<PagedResponse<ReviewComment>>(`/api/reviews/${reviewId}/comments?page=${page}&size=${size}&sort=${sort}`);
 }
 
 // 댓글 작성
@@ -97,8 +100,8 @@ export async function reportComment(reviewId: number, commentId: number) {
 }
 
 // 대댓글 목록 조회
-export async function getCommentReplies(reviewId: number, commentId: number) {
-  return apiCall(`/api/reviews/${reviewId}/comments/${commentId}/replies`);
+export async function getCommentReplies(reviewId: number, commentId: number): Promise<ReviewComment[]> {
+  return apiCall<ReviewComment[]>(`/api/reviews/${reviewId}/comments/${commentId}/replies`);
 }
 
 // 대댓글 작성
