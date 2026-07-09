@@ -2,6 +2,18 @@
 
 // 사용자 관련 API 함수들
 
+import type { PagedResponse } from "@/types/common";
+import type {
+  UserProfile,
+  RecentAnimeResponse,
+  FavoriteAnime,
+  BingeWatch,
+  MypageStats,
+  MyRating,
+  MyReview,
+  MyComment,
+} from "@/types/mypage";
+
 // API 기본 설정: 항상 동일 오리진 프록시 사용
 const API_BASE = '';
 
@@ -34,8 +46,8 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 // 사용자 프로필 정보 조회
-export async function getUserProfile() {
-  return apiCall('/api/users/me/profile');
+export async function getUserProfile(): Promise<UserProfile> {
+  return apiCall<UserProfile>('/api/users/me/profile');
 }
 
 // 사용자 프로필 정보 수정
@@ -76,7 +88,7 @@ export async function getUserWatchHistory(page: number = 0, size: number = 20) {
 }
 
 // 사용자 최근 본(애니별 최신 1건)
-export async function getUserRecentAnime(params?: { page?: number; size?: number; cursorUpdatedAt?: string; cursorAnimeId?: number }) {
+export async function getUserRecentAnime(params?: { page?: number; size?: number; cursorUpdatedAt?: string; cursorAnimeId?: number }): Promise<RecentAnimeResponse> {
   try {
     const page = params?.page ?? 0;
     const size = params?.size ?? 20;
@@ -86,14 +98,12 @@ export async function getUserRecentAnime(params?: { page?: number; size?: number
     if (params?.cursorUpdatedAt) qp.append('cursorUpdatedAt', params.cursorUpdatedAt);
     if (params?.cursorAnimeId != null) qp.append('cursorAnimeId', String(params.cursorAnimeId));
     qp.append('t', String(Date.now()));
-    return await apiCall(`/api/episodes/mypage/recent-anime?${qp.toString()}`);
+    return await apiCall<RecentAnimeResponse>(`/api/episodes/mypage/recent-anime?${qp.toString()}`);
   } catch (error: any) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
     if (error?.status === 401) {
       console.log('🔍 최근 본 목록 조회 실패: 로그인 필요 (401)');
-      const page = params?.page ?? 0;
-      const size = params?.size ?? 20;
-      return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+      return { items: [] };
     }
     throw error;
   }
@@ -183,18 +193,18 @@ export async function getAnimeWatchHistory(animeId: number) { // Promise<number>
 }
 
 // 사용자 보고싶다 작품 조회
-export async function getUserWantList(page: number = 0, size: number = 20) {
+export async function getUserWantList(page: number = 0, size: number = 20): Promise<PagedResponse<FavoriteAnime>> {
   console.log('🌐 [FRONTEND] getUserWantList 호출 - page:', page, 'size:', size);
-  
+
   try {
-    const result = await apiCall(`/api/mypage/favorites/anime?page=${page}&size=${size}`);
+    const result = await apiCall<PagedResponse<FavoriteAnime>>(`/api/mypage/favorites/anime?page=${page}&size=${size}`);
     console.log('🌐 [FRONTEND] getUserWantList 응답:', result);
     return result;
   } catch (error: any) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
     if (error?.status === 401) {
       console.log('🔍 보고싶다 목록 조회 실패: 로그인 필요 (401)');
-      return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+      return { items: [], total: 0, page, size };
     }
     console.error('🌐 [FRONTEND] getUserWantList 에러:', error);
     throw error;
@@ -202,15 +212,15 @@ export async function getUserWantList(page: number = 0, size: number = 20) {
 }
 
 // 사용자 활동 통계 조회
-export async function getUserStats() {
+export async function getUserStats(): Promise<MypageStats> {
   try {
     // 백엔드 집계 API 호출
-    return await apiCall('/api/mypage/stats');
+    return await apiCall<MypageStats>('/api/mypage/stats');
   } catch (error: any) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 통계 반환
     if (error?.status === 401) {
       console.log('🔍 사용자 통계 조회 실패: 로그인 필요 (401)');
-      return { totalWatchTime: 0, totalEpisodes: 0, favoriteCount: 0, recentCount: 0 };
+      return { ratingCount: 0, reviewCount: 0, commentCount: 0 };
     }
     throw error;
   }
@@ -233,11 +243,11 @@ export async function changeEmail(emailData: any) {
 }
 
 // 사용자 정주행 완료 작품 조회
-export async function getUserBingeList() {
+export async function getUserBingeList(): Promise<BingeWatch[]> {
   console.log('🌐 [FRONTEND] getUserBingeList 호출');
-  
+
   try {
-    const result = await apiCall('/api/mypage/binge');
+    const result = await apiCall<BingeWatch[]>('/api/mypage/binge');
     console.log('🌐 [FRONTEND] getUserBingeList 응답:', result);
     return result;
   } catch (error: any) {
@@ -297,11 +307,11 @@ export async function deleteFromBinge(aniId: number) {
 }
 
 // 내 활동: 별점 목록
-export async function getMyRatings(page: number = 0, size: number = 20) {
+export async function getMyRatings(page: number = 0, size: number = 20): Promise<MyRating[]> {
   const qs = `page=${page}&size=${size}&t=${Date.now()}`;
   console.log('🌐 [FRONTEND] getMyRatings 요청:', qs);
   try {
-    const res = await apiCall(`/api/mypage/ratings?${qs}`);
+    const res = await apiCall<MyRating[]>(`/api/mypage/ratings?${qs}`);
     console.log('🌐 [FRONTEND] getMyRatings 응답:', res);
     return res;
   } catch (error: any) {
@@ -315,11 +325,11 @@ export async function getMyRatings(page: number = 0, size: number = 20) {
 }
 
 // 내 활동: 리뷰 목록
-export async function getMyReviews(page: number = 0, size: number = 20) {
+export async function getMyReviews(page: number = 0, size: number = 20): Promise<MyReview[]> {
   const qs = `page=${page}&size=${size}&t=${Date.now()}`;
   console.log('🌐 [FRONTEND] getMyReviews 요청:', qs);
   try {
-    const res = await apiCall(`/api/mypage/reviews?${qs}`);
+    const res = await apiCall<MyReview[]>(`/api/mypage/reviews?${qs}`);
     console.log('🌐 [FRONTEND] getMyReviews 응답:', res);
     return res;
   } catch (error: any) {
@@ -333,11 +343,11 @@ export async function getMyReviews(page: number = 0, size: number = 20) {
 }
 
 // 내 활동: 댓글 목록
-export async function getMyComments(page: number = 0, size: number = 20) {
+export async function getMyComments(page: number = 0, size: number = 20): Promise<MyComment[]> {
   const qs = `page=${page}&size=${size}&t=${Date.now()}`;
   console.log('🌐 [FRONTEND] getMyComments 요청:', qs);
   try {
-    const res = await apiCall(`/api/mypage/comments?${qs}`);
+    const res = await apiCall<MyComment[]>(`/api/mypage/comments?${qs}`);
     console.log('🌐 [FRONTEND] getMyComments 응답:', res);
     return res;
   } catch (error: any) {

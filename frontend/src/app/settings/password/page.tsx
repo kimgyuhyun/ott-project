@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { changePassword, getUserProfile } from "@/lib/api/user";
+import type { UserProfile } from "@/types/mypage";
 import styles from "./password.module.css";
 
 /**
@@ -11,12 +12,6 @@ import styles from "./password.module.css";
  * 사용자가 현재 비밀번호와 새 비밀번호를 입력하여 비밀번호를 변경
  */
 export default function PasswordChangePage() {
-  type UserProfile = {
-    id: number;
-    email: string;
-    nickname: string;
-    authProvider?: 'LOCAL' | 'GOOGLE' | 'KAKAO' | 'NAVER' | string;
-  };
   const router = useRouter();
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,7 +33,7 @@ export default function PasswordChangePage() {
     const loadUserProfile = async () => {
       try {
         const userData = await getUserProfile();
-        setUser(userData as UserProfile);
+        setUser(userData);
       } catch (err) {
         console.error('사용자 정보 로드 실패:', err);
         router.push('/login');

@@ -6,6 +6,16 @@ import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import type { AnimeListItem } from "@/types/anime";
+import type {
+  UserProfile,
+  WatchHistoryItem,
+  FavoriteAnime,
+  BingeWatch,
+  MypageStats,
+  MyRating,
+  MyReview,
+  MyComment,
+} from "@/types/mypage";
 import { getUserProfile, getUserWantList, getUserStats, getUserRecentAnime, getUserBingeList, hideFromRecent, removeFromWantList, deleteFromBinge, getMyRatings, getMyReviews, getMyComments } from "@/lib/api/user";
 import { toggleReviewLike } from "@/lib/api/reviews";
 import { toggleEpisodeCommentLike } from "@/lib/api/episodeComments";
@@ -16,139 +26,6 @@ type TabType = 'recent' | 'want' | 'purchased' | 'binge';
 type ViewMode = 'archive' | 'activity';
 type ActivityTab = 'ratings' | 'reviews' | 'comments';
 
-interface Anime {
-  id: number;
-  title: string;
-  posterUrl: string;
-  rating: number;
-  status: string;
-  type: string;
-  year: number;
-  genres: string[];
-  studios: string[];
-  tags: string[];
-  synopsis: string;
-  fullSynopsis: string;
-  episodeCount: number;
-  duration: number;
-  ageRating: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface UserProfile {
-  id: number;
-  username: string;
-  email: string;
-  nickname: string;
-  avatarUrl: string;
-  profileImage?: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface WatchHistoryItem {
-  id?: number;
-  animeId: number; // RecentAnimeWatchDto에서 오는 필드
-  anime?: Anime; // 기존 호환성을 위한 선택적 필드
-  episodeId: number;
-  episodeNumber: number;
-  positionSec?: number; // RecentAnimeWatchDto에서 오는 필드
-  durationSec?: number; // RecentAnimeWatchDto에서 오는 필드
-  progress?: number;
-  duration?: number;
-  watchedAt?: string;
-  updatedAt?: string; // RecentAnimeWatchDto에서 오는 필드
-  aniId?: number; // 추가된 속성
-  title?: string; // 추가된 속성
-  posterUrl?: string; // 추가된 속성
-}
-
-interface WantListItem {
-  id: number;
-  anime: Anime;
-  addedAt: string;
-  aniId?: number; // 추가된 속성
-  animeId?: number; // 추가된 속성
-  title?: string; // 추가된 속성
-  posterUrl?: string; // 추가된 속성
-}
-
-interface BingeListItem {
-  id: number;
-  anime: Anime;
-  addedAt: string;
-  aniId?: number; // 추가된 속성
-  animeId?: number; // 추가된 속성
-  title?: string; // 추가된 속성
-  posterUrl?: string; // 추가된 속성
-}
-
-interface Rating {
-  id: number;
-  anime: Anime;
-  rating: number;
-  createdAt: string;
-  updatedAt: string;
-  animeId?: number; // 추가된 속성
-  title?: string; // 추가된 속성
-  posterUrl?: string; // 추가된 속성
-  score?: number; // 추가된 속성
-}
-
-interface Review {
-  id: number;
-  anime: Anime;
-  content: string;
-  rating: number;
-  likes: number;
-  isLiked: boolean;
-  createdAt: string;
-  updatedAt: string;
-  animeId?: number; // 추가된 속성
-  title?: string; // 추가된 속성
-  posterUrl?: string; // 추가된 속성
-  score?: number; // 추가된 속성
-  reviewId?: number; // 추가된 속성
-  likeCount?: number; // 추가된 속성
-}
-
-interface Comment {
-  id: number;
-  content: string;
-  likes: number;
-  isLiked: boolean;
-  createdAt: string;
-  updatedAt: string;
-  anime?: Anime;
-  episodeId?: number;
-  episodeNumber?: number;
-  commentId?: number; // 추가된 속성
-  animeId?: number; // 추가된 속성
-  title?: string; // 추가된 속성
-  posterUrl?: string; // 추가된 속성
-  likeCount?: number; // 추가된 속성
-  userProfileImage?: string; // 추가된 속성
-  tagLabel?: string; // 추가된 속성
-  episodeTitle?: string; // 추가된 속성
-  targetType?: string; // 추가된 속성
-  targetId?: number; // 추가된 속성
-  episodeThumbUrl?: string; // 추가된 속성
-}
-
-interface UserStats {
-  totalWatchTime: number;
-  totalEpisodesWatched: number;
-  totalAnimeWatched: number;
-  averageRating: number;
-  totalReviews: number;
-  totalComments: number;
-  joinDate: string;
-  lastActiveDate: string;
-  ratingCount?: number; // 추가된 속성
-  reviewCount?: number; // 추가된 속성
-  commentCount?: number; // 추가된 속성
-}
 
 /**
  * 마이페이지
@@ -182,12 +59,12 @@ function MyPageContent() {
   const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [watchHistory, setWatchHistory] = useState<WatchHistoryItem[]>([]);
-  const [wantList, setWantList] = useState<WantListItem[]>([]);
-  const [bingeList, setBingeList] = useState<BingeListItem[]>([]);
-  const [myRatings, setMyRatings] = useState<Rating[] | null>(null);
-  const [myReviews, setMyReviews] = useState<Review[] | null>(null);
-  const [myComments, setMyComments] = useState<Comment[] | null>(null);
-  const [userStats, setUserStats] = useState<UserStats | null>(null);
+  const [wantList, setWantList] = useState<FavoriteAnime[]>([]);
+  const [bingeList, setBingeList] = useState<BingeWatch[]>([]);
+  const [myRatings, setMyRatings] = useState<MyRating[] | null>(null);
+  const [myReviews, setMyReviews] = useState<MyReview[] | null>(null);
+  const [myComments, setMyComments] = useState<MyComment[] | null>(null);
+  const [userStats, setMypageStats] = useState<MypageStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
@@ -248,92 +125,53 @@ function MyPageContent() {
         console.log('정주행 목록:', bingeListData);
         console.log('통계:', statsData);
         
-        setUserProfile(profileData as UserProfile | null);
-        
-        // 시청 기록에 애니메이션 제목 추가
-        const watchHistoryList = ((historyData as { items?: WatchHistoryItem[] })?.items) || (Array.isArray(historyData) ? historyData as WatchHistoryItem[] : []) || [];
-        
-        // 시청 기록 상세 로그
-        console.log('🔍 시청 기록 상세:', watchHistoryList.map((item: WatchHistoryItem) => ({
-          animeId: item.animeId || item.anime?.id,
+        setUserProfile(profileData);
+
+        // 시청 기록에 애니메이션 제목 추가 (RecentAnimeWatch → 상세 조인으로 title/poster 보강)
+        const watchHistoryList = historyData.items;
+
+        console.log('🔍 시청 기록 상세:', watchHistoryList.map((item) => ({
+          animeId: item.animeId,
           episodeNumber: item.episodeNumber,
           episodeId: item.episodeId,
-          progress: item.progress,
-          watchedAt: item.watchedAt || item.updatedAt
+          positionSec: item.positionSec,
+          updatedAt: item.updatedAt
         })));
-        const enrichedWatchHistory = await Promise.all(
-          watchHistoryList.map(async (item: WatchHistoryItem) => {
+        const enrichedWatchHistory: WatchHistoryItem[] = await Promise.all(
+          watchHistoryList.map(async (item): Promise<WatchHistoryItem> => {
+            const animeId = item.animeId;
             try {
-              // 애니메이션 ID가 유효한지 먼저 확인 (animeId 우선, 없으면 anime.id 사용)
-              const animeId = item.animeId || item.anime?.id;
               if (!animeId || animeId <= 0) {
-                console.log(`유효하지 않은 애니메이션 ID: ${animeId}. 원본 데이터로 대체합니다.`);
-                return {
-                  ...item,
-                  aniId: animeId,
-                  title: item.anime?.title || '제목 없음',
-                  posterUrl: item.anime?.posterUrl || undefined,
-                  episodeNumber: item.episodeNumber
-                };
+                return { ...item, aniId: animeId, title: '제목 없음', posterUrl: undefined };
               }
-
               const { getAnimeDetail } = await import('@/lib/api/anime');
               const animeDetail = await getAnimeDetail(animeId);
-              
-              // animeDetail이 null이거나 유효하지 않은 경우 처리
-              if (!animeDetail) {
-                console.log(`애니메이션 상세 정보를 찾을 수 없습니다 (ID: ${animeId}). 원본 데이터로 대체합니다.`);
-                return {
-                  ...item,
-                  aniId: animeId,
-                  title: item.anime?.title || '제목 없음',
-                  posterUrl: item.anime?.posterUrl || undefined,
-                  episodeNumber: item.episodeNumber
-                };
-              }
-              
               return {
                 ...item,
                 aniId: animeId,
-                title: animeDetail.title || item.anime?.title || '제목 없음',
-                posterUrl: animeDetail.posterUrl || item.anime?.posterUrl || undefined,
-                episodeNumber: item.episodeNumber
+                title: animeDetail.title || '제목 없음',
+                posterUrl: animeDetail.posterUrl || undefined,
               };
             } catch (e) {
-              const animeId = item.animeId || item.anime?.id;
               console.log(`애니메이션 상세 조회 실패 (ID: ${animeId}):`, e instanceof Error ? e.message : 'Unknown error');
-              // 원본 데이터에서 정보를 가져와서 fallback 처리
-              return {
-                ...item,
-                aniId: animeId,
-                title: item.anime?.title || '제목 없음',
-                posterUrl: item.anime?.posterUrl || undefined,
-                episodeNumber: item.episodeNumber
-              };
+              return { ...item, aniId: animeId, title: '제목 없음', posterUrl: undefined };
             }
           })
         );
-        
+
         setWatchHistory(enrichedWatchHistory);
-        
-        // 보고싶다 목록 - 백엔드에서 이미 필요한 정보 제공
-        const wantListItems = ((wantListData as { items?: WantListItem[] })?.items) || (Array.isArray(wantListData) ? wantListData as WantListItem[] : []) || [];
-        const enrichedWantList = wantListItems.map((item: WantListItem) => ({
-          ...item,
-          aniId: item.aniId || item.animeId || item.id,
-          title: item.title || '제목 없음',
-          posterUrl: item.posterUrl || undefined
-        }));
-        
-        setWantList(enrichedWantList);
-        setBingeList(Array.isArray(bingeListData) ? bingeListData as BingeListItem[] : []);
-        setUserStats(statsData as UserStats | null);
-        
+
+        // 보고싶다 목록 - FavoriteAnimeDto 가 이미 aniId/title/posterUrl 을 제공
+        const wantListItems = wantListData.items;
+        setWantList(wantListItems);
+        setBingeList(bingeListData);
+        setMypageStats(statsData);
+
         // 탭별 카운트 업데이트
         tabs[0].count = enrichedWatchHistory.length;
-        tabs[1].count = enrichedWantList.length;
+        tabs[1].count = wantListItems.length;
         tabs[2].count = 0; // 구매한 작품은 별도 API 필요
-        tabs[3].count = Array.isArray(bingeListData) ? (bingeListData as BingeListItem[]).length : 0;
+        tabs[3].count = bingeListData.length;
         
       } catch (err) {
         console.error('사용자 데이터 로드 실패:', err);
@@ -354,17 +192,17 @@ function MyPageContent() {
         if (activityTab === 'ratings') {
           if (myRatings == null) {
             const data = await getMyRatings().catch((e: Error & { status?: number })=>{ if (e?.status===401) return []; throw e; });
-            setMyRatings(Array.isArray(data) ? data as Rating[] : []);
+            setMyRatings(data);
           }
         } else if (activityTab === 'reviews') {
           if (myReviews == null) {
             const data = await getMyReviews().catch((e: Error & { status?: number })=>{ if (e?.status===401) return []; throw e; });
-            setMyReviews(Array.isArray(data) ? data as Review[] : []);
+            setMyReviews(data);
           }
         } else if (activityTab === 'comments') {
           if (myComments == null) {
             const data = await getMyComments().catch((e: Error & { status?: number })=>{ if (e?.status===401) return []; throw e; });
-            setMyComments(Array.isArray(data) ? data as Comment[] : []);
+            setMyComments(data);
           }
         }
       } catch (e) {
@@ -424,7 +262,7 @@ function MyPageContent() {
         if (selectedAnimeIds.size === ratingsLength) {
           setSelectedAnimeIds(new Set());
         } else {
-          const allIds = new Set((myRatings || []).map(rating => rating.animeId || rating.anime?.id).filter((id): id is number => id !== undefined));
+          const allIds = new Set((myRatings || []).map(rating => rating.animeId).filter((id): id is number => id !== undefined));
           setSelectedAnimeIds(allIds);
         }
       } else if (activityTab === 'reviews') {
@@ -432,7 +270,7 @@ function MyPageContent() {
         if (selectedAnimeIds.size === reviewsLength) {
           setSelectedAnimeIds(new Set());
         } else {
-          const allIds = new Set((myReviews || []).map(review => review.animeId || review.anime?.id).filter((id): id is number => id !== undefined));
+          const allIds = new Set((myReviews || []).map(review => review.animeId).filter((id): id is number => id !== undefined));
           setSelectedAnimeIds(allIds);
         }
       } else if (activityTab === 'comments') {
@@ -440,7 +278,7 @@ function MyPageContent() {
         if (selectedAnimeIds.size === commentsLength) {
           setSelectedAnimeIds(new Set());
         } else {
-          const allIds = new Set((myComments || []).map(comment => comment.commentId || comment.id).filter((id): id is number => id !== undefined));
+          const allIds = new Set((myComments || []).map(comment => comment.commentId).filter((id): id is number => id !== undefined));
           setSelectedAnimeIds(allIds);
         }
       }
@@ -488,13 +326,13 @@ function MyPageContent() {
       } else if (viewMode === 'activity') {
         if (activityTab === 'ratings') {
           // 별점 삭제: 프론트엔드에서만 제거 (실제 삭제 API는 없음)
-          setMyRatings(prev => prev?.filter(rating => !selectedAnimeIds.has(rating.animeId || rating.anime?.id || 0)) || []);
+          setMyRatings(prev => prev?.filter(rating => !selectedAnimeIds.has(rating.animeId || 0)) || []);
         } else if (activityTab === 'reviews') {
           // 리뷰 삭제: 프론트엔드에서만 제거 (실제 삭제 API는 없음)
-          setMyReviews(prev => prev?.filter(review => !selectedAnimeIds.has(review.animeId || review.anime?.id || 0)) || []);
+          setMyReviews(prev => prev?.filter(review => !selectedAnimeIds.has(review.animeId || 0)) || []);
         } else if (activityTab === 'comments') {
           // 댓글 삭제: 프론트엔드에서만 제거 (실제 삭제 API는 없음)
-          setMyComments(prev => prev?.filter(comment => !selectedAnimeIds.has(comment.commentId || comment.id || 0)) || []);
+          setMyComments(prev => prev?.filter(comment => !selectedAnimeIds.has(comment.commentId || 0)) || []);
         }
       }
       
@@ -845,7 +683,7 @@ function MyPageContent() {
                       {Array.isArray(watchHistory) && watchHistory.length > 0 ? (
                         <div className={styles.animeGrid}>
                           {watchHistory.map((anime: WatchHistoryItem & { aniId?: number; title?: string; posterUrl?: string; episodeNumber?: number }, idx: number) => {
-                            const aniId = (anime?.aniId ?? anime?.anime?.id) || 0;
+                            const aniId = (anime?.aniId ?? anime?.animeId) || 0;
                             const isSelected = selectedAnimeIds.has(aniId);
                             
                             return (
@@ -903,8 +741,8 @@ function MyPageContent() {
                       )}
                       {Array.isArray(wantList) && wantList.length > 0 ? (
                         <div className={styles.animeGrid}>
-                          {wantList.map((anime: WantListItem & { aniId?: number; title?: string; posterUrl?: string }, idx: number) => {
-                            const aniId = anime?.aniId ?? anime?.id ?? anime?.animeId;
+                          {wantList.map((anime: FavoriteAnime & { aniId?: number; title?: string; posterUrl?: string }, idx: number) => {
+                            const aniId = anime?.aniId;
                             const isSelected = selectedAnimeIds.has(aniId);
                             
                             return (
@@ -968,8 +806,8 @@ function MyPageContent() {
                       )}
                       {Array.isArray(bingeList) && bingeList.length > 0 ? (
                         <div className={styles.animeGrid}>
-                          {bingeList.map((anime: BingeListItem & { aniId?: number; title?: string; posterUrl?: string }, idx: number) => {
-                            const aniId = anime?.aniId ?? anime?.id ?? anime?.animeId;
+                          {bingeList.map((anime: BingeWatch & { aniId?: number; title?: string; posterUrl?: string }, idx: number) => {
+                            const aniId = anime?.aniId;
                             const isSelected = selectedAnimeIds.has(aniId);
                             
                             return (
@@ -1139,8 +977,8 @@ function MyPageContent() {
                         )}
                         {Array.isArray(myRatings) && myRatings.length > 0 ? (
                           <div className={styles.animeGrid}>
-                            {myRatings.map((item: Rating, idx: number) => {
-                              const aniId = item.animeId || item.anime?.id || 0;
+                            {myRatings.map((item: MyRating, idx: number) => {
+                              const aniId = item.animeId || 0;
                               const isSelected = selectedAnimeIds.has(aniId);
                               
                               return (
@@ -1199,8 +1037,8 @@ function MyPageContent() {
                         )}
                         {Array.isArray(myReviews) && myReviews.length > 0 ? (
                           <div className={styles.reviewList}>
-                            {myReviews.map((item: Review, idx: number) => {
-                              const aniId = item.animeId || item.anime?.id || 0;
+                            {myReviews.map((item: MyReview, idx: number) => {
+                              const aniId = item.animeId || 0;
                               const isSelected = selectedAnimeIds.has(aniId);
                               
                               return (
@@ -1305,16 +1143,16 @@ function MyPageContent() {
                           </select>
                         </div>
                         {Array.isArray(myComments) && myComments.length > 0 ? (()=>{
-                          const sorted = [...myComments].sort((a: Comment & { likeCount?: number }, b: Comment & { likeCount?: number })=>{
-                            if (commentSort === 'latest') return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+                          const sorted = [...myComments].sort((a: MyComment, b: MyComment)=>{
+                            if (commentSort === 'latest') return new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime();
                             if (commentSort === 'likes') return (b.likeCount||0) - (a.likeCount||0);
-                            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+                            return new Date(a.createdAt ?? 0).getTime() - new Date(b.createdAt ?? 0).getTime();
                           });
                           console.log('[mypage:comments] sorted', commentSort, { count: sorted.length });
                           return (
                             <div className={styles.reviewList} role="list" aria-label="내 댓글 목록">
-                              {sorted.map((item: Comment, idx: number) => {
-                                const commentId = item.commentId || item.id || 0;
+                              {sorted.map((item: MyComment, idx: number) => {
+                                const commentId = item.commentId || 0;
                                 const isSelected = selectedAnimeIds.has(commentId);
                                 
                                 return (
@@ -1322,7 +1160,7 @@ function MyPageContent() {
                                     role="listitem"
                                     key={`${item.commentId ?? 'comment'}-${idx}`}
                                     className={`${styles.reviewItemButton} ${styles.commentItem} ${isDeleteMode ? styles.selectable : ''} ${isSelected ? styles.selected : ''}`}
-                                    onClick={() => handleAnimeClick({ aniId: item.animeId || item.anime?.id || 0, animeId: item.animeId || item.anime?.id || 0, commentId: commentId, title: item.title, posterUrl: item.posterUrl })}
+                                    onClick={() => handleAnimeClick({ aniId: item.animeId || 0, animeId: item.animeId || 0, commentId: commentId, title: item.title, posterUrl: item.posterUrl })}
                                   >
                                     {/* 댓글 섹션에서는 카드 전체 체크 오버레이를 렌더링하지 않음 (썸네일 위에만 표시) */}
                                   <Image
@@ -1335,9 +1173,6 @@ function MyPageContent() {
                                   <div className={styles.commentTopRow}>
                                     <div className={styles.commentTitleBox}>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        {item.tagLabel ? (
-                                          <span className={styles.commentTagBadge}>{item.tagLabel}</span>
-                                        ) : null}
                                         <span className={styles.commentAniTitle}>{item.title}</span>
                                       </div>
                                       {(item.targetType === 'EPISODE' && (item.episodeTitle || item.title)) ? (
