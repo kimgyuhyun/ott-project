@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { MembershipPlan, changeMembershipPlan, MembershipPlanChangeResponse } from "@/lib/api/membership";
+import { MembershipPlan, changeMembershipPlan, MembershipPlanChangeResponse, type UserMembership } from "@/lib/api/membership";
 import { useAuth } from "@/lib/AuthContext";
 import PlanChangeSuccessModal from "./PlanChangeSuccessModal";
 import styles from "./PlanChangeModal.module.css";
@@ -10,7 +10,7 @@ interface PlanChangeModalProps {
   onClose: () => void;
   currentPlan: MembershipPlan | null;
   targetPlan: MembershipPlan | null;
-  userMembership: any; // UserMembership 타입
+  userMembership: UserMembership | null;
   onPlanChanged: () => void;
   onUpgradePayment: (plan: MembershipPlan) => void;
 }

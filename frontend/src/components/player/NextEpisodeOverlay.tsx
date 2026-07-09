@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
+import type { Episode } from "@/types/anime";
 import styles from "./NextEpisodeOverlay.module.css";
 
 interface NextEpisodeOverlayProps {
-  nextEpisode: any;
+  nextEpisode: Episode;
   isVisible: boolean;
   onPlay: () => void;
   onCancel: () => void;

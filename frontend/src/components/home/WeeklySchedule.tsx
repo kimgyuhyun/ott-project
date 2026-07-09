@@ -12,13 +12,26 @@ type AnimeItem = {
   episode?: string;
 };
 
+// 요일 스케줄이 받아들이는 원본 애니 형태(목록/상세 어느 쪽이 와도 되도록 느슨하게, 단 타입 명시)
+type ScheduleAnime = {
+  id?: number;
+  aniId?: number;
+  title?: string;
+  titleEn?: string;
+  titleJp?: string;
+  posterUrl?: string;
+  rating?: number | null;
+  isNew?: boolean;
+  broadcastDay?: string;
+};
+
 /**
  * 요일별 애니메이션 스케줄 컴포넌트
  * 요일별 탭과 해당 요일의 애니메이션 목록 표시
  */
 type WeeklyScheduleProps = {
   onAnimeClick?: (anime: AnimeItem) => void;
-  animeData?: any[] | Record<string, any[]>; // DB에서 가져온 애니메이션 데이터 (배열 또는 요일별 객체)
+  animeData?: ScheduleAnime[] | Record<string, ScheduleAnime[]>; // DB에서 가져온 애니메이션 데이터 (배열 또는 요일별 객체)
 };
 
 export default function WeeklySchedule({ onAnimeClick, animeData = [] }: WeeklyScheduleProps) {
@@ -46,10 +59,10 @@ export default function WeeklySchedule({ onAnimeClick, animeData = [] }: WeeklyS
     Object.keys(animeData).forEach(day => {
       const dayIndex = days.indexOf(day);
       if (dayIndex !== -1 && Array.isArray(animeData[day])) {
-        animeData[day].forEach((anime: any) => {
+        animeData[day].forEach((anime) => {
           if (anime.title || anime.titleEn || anime.titleJp) {
             scheduleData[dayIndex].push({
-              aniId: anime.aniId || anime.id,
+              aniId: anime.aniId || anime.id || 0,
               title: anime.title || anime.titleEn || anime.titleJp || '제목 없음',
               posterUrl: anime.posterUrl || '/placeholder-anime.jpg',
               rating: anime.rating,
@@ -61,13 +74,13 @@ export default function WeeklySchedule({ onAnimeClick, animeData = [] }: WeeklyS
     });
   } else if (Array.isArray(animeData)) {
     // 기존 방식: 배열인 경우 broadcastDay 필드 기준으로 분류
-    animeData.forEach((anime: any) => {
+    animeData.forEach((anime) => {
       const broadcastDay = anime.broadcastDay;
       if (broadcastDay && (anime.title || anime.titleEn || anime.titleJp)) {
         const dayIndex = days.indexOf(broadcastDay);
         if (dayIndex !== -1) {
           scheduleData[dayIndex].push({
-            aniId: anime.aniId || anime.id,
+            aniId: anime.aniId || anime.id || 0,
             title: anime.title || anime.titleEn || anime.titleJp || '제목 없음',
             posterUrl: anime.posterUrl || '/placeholder-anime.jpg',
             rating: anime.rating,

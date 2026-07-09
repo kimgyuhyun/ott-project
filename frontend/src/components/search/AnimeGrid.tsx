@@ -1,10 +1,11 @@
 "use client";
 import { useState } from "react";
 import AnimeCard from "@/components/home/AnimeCard";
+import type { AnimeListItem } from "@/types/anime";
 import styles from "./AnimeGrid.module.css";
 
 interface AnimeGridProps {
-  animes: any[];
+  animes: AnimeListItem[];
   isLoading: boolean;
   error: string | null;
   searchQuery: string;
@@ -15,7 +16,7 @@ interface AnimeGridProps {
   selectedTypes: string[];
   sortBy: string;
   onSortChange: (sort: string) => void;
-  onAnimeClick: (anime: any) => void;
+  onAnimeClick: (anime: AnimeListItem) => void;
 }
 
 /**
@@ -205,17 +206,12 @@ export default function AnimeGrid({
           const safeItems = (Array.isArray(animes) ? animes : [])
             .filter((item) => {
               // 더 엄격한 필터링: title이 반드시 있어야 함
-              const hasValidId = item && (item.id != null || item.aniId != null);
-              
-              // key는 aniId 우선, 없으면 id 사용
-              const key = item.aniId ?? item.id;
-              
+              const hasValidId = item && item.aniId != null;
               const hasValidTitle = item.title && typeof item.title === 'string' && item.title.trim() !== '';
-              console.log('[DEBUG] 필터링:', { item, hasValidId, hasValidTitle, title: item.title });
               return hasValidId && hasValidTitle;
             })
             .filter((item) => {
-              const key = item.id ?? item.aniId;
+              const key = item.aniId;
               if (seen.has(key)) return false;
               seen.add(key);
               return true;
@@ -224,17 +220,15 @@ export default function AnimeGrid({
           console.log('[DEBUG] 최종 safeItems:', safeItems);
           
           return safeItems
-            .filter((anime: any) => anime.title) // title이 있는 애니메이션만 필터링
-            .map((anime: any, index: number) => {
-            const itemId = anime.aniId ?? anime.id ?? index;
+            .filter((anime) => anime.title) // title이 있는 애니메이션만 필터링
+            .map((anime, index: number) => {
+            const itemId = anime.aniId ?? index;
             const key = `${itemId}-${anime.title}`;
-            
-            console.log('[DEBUG] AnimeCard 렌더링:', { anime, title: anime.title, posterUrl: anime.posterUrl, imageUrl: anime.imageUrl });
-            
-            // 백엔드 데이터 구조에 맞게 이미지 URL 매핑
-            const posterUrl = anime.posterUrl || anime.imageUrl || anime.thumbnail || 
+
+            // 포스터 URL (없으면 플레이스홀더)
+            const posterUrl = anime.posterUrl ||
                              `https://placehold.co/200x280/4a5568/ffffff?text=${encodeURIComponent(anime.title)}`;
-            
+
             return (
               <AnimeCard
                 key={key}
@@ -242,8 +236,6 @@ export default function AnimeGrid({
                 title={anime.title}
                 posterUrl={posterUrl}
                 rating={anime.rating}
-                badge={anime.badges?.[0]}
-                episode={anime.episode}
                 onClick={() => onAnimeClick(anime)}
               />
             );
