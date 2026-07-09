@@ -445,64 +445,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		LocalDateTime ts = event.occurredAt != null ? event.occurredAt : LocalDateTime.now(); // 타임스탬프
 
 		if (event.status == PaymentStatus.SUCCEEDED) { // 성공
-			log.info("결제 성공 웹훅 처리 - paymentId: {}, imp_uid: {}", payment.getId(), event.providerPaymentId);
-			
-			payment.setStatus(PaymentStatus.SUCCEEDED); // 상태
-			payment.setPaidAt(ts); // 시각
-			payment.setProviderPaymentId(event.providerPaymentId); // 외부 ID (imp_uid)
-			payment.setReceiptUrl(event.receiptUrl); // 영수증
-			
-			// 결제 정보 즉시 저장
-			paymentRepository.save(payment);
-			log.info("결제 정보 저장 완료 - imp_uid: {}", event.providerPaymentId);
-
-			// PG 응답으로 결제수단 type/brand 최종 확정 (아임포트 pay_method와 1:1 매핑)
-			try {
-				if (paymentGateway instanceof ImportPaymentGateway) {
-					ImportPaymentGateway importGateway = (ImportPaymentGateway) paymentGateway;
-					ImportPaymentGateway.PaymentDetails details = importGateway.fetchPaymentDetails(event.providerPaymentId);
-					PaymentMethod pm = payment.getPaymentMethod();
-					if (pm != null) {
-						pm.setProvider(PaymentProvider.IMPORT);
-						String payMethod = details.payMethod == null ? "" : details.payMethod.trim().toLowerCase();
-						
-						// pay_method와 1:1 매핑
-						switch (payMethod) {
-							case "card":
-								pm.setType(PaymentMethodType.CARD);
-								String cardName = details.cardName;
-								pm.setBrand(cardName != null && !cardName.isBlank() ? 
-									cardName.trim().toUpperCase() : "CARD");
-								break;
-							case "kakaopay":
-								pm.setType(PaymentMethodType.KAKAO_PAY);
-								pm.setBrand(null); // 간편결제는 brand 불필요
-								break;
-							case "tosspayments":
-							case "toss":
-								pm.setType(PaymentMethodType.TOSS_PAY);
-								pm.setBrand(null); // 간편결제는 brand 불필요
-								break;
-							case "nice":
-								pm.setType(PaymentMethodType.NICE_PAY);
-								pm.setBrand(null); // 간편결제는 brand 불필요
-								break;
-							default:
-								pm.setType(PaymentMethodType.CARD); // 기본값
-								pm.setBrand("UNKNOWN");
-						}
-					}
-				}
-			} catch (Exception ex) {
-				log.warn("결제수단 확정 중 세부정보 조회 실패 - imp_uid: {}", event.providerPaymentId, ex);
-			}
-
-			// 멤버십 구독 생성 (이벤트 발행)
-			eventPublisher.publishEvent(new com.ottproject.ottbackend.event.MembershipSubscriptionRequestedEvent(
-				payment.getUser().getId(), 
-				payment.getMembershipPlan().getCode()
-			));
-			log.info("멤버십 구독 생성 이벤트 발행 - userId: {}, planCode: {}", payment.getUser().getId(), payment.getMembershipPlan().getCode());
+			// 공통 확정 로직으로 수렴(웹훅·클라이언트 확정·대사 배치가 동일 경로 사용, 멱등)
+			markSucceededAndProvision(payment, event.providerPaymentId, event.receiptUrl, ts);
 
 		} else if (event.status == PaymentStatus.FAILED) { // 실패
 			payment.setStatus(PaymentStatus.FAILED); // 상태
@@ -601,43 +545,143 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	}
 	
 	/**
-	 * 결제 성공 시 즉시 처리
-	 * - 결제 상태를 즉시 SUCCEEDED로 변경하고 DB에 저장
-	 * - 멤버십 구독을 즉시 생성하여 상태 동기화 보장
+	 * 결제 성공 확정 + 멤버십 지급 (공통 확정 로직)
+	 * - 웹훅 / 클라이언트 확정 / 대사 배치가 모두 이 메서드로 수렴한다.
+	 * - 멱등: 이미 SUCCEEDED면 아무 것도 하지 않아 중복 지급을 방지한다.
 	 */
-	public void processPaymentSuccess(Long paymentId, String providerPaymentId, String receiptUrl) {
-		Payment payment = paymentRepository.findById(paymentId) // 결제 단건 조회
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제가 존재하지 않습니다.")); // 400
-		
-		if (payment.getStatus() == PaymentStatus.SUCCEEDED) { // 이미 성공 상태인 경우
-			return; // 중복 처리 방지
+	private void markSucceededAndProvision(Payment payment, String providerPaymentId, String receiptUrl, LocalDateTime paidAt) {
+		if (payment.getStatus() == PaymentStatus.SUCCEEDED) { // 이미 확정됨(멱등)
+			return; // 재지급 방지
 		}
-		
-		LocalDateTime now = LocalDateTime.now(); // 현재 시각
-		
-		// 결제 상태 즉시 업데이트
-		payment.setStatus(PaymentStatus.SUCCEEDED); // 성공 상태로 변경
-		payment.setPaidAt(now); // 결제 완료 시각 설정
-		payment.setProviderPaymentId(providerPaymentId); // 아임포트 결제 ID 설정
-		payment.setReceiptUrl(receiptUrl); // 영수증 URL 설정
-		paymentRepository.save(payment); // DB에 즉시 저장
-		
-		// 멤버십 구독 즉시 생성
-		createMembershipSubscription(payment.getUser().getId(), payment.getMembershipPlan().getCode());
-	}
-	
-	/**
-	 * 멤버십 구독 생성 로직
-	 * - 결제 성공 시 즉시 구독을 생성하여 상태 동기화
-	 */
-	private void createMembershipSubscription(Long userId, String planCode) {
+		payment.setStatus(PaymentStatus.SUCCEEDED); // 상태 확정
+		payment.setPaidAt(paidAt); // 결제 시각
+		payment.setProviderPaymentId(providerPaymentId); // 외부 결제 ID(imp_uid)
+		if (receiptUrl != null) { // 영수증은 있을 때만 갱신(클라 경로는 null일 수 있음)
+			payment.setReceiptUrl(receiptUrl);
+		}
+		paymentRepository.save(payment); // 저장
+		log.info("결제 SUCCEEDED 확정 - paymentId: {}, imp_uid: {}", payment.getId(), providerPaymentId);
+
+		// PG 응답으로 결제수단 type/brand 최종 확정 (아임포트 pay_method와 1:1 매핑)
 		try {
-			// 이벤트 발행으로 구독 생성 요청
-			eventPublisher.publishEvent(new com.ottproject.ottbackend.event.MembershipSubscriptionRequestedEvent(userId, planCode));
-			log.info("멤버십 구독 생성 이벤트 발행 - userId: {}, planCode: {}", userId, planCode);
-		} catch (Exception e) {
-			// 구독 생성 실패 시 로깅 (결제는 성공했으므로 롤백하지 않음)
-			log.error("멤버십 구독 생성 이벤트 발행 실패 - userId: {}, planCode: {}", userId, planCode, e);
+			if (paymentGateway instanceof ImportPaymentGateway) {
+				ImportPaymentGateway importGateway = (ImportPaymentGateway) paymentGateway;
+				ImportPaymentGateway.PaymentDetails details = importGateway.fetchPaymentDetails(providerPaymentId);
+				PaymentMethod pm = payment.getPaymentMethod();
+				if (pm != null) {
+					pm.setProvider(PaymentProvider.IMPORT);
+					String payMethod = details.payMethod == null ? "" : details.payMethod.trim().toLowerCase();
+					switch (payMethod) { // pay_method와 1:1 매핑
+						case "card":
+							pm.setType(PaymentMethodType.CARD);
+							String cardName = details.cardName;
+							pm.setBrand(cardName != null && !cardName.isBlank() ? cardName.trim().toUpperCase() : "CARD");
+							break;
+						case "kakaopay":
+							pm.setType(PaymentMethodType.KAKAO_PAY);
+							pm.setBrand(null); // 간편결제는 brand 불필요
+							break;
+						case "tosspayments":
+						case "toss":
+							pm.setType(PaymentMethodType.TOSS_PAY);
+							pm.setBrand(null); // 간편결제는 brand 불필요
+							break;
+						case "nice":
+							pm.setType(PaymentMethodType.NICE_PAY);
+							pm.setBrand(null); // 간편결제는 brand 불필요
+							break;
+						default:
+							pm.setType(PaymentMethodType.CARD); // 기본값
+							pm.setBrand("UNKNOWN");
+					}
+				}
+			}
+		} catch (Exception ex) {
+			log.warn("결제수단 확정 중 세부정보 조회 실패 - imp_uid: {}", providerPaymentId, ex);
+		}
+
+		// 멤버십 구독 생성 이벤트 발행(리스너가 구독 저장)
+		eventPublisher.publishEvent(new com.ottproject.ottbackend.event.MembershipSubscriptionRequestedEvent(
+			payment.getUser().getId(),
+			payment.getMembershipPlan().getCode()
+		));
+		log.info("멤버십 구독 생성 이벤트 발행 - userId: {}, planCode: {}", payment.getUser().getId(), payment.getMembershipPlan().getCode());
+	}
+
+	/**
+	 * 클라이언트 결제 확정(동기 경로) — 현업 표준 이중 확인의 "포그라운드" 경로
+	 * - 결제창 성공 콜백에서 imp_uid를 받아 아임포트 API로 재검증한 뒤 즉시 확정/지급한다.
+	 * - 웹훅이 도달하지 않아도 멤버십이 활성화되도록 하는 주 경로(웹훅/배치는 백업 안전망).
+	 * - 멱등: 이미 SUCCEEDED면 재검증 없이 성공으로 간주한다.
+	 */
+	public void completePayment(Long userId, Long paymentId, String impUid) {
+		Payment payment = paymentRepository.findById(paymentId) // 결제 단건 조회
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "결제가 존재하지 않습니다.")); // 404
+		if (!payment.getUser().getId().equals(userId)) { // 소유자 검증
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 결제만 확정할 수 있습니다."); // 403
+		}
+		if (payment.getStatus() == PaymentStatus.SUCCEEDED) { // 이미 확정됨(멱등)
+			return;
+		}
+		if (impUid == null || impUid.isBlank()) { // imp_uid 필수
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "imp_uid가 필요합니다."); // 400
+		}
+		long expectedAmount = (payment.getPrice() != null ? payment.getPrice().getAmount() : 0L); // 기대 금액(서버 확정, 테스트 1원)
+		boolean valid = false;
+		if (paymentGateway instanceof ImportPaymentGateway) { // 아임포트 API로 재검증(클라 응답 자체는 신뢰하지 않음)
+			valid = ((ImportPaymentGateway) paymentGateway)
+					.verifyPaymentStatus(impUid, payment.getProviderSessionId(), expectedAmount);
+		}
+		if (!valid) { // 재검증 실패
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다. (PG 재검증 불일치)"); // 400
+		}
+		markSucceededAndProvision(payment, impUid, null, LocalDateTime.now()); // 공통 확정 로직으로 수렴
+	}
+
+	/**
+	 * 대사(reconciliation) — 오래된 미확정(PENDING) 결제를 아임포트 실제 상태로 정리
+	 * - 이중 확인(클라 확정/웹훅)이 모두 실패한 희귀 케이스까지 복구하는 최후 방어선.
+	 * - PENDING은 imp_uid가 없으므로 merchant_uid로 역조회한다.
+	 * - paid면 확정/지급(공통 로직 수렴), failed/cancelled면 상태 전이, 아직 미결이면 건너뜀.
+	 * @return 상태가 확정적으로 정리되면 true
+	 */
+	public boolean reconcilePending(Long paymentId) {
+		Payment payment = paymentRepository.findById(paymentId).orElse(null); // 결제 조회
+		if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
+			return false; // 대상 아님(이미 확정/취소됨)
+		}
+		if (!(paymentGateway instanceof ImportPaymentGateway)) {
+			return false; // 아임포트 구현이 아니면 스킵
+		}
+		ImportPaymentGateway.ReconcileResult r =
+				((ImportPaymentGateway) paymentGateway).findByMerchantUid(payment.getProviderSessionId()); // merchant_uid 역조회
+		if (!r.found || r.status == null) {
+			return false; // 결제 시도 기록 없음(prepare만) → 유지
+		}
+		LocalDateTime now = LocalDateTime.now();
+		switch (r.status) {
+			case "paid":
+				long expected = (payment.getPrice() != null ? payment.getPrice().getAmount() : 0L); // 서버 확정 금액(테스트 1원)
+				if (r.amount != expected) {
+					log.warn("대사 금액 불일치 - paymentId: {}, expected: {}, actual: {}", paymentId, expected, r.amount);
+					return false; // 금액 불일치는 자동 확정하지 않음(수동 확인 대상)
+				}
+				markSucceededAndProvision(payment, r.impUid, r.receiptUrl, now); // 공통 확정 로직으로 수렴
+				log.info("대사 배치로 결제 확정 - paymentId: {}", paymentId);
+				return true;
+			case "failed":
+				payment.setStatus(PaymentStatus.FAILED);
+				payment.setFailedAt(now);
+				paymentRepository.save(payment);
+				return true;
+			case "cancelled":
+			case "canceled":
+				payment.setStatus(PaymentStatus.CANCELED);
+				payment.setCanceledAt(now);
+				paymentRepository.save(payment);
+				return true;
+			default:
+				return false; // ready 등 미결 상태 → 유지
 		}
 	}
 

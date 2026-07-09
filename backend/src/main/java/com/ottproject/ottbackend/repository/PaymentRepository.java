@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.enums.PaymentStatus; // 결제 상태 열거형
 import org.springframework.data.jpa.repository.JpaRepository; // JPA 리포지토리 베이스
 import org.springframework.stereotype.Repository; // 스프링 빈 등록
 
+import java.time.LocalDateTime; // 시각 구간 필터 임포트
 import java.util.List; // 리스트 임포트
 
 /**
@@ -20,5 +21,8 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> { // 결
 	
 	// AdminController에서 필요한 메서드만 추가
 	List<Payment> findByStatus(PaymentStatus status); // 상태별 결제 조회
+
+	// 대사 배치용: 특정 상태이면서 생성 시각이 구간 내인 결제 조회(오래된 PENDING 정리)
+	List<Payment> findByStatusAndCreatedAtBetween(PaymentStatus status, LocalDateTime from, LocalDateTime to);
 }
 

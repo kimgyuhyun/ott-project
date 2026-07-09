@@ -2,6 +2,7 @@ package com.ottproject.ottbackend.controller; // 컨트롤러 패키지 선언
 
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateRequestDto;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateSuccessResponseDto;
+import com.ottproject.ottbackend.dto.PaymentCompleteRequestDto;
 import com.ottproject.ottbackend.dto.PaymentHistoryItemDto;
 import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
 import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
@@ -95,6 +96,17 @@ public class PaymentController { // 결제 컨트롤러 시작
 		Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인(미인증 시 401)
 		PaymentCheckoutCreateSuccessResponseDto res = paymentCommandService.checkout(userId, dto); // 서비스 위임으로 체크아웃 처리
 		return ResponseEntity.ok(res); // 200 OK + 응답 바디 반환
+	}
+
+	@Operation(summary = "결제 확정(클라이언트)", description = "결제창 성공 콜백에서 imp_uid로 결제를 아임포트 API에 재검증하고 즉시 확정/지급합니다. 웹훅 미도달을 대비한 주 경로입니다.") // Swagger 문서화
+	@ApiResponse(responseCode = "200", description = "확정 완료: 결제 상태 반환") // 200 문서화
+	@PostMapping("/payments/{paymentId}/complete") // HTTP POST 매핑: 클라이언트 결제 확정
+	public ResponseEntity<PaymentResultResponseDto> complete(@PathVariable Long paymentId, // 확정할 결제 ID
+	                                                         @RequestBody PaymentCompleteRequestDto dto, // imp_uid 바디
+	                                                         HttpSession session) { // 세션 수신
+		Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인(미인증 시 401)
+		paymentCommandService.completePayment(userId, paymentId, dto == null ? null : dto.impUid); // 재검증 후 확정/지급
+		return ResponseEntity.ok(paymentReadService.getPaymentStatus(paymentId, userId)); // 확정된 결제 상태 반환
 	}
 
     @Operation(summary = "결제수단 등록", description = "정기결제를 위한 저장 결제수단을 등록합니다.")

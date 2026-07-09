@@ -152,6 +152,14 @@ export async function checkPaymentStatus(paymentId: number) {
   return apiCall<PaymentStatusResponse>(`/api/payments/${paymentId}/status`);
 }
 
+// 클라이언트 결제 확정 (결제창 성공 콜백에서 imp_uid로 서버가 아임포트 재검증 후 즉시 확정/지급)
+export async function completePayment(paymentId: number, impUid: string) {
+  return apiCall<PaymentStatusResponse>(`/api/payments/${paymentId}/complete`, {
+    method: 'POST',
+    body: JSON.stringify({ impUid }),
+  });
+}
+
 // 환불 요청
 export async function requestRefund(paymentId: number) {
   return apiCall<void>(

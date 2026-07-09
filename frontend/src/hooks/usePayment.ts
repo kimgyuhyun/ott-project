@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { createCheckout, checkPaymentStatus } from '@/lib/api/membership';
+import { createCheckout, checkPaymentStatus, completePayment } from '@/lib/api/membership';
 import {
   loadPortOne,
   preferPortOnePopup,
@@ -169,39 +169,31 @@ export const usePayment = () => {
             });
             
             if (response.success) {
-              // 결제 성공 시 백엔드에서 결제 상태 확인
+              // 클라이언트 결제 확정(동기 주 경로): imp_uid로 서버가 아임포트에 재검증 후 멤버십 즉시 지급
               try {
-                const statusResponse = await checkPaymentStatus(checkoutResponse.paymentId);
-                logPaymentEvent('Payment status confirmed', {
-                  paymentId: checkoutResponse.paymentId,
-                  status: statusResponse.status
+                if (response.imp_uid) {
+                  await completePayment(checkoutResponse.paymentId, response.imp_uid);
+                }
+                logPaymentEvent('Payment confirmed', {
+                  paymentId: checkoutResponse.paymentId
                 });
-                setPaymentState(prev => ({ 
-                  ...prev, 
-                  status: 'success', 
-                  paymentId: checkoutResponse.paymentId 
-                }));
-                resolve({
-                  success: true,
-                  paymentId: checkoutResponse.paymentId,
-                  redirectUrl: checkoutResponse.redirectUrl
-                });
-              } catch (statusError) {
-                logPaymentEvent('Status check failed', { 
-                  error: statusError,
-                  paymentId: checkoutResponse.paymentId 
-                });
-                const error = new PaymentError(
-                  PaymentErrorCode.STATUS_CHECK_FAILED,
-                  '결제 상태 확인에 실패했습니다.',
-                  statusError as Error
-                );
-                setPaymentState(prev => ({ ...prev, status: 'error', error }));
-                resolve({
-                  success: false,
-                  errorMessage: error.message
+              } catch (confirmError) {
+                // 확정 호출이 실패해도 웹훅/대사 배치가 백업으로 확정하므로 성공으로 간주하고 진행
+                logPaymentEvent('Confirm call failed (webhook/batch backup)', {
+                  error: confirmError,
+                  paymentId: checkoutResponse.paymentId
                 });
               }
+              setPaymentState(prev => ({
+                ...prev,
+                status: 'success',
+                paymentId: checkoutResponse.paymentId
+              }));
+              resolve({
+                success: true,
+                paymentId: checkoutResponse.paymentId,
+                redirectUrl: checkoutResponse.redirectUrl
+              });
             } else {
               logPaymentEvent('Payment failed', { 
                 error_msg: response.error_msg,
