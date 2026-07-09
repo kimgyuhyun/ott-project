@@ -167,48 +167,38 @@ export const useProrationPayment = () => {
             });
             
             if (response.success) {
-              // 결제 성공 시 백엔드에서 결제 검증 후 완료 처리
+              // 결제 성공 시: imp_uid로 서버가 아임포트 재검증 후 차액 결제 확정 + 플랜 즉시 변경(단일 호출)
+              // (과거: checkPaymentStatus로 SUCCEEDED를 먼저 요구했으나, 백엔드 complete는 PENDING을 요구해 서로 모순 → 항상 실패했음)
               try {
-                // 1. 먼저 결제 상태 확인 (백엔드에서 아임포트 검증)
-                const { checkPaymentStatus } = await import('@/lib/api/membership');
-                const statusResponse = await checkPaymentStatus(checkoutResponse.paymentId);
-                
-                logPaymentEvent('Proration payment status confirmed', {
+                if (!response.imp_uid) {
+                  throw new Error('결제 식별자(imp_uid)가 없습니다.');
+                }
+                const result = await completeProrationPayment(checkoutResponse.paymentId, response.imp_uid);
+                logPaymentEvent('Proration payment completed', {
                   paymentId: checkoutResponse.paymentId,
-                  status: statusResponse.status
+                  planChangeResult: result.planChangeResult
                 });
 
-                // 2. 검증 성공 시 차액 결제 완료 처리
-                if (statusResponse.status === 'SUCCEEDED') {
-                  const result = await completeProrationPayment(checkoutResponse.paymentId);
-                  logPaymentEvent('Proration payment completed', {
-                    paymentId: checkoutResponse.paymentId,
-                    planChangeResult: result.planChangeResult
-                  });
-                  
-                  setPaymentState(prev => ({ 
-                    ...prev, 
-                    status: 'success', 
-                    paymentId: checkoutResponse.paymentId 
-                  }));
-                  
-                  resolve({
-                    success: true,
-                    paymentId: checkoutResponse.paymentId,
-                    redirectUrl: checkoutResponse.redirectUrl
-                  });
-                } else {
-                  throw new Error(`결제 검증 실패: ${statusResponse.status}`);
-                }
-              } catch (statusError) {
-                logPaymentEvent('Proration payment verification failed', { 
-                  error: statusError,
-                  paymentId: checkoutResponse.paymentId 
+                setPaymentState(prev => ({
+                  ...prev,
+                  status: 'success',
+                  paymentId: checkoutResponse.paymentId
+                }));
+
+                resolve({
+                  success: true,
+                  paymentId: checkoutResponse.paymentId,
+                  redirectUrl: checkoutResponse.redirectUrl
+                });
+              } catch (completeError) {
+                logPaymentEvent('Proration payment completion failed', {
+                  error: completeError,
+                  paymentId: checkoutResponse.paymentId
                 });
                 const error = new PaymentError(
                   PaymentErrorCode.STATUS_CHECK_FAILED,
-                  '차액 결제 검증에 실패했습니다.',
-                  statusError as Error
+                  '차액 결제 처리에 실패했습니다.',
+                  completeError as Error
                 );
                 setPaymentState(prev => ({ ...prev, status: 'error', error }));
                 resolve({

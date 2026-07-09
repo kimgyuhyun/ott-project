@@ -59,10 +59,11 @@ export async function createProrationCheckout(
   });
 }
 
-// 차액 결제 완료 처리
-export async function processProrationPayment(paymentId: number) {
+// 차액 결제 완료 처리 (imp_uid로 서버가 아임포트 재검증 후 플랜 즉시 변경)
+export async function processProrationPayment(paymentId: number, impUid: string) {
   return apiCall<ProrationPaymentResponse>(`/api/payments/proration/${paymentId}/complete`, {
     method: 'POST',
+    body: JSON.stringify({ impUid }),
   });
 }
 

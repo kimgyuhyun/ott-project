@@ -658,6 +658,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
 			return false; // 대상 아님(이미 확정/취소됨)
 		}
+		// 차액(proration) 결제는 자체 complete 경로가 플랜 변경을 처리한다.
+		// 여기서 확정하면 markSucceededAndProvision이 '새 구독'을 만들어 오처리되므로 건너뛴다.
+		if (payment.getProviderSessionId() != null && payment.getProviderSessionId().startsWith("proration_")) {
+			return false;
+		}
 		if (!(paymentGateway instanceof ImportPaymentGateway)) {
 			return false; // 아임포트 구현이 아니면 스킵
 		}

@@ -44,6 +44,7 @@ public class ProrationPaymentService {
     private final MembershipPlanRepository planRepository;
     private final MembershipSubscriptionRepository subscriptionRepository;
     private final PaymentRepository paymentRepository;
+    private final PaymentGateway paymentGateway; // 아임포트 재검증(무단 업그레이드 차단)
 
     /**
      * 차액 결제 세션 생성
@@ -111,7 +112,7 @@ public class ProrationPaymentService {
      * 차액 결제 완료 처리
      * - 결제 성공 시 플랜을 즉시 변경하고 구독을 업데이트한다.
      */
-    public Map<String, Object> completeProrationPayment(Long userId, Long paymentId) {
+    public Map<String, Object> completeProrationPayment(Long userId, Long paymentId, String impUid) {
         // 결제 조회
         Payment payment = paymentRepository.findById(paymentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "결제를 찾을 수 없습니다."));
@@ -126,10 +127,25 @@ public class ProrationPaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 처리된 결제입니다.");
         }
 
+        // 아임포트 API로 결제 재검증(클라 호출 자체를 신뢰하지 않음 → 결제 없이 무단 업그레이드 차단)
+        if (impUid == null || impUid.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "imp_uid가 필요합니다.");
+        }
+        long expectedAmount = (payment.getPrice() != null ? payment.getPrice().getAmount() : 0L);
+        boolean valid = false;
+        if (paymentGateway instanceof ImportPaymentGateway) {
+            valid = ((ImportPaymentGateway) paymentGateway)
+                    .verifyPaymentStatus(impUid, payment.getProviderSessionId(), expectedAmount);
+        }
+        if (!valid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다. (PG 재검증 불일치)");
+        }
+
         // 결제 성공 처리
         payment.setStatus(PaymentStatus.SUCCEEDED);
         payment.setPaidAt(LocalDateTime.now());
         payment.setCompletedAt(LocalDateTime.now());
+        payment.setProviderPaymentId(impUid);
         paymentRepository.save(payment);
 
         // 플랜 변경 처리

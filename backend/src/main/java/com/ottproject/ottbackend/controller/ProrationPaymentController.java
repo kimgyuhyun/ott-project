@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.dto.ProrationPaymentRequestDto;
+import com.ottproject.ottbackend.dto.PaymentCompleteRequestDto;
 import com.ottproject.ottbackend.service.ProrationPaymentService;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -49,9 +50,11 @@ public class ProrationPaymentController {
     @PostMapping("/api/payments/proration/{paymentId}/complete")
     public ResponseEntity<Map<String, Object>> completeProrationPayment(
             @PathVariable Long paymentId,
+            @RequestBody(required = false) PaymentCompleteRequestDto dto,
             HttpSession session) {
         Long userId = securityUtil.requireCurrentUserId(session);
-        Map<String, Object> response = prorationPaymentService.completeProrationPayment(userId, paymentId);
+        Map<String, Object> response = prorationPaymentService.completeProrationPayment(
+                userId, paymentId, dto == null ? null : dto.impUid);
         return ResponseEntity.ok(response);
     }
 }
