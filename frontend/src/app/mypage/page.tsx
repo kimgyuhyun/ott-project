@@ -5,6 +5,7 @@ import Image from "next/image";
 import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
+import type { AnimeListItem } from "@/types/anime";
 import { getUserProfile, getUserWantList, getUserStats, getUserRecentAnime, getUserBingeList, hideFromRecent, removeFromWantList, deleteFromBinge, getMyRatings, getMyReviews, getMyComments } from "@/lib/api/user";
 import { toggleReviewLike } from "@/lib/api/reviews";
 import { toggleEpisodeCommentLike } from "@/lib/api/episodeComments";
@@ -178,7 +179,7 @@ function MyPageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('archive');
   const [activityTab, setActivityTab] = useState<ActivityTab>('ratings');
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
+  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [watchHistory, setWatchHistory] = useState<WatchHistoryItem[]>([]);
   const [wantList, setWantList] = useState<WantListItem[]>([]);
@@ -277,7 +278,7 @@ function MyPageContent() {
               }
 
               const { getAnimeDetail } = await import('@/lib/api/anime');
-              const animeDetail = await getAnimeDetail(animeId) as Anime;
+              const animeDetail = await getAnimeDetail(animeId);
               
               // animeDetail이 null이거나 유효하지 않은 경우 처리
               if (!animeDetail) {
@@ -548,13 +549,13 @@ function MyPageContent() {
       if (id) {
         const { getAnimeDetail } = await import('@/lib/api/anime');
         const detail = await getAnimeDetail(id);
-        setSelectedAnime(detail as Anime);
+        setSelectedAnime(detail);
       } else {
-        setSelectedAnime(anime as Anime);
+        setSelectedAnime({ aniId, title: anime.title ?? '제목 없음', posterUrl: anime.posterUrl });
       }
     } catch (e) {
       console.warn('상세 조회 실패, 목록 데이터로 대체합니다.', e);
-      setSelectedAnime(anime as Anime);
+      setSelectedAnime({ aniId, title: anime.title ?? '제목 없음', posterUrl: anime.posterUrl });
     } finally {
       setIsModalOpen(true);
     }

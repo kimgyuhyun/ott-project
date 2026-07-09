@@ -2,6 +2,8 @@
 
 // 애니메이션 관련 API 함수들
 
+import type { AnimeDetail, AnimeListItem, PagedResponse } from "@/types/anime";
+
 // API 기본 설정: 항상 동일 오리진 프록시 사용 (Nginx/Next rewrites 경유)
 const API_BASE = '/api'; // 상대 경로로 요청하면 nginx가 자동으로 백엔드로 프록시
 // featch('/api/anime?page=0&size=20&sort=id') -> nginx (80/443 포트) -> ott-app:8090/api/anime?page=0&size=20&sort=id으로 전달
@@ -165,7 +167,7 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 // 애니메이션 목록 조회 (홈페이지 메인)
-export async function getAnimeList(page: number = 0, size: number = 20, sort: string = 'id') {
+export async function getAnimeList(page: number = 0, size: number = 20, sort: string = 'id'): Promise<PagedResponse<AnimeListItem>> {
   // import해서 사용할 수 있는 비동기 함수 getAnimeList 선언
   // 파라미터로 page, size를 number 타입으로 받고 각각 기본값은 0, 20으로 세팅
   // 파라미터 sort는 string 타입으로 받을 건데, 만약에 값이 안들어오면 'id'를 기본값으로 사용할거야라는뜻뜻
@@ -179,7 +181,7 @@ export async function getAnimeList(page: number = 0, size: number = 20, sort: st
   // .builder()를 호출해서 사용할떄 값을 명시해서 사용하면 기본값이 있을 시 덮어쓰고 기본값이 없으면 그 값을 설정하는 방식임
   // 자바에서 필드만 정의해두면 선택적 파라미터처럼 쓸수있음 null을 허용하기 떄문임
   // TypeScript는 ?을 붙여야 선택적 파라미터를 사용할 수 있음 null 허용을 안하기 때문
-  return apiCall(`/anime?page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`);
+  return apiCall<PagedResponse<AnimeListItem>>(`/anime?page=${page}&size=${size}&sort=${encodeURIComponent(sort)}`) as Promise<PagedResponse<AnimeListItem>>;
   // 파라미터로 받은 page, size, sort를 ${}에 넣어서 값을 문자열로 만들고 apiCall에 endpoint에 태워보냄
   // apicAll에서 올바른 응답이 나오면 JSON.parse(text) 값이 return으로 오는데 이건 Javacscript 객체고
   // 이걸 반환받은 뒤 바로 리턴해주는 형식임
@@ -219,7 +221,7 @@ export async function listAnime(params: {
   size?: number; // size는 선택적 속성(optinal)이고 number 타입 또는 null 타입 (유니온 타입)
   cursorId?: number; // cursorId는 선택적 속성(optinal)이고 number 타입 또는 null 타입 (유니온 타입)
   cursorRating?: number; // cursorRating는 선택적 속성(optinal)이고 number 타입 또는 null 타입 (유니온 타입)
-} = {}) { // ={}는 paramse에 값이 안들어오면 기본값으로 {}를 사용하겠다는 뜻
+} = {}): Promise<PagedResponse<AnimeListItem>> { // ={}는 paramse에 값이 안들어오면 기본값으로 {}를 사용하겠다는 뜻
   const qp = new URLSearchParams(); // 재할당 불가 URLSearchParams 클래스의 인스턴스
   // URLSearchParamse 인스턴스를 만듬 URLSearchParams는 Web API고 브라우저가 제공하는 전역 객체임
   // feach, navigator처럼 import 없이 바로 사용 가능함 / JSON같은 거인듯?
@@ -356,7 +358,7 @@ export async function listAnime(params: {
   // 이런 형식으로 apiCall에 enpotin로 전달됨
   // 참고로 qp.toString()안 key=value&key=value 형식의 문자열을 반환함 page, size, sort는 기본값이 있어서 항상 포함됨
   console.log('[DEBUG] listAnime API 호출 URL:', url);
-  return apiCall(url);
+  return apiCall<PagedResponse<AnimeListItem>>(url) as Promise<PagedResponse<AnimeListItem>>;
   // apiCall 함수에 endpoint를 생성해서 전달하고 apiCall에서는 이 endpoint에 API_BASE를 붙여서 최종 백엔드 API 경로를 만들고 feach함수로 요청하고
   // 그 응답값을 바로 반환하는 형식
   // 그러니까 params에 전달된 필터조건객체에 맞게 쿼리파라미터 객체를 생성하고 이걸 백엔드 경로랑 붙여서 url로 만들어준다음
@@ -364,10 +366,10 @@ export async function listAnime(params: {
 }
 
 // 애니메이션 상세 정보 조회
-export async function getAnimeDetail(animeId: number) {
+export async function getAnimeDetail(animeId: number): Promise<AnimeDetail> {
   // import해서 사용하는 비동기 함수 getAnimeDetail 선언
   // 파라미터로는 animeId를 number 타입으로 받음
-  return apiCall(`/anime/${animeId}`);
+  return apiCall<AnimeDetail>(`/anime/${animeId}`) as Promise<AnimeDetail>;
   // 파라미터로받은 animeId를 백엔드 걍로랑 합쳐서 apiCall 함수에 endpoint에 전달함
   // /anime/1 이렇게 전달한걸 api/anime/1 이렇게 만들어서 feacth 함수로 백엔드에 요청함
   // 이건 ?가 없으므로 쿼리 파라미터가 아니고 경로 파라미터임

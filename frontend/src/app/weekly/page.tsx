@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Header from "@/components/layout/Header";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import { api } from "@/lib/api/index";
-import { Anime } from "@/types/common";
+import { AnimeListItem } from "@/types/anime";
 import Image from "next/image";
 import styles from "./weekly.module.css";
 
@@ -12,10 +12,9 @@ import styles from "./weekly.module.css";
  * 7열 컬럼형 레이아웃으로 모든 요일을 동시에 표시
  */
 export default function WeeklyPage() {
-  type ExtendedAnime = Anime & { isNew?: boolean; aniId?: number | string; badges?: string[]; titleEn?: string; titleJp?: string };
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
-  const [weeklyAnimes, setWeeklyAnimes] = useState<Record<string, Anime[]>>({
+  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(null);
+  const [weeklyAnimes, setWeeklyAnimes] = useState<Record<string, AnimeListItem[]>>({
     '월': [],
     '화': [],
     '수': [],
@@ -64,10 +63,10 @@ export default function WeeklyPage() {
         // 모든 요일의 애니메이션 데이터를 병렬로 로드
         const dayPromises = days.map(async (day) => {
           try {
-            const data = await api.get(`/api/anime/weekly/${day.id}?limit=20`);
-            const allAnime = Array.isArray(data) ? (data as ExtendedAnime[]) : [];
+            const data = await api.get<AnimeListItem[]>(`/api/anime/weekly/${day.id}?limit=20`);
+            const allAnime = Array.isArray(data) ? data : [];
             // 신작만 필터링
-            const newAnime = allAnime.filter((anime: ExtendedAnime) => anime.isNew === true);
+            const newAnime = allAnime.filter((anime) => anime.isNew === true);
             console.log(`${day.fullLabel} 전체 애니메이션:`, allAnime.length, '개, 신작만:', newAnime.length, '개');
             return { day: day.id, data: newAnime };
           } catch (err) {
@@ -77,7 +76,7 @@ export default function WeeklyPage() {
         });
         
         const results = await Promise.all(dayPromises);
-        const animeData: Record<string, ExtendedAnime[]> = {
+        const animeData: Record<string, AnimeListItem[]> = {
           '월': [],
           '화': [],
           '수': [],
@@ -154,30 +153,16 @@ export default function WeeklyPage() {
 
 
   // 애니 카드 클릭 시 모달 열기
-  const handleAnimeClick = (anime: Anime) => {
+  const handleAnimeClick = (anime: AnimeListItem) => {
     setSelectedAnime(anime);
     setIsModalOpen(true);
   };
 
   // 키보드 접근성
-  const handleKeyDown = (event: React.KeyboardEvent, anime: Anime) => {
+  const handleKeyDown = (event: React.KeyboardEvent, anime: AnimeListItem) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
       handleAnimeClick(anime);
-    }
-  };
-
-  // 배지 색상 매핑
-  const getBadgeClass = (badge: string) => {
-    switch (badge) {
-      case 'UP':
-        return styles.weeklyBadgeUp;
-      case 'ONLY':
-        return styles.weeklyBadgeOnly;
-      case '선독점':
-        return styles.weeklyBadgeExclusive;
-      default:
-        return styles.weeklyBadgeUp;
     }
   };
 
@@ -262,10 +247,9 @@ export default function WeeklyPage() {
                   <div className={styles.weeklyColumnContent}>
                     {dayAnimes.length > 0 ? (
                       <div className={styles.weeklyAnimeGrid}>
-                        {dayAnimes.map((anime: ExtendedAnime, index: number) => {
-                          const itemId = (anime as any).id ?? (anime as any).aniId ?? index;
-                          const key = `${itemId}-${(anime as any).title ?? 'item'}`;
-                          const badge = (anime as any).badges?.[0];
+                        {dayAnimes.map((anime, index: number) => {
+                          const itemId = anime.aniId ?? index;
+                          const key = `${itemId}-${anime.title ?? 'item'}`;
                           return (
                             <div
                               key={key}
@@ -287,11 +271,6 @@ export default function WeeklyPage() {
                               <div className={styles.weeklyAnimeTitle}>
                                 {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
                               </div>
-                              {badge && (
-                                <div className={`${styles.weeklyAnimeBadge} ${getBadgeClass(badge)}`}>
-                                  {badge}
-                                </div>
-                              )}
                             </div>
                           );
                         })}

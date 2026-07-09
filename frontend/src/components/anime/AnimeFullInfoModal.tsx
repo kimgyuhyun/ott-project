@@ -2,13 +2,13 @@
 import { useEffect, useMemo, useState } from "react";
 import Modal from "@/components/ui/Modal";
 import { getAnimeDetail } from "@/lib/api/anime";
-import { Anime } from "@/types/common";
+import { AnimeDetail, GenreSimple, StudioSimple } from "@/types/anime";
 import styles from "./AnimeFullInfoModal.module.css";
 
 interface AnimeFullInfoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  detail: Anime;
+  detail: AnimeDetail;
 }
 
 function parseVoiceActors(voiceActorsRaw: unknown): string[] {
@@ -30,60 +30,37 @@ function parseVoiceActors(voiceActorsRaw: unknown): string[] {
 }
 
 export default function AnimeFullInfoModal({ isOpen, onClose, detail }: AnimeFullInfoModalProps) {
-  type ExtendedAnime = Anime & {
-    aniId?: number | string;
-    episodes?: unknown[];
-    fullSynopsis?: string;
-    synopsis?: string;
-    tags?: string[] | string;
-    studios?: Array<string | { name?: string }>;
-    genres?: Array<string | { name?: string }>;
-    voiceActors?: unknown;
-    director?: string;
-    year?: number | string;
-    releaseQuarter?: string;
-  };
-  const [full, setFull] = useState<ExtendedAnime>(detail as ExtendedAnime);
+  const [full, setFull] = useState<AnimeDetail>(detail);
   const [loading, setLoading] = useState<boolean>(false);
 
   // 모달 열릴 때, 상세 필드가 비어 있으면 재조회
   useEffect(() => {
     if (!isOpen) return;
-    const id = (full as any)?.aniId ?? (full as any)?.id;
-    const needs = !Array.isArray((full as any)?.studios) || !Array.isArray((full as any)?.genres) || !Array.isArray((full as any)?.episodes) || !Array.isArray((full as any)?.tags) || !(full as any)?.fullSynopsis;
+    const id = full?.aniId;
+    const needs = !Array.isArray(full?.studios) || !Array.isArray(full?.genres) || !Array.isArray(full?.episodes) || !Array.isArray(full?.tags) || !full?.fullSynopsis;
     if (id && needs) {
       setLoading(true);
       getAnimeDetail(Number(id))
-        .then((d) => setFull((prev: ExtendedAnime) => ({ ...prev, ...(d as Partial<ExtendedAnime>) })))
+        .then((d) => setFull((prev) => ({ ...prev, ...d })))
         .finally(() => setLoading(false));
     }
-  }, [isOpen, (full as any)?.aniId, (full as any)?.id]);
+  }, [isOpen, full?.aniId]);
 
-  const synopsis = useMemo(() => (((full as any)?.fullSynopsis ?? (full as any)?.synopsis ?? "")).toString().trim(), [full]);
-  const tags: string[] = useMemo(() => {
-    if (Array.isArray((full as any)?.tags)) return (full as any).tags as string[];
-    if (typeof (full as any)?.tags === 'string') {
-      try {
-        return JSON.parse((full as any).tags as string);
-      } catch {
-        return ((full as any).tags as string).split(',').map((t: string) => t.trim()).filter(Boolean);
-      }
-    }
-    return [];
-  }, [full]);
-  const studios: Array<string | { name?: string }> = useMemo(() => (Array.isArray((full as any)?.studios) ? (full as any).studios : []), [full]);
-  const genres: Array<string | { name?: string }> = useMemo(() => (Array.isArray((full as any)?.genres) ? (full as any).genres : []), [full]);
+  const synopsis = useMemo(() => ((full?.fullSynopsis ?? "")).toString().trim(), [full]);
+  const tags: string[] = useMemo(() => (Array.isArray(full?.tags) ? full.tags : []), [full]);
+  const studios: StudioSimple[] = useMemo(() => full?.studios ?? [], [full]);
+  const genres: GenreSimple[] = useMemo(() => full?.genres ?? [], [full]);
   const voiceList = useMemo(() => {
-    const voices = parseVoiceActors((full as any)?.voiceActors);
+    const voices = parseVoiceActors(full?.voiceActors);
     return voices.slice(0, 3); // 상위 3개만 표시
-  }, [(full as any)?.voiceActors]);
+  }, [full?.voiceActors]);
 
   // 디버깅용 콘솔 로그
   console.log('🔍 AnimeFullInfoModal - full 객체:', full);
   console.log('🔍 synopsis:', synopsis);
   console.log('🔍 tags:', tags);
   console.log('🔍 voiceList:', voiceList);
-  console.log('🔍 director:', (full as any)?.director);
+  console.log('🔍 director:', full?.director);
   console.log('🔍 studios:', studios);
 
   if (!isOpen) return null;
@@ -138,7 +115,7 @@ export default function AnimeFullInfoModal({ isOpen, onClose, detail }: AnimeFul
           )}
 
           {/* 제작 정보 */}
-          {(studios.length > 0 || (full as any)?.director || (full as any)?.year || (full as any)?.releaseQuarter) && (
+          {(studios.length > 0 || full?.director || full?.year || full?.releaseQuarter) && (
             <section className={styles.section}>
               <span className={styles.sectionTitle}>제작 정보</span>
               <section className={styles.productionSection}>
@@ -146,19 +123,19 @@ export default function AnimeFullInfoModal({ isOpen, onClose, detail }: AnimeFul
                   {studios.length > 0 && (
                     <div className={styles.productionItem}>
                       <span className={styles.productionLabel}>제작</span>
-                      <span className={styles.productionValue}>{studios.map((s: any) => s?.name ?? s).join(", ")}</span>
+                      <span className={styles.productionValue}>{studios.map((s) => s.name).join(", ")}</span>
                     </div>
                   )}
-                  {(full as any)?.director && (
+                  {full?.director && (
                     <div className={styles.productionItem}>
                       <span className={styles.productionLabel}>감독</span>
-                      <span className={styles.productionValue}>{(full as any).director}</span>
+                      <span className={styles.productionValue}>{full.director}</span>
                     </div>
                   )}
-                  {((full as any)?.year || (full as any)?.releaseQuarter) && (
+                  {(full?.year || full?.releaseQuarter) && (
                     <div className={styles.productionItem}>
                       <span className={styles.productionLabel}>출시</span>
-                      <span className={styles.productionValue}>{(full as any).releaseQuarter ?? ((full as any).year ? `${(full as any).year}년` : "")}</span>
+                      <span className={styles.productionValue}>{full.releaseQuarter ?? (full.year ? `${full.year}년` : "")}</span>
                     </div>
                   )}
                 </div>

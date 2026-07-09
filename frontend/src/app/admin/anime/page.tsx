@@ -2,16 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { syncAnime, syncPopularAnime } from "@/lib/api/admin";
 import { getAnimeList } from "@/lib/api/anime";
+import type { AnimeListItem } from "@/types/anime";
 import styles from "../admin.module.css";
-
-interface CatalogItem {
-  id: number;
-  title?: string;
-  posterUrl?: string;
-  status?: string;
-  type?: string;
-  year?: number;
-}
 
 type ResultState = { ok: boolean; text: string } | null;
 
@@ -33,7 +25,7 @@ export default function AdminAnimePage() {
   const [bulkResult, setBulkResult] = useState<ResultState>(null);
 
   // 카탈로그 목록 상태
-  const [items, setItems] = useState<CatalogItem[]>([]);
+  const [items, setItems] = useState<AnimeListItem[]>([]);
   const [page, setPage] = useState(0);
   const [listLoading, setListLoading] = useState(false);
 
@@ -41,11 +33,7 @@ export default function AdminAnimePage() {
     setListLoading(true);
     try {
       const raw = await getAnimeList(p, PAGE_SIZE, "id");
-      const list = Array.isArray(raw)
-        ? raw
-        : ((raw as { content?: CatalogItem[]; items?: CatalogItem[] })?.content ??
-           (raw as { items?: CatalogItem[] })?.items ?? []);
-      setItems(list as CatalogItem[]);
+      setItems(raw.items);
     } catch (e) {
       console.error("카탈로그 조회 실패:", e);
       setItems([]);
@@ -174,16 +162,16 @@ export default function AdminAnimePage() {
                 <tr><td colSpan={6} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>등록된 작품이 없습니다.</td></tr>
               ) : (
                 items.map((it) => (
-                  <tr key={it.id}>
+                  <tr key={it.aniId}>
                     <td>
                       {/* 외부 포스터 URL이라 next/image 대신 img 사용 */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img className={styles.thumb} src={it.posterUrl || "/placeholder-anime.jpg"} alt={it.title || ""} />
                     </td>
-                    <td>{it.id}</td>
+                    <td>{it.aniId}</td>
                     <td>{it.title || "-"}</td>
                     <td>{it.type || "-"}</td>
-                    <td>{it.status || "-"}</td>
+                    <td>{it.animeStatus || "-"}</td>
                     <td>{it.year || "-"}</td>
                   </tr>
                 ))

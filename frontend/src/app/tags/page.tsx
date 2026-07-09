@@ -7,7 +7,7 @@ import FilterSidebar from "@/components/search/FilterSidebar";
 import AnimeGrid from "@/components/search/AnimeGrid";
 import { searchContent } from "@/lib/api/search";
 import { getGenres, getTags, getSeasons, getYearOptions, getStatuses, getTypes, getAnimeList, listAnime } from "@/lib/api/anime";
-import { Anime } from "@/types/common";
+import { AnimeListItem } from "@/types/anime";
 import styles from "./TagsPage.module.css";
 
 /**
@@ -16,11 +16,10 @@ import styles from "./TagsPage.module.css";
  */
 function TagsPageContent() {
   console.log('[DEBUG] TagsPage 컴포넌트 렌더링');
-  type ExtendedAnime = Anime & { isExclusive?: boolean; aniId?: number | string; rating?: number };
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
-  const [animes, setAnimes] = useState<ExtendedAnime[]>([]);
+  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(null);
+  const [animes, setAnimes] = useState<AnimeListItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -102,25 +101,9 @@ function TagsPageContent() {
         } else {
           // 검색어 없으면 초기 인기순 목록 로드
           const listRaw = await getAnimeList(0, 20, 'popular');
-          const normalizeToArray = (data: unknown): ExtendedAnime[] => {
-            const isArr = Array.isArray(data);
-            const hasContent = data && Array.isArray((data as { content: unknown[] }).content);
-            const hasItems = data && Array.isArray((data as { items: unknown[] }).items);
-            if (isArr) return data as ExtendedAnime[];
-            if (hasContent) return (data as { content: ExtendedAnime[] }).content;
-            if (hasItems) return (data as { items: ExtendedAnime[] }).items;
-            return [];
-          };
-          
-          console.log('[DEBUG] 초기 listRaw:', listRaw);
-          console.log('[DEBUG] listRaw.items:', (listRaw as { items: Anime[] })?.items);
-          console.log('[DEBUG] listRaw.items[0]:', (listRaw as { items: Anime[] })?.items?.[0]);
-          // 백엔드 응답 구조에 맞게 .items 사용
-          const list = (listRaw as { items: ExtendedAnime[] })?.items || normalizeToArray(listRaw);
+          const list = listRaw.items;
           console.log('[DEBUG] 초기 최종 list:', list);
-          console.log('[DEBUG] 초기 list[0]:', list[0]);
-          console.log('[DEBUG] 초기 list[0] 전체 키:', list[0] ? Object.keys(list[0]) : 'no list[0]');
-          setAnimes(Array.isArray(list) ? list : []);
+          setAnimes(list);
         }
       } catch (e) {
         console.error('초기 데이터 로드 실패', e);
@@ -163,19 +146,19 @@ function TagsPageContent() {
       }
       setError(null);
 
-      const normalizeToArray = (data: unknown): ExtendedAnime[] => {
+      const normalizeToArray = (data: unknown): AnimeListItem[] => {
         const isArr = Array.isArray(data);
         const hasContent = data && Array.isArray((data as { content: unknown[] }).content);
         const hasItems = data && Array.isArray((data as { items: unknown[] }).items);
         console.log('[검색응답] typeof=', typeof data, 'isArray=', isArr, 'keys=', data ? Object.keys(data) : null);
-        if (isArr) return data as ExtendedAnime[];
-        if (hasContent) return (data as { content: ExtendedAnime[] }).content;
-        if (hasItems) return (data as { items: ExtendedAnime[] }).items;
+        if (isArr) return data as AnimeListItem[];
+        if (hasContent) return (data as { content: AnimeListItem[] }).content;
+        if (hasItems) return (data as { items: AnimeListItem[] }).items;
         console.warn('[검색응답] 예상치 못한 구조, 빈 배열로 처리:', data);
         return [];
       };
 
-      let collected: ExtendedAnime[] = [];
+      let collected: AnimeListItem[] = [];
       const page = isLoadMore ? currentPage + 1 : 0;
 
       // 정렬 값을 백엔드 API 형식으로 변환
@@ -235,33 +218,24 @@ function TagsPageContent() {
           cursorRating: isLoadMore && sortBy === 'rating' ? (cursorRating ?? undefined) : undefined
         });
         console.log('[DEBUG] listAnime 응답:', list);
-        console.log('[DEBUG] list.items:', (list as any)?.items);
-        console.log('[DEBUG] list.items[0]:', (list as any)?.items?.[0]);
-        console.log('[DEBUG] list.items[0] 전체 키:', (list as any)?.items?.[0] ? Object.keys((list as any).items[0]) : 'no items');
-        // 백엔드 응답 구조에 맞게 .items 사용
-        collected = (list as any)?.items || normalizeToArray(list);
+        collected = list.items;
         console.log('[DEBUG] 최종 collected:', collected);
-        console.log('[DEBUG] collected[0]:', collected[0]);
-        console.log('[DEBUG] collected[0] 전체 키:', collected[0] ? Object.keys(collected[0]) : 'no collected[0]');
       }
 
       // 백엔드에서 이미 필터링된 결과이므로 클라이언트 측 필터링은 최소화
       // 연도, 상태, 타입은 백엔드에서 처리됨
       
       // 고급 필터만 클라이언트에서 처리 (백엔드에서 지원하지 않는 필터들)
-      if (filters.watchable) {
-        collected = collected.filter(anime => anime.status !== 'UNAVAILABLE');
-      }
-      
+      // 참고: 과거의 watchable 필터는 AnimeListDto 에 없는 status 필드를 참조해 실제로는 동작하지 않아 제거함
       if (filters.membership) {
-        collected = collected.filter(anime => (anime as any).isExclusive === true);
+        collected = collected.filter(anime => anime.isExclusive === true);
       }
 
-      let uniqueResults: ExtendedAnime[] = [];
+      let uniqueResults: AnimeListItem[] = [];
       if (Array.isArray(collected)) {
         uniqueResults = collected.filter((anime, index, self) => {
-          const key = (anime as any)?.aniId ?? anime?.id;
-          return index === self.findIndex(a => (((a as any)?.aniId) ?? a?.id) === key);
+          const key = anime?.aniId;
+          return index === self.findIndex(a => a?.aniId === key);
         });
       } else {
         console.warn('[검색응답] 배열이 아님. 빈 배열로 처리:', collected);
@@ -270,7 +244,7 @@ function TagsPageContent() {
 
       // 무한스크롤링 처리 + 커서 업데이트
       if (isLoadMore) {
-        setAnimes((prev: ExtendedAnime[]) => [...prev, ...uniqueResults]);
+        setAnimes((prev) => [...prev, ...uniqueResults]);
         setCurrentPage(page);
       } else {
         setAnimes(uniqueResults);
@@ -282,8 +256,8 @@ function TagsPageContent() {
       // 다음 커서 계산
       if (uniqueResults.length > 0) {
         const last = uniqueResults[uniqueResults.length - 1];
-        const lastId = (last as any)?.aniId ?? last?.id;
-        const lastRating = (last as any)?.rating;
+        const lastId = last?.aniId;
+        const lastRating = last?.rating;
         setCursorId(Number(lastId));
         setCursorRating(typeof lastRating === 'number' ? lastRating : null);
       }
@@ -426,7 +400,7 @@ function TagsPageContent() {
   }, [currentPage, hasMore, isLoadingMore, isLoading]);
 
   // 애니메이션 클릭 핸들러
-  const handleAnimeClick = (anime: Anime) => {
+  const handleAnimeClick = (anime: AnimeListItem) => {
     setSelectedAnime(anime);
     setIsModalOpen(true);
   };

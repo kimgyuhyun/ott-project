@@ -5,6 +5,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import WeeklySchedule from "@/components/home/WeeklySchedule";
 import { getAnimeDetail } from "@/lib/api/anime";
+import type { AnimeListItem } from "@/types/anime";
 import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import { useAuth } from "@/lib/AuthContext";
 import Image from "next/image";
@@ -59,7 +60,7 @@ export default function HomeClient({
   initialWeeklyAnime,
 }: HomeClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<Anime | null>(null);
+  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(null);
   const [animeList] = useState<Anime[]>(initialAnimeList);
   const [recommendedAnime] = useState<Anime[]>(initialRecommendedAnime);
   const [popularAnime] = useState<Anime[]>(initialPopularAnime);
@@ -215,29 +216,18 @@ export default function HomeClient({
   const handleAnimeClick = async (
     anime: Anime | { aniId?: number; id?: number; title?: string; titleEn?: string; titleJp?: string; posterUrl?: string; isNew?: boolean },
   ) => {
-    const coerceToAnime = (src: any): Anime => {
-      const id = Number(src?.aniId ?? src?.id ?? 0);
+    // 모달 오픈에 필요한 최소 정보(AnimeListItem)로 변환한다.
+    const coerceToAnime = (src: any): AnimeListItem => {
+      const aniId = Number(src?.aniId ?? src?.id ?? 0);
       return {
-        id,
+        aniId,
         title: String(src?.title ?? src?.titleEn ?? src?.titleJp ?? ""),
-        posterUrl: src?.posterUrl ?? "/placeholder-anime.jpg",
-        rating: typeof src?.rating === "number" ? src.rating : 0,
-        status: String(src?.status ?? ""),
-        type: String(src?.type ?? ""),
-        year: Number(src?.year ?? new Date().getFullYear()),
-        genres: Array.isArray(src?.genres) ? src.genres : [],
-        studios: Array.isArray(src?.studios) ? src.studios : [],
-        tags: Array.isArray(src?.tags) ? src.tags : [],
-        synopsis: String(src?.synopsis ?? ""),
-        fullSynopsis: String(src?.fullSynopsis ?? ""),
-        episodeCount: Number(src?.episodeCount ?? 0),
-        duration: Number(src?.duration ?? 0),
-        ageRating: String(src?.ageRating ?? ""),
-        createdAt: String(src?.createdAt ?? new Date().toISOString()),
-        updatedAt: String(src?.updatedAt ?? new Date().toISOString()),
-        aniId: id,
         titleEn: src?.titleEn,
         titleJp: src?.titleJp,
+        posterUrl: src?.posterUrl ?? "/placeholder-anime.jpg",
+        rating: typeof src?.rating === "number" ? src.rating : 0,
+        type: src?.type ? String(src.type) : undefined,
+        year: Number(src?.year ?? new Date().getFullYear()),
         isNew: src?.isNew === true,
       };
     };
@@ -247,7 +237,7 @@ export default function HomeClient({
       if (id) {
         recordUserActivity(id, "view");
         const detail = await getAnimeDetail(id);
-        setSelectedAnime(detail as Anime);
+        setSelectedAnime(detail);
       } else {
         setSelectedAnime(coerceToAnime(anime));
       }

@@ -108,6 +108,14 @@ export interface AnimeDetail {
   isFavorited?: boolean;
 }
 
+// 페이지 응답 래퍼 (PagedResponse<T>)
+export interface PagedResponse<T> {
+  items: T[];
+  total: number;
+  page: number;
+  size: number;
+}
+
 // 애니 목록 아이템 (AnimeListDto)
 export interface AnimeListItem {
   aniId: number;
