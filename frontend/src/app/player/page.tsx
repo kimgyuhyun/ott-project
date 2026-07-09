@@ -9,7 +9,8 @@ import PlayerSettingsModal from "@/components/player/PlayerSettingsModal";
 import EpisodeCommentList from "@/components/episode/EpisodeCommentList";
 import { useAuth } from "@/hooks/useAuth";
 import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
-import { Anime, Episode } from "@/types/common";
+import { AnimeDetail, Episode } from "@/types/anime";
+import { SkipMeta } from "@/types/player";
 import styles from "./player.module.css";
 
 /**
@@ -23,12 +24,6 @@ function PlayerContent() {
     if (n === 2) return 'https://placehold.co/120x80/1f2937/ffffff?text=EP2+Thumbnail';
     return 'https://placehold.co/120x80/374151/ffffff?text=Episode';
   };
-  type ExtendedAnime = Anime & {
-    episodes?: Episode[];
-    isDub?: boolean;
-    isSubtitle?: boolean;
-    title?: string;
-  };
   const searchParams = useSearchParams();
   const router = useRouter();
   const episodeId = searchParams.get('episodeId');
@@ -36,7 +31,7 @@ function PlayerContent() {
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const [streamUrl, setStreamUrl] = useState<string>("");
-  const [animeInfo, setAnimeInfo] = useState<ExtendedAnime | null>(null);
+  const [animeInfo, setAnimeInfo] = useState<AnimeDetail | null>(null);
   const [episodeInfo, setEpisodeInfo] = useState<Episode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +47,7 @@ function PlayerContent() {
   const [hasMembership, setHasMembership] = useState<boolean>(false);
   
   // 스킵 메타 데이터
-  const [skipMeta, setSkipMeta] = useState<{ introStart: number; introEnd: number; outroStart: number; outroEnd: number } | null>(null);
+  const [skipMeta, setSkipMeta] = useState<SkipMeta | null>(null);
   const [hasSkippedIntro, setHasSkippedIntro] = useState<boolean>(false);
   const [hasSkippedOutro, setHasSkippedOutro] = useState<boolean>(false);
   
@@ -312,7 +307,7 @@ function PlayerContent() {
   // PIP 모드 이벤트 리스너
   useEffect(() => {
     const handlePipChange = () => {
-      setIsPipMode(!!(document as any).pictureInPictureElement);
+      setIsPipMode(!!document.pictureInPictureElement);
     };
 
     document.addEventListener('enterpictureinpicture', handlePipChange);
@@ -452,14 +447,14 @@ function PlayerContent() {
     try {
       setIsLoading(true);
       const data = await getEpisodeStreamUrl(parseInt(episodeId));
-      setStreamUrl((data as any).url);
-      
+      setStreamUrl(data.url);
+
       // 기존 진행률 로드 (에피소드별 독립적)
       const progress = await getEpisodeProgress(parseInt(episodeId));
       console.log('🔍 기존 진행률 로드:', progress);
       if (progress) {
-        const savedPosition = (progress as any).positionSec || 0;
-        const savedDuration = (progress as any).durationSec || 0;
+        const savedPosition = progress.positionSec || 0;
+        const savedDuration = progress.durationSec || 0;
         
         // 비정상적인 진행률 데이터 검증 (진행률이 전체 길이의 90% 이상이면 초기화)
         if (savedDuration > 0 && savedPosition > savedDuration * 0.9) {
@@ -498,16 +493,17 @@ function PlayerContent() {
     if (!animeId) return;
     
     try {
-      const data = await getAnimeDetail(parseInt(animeId)) as ExtendedAnime;
+      // getAnimeDetail 은 아직 unknown 을 반환하므로 API 경계에서 한 번만 단언한다(2단계에서 소스 타입화 예정).
+      const data = await getAnimeDetail(parseInt(animeId)) as AnimeDetail;
       console.log('🔍 애니메이션 상세 데이터:', data);
-      console.log('🔍 isDub 값:', (data as ExtendedAnime)?.isDub, typeof (data as ExtendedAnime)?.isDub);
-      console.log('🔍 isSubtitle 값:', (data as ExtendedAnime)?.isSubtitle, typeof (data as ExtendedAnime)?.isSubtitle);
-      console.log('🔍 title 값:', (data as ExtendedAnime)?.title);
-      setAnimeInfo(data as ExtendedAnime);
-      
+      console.log('🔍 isDub 값:', data?.isDub, typeof data?.isDub);
+      console.log('🔍 isSubtitle 값:', data?.isSubtitle, typeof data?.isSubtitle);
+      console.log('🔍 title 값:', data?.title);
+      setAnimeInfo(data);
+
       // 현재 에피소드 정보 찾기
-      if ((data as any)?.episodes && episodeId) {
-        const episode = (data as { episodes: Episode[] }).episodes.find((ep: Episode) => ep.id === Number(episodeId));
+      if (data?.episodes && episodeId) {
+        const episode = data.episodes.find((ep) => ep.id === Number(episodeId));
         console.log('🔍 현재 에피소드 데이터:', episode);
         setEpisodeInfo(episode || null);
       }
@@ -522,8 +518,8 @@ function PlayerContent() {
     try {
       // API로 다음 에피소드 로드 시도
       const data = await getNextEpisode(parseInt(episodeId));
-      if (data && (data as any).id) {
-        setNextEpisode(data as Episode);
+      if (data && data.id) {
+        setNextEpisode(data);
         return;
       }
     } catch (error) {
@@ -531,10 +527,10 @@ function PlayerContent() {
     }
     
     // API 실패 시 사이드바 에피소드 목록에서 다음 에피소드 찾기
-    if ((animeInfo as ExtendedAnime)?.episodes) {
-      const currentEpisodeIndex = (animeInfo as ExtendedAnime).episodes!.findIndex((ep: Episode) => ep.id === Number(episodeId));
-      if (currentEpisodeIndex !== -1 && currentEpisodeIndex < (animeInfo as ExtendedAnime).episodes!.length - 1) {
-        const nextEp = (animeInfo as ExtendedAnime).episodes![currentEpisodeIndex + 1];
+    if (animeInfo?.episodes) {
+      const currentEpisodeIndex = animeInfo.episodes.findIndex((ep) => ep.id === Number(episodeId));
+      if (currentEpisodeIndex !== -1 && currentEpisodeIndex < animeInfo.episodes.length - 1) {
+        const nextEp = animeInfo.episodes[currentEpisodeIndex + 1];
         setNextEpisode(nextEp);
         console.log('사이드바 목록에서 다음 에피소드 찾음:', nextEp);
       }
@@ -548,8 +544,7 @@ function PlayerContent() {
     try {
       const data = await getSkips(parseInt(episodeId));
       console.log('🔍 스킵 메타 로드:', data);
-      const meta = data as { introStart: number; introEnd: number; outroStart: number; outroEnd: number };
-      setSkipMeta(meta);
+      setSkipMeta(data);
       // 에피소드 변경 시 스킵 상태 초기화
       setHasSkippedIntro(false);
       setHasSkippedOutro(false);
@@ -684,11 +679,11 @@ function PlayerContent() {
     if (!video) return;
 
     try {
-      if ((document as any).pictureInPictureElement) {
-        await (document as any).exitPictureInPicture();
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture();
         setIsPipMode(false);
       } else {
-        await (video as any).requestPictureInPicture();
+        await video.requestPictureInPicture();
         setIsPipMode(true);
       }
     } catch (error) {
@@ -911,7 +906,7 @@ function PlayerContent() {
                          value={currentTime}
                          onChange={handleSeek}
                          className={styles.progressBar}
-                         style={{ ['--seek-fill' as any]: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                         style={{ '--seek-fill': `${duration > 0 ? (currentTime / duration) * 100 : 0}%` } as React.CSSProperties}
                        />
                        <span className={styles.progressTimeRight}>{formatTime(duration)}</span>
                      </div>
@@ -1011,8 +1006,8 @@ function PlayerContent() {
                             className={styles.volumeSliderVertical}
                             style={{
                               // CSS 변수로 채움 비율 전달 (아래→위)
-                              ['--vol-fill' as any]: `${volume * 100}%`
-                            }}
+                              '--vol-fill': `${volume * 100}%`
+                            } as React.CSSProperties}
                           />
                         </div>
                       </div>
@@ -1181,9 +1176,9 @@ function PlayerContent() {
                     <span className={styles.episodeHeaderTitle}>
                       {animeInfo ? (() => {
                         // 더빙과 자막 여부 확인
-                        const isDub = (animeInfo as any).isDub === true;
-                        const isSubtitle = (animeInfo as any).isSubtitle === true;
-                        
+                        const isDub = animeInfo.isDub === true;
+                        const isSubtitle = animeInfo.isSubtitle === true;
+
                         let prefix = '';
                         if (isDub && isSubtitle) {
                           // 둘 다 true인 경우 자막으로 표시
@@ -1193,8 +1188,8 @@ function PlayerContent() {
                         } else if (isSubtitle) {
                           prefix = '(자막) ';
                         }
-                        
-                        return `${prefix}${(animeInfo as any).title}`;
+
+                        return `${prefix}${animeInfo.title}`;
                       })() : '애니메이션'}
                     </span>
                   </div>
@@ -1258,9 +1253,9 @@ function PlayerContent() {
                   <span className={styles.episodeHeaderTitle}>
                   {animeInfo ? (() => {
                       // 더빙과 자막 여부 확인
-                    const isDub = (animeInfo as any).isDub === true;
-                    const isSubtitle = (animeInfo as any).isSubtitle === true;
-                      
+                    const isDub = animeInfo.isDub === true;
+                    const isSubtitle = animeInfo.isSubtitle === true;
+
                       let prefix = '';
                       if (isDub && isSubtitle) {
                         // 둘 다 true인 경우 자막으로 표시
@@ -1270,8 +1265,8 @@ function PlayerContent() {
                       } else if (isSubtitle) {
                         prefix = '(자막) ';
                       }
-                      
-                    return `${prefix}${(animeInfo as any).title}`;
+
+                    return `${prefix}${animeInfo.title}`;
                     })() : '애니메이션'}
                   </span>
                 </div>
