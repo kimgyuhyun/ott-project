@@ -13,6 +13,7 @@ import com.ottproject.ottbackend.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,6 +47,10 @@ public class ProrationPaymentService {
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway; // 아임포트 재검증(무단 업그레이드 차단)
 
+    // 테스트 결제 금액(원). 0이면 실제 차액으로 결제(메인 결제와 동일 규칙 → 재검증 통과)
+    @Value("${payments.test-amount:0}")
+    private long testAmount;
+
     /**
      * 차액 결제 세션 생성
      * - 현재 구독과 대상 플랜 간의 차액을 계산하여 결제 세션을 생성한다.
@@ -73,6 +78,10 @@ public class ProrationPaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "차액이 없습니다.");
         }
 
+        // 실제 청구 금액: 테스트 환경에서는 test-amount(예: 1원), 운영에서는 계산된 차액.
+        // 메인 결제와 동일한 금액 규칙을 써야 아임포트 재검증(verifyPaymentStatus)이 통과한다.
+        long chargeAmount = (testAmount > 0 ? testAmount : (long) prorationAmount);
+
         // 결제 엔티티 생성
         String providerSessionId = "proration_" + UUID.randomUUID().toString();
         User user = new User();
@@ -82,7 +91,7 @@ public class ProrationPaymentService {
                 targetPlan,
                 com.ottproject.ottbackend.enums.PaymentProvider.IMPORT,
                 providerSessionId,
-                new com.ottproject.ottbackend.entity.Money((long) prorationAmount, "KRW")
+                new com.ottproject.ottbackend.entity.Money(chargeAmount, "KRW")
         );
         payment.setDescription("플랜 업그레이드 차액 결제");
         payment.setMetadata("{\"type\":\"proration\",\"currentPlanCode\":\"" + 
@@ -92,13 +101,18 @@ public class ProrationPaymentService {
 
         paymentRepository.save(payment);
 
+        // 아임포트 사전 등록(prepare): merchant_uid에 청구 금액을 고정(메인 결제와 동일한 검증 경로 확보)
+        if (paymentGateway instanceof ImportPaymentGateway) {
+            ((ImportPaymentGateway) paymentGateway).prepare(providerSessionId, chargeAmount);
+        }
+
         // PG 설정
         String pg = getPgByPaymentService(request.getPaymentService());
 
         Map<String, Object> response = new HashMap<>();
         response.put("paymentId", payment.getId());
         response.put("providerSessionId", providerSessionId);
-        response.put("amount", prorationAmount);
+        response.put("amount", chargeAmount);
         response.put("pg", pg);
         response.put("redirectUrl", null); // 차액 결제는 리다이렉트 없음
 
