@@ -11,7 +11,7 @@ import lombok.*;
  * 필드 개요
  * - id/reviewId/parentId: 식별/대상/부모
  * - userId/userName/content/commentStatus: 작성자/본문/상태
- * - replacesCount/likeCount/isLikedByCurrentUser: 수/좋아요/현재 사용자 좋아요 여부
+ * - repliesCount/likeCount/isLikedByCurrentUser: 수/좋아요/현재 사용자 좋아요 여부
  */
 @Getter
 @Setter
@@ -31,7 +31,7 @@ public class ReviewCommentsResponseDto {
 	private String content; // 댓글 내용
 	private com.ottproject.ottbackend.enums.CommentStatus commentStatus; // 댓글 상태
 
-	private Integer replacesCount; // 대댓글 개수(옵션)
+	private Integer repliesCount; // 대댓글 개수(옵션)
 	private Integer likeCount; // 댓글 좋아요 개수
 	private Boolean isLikedByCurrentUser; // 현재 사용자 좋아요 여부
 	

@@ -9,7 +9,7 @@ export interface EpisodeComment {
   userProfileImage?: string;
   content: string;
   commentStatus: 'ACTIVE' | 'DELETED' | 'REPORTED';
-  replacesCount?: number;
+  repliesCount?: number;
   likeCount: number;
   isLikedByCurrentUser: boolean;
   createdAt?: string;

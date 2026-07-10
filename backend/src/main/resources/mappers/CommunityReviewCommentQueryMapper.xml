@@ -59,7 +59,7 @@
         FROM comments c2
         WHERE c2.parent_id = c.id
         AND c2.status = 'ACTIVE'
-        ), 0) AS replacesCount, <!-- ReviewCommentsResponseDto.replacesCount -->
+        ), 0) AS repliesCount, <!-- ReviewCommentsResponseDto.repliesCount -->
         (
         SELECT COUNT(1) <!-- 댓글 좋아요 수 -->
         FROM comment_likes cl

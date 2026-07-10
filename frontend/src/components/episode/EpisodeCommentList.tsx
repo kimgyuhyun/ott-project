@@ -438,7 +438,7 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
                 {/* 대댓글 영역 */}
                 <div className={styles.repliesSection}>
                   <div className={styles.repliesHeader}>
-                    {((Boolean(replies[comment.id]?.length) || (typeof comment.replacesCount === 'number' && comment.replacesCount > 0))) && (
+                    {((Boolean(replies[comment.id]?.length) || (typeof comment.repliesCount === 'number' && comment.repliesCount > 0))) && (
                       <button
                       onClick={async () => {
                         setExpandedReplies(prev => {
@@ -454,7 +454,7 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
                     >
                                               {expandedReplies.has(comment.id) 
                                                 ? `답글 ${replies[comment.id]?.length || 0}개 숨기기` 
-                                                : `답글 ${(comment.replacesCount ?? (replies[comment.id]?.length || 0))}개 보기`}
+                                                : `답글 ${(comment.repliesCount ?? (replies[comment.id]?.length || 0))}개 보기`}
                       </button>
                     )}
                   </div>

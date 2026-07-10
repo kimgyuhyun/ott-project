@@ -433,7 +433,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                 {/* 대댓글 영역 */}
                 <div className={styles.repliesSection}>
                   <div className={styles.repliesHeader}>
-                     {(Boolean(replies[comment.id]?.length) || (comment.replacesCount && comment.replacesCount > 0)) && (
+                     {(Boolean(replies[comment.id]?.length) || (comment.repliesCount && comment.repliesCount > 0)) && (
                       <button
                         onClick={async () => {
                           setExpandedReplies(prev => {
@@ -449,7 +449,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                       >
                         {expandedReplies.has(comment.id) 
                           ? `답글 ${replies[comment.id]?.length || 0}개 숨기기` 
-                          : `답글 ${(comment.replacesCount ?? (replies[comment.id]?.length || 0))}개 보기`}
+                          : `답글 ${(comment.repliesCount ?? (replies[comment.id]?.length || 0))}개 보기`}
                       </button>
                     )}
                   </div>

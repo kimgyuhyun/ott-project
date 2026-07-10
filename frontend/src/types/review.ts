@@ -33,7 +33,7 @@ export interface ReviewComment {
   userProfileImage?: string | null;
   content: string;
   commentStatus?: CommentStatus;
-  replacesCount?: number;
+  repliesCount?: number;
   likeCount: number;
   isLikedByCurrentUser: boolean;
   createdAt?: string;
