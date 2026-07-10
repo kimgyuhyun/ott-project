@@ -52,7 +52,7 @@
         u.id AS userId, <!-- ReviewCommentsResponseDto.userId -->
         u.name AS userName, <!-- ReviewCommentsResponseDto.userName -->
         u.profile_image AS userProfileImage, <!-- ReviewCommentsResponseDto.userProfileImage -->
-        c.content AS content, <!-- ReviewCommentsResponseDto.content -->
+        CASE WHEN c.status = 'DELETED' THEN '삭제된 댓글입니다.' ELSE c.content END AS content, <!-- 삭제된 부모는 tombstone으로 마스킹 -->
         c.status AS commentStatus, <!-- ReviewCommentsResponseDto.commentStatus(enum) -->
         COALESCE((
         SELECT COUNT(1) <!-- 대댓글 수 -->
@@ -144,7 +144,12 @@
         JOIN users u ON u.id = c.user_id <!-- 작성자 조인 -->
         WHERE c.review_id = #{reviewId} <!-- 대상 리뷰 -->
         AND c.parent_id IS NULL <!-- 최상위 댓글만 -->
-        AND c.status = 'ACTIVE' <!-- 활성 댓글만 -->
+        AND (
+            c.status = 'ACTIVE'
+            OR (c.status = 'DELETED' AND EXISTS (
+                SELECT 1 FROM comments cc WHERE cc.parent_id = c.id AND cc.status = 'ACTIVE'
+            ))
+        ) <!-- 활성 + 삭제됐지만 활성 대댓글이 남은 부모(tombstone) -->
         <choose> <!-- 정렬 분기 -->
             <when test="sort == 'best'">
                 ORDER BY likeCount DESC, c.id DESC <!-- 좋아요순, 같으면 최신순 -->
@@ -165,7 +170,12 @@
         FROM comments c
         WHERE c.review_id = #{reviewId} <!-- 대상 리뷰 -->
         AND c.parent_id IS NULL <!-- 최상위만 -->
-        AND c.status = 'ACTIVE' <!-- 활성만 카운트 -->
+        AND (
+            c.status = 'ACTIVE'
+            OR (c.status = 'DELETED' AND EXISTS (
+                SELECT 1 FROM comments cc WHERE cc.parent_id = c.id AND cc.status = 'ACTIVE'
+            ))
+        ) <!-- 목록과 동일 조건(tombstone 포함) -->
     </select>
 
     <!-- =====
