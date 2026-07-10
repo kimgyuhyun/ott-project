@@ -21,6 +21,13 @@ import org.springframework.stereotype.Service;
  * 메서드 개요
  * - canStream: 에피소드 재생 권한 여부 판단
  * - buildSignedStreamUrl: 품질 제한 적용 후 서명 URL 생성
+ *
+ * 현 배포 메모
+ * - 아직 secure_link 검증 오리진이 없고 영상은 공개 테스트 URL(MP4)을 사용한다.
+ *   따라서 여기서 붙이는 서명(st/e)은 현재 검증되지 않는 "설계 흔적"이며,
+ *   접근 제어는 canStream(=URL 발급 게이트)에만 의존한다.
+ * - 실제 HLS 오리진 도입 시 같은 SECURE_LINK_SECRET 으로 nginx secure_link_md5 를
+ *   켜면 이 서명이 그대로 효력을 갖는다(코드 변경 불필요).
  */
 @Slf4j
 @Service
