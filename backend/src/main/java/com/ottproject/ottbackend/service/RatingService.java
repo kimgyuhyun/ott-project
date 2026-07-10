@@ -10,8 +10,10 @@ import com.ottproject.ottbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -29,6 +31,10 @@ public class RatingService {
     private final AnimeRepository animeRepository;
 
     public void createOrUpdateRating(Long userId, Long aniId, Double score) {
+        // 서버측 범위 검증: 1.0~5.0, 0.5 단위만 허용(집계 평점/분포 오염 방지)
+        if (score == null || score < 1.0 || score > 5.0 || Math.abs(score * 2 - Math.rint(score * 2)) > 1e-9) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "평점은 1.0~5.0 사이 0.5 단위여야 합니다.");
+        }
         User user = userRepository.findById(userId).orElseThrow();
         Anime anime = animeRepository.findById(aniId).orElseThrow();
 
