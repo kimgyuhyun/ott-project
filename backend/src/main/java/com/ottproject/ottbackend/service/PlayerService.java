@@ -154,61 +154,30 @@ public class PlayerService {
      */
     @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void saveProgress(Long userId, Long episodeId, Integer positionSec, Integer durationSec) {
-        System.out.println("🔍 saveProgress 호출:");
-        System.out.println("  - userId: " + userId);
-        System.out.println("  - episodeId: " + episodeId);
-        System.out.println("  - positionSec: " + positionSec);
-        System.out.println("  - durationSec: " + durationSec);
-        
-        try {
-            // 동시성 안전을 위해 먼저 조회
-            EpisodeProgress entity = progressRepository.findByUser_IdAndEpisode_Id(userId, episodeId)
-                    .orElseGet(() -> {
-                        System.out.println("  - 새 레코드 생성");
-                        // 사용자와 에피소드 존재 여부 확인
-                        var user = userRepository.findById(userId);
-                        var episode = episodeRepository.findById(episodeId);
-                        
-                        if (user.isEmpty()) {
-                            throw new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId);
-                        }
-                        if (episode.isEmpty()) {
-                            throw new IllegalArgumentException("에피소드를 찾을 수 없습니다: " + episodeId);
-                        }
-                        
-                        return EpisodeProgress.createProgress(user.get(), episode.get(), 0);
-                    });
-            
-            if (entity.getId() != null) {
-                System.out.println("  - 기존 레코드 업데이트 (ID: " + entity.getId() + ")");
-                System.out.println("  - 기존 positionSec: " + entity.getPositionSec());
-                System.out.println("  - 기존 durationSec: " + entity.getDurationSec());
-            }
-            
-            // 값 검증
-            if (positionSec != null && positionSec >= 0) {
-                entity.setPositionSec(positionSec);
-            }
-            if (durationSec != null && durationSec > 0) {
-                entity.setDurationSec(durationSec);
-            }
-            
-            // 진행률이 총 길이를 초과하지 않도록 검증
-            if (entity.getPositionSec() > entity.getDurationSec()) {
-                System.out.println("  ⚠️ 진행률이 총 길이를 초과, 조정: " + entity.getPositionSec() + " -> " + entity.getDurationSec());
-                entity.setPositionSec(entity.getDurationSec());
-            }
-            
-            System.out.println("  - 업데이트 후 positionSec: " + entity.getPositionSec());
-            System.out.println("  - 업데이트 후 durationSec: " + entity.getDurationSec());
-            
-            EpisodeProgress saved = progressRepository.save(entity);
-            System.out.println("  - 저장 완료 (ID: " + saved.getId() + ")");
-            
-        } catch (Exception e) {
-            System.err.println("  ❌ 진행률 저장 실패: " + e.getMessage());
-            throw new RuntimeException("진행률 저장 중 오류가 발생했습니다: " + e.getMessage(), e);
+        // 동시성 안전을 위해 먼저 조회(있으면 갱신, 없으면 생성)
+        EpisodeProgress entity = progressRepository.findByUser_IdAndEpisode_Id(userId, episodeId)
+                .orElseGet(() -> {
+                    var user = userRepository.findById(userId)
+                            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
+                    var episode = episodeRepository.findById(episodeId)
+                            .orElseThrow(() -> new IllegalArgumentException("에피소드를 찾을 수 없습니다: " + episodeId));
+                    return EpisodeProgress.createProgress(user, episode, 0);
+                });
+
+        // 값 검증 후 반영
+        if (positionSec != null && positionSec >= 0) {
+            entity.setPositionSec(positionSec);
         }
+        if (durationSec != null && durationSec > 0) {
+            entity.setDurationSec(durationSec);
+        }
+
+        // 진행률이 총 길이를 초과하지 않도록 보정
+        if (entity.getPositionSec() > entity.getDurationSec()) {
+            entity.setPositionSec(entity.getDurationSec());
+        }
+
+        progressRepository.save(entity);
     }
     
     /**
