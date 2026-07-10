@@ -136,6 +136,11 @@ public class EpisodeComment {
             throw new IllegalArgumentException("댓글 내용은 500자 이하여야 합니다.");
         }
 
+        // 부모 상태 검증: 삭제/신고된 댓글에는 답글 불가
+        if (parentComment.status != CommentStatus.ACTIVE) {
+            throw new IllegalArgumentException("삭제되었거나 신고된 댓글에는 답글을 달 수 없습니다.");
+        }
+
         // 대댓글 깊이 검증 (3단계까지만 허용)
         if (parentComment.parent != null) {
             throw new IllegalArgumentException("대댓글은 3단계까지만 허용됩니다.");
