@@ -94,6 +94,14 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		// 3. 데이터 검증
 		validateWebhookData(event);
 		
+		// 3-1. 차액(proration) 결제는 전용 확정 경로(ProrationPaymentService.completeProrationPayment)가
+		//       재검증·플랜 변경을 전담한다. 웹훅이 여기서 확정하면 markSucceededAndProvision이 '새 구독'을
+		//       중복 생성하고, 클라 확정과 레이스(이미 처리된 결제)를 일으키므로 확인만 하고 무시한다(멱등, 200 OK).
+		if (event.providerSessionId != null && event.providerSessionId.startsWith("proration_")) {
+			log.info("차액 결제 웹훅 수신 - 전용 확정 경로가 처리하므로 스킵합니다. merchant_uid: {}", event.providerSessionId);
+			return;
+		}
+
 		// 4. (성공인 경우) API 선재검증 후 전이 적용
 		if (event.status == PaymentStatus.SUCCEEDED) {
 			// merchant_uid로 기대 금액 조회

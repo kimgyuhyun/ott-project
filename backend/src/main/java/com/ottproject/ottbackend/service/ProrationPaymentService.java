@@ -83,7 +83,9 @@ public class ProrationPaymentService {
         long chargeAmount = (testAmount > 0 ? testAmount : (long) prorationAmount);
 
         // 결제 엔티티 생성
-        String providerSessionId = "proration_" + UUID.randomUUID().toString();
+        // merchant_uid는 아임포트 정책상 최대 40자 → "proration_"(10) + 하이픈 제거 UUID 30자 = 40자로 고정한다.
+        // (초과 시 아임포트가 40자로 잘라 반환하여 webhook 조회/재검증에서 merchant_uid 불일치가 발생했음)
+        String providerSessionId = "proration_" + UUID.randomUUID().toString().replace("-", "").substring(0, 30);
         User user = new User();
         user.setId(userId);
         Payment payment = Payment.createPendingPayment(
