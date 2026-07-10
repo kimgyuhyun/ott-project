@@ -7,9 +7,11 @@ import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
 import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
 import com.ottproject.ottbackend.dto.PaymentProrationRequestDto;
+import com.ottproject.ottbackend.dto.PaymentSucceededEventDto;
 import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.Money;
+import com.ottproject.ottbackend.entity.OutboxEvent;
 import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.PaymentMethod;
 import com.ottproject.ottbackend.entity.User;
@@ -20,8 +22,10 @@ import com.ottproject.ottbackend.enums.PaymentStatus;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
+import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.mybatis.PaymentQueryMapper;
 import com.ottproject.ottbackend.service.ImportPaymentGateway;
 import lombok.RequiredArgsConstructor;
@@ -68,6 +72,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final PaymentMethodService paymentMethodService; // 결제수단 서비스
 	private final ApplicationEventPublisher eventPublisher; // 이벤트 발행자
 	private final MembershipCommandService membershipCommandService; // 멤버십 구독 생성(동기 직접 호출)
+	private final OutboxEventRepository outboxEventRepository; // 아웃박스 이벤트 리포지토리(부수효과 발행)
+	private final ObjectMapper objectMapper; // 이벤트 페이로드 JSON 직렬화
 
 	// 테스트 결제 금액(원). 0이면 실제 플랜 금액으로 결제
 	@Value("${payments.test-amount:0}")
@@ -621,6 +627,34 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		} catch (Exception e) {
 			log.error("멤버십 구독 생성 실패 - paymentId: {}", payment.getId(), e);
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "멤버십 구독 생성 실패: " + e.getMessage(), e);
+		}
+
+		// [Kafka/Outbox] 결제 확정과 "같은 트랜잭션"으로 부수효과 이벤트를 아웃박스에 적재한다.
+		// - 3경로(클라 확정/웹훅/재조정 배치)가 모두 이 메서드로 수렴하고 상단 멱등 가드(SUCCEEDED면 return)가 있어 정확히 1회만 적재된다.
+		// - 실제 카프카 발행은 OutboxPublisher(폴링)가 담당하므로, 브로커 장애가 결제 확정을 막지 않는다.
+		try {
+			PaymentSucceededEventDto evt = new PaymentSucceededEventDto(
+					UUID.randomUUID().toString(), // 이벤트 고유 식별자(컨슈머 멱등 키)
+					payment.getId(),
+					payment.getUser().getId(),
+					payment.getMembershipPlan().getCode(),
+					payment.getPrice() != null ? payment.getPrice().getAmount() : null,
+					payment.getPaidAt()
+			);
+			OutboxEvent outbox = OutboxEvent.create(
+					"Payment", // aggregateType
+					String.valueOf(payment.getId()), // aggregateId
+					"PaymentSucceeded", // eventType
+					"payment.succeeded", // topic
+					evt.getEventId(), // eventId
+					objectMapper.writeValueAsString(evt) // payload(JSON)
+			);
+			outboxEventRepository.save(outbox);
+			log.info("아웃박스 적재 완료 - eventId: {}, paymentId: {}", evt.getEventId(), payment.getId());
+		} catch (Exception e) {
+			// 아웃박스 적재는 결제 확정과 원자적이어야 한다(부수효과 유실 방지). 실패 시 함께 롤백 → 웹훅/배치 경로에서 재적재된다.
+			log.error("아웃박스 이벤트 적재 실패 - paymentId: {}", payment.getId(), e);
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "아웃박스 이벤트 적재 실패: " + e.getMessage(), e);
 		}
 	}
 

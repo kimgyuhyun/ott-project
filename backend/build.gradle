@@ -32,6 +32,8 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 	// 세션을 Redis 에 저장하여 재배포/다중 인스턴스에서도 세션 유지 (톰캣 인메모리 세션 대체)
 	implementation 'org.springframework.session:spring-session-data-redis'
+	// Kafka: 결제 성공 이후 부수효과(알림/통계/추천)를 아웃박스→카프카로 비동기 분리
+	implementation 'org.springframework.kafka:spring-kafka'
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'

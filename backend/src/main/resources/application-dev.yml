@@ -88,6 +88,22 @@ spring:
       host: ${REDIS_HOST:ott-redis}
       port: ${REDIS_PORT:6379}
 
+  # Kafka 연결 (결제 성공 이후 부수효과 이벤트 스트림)
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all # 리더+ISR 모두 확인(내구성 우선)
+    consumer:
+      group-id: ott-payment-consumers # 부수효과 컨슈머 그룹
+      auto-offset-reset: earliest # 신규 컨슈머는 처음부터(리플레이/백필 친화)
+      enable-auto-commit: false # 처리 성공 후 수동 커밋(정확한 재처리 경계)
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record # 레코드 단위 커밋
+
   # 메일 설정 (네이버 SMTP 예시)
   mail:
     host: ${MAIL_HOST:smtp.naver.com} # SMTP 서버

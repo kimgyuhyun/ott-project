@@ -26,6 +26,34 @@ services:                         # 서비스 정의 시작
     networks:
       - default
 
+  kafka: # Kafka 브로커(KRaft 단일 노드) - 결제 부수효과 이벤트 스트림
+    image: apache/kafka:3.7.0 # 공식 ASF 이미지(KRaft 내장, 스토리지 자동 포맷)
+    container_name: ott-kafka
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9092:9092" # 로컬(호스트) 접근용 EXTERNAL 리스너 (netlock 배포에선 내부통신만 사용)
+    environment:
+      # KRaft 모드(주키퍼 불필요): 브로커+컨트롤러 겸용 단일 노드
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@ott-kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      # 리스너: 도커 내부(INTERNAL) 9094 / 호스트·컨테이너 로컬(EXTERNAL) 9092 / 컨트롤러 9093
+      KAFKA_LISTENERS: "INTERNAL://:9094,EXTERNAL://:9092,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://ott-kafka:9094,EXTERNAL://127.0.0.1:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      # 단일 노드이므로 복제/최소 ISR 1로 고정
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - default
+
   app: # Spring Boot 애플리케이션 서비스
     image: ${APP_IMAGE:-para98/ott-backend:latest}
     container_name: ott-app # 컨테이너 이름
@@ -37,6 +65,7 @@ services:                         # 서비스 정의 시작
     depends_on: # 의존성 설정
       - postgres # postgres 서비스가 먼저 시작되어야 함
       - redis
+      - kafka # 카프카 브로커가 먼저 기동되어야 함
     env_file: # .env 파일에서 환경변수 로드
       - .env
     networks:
@@ -62,6 +91,8 @@ services:                         # 서비스 정의 시작
       KAKAO_CLIENT_SECRET: ${KAKAO_CLIENT_SECRET}
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
+      # Kafka 설정 (도커 내부 리스너로 접속)
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-ott-kafka:9094}
       # 메일 설정
       MAIL_HOST: ${MAIL_HOST}
       MAIL_PORT: ${MAIL_PORT}
@@ -126,6 +157,7 @@ services:                         # 서비스 정의 시작
 
 volumes:                         # 볼륨 정의
   postgres_data:                 # PostgreSQL 데이터 저장용 볼륨
+  kafka_data:                    # Kafka(KRaft) 로그/메타데이터 저장용 볼륨
 
 networks:                        # 네트워크 정의
   default:                       # 기본 네트워크 (모든 컨테이너가 통신 가능)

@@ -128,11 +128,30 @@ public class MembershipNotificationService { // 알림 메일 서비스
     }
 
     /**
+     * 결제 완료(영수증) 안내 메일 발송
+     * - 결제 성공 이벤트 컨슈머가 호출하는 부수효과. 결제 트랜잭션과 분리되어 비동기로 처리된다.
+     */
+    public void sendPaymentReceipt(User user, String planCode, Long amount, LocalDateTime paidAt) {
+        if (user == null || user.getEmail() == null) return; // 수신자 확인
+        SimpleMailMessage msg = new SimpleMailMessage(); // 텍스트 메일
+        msg.setFrom(fromEmail); // 발신자
+        msg.setTo(user.getEmail()); // 수신자
+        msg.setSubject("[OTT] 결제가 완료되었습니다"); // 제목
+        msg.setText("안녕하세요, " + user.getName() + "님.\n\n" +
+                "멤버십 결제가 정상적으로 완료되었습니다.\n" +
+                "플랜: " + (planCode != null ? planCode : "") + "\n" +
+                "결제 금액: " + (amount != null ? amount : 0) + "원\n" +
+                (paidAt != null ? ("결제 일시: " + paidAt) : "") + "\n\n" +
+                "이용해 주셔서 감사합니다."); // 본문
+        mailSender.send(msg); // 발송
+    }
+
+    /**
      * 멤버십 정기결제 재시작 알림 메일 발송
      */
     public void sendResumeNotification(User user, MembershipSubscription subscription) {
         if (user == null || user.getEmail() == null) return; // 수신자 확인
-        
+
         SimpleMailMessage msg = new SimpleMailMessage(); // 텍스트 메일
         msg.setFrom(fromEmail); // 발신자
         msg.setTo(user.getEmail()); // 수신자

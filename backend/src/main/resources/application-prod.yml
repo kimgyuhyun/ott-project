@@ -69,6 +69,23 @@ spring:
           max-idle: 10
           min-idle: 5
 
+  # Kafka 연결 (결제 성공 이후 부수효과 이벤트 스트림)
+  # 도커 내부 리스너로 접속(egress 불필요). 브로커는 default(internal) 네트워크의 ott-kafka.
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:ott-kafka:9094}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all # 리더+ISR 모두 확인(내구성 우선)
+    consumer:
+      group-id: ott-payment-consumers # 부수효과 컨슈머 그룹
+      auto-offset-reset: earliest # 신규 컨슈머는 처음부터(리플레이/백필 친화)
+      enable-auto-commit: false # 처리 성공 후 수동 커밋
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    listener:
+      ack-mode: record # 레코드 단위 커밋
+
   # 메일 설정 (네이버 SMTP)
   mail:
     host: ${MAIL_HOST:smtp.naver.com}
