@@ -16,6 +16,7 @@ import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.service.NotificationTriggerService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +35,7 @@ import java.util.List;
  * - toggleLike: 좋아요 토글(멱등 수렴)
  * - updateStatus/deleteHardByReview: 상태 갱신/리뷰 기준 하드 삭제
  */
+@Slf4j
 @RequiredArgsConstructor // final 필드 주입용 생성자 자동 생성
 @Service
 @Transactional // 쓰기 메서드 트랜잭션 관리
@@ -101,9 +103,8 @@ public class ReviewCommentsService {
         // 모든 댓글에 대해 알림 생성 (자신의 리뷰가 아닌 경우만)
         try {
             notificationTriggerService.triggerReviewCommentNotification(savedComment);
-            System.out.println("🔧 [SERVICE] 리뷰 댓글 알림 생성 완료");
         } catch (Exception e) {
-            System.out.println("🔧 [SERVICE] 리뷰 댓글 알림 생성 실패 (무시): " + e.getMessage());
+            log.warn("comment notification failed (ignored)", e);
         }
         
         return savedComment.getId();
@@ -145,47 +146,37 @@ public class ReviewCommentsService {
     }
 
     public boolean toggleLike(Long commentId, Long userId) { // 좋아요 토글(delete-first 전략)
-        System.out.println("🔧 [SERVICE] ReviewComment toggleLike 시작 - commentId: " + commentId + ", userId: " + userId);
         
         try {
             int deleted = commentLikeRepository.deleteByUser_IdAndComment_Id(userId, commentId); // 먼저 off 시도
-            System.out.println("🔧 [SERVICE] 기존 좋아요 삭제 결과: " + deleted);
             if (deleted > 0) {
-                System.out.println("🔧 [SERVICE] 좋아요 OFF 완료");
                 return false; // off
             }
 
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
-            System.out.println("🔧 [SERVICE] 사용자 조회 완료: " + user.getEmail());
             
             Comment comment = commentRepository.findById(commentId)
                     .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
-            System.out.println("🔧 [SERVICE] 댓글 조회 완료: " + comment.getId());
             
             try {
                 CommentLike like = CommentLike.createLike(user, comment);
                 CommentLike savedLike = commentLikeRepository.save(like); // on 시도
-                System.out.println("🔧 [SERVICE] 좋아요 생성 완료: " + savedLike.getId());
                 
                 // 좋아요 알림 생성 (실패해도 좋아요는 정상 처리)
                 try {
                     notificationTriggerService.triggerCommentLikeNotification(savedLike);
-                    System.out.println("🔧 [SERVICE] 좋아요 알림 생성 완료");
                 } catch (Exception e) {
-                    System.out.println("🔧 [SERVICE] 좋아요 알림 생성 실패 (무시): " + e.getMessage());
-                }
+            log.warn("comment notification failed (ignored)", e);
+        }
                 
-                System.out.println("🔧 [SERVICE] 좋아요 ON 완료");
                 return true; // on
             } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
-                System.out.println("🔧 [SERVICE] DataIntegrityViolationException 발생, 좋아요 OFF로 수렴: " + e.getMessage());
                 commentLikeRepository.deleteByUser_IdAndComment_Id(userId, commentId);
                 return false; // off
             }
         } catch (Exception e) {
-            System.out.println("🔧 [SERVICE] ReviewComment toggleLike 실패: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            e.printStackTrace();
+            log.error("toggleLike failed - commentId: {}", commentId, e);
             throw e;
         }
     }
