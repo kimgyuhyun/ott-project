@@ -9,6 +9,10 @@ updates:
       frontend-minor:
         update-types: ["minor", "patch"]
     open-pull-requests-limit: 5
+    ignore:
+      # 메이저 버전 업그레이드는 breaking change 위험이 커서 자동 PR 제외(수동 처리)
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # 백엔드 (Spring Boot / gradle)
   - package-ecosystem: "gradle"
@@ -19,19 +23,32 @@ updates:
       backend-minor:
         update-types: ["minor", "patch"]
     open-pull-requests-limit: 5
+    ignore:
+      # 메이저 버전 업그레이드는 breaking change 위험이 커서 자동 PR 제외(수동 처리)
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # Docker 베이스 이미지
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions 워크플로우
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
