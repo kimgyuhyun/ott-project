@@ -5,11 +5,13 @@ import com.ottproject.ottbackend.dto.ReviewResponseDto;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.Review;
 import com.ottproject.ottbackend.entity.ReviewLike;
+import com.ottproject.ottbackend.entity.ReviewReport;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.ReviewStatus;
 import com.ottproject.ottbackend.mybatis.CommunityReviewCommentQueryMapper;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.ReviewLikeRepository;
+import com.ottproject.ottbackend.repository.ReviewReportRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +45,9 @@ public class ReviewsService {
     private final UserRepository userRepository; // 사용자 연관 검증/지정
     private final AnimeRepository animeListRepository; // 애니 연관 검증/지정
     private final ReviewLikeRepository reviewLikeRepository; // 좋아요 CUD
+    private final ReviewReportRepository reviewReportRepository; // 신고 기록 CUD(중복방지/임계치)
+
+    private static final int REPORT_HIDE_THRESHOLD = 5; // 서로 다른 사용자 신고가 이 수 이상이면 숨김(REPORTED)
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<ReviewResponseDto> list(Long aniId, Long currentUserId, String sort, int page, int size) {
         int limit = size; // LIMIT 계산
@@ -58,7 +63,7 @@ public class ReviewsService {
         return reviewQueryMapper.findReviewById(reviewId, currentUserId); // 단건 상세 조회
     }
 
-    public Long create(Long userId, Long aniListId, String content, Double rating) {
+    public Long create(Long userId, Long aniListId, String content) {
         User user = userRepository.findById(userId) // 사용자 조회(필수)
                 .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
         Anime animeList = animeListRepository.findById(aniListId) // NEW 애니 조회(필수)
@@ -73,11 +78,11 @@ public class ReviewsService {
         return reviewRepository.save(review).getId(); // 저장 후 ID 반환
     }
 
-    public void update(Long reviewId, Long userId, String content, Double rating) { // 본인 리뷰 수정
+    public void update(Long reviewId, Long userId, String content) { // 본인 리뷰 수정
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId)); // 락 조회
         if (!review.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
-        if (content != null) review.setContent(content); // 내용 갱신
+        if (content != null) review.updateContent(content); // 내용 갱신(길이/공백/상태 검증 포함)
         reviewRepository.save(review); // 저장
     }
 
@@ -89,13 +94,22 @@ public class ReviewsService {
         reviewRepository.save(review); // 저장
     }
 
-    public void report(Long reviewId, Long userId) { // 리뷰 신고(누구나 가능)
-        // 필요 시 사용자 존재만 검증
-        userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("user not found: d" + userId));
+    public void report(Long reviewId, Long userId) { // 리뷰 신고(사용자당 1회, 임계치 초과 시에만 숨김)
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
-        review.setStatus(ReviewStatus.REPORTED);
-        reviewRepository.save(review); // 저장
+
+        if (reviewReportRepository.existsByReview_IdAndUser_Id(reviewId, userId)) {
+            return; // 이미 신고한 사용자는 중복 신고 무시(단독 반복 신고로 숨김 방지)
+        }
+        reviewReportRepository.save(ReviewReport.create(review, user)); // 신고 기록 저장
+
+        long reports = reviewReportRepository.countByReview_Id(reviewId); // 서로 다른 사용자 누적 신고 수
+        if (reports >= REPORT_HIDE_THRESHOLD && review.getStatus() == ReviewStatus.ACTIVE) {
+            review.setStatus(ReviewStatus.REPORTED); // 임계치 초과 시에만 숨김
+            reviewRepository.save(review); // 저장
+        }
     }
 
     public Boolean toggleLike(Long reviewId, Long userId) {
