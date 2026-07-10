@@ -4,11 +4,13 @@ import com.ottproject.ottbackend.dto.EpisodeCommentsResponseDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.entity.EpisodeComment;
 import com.ottproject.ottbackend.entity.EpisodeCommentLike;
+import com.ottproject.ottbackend.entity.EpisodeCommentReport;
 import com.ottproject.ottbackend.entity.Episode;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.CommentStatus;
 import com.ottproject.ottbackend.mybatis.EpisodeCommentQueryMapper;
 import com.ottproject.ottbackend.repository.EpisodeCommentLikeRepository;
+import com.ottproject.ottbackend.repository.EpisodeCommentReportRepository;
 import com.ottproject.ottbackend.repository.EpisodeCommentRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
@@ -44,7 +46,10 @@ public class EpisodeCommentsService {
     private final EpisodeRepository episodeRepository; // 부모 에피소드 검증/연관
     private final UserRepository userRepository; // 작성자 검증/연관
     private final EpisodeCommentLikeRepository commentLikeRepository; // 좋아요 CUD
+    private final EpisodeCommentReportRepository commentReportRepository; // 신고 기록 CUD
     private final NotificationTriggerService notificationTriggerService; // 알림 트리거 서비스
+
+    private static final int REPORT_HIDE_THRESHOLD = 5; // 서로 다른 사용자 신고가 이 수 이상이면 숨김(REPORTED)
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<EpisodeCommentsResponseDto> listByEpisode(Long episodeId, Long currentUserId, int page, int size) {
@@ -115,13 +120,22 @@ public class EpisodeCommentsService {
         commentRepository.save(comment); // 저장
     }
 
-    public void report(Long commentId, Long userId) { // 댓글 신고(누구나 가능)
-        // 필요 시 사용자 존재만 검증
-        userRepository.findById(userId).orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+    public void report(Long commentId, Long userId) { // 댓글 신고(사용자당 1회, 임계치 초과 시에만 숨김)
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
         EpisodeComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
-        comment.setStatus(CommentStatus.REPORTED);
-        commentRepository.save(comment);
+
+        if (commentReportRepository.existsByEpisodeComment_IdAndUser_Id(commentId, userId)) {
+            return; // 이미 신고한 사용자는 중복 신고 무시(단독 반복 신고로 숨김 방지)
+        }
+        commentReportRepository.save(EpisodeCommentReport.create(comment, user)); // 신고 기록 저장
+
+        long reports = commentReportRepository.countByEpisodeComment_Id(commentId); // 서로 다른 사용자 누적 신고 수
+        if (reports >= REPORT_HIDE_THRESHOLD && comment.getStatus() == CommentStatus.ACTIVE) {
+            comment.setStatus(CommentStatus.REPORTED); // 임계치 초과 시에만 숨김
+            commentRepository.save(comment);
+        }
     }
 
     public boolean toggleLike(Long commentId, Long userId) { // 좋아요 토글(delete-first 전략)
