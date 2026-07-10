@@ -141,9 +141,9 @@ public class EpisodeComment {
             throw new IllegalArgumentException("삭제되었거나 신고된 댓글에는 답글을 달 수 없습니다.");
         }
 
-        // 대댓글 깊이 검증 (3단계까지만 허용)
+        // 대댓글 깊이 검증: 답글의 답글 불가(댓글 → 대댓글 2단계만 허용)
         if (parentComment.parent != null) {
-            throw new IllegalArgumentException("대댓글은 3단계까지만 허용됩니다.");
+            throw new IllegalArgumentException("답글에는 다시 답글을 달 수 없습니다.");
         }
 
         // EpisodeComment 엔티티 생성
