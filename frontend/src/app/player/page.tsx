@@ -93,18 +93,6 @@ function PlayerContent() {
   const { isLoggedIn, isLoading: authLoading } = useAuth();
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // 로그인 상태 디버깅
-  useEffect(() => {
-    console.log('🔍 PlayerPage - 로그인 상태:', { isLoggedIn, authLoading });
-  }, [isLoggedIn, authLoading]);
-
-  // 로그인 상태가 변경되면 강제로 다시 확인
-  useEffect(() => {
-    if (!authLoading && isLoggedIn === null) {
-      console.log('🔍 PlayerPage - 로그인 상태가 null, 강제 확인 필요');
-    }
-  }, [isLoggedIn, authLoading]);
-
   useEffect(() => {
     if (episodeId && animeId) {
       loadPlayerData();
@@ -146,17 +134,13 @@ function PlayerContent() {
     let interval: number | null = null;
     
     if (duration > 0 && isLoggedIn && episodeId) {
-      console.log('⏰ 자동 저장 타이머 시작:', { duration, isLoggedIn, episodeId });
-      
       interval = window.setInterval(() => {
-        console.log('⏰ 5초 경과 - 자동 저장 실행');
         saveProgress();
       }, 5000);
     }
-    
+
     return () => {
       if (interval) {
-        console.log('⏰ 자동 저장 타이머 정리');
         window.clearInterval(interval);
         interval = null;
       }
@@ -165,131 +149,73 @@ function PlayerContent() {
 
   const saveProgress = useCallback(async () => {
     // 엣지 케이스 검증
-    if (!episodeId) {
-      console.log('❌ saveProgress: episodeId가 없음');
+    if (!episodeId || !isLoggedIn || !videoRef.current) {
       return;
     }
-    
-    if (!isLoggedIn) {
-      console.log('❌ saveProgress: 로그인되지 않음');
-      return;
-    }
-    
-    if (!videoRef.current) {
-      console.log('❌ saveProgress: 비디오 엘리먼트가 없음');
-      return;
-    }
-    
+
     // 비디오에서 직접 현재 시간을 가져와서 더 정확한 값 사용
     const videoCurrentTime = videoRef.current.currentTime;
     const videoDuration = videoRef.current.duration;
-    
+
     // NaN, Infinity, 음수 값 검증
-    if (!isFinite(videoCurrentTime) || !isFinite(videoDuration) || 
+    if (!isFinite(videoCurrentTime) || !isFinite(videoDuration) ||
         videoCurrentTime < 0 || videoDuration <= 0) {
-      console.log('❌ saveProgress: 유효하지 않은 시간 정보', { 
-        videoCurrentTime, 
-        videoDuration,
-        stateCurrentTime: currentTime,
-        stateDuration: duration,
-        isFiniteCurrent: isFinite(videoCurrentTime),
-        isFiniteDuration: isFinite(videoDuration)
-      });
       return;
     }
-    
+
     const positionSec = Math.floor(videoCurrentTime);
     const durationSec = Math.floor(videoDuration);
-    
+
     // 비정상적인 값 검증
     if (positionSec > durationSec) {
-      console.log('⚠️ 비정상적인 진행률 감지 - 저장 중단:', { positionSec, durationSec });
       return;
     }
-    
+
     // 너무 짧은 재생 시간은 저장하지 않음 (광고 스킵 등)
     if (positionSec < 5) {
-      console.log('⚠️ 너무 짧은 재생 시간 - 저장 중단:', { positionSec });
       return;
     }
-    
-    console.log('🔍 saveProgress 호출:', {
-      episodeId: parseInt(episodeId),
-      positionSec,
-      durationSec,
-      isLoggedIn,
-      '비디오 currentTime': videoCurrentTime,
-      '비디오 duration': videoDuration,
-      '상태 currentTime': currentTime,
-      '상태 duration': duration,
-      '네트워크 상태': navigator.onLine
-    });
-    
+
     // 네트워크 연결 확인
     if (!navigator.onLine) {
-      console.log('⚠️ 오프라인 상태 - 진행률 저장 건너뜀');
       return;
     }
-    
+
     try {
-      const result = await saveEpisodeProgress(parseInt(episodeId), {
+      await saveEpisodeProgress(parseInt(episodeId), {
         positionSec,
         durationSec
       });
-      console.log('✅ 진행률 저장 성공:', result);
     } catch (error) {
-      console.error('❌ 진행률 저장 실패:', error);
-      console.error('❌ 에러 상세:', {
-        message: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-        name: error instanceof Error ? error.name : undefined
-      });
-      
-      // 특정 에러 타입별 처리
-      if (error instanceof Error) {
-        if (error.message.includes('401') || error.message.includes('403')) {
-          console.log('🔐 인증 오류 - 로그인 상태 확인 필요');
-        } else if (error.message.includes('network') || error.message.includes('fetch')) {
-          console.log('🌐 네트워크 오류 - 재시도 필요');
-        }
-      }
+      console.error('진행률 저장 실패:', error);
     }
-  }, [episodeId, isLoggedIn, currentTime, duration]);
+  }, [episodeId, isLoggedIn]);
 
   // 페이지를 나갈 때 시청 진행률 저장
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (currentTime > 0 && duration > 0 && episodeId && isLoggedIn) {
-        console.log('🚪 페이지 나가기 - 진행률 저장:', {
-          episodeId,
-          currentTime: Math.floor(currentTime),
-          duration: Math.floor(duration)
-        });
-        
         // 동기적으로 저장 (navigator.sendBeacon 사용)
-        const data = JSON.stringify({
+        // Blob 으로 Content-Type 을 application/json 으로 지정해야 백엔드 @RequestBody 가 파싱함
+        // (문자열로 넘기면 text/plain 으로 전송되어 415 로 실패)
+        const data = new Blob([JSON.stringify({
           positionSec: Math.floor(currentTime),
           durationSec: Math.floor(duration)
-        });
-        
-        const success = navigator.sendBeacon(`/api/episodes/${episodeId}/progress`, data);
-        console.log('🚪 sendBeacon 결과:', success);
+        })], { type: 'application/json' });
+
+        navigator.sendBeacon(`/api/episodes/${episodeId}/progress`, data);
       }
     };
 
     // 탭 전환/최소화 감지
     const handleVisibilityChange = () => {
       if (document.hidden) {
-        console.log('👁️ 탭 숨김 - 진행률 저장');
         saveProgress();
-      } else {
-        console.log('👁️ 탭 복원');
       }
     };
 
     // 페이지 포커스 변경 감지
     const handlePageHide = () => {
-      console.log('📱 페이지 숨김 - 진행률 저장');
       saveProgress();
     };
 
@@ -387,56 +313,80 @@ function PlayerContent() {
     setShowControls(false);
   };
 
+  // HLS 소스 연결: m3u8 은 hls.js 로 재생(Safari 는 네이티브 지원), 그 외(더미 mp4 등)는 직접 src 설정
+  // hls.js 를 붙이지 않으면 Chrome/Firefox/Edge 에서 m3u8 이 재생되지 않는다.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !streamUrl) return undefined;
+
+    // m3u8 이 아니면(더미 mp4 등) 그대로 재생
+    if (!streamUrl.includes('.m3u8')) {
+      video.src = streamUrl;
+      return undefined;
+    }
+
+    // Safari/iOS 는 HLS 를 네이티브로 지원
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = streamUrl;
+      return undefined;
+    }
+
+    // 그 외 브라우저는 hls.js 사용 (동적 import 로 초기 번들 크기/SSR 이슈 회피)
+    let hls: import('hls.js').default | null = null;
+    let destroyed = false;
+    void import('hls.js').then(({ default: Hls }) => {
+      const el = videoRef.current;
+      if (destroyed || !el) return;
+      if (!Hls.isSupported()) {
+        el.src = streamUrl; // 최후 폴백
+        return;
+      }
+      hls = new Hls();
+      hls.loadSource(streamUrl);
+      hls.attachMedia(el);
+      hls.on(Hls.Events.ERROR, (_event, data) => {
+        if (!data.fatal) return;
+        // hls.js 표준 복구 패턴: 네트워크/미디어 오류는 복구 시도, 그 외는 폐기
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
+          hls?.startLoad();
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          hls?.recoverMediaError();
+        } else {
+          hls?.destroy();
+        }
+      });
+    });
+
+    return () => {
+      destroyed = true;
+      if (hls) hls.destroy();
+    };
+  }, [streamUrl]);
+
   // 비디오 자동 재생 시도 - 에피소드 변경 시에만 실행
   useEffect(() => {
     if (videoRef.current && streamUrl && isLoggedIn) {
       const video = videoRef.current;
-      
+
       // 에피소드 변경 시 진행률 초기화
       setCurrentTime(0);
-      
+
       // 비디오 로드 완료 후 자동 재생 시도
       const handleCanPlay = async () => {
         try {
-          console.log('🔍 비디오 자동 재생 시도');
           await video.play();
           setIsPlaying(true);
-          console.log('✅ 비디오 자동 재생 성공');
-        } catch (error) {
-          console.log('⚠️ 비디오 자동 재생 실패 (사용자 상호작용 필요):', error);
-          // 자동 재생 실패 시 사용자가 클릭해야 함
+        } catch {
+          // 브라우저 자동재생 정책상 실패하면 사용자가 직접 재생해야 함
           setIsPlaying(false);
         }
       };
 
       video.addEventListener('canplay', handleCanPlay);
-      
+
       return () => {
         video.removeEventListener('canplay', handleCanPlay);
       };
-    }
-    return undefined;
-  }, [streamUrl, isLoggedIn, episodeId]); // episodeId 추가하여 에피소드 변경 시에만 실행
-
-  // 페이지 로드 시 자동 재생 시도 - 에피소드 변경 시에만 실행
-  useEffect(() => {
-    if (videoRef.current && streamUrl && isLoggedIn && !isPlaying) {
-      const attemptAutoPlay = async () => {
-        try {
-          console.log('🔍 페이지 로드 시 자동 재생 시도');
-          await videoRef.current!.play();
-          setIsPlaying(true);
-          console.log('✅ 페이지 로드 시 자동 재생 성공');
-        } catch (error) {
-          console.log('⚠️ 페이지 로드 시 자동 재생 실패:', error);
-          // 실패해도 사용자가 수동으로 재생할 수 있음
-        }
-      };
-
-      // 약간의 지연 후 재생 시도 (DOM이 완전히 준비된 후)
-      const timer = window.setTimeout(attemptAutoPlay, 500);
-      
-      return () => window.clearTimeout(timer);
     }
     return undefined;
   }, [streamUrl, isLoggedIn, episodeId]); // episodeId 추가하여 에피소드 변경 시에만 실행
@@ -451,24 +401,17 @@ function PlayerContent() {
 
       // 기존 진행률 로드 (에피소드별 독립적)
       const progress = await getEpisodeProgress(parseInt(episodeId));
-      console.log('🔍 기존 진행률 로드:', progress);
-      if (progress) {
-        const savedPosition = progress.positionSec || 0;
+      if (progress && progress.positionSec > 0) {
+        const savedPosition = progress.positionSec;
         const savedDuration = progress.durationSec || 0;
-        
-        // 비정상적인 진행률 데이터 검증 (진행률이 전체 길이의 90% 이상이면 초기화)
-        if (savedDuration > 0 && savedPosition > savedDuration * 0.9) {
-          console.log('⚠️ 비정상적인 진행률 감지, 0초부터 시작:', { savedPosition, savedDuration });
-          setCurrentTime(0);
-        } else if (savedPosition > 0) {
-          console.log('🔍 저장된 위치로 설정:', savedPosition);
-          setCurrentTime(savedPosition);
-        } else {
-          console.log('🔍 저장된 진행률이 0초, 0초부터 시작');
-          setCurrentTime(0);
-        }
+
+        // 이어보기 정책(일반 OTT 표준): 저장 위치가 영상 마지막 30초 이내면
+        // 사실상 시청 완료로 보고 처음부터, 그 외에는 저장 위치에서 이어보기.
+        const RESUME_END_THRESHOLD_SEC = 30;
+        const isEffectivelyFinished =
+          savedDuration > 0 && savedPosition >= savedDuration - RESUME_END_THRESHOLD_SEC;
+        setCurrentTime(isEffectivelyFinished ? 0 : savedPosition);
       } else {
-        console.log('🔍 저장된 진행률 없음, 0초부터 시작');
         setCurrentTime(0);
       }
     } catch (error) {
@@ -483,7 +426,6 @@ function PlayerContent() {
       
       // 기타 에러는 기존 로직 유지
       setStreamUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4');
-      console.log('더미 비디오 URL로 대체하여 테스트 진행');
     } finally {
       setIsLoading(false);
     }
@@ -495,16 +437,11 @@ function PlayerContent() {
     try {
       // getAnimeDetail 은 아직 unknown 을 반환하므로 API 경계에서 한 번만 단언한다(2단계에서 소스 타입화 예정).
       const data = await getAnimeDetail(parseInt(animeId)) as AnimeDetail;
-      console.log('🔍 애니메이션 상세 데이터:', data);
-      console.log('🔍 isDub 값:', data?.isDub, typeof data?.isDub);
-      console.log('🔍 isSubtitle 값:', data?.isSubtitle, typeof data?.isSubtitle);
-      console.log('🔍 title 값:', data?.title);
       setAnimeInfo(data);
 
       // 현재 에피소드 정보 찾기
       if (data?.episodes && episodeId) {
         const episode = data.episodes.find((ep) => ep.id === Number(episodeId));
-        console.log('🔍 현재 에피소드 데이터:', episode);
         setEpisodeInfo(episode || null);
       }
     } catch (error) {
@@ -532,7 +469,6 @@ function PlayerContent() {
       if (currentEpisodeIndex !== -1 && currentEpisodeIndex < animeInfo.episodes.length - 1) {
         const nextEp = animeInfo.episodes[currentEpisodeIndex + 1];
         setNextEpisode(nextEp);
-        console.log('사이드바 목록에서 다음 에피소드 찾음:', nextEp);
       }
     }
   };
@@ -543,7 +479,6 @@ function PlayerContent() {
     
     try {
       const data = await getSkips(parseInt(episodeId));
-      console.log('🔍 스킵 메타 로드:', data);
       setSkipMeta(data);
       // 에피소드 변경 시 스킵 상태 초기화
       setHasSkippedIntro(false);
@@ -571,7 +506,6 @@ function PlayerContent() {
       // 오프닝 자동 스킵 (한 번만)
       if (autoSkipIntro && skipMeta.introStart !== null && skipMeta.introEnd !== null && 
           !hasSkippedIntro && currentTimeSec >= skipMeta.introStart && currentTimeSec <= skipMeta.introEnd) {
-        console.log('🎬 오프닝 자동 스킵:', skipMeta.introStart, '->', skipMeta.introEnd);
         video.currentTime = skipMeta.introEnd;
         setHasSkippedIntro(true);
       }
@@ -579,7 +513,6 @@ function PlayerContent() {
       // 엔딩 자동 스킵 (한 번만)
       if (autoSkipOutro && skipMeta.outroStart !== null && skipMeta.outroEnd !== null && 
           !hasSkippedOutro && currentTimeSec >= skipMeta.outroStart && currentTimeSec <= skipMeta.outroEnd) {
-        console.log('🎬 엔딩 자동 스킵:', skipMeta.outroStart, '->', skipMeta.outroEnd);
         video.currentTime = skipMeta.outroEnd;
         setHasSkippedOutro(true);
       }
@@ -705,19 +638,12 @@ function PlayerContent() {
 
   // 다음화 자동재생 관련 함수들
   const handleVideoEnded = () => {
-    console.log('🎬 비디오 종료됨!', { nextEpisode, isLoggedIn });
     saveProgress();
-    
+
     // 다음화가 있고 로그인한 사용자라면 자동재생 오버레이 표시
     if (nextEpisode && isLoggedIn) {
-      console.log('🎬 다음화 자동재생 오버레이 표시');
       setShowNextEpisodeOverlay(true);
       setCountdown(10);
-    } else {
-      console.log('🎬 다음화 자동재생 조건 불만족:', { 
-        hasNextEpisode: !!nextEpisode, 
-        isLoggedIn 
-      });
     }
   };
 
@@ -860,7 +786,6 @@ function PlayerContent() {
                 
                 <video
                   ref={videoRef}
-                  src={streamUrl}
                   className={styles.video}
                   onTimeUpdate={handleTimeUpdate}
                   onPlay={() => setIsPlaying(true)}
@@ -875,17 +800,10 @@ function PlayerContent() {
                     saveProgress(); // 구간 이동 시에도 진행률 저장
                   }}
                   onLoadedMetadata={() => {
-                    console.log('🔍 비디오 메타데이터 로드 완료:', { currentTime, duration });
+                    // 저장된 이어보기 위치로 이동
                     if (videoRef.current && currentTime > 0 && videoRef.current.duration > 0) {
-                      console.log('🔍 비디오 위치 설정:', currentTime, '실제 duration:', videoRef.current.duration);
                       videoRef.current.currentTime = currentTime;
                       // handleTimeUpdate가 자동으로 상태를 업데이트하므로 여기서는 setCurrentTime 호출하지 않음
-                    } else {
-                      console.log('🔍 비디오 위치 설정 안함:', { 
-                        currentTime, 
-                        hasVideo: !!videoRef.current,
-                        videoDuration: videoRef.current?.duration || 0
-                      });
                     }
                   }}
                   controls={false}
@@ -1122,17 +1040,10 @@ function PlayerContent() {
                 {animeInfo && (
                   <div className={styles.animeTitle}>
                     {(() => {
-                      console.log('🔍 애니메이션 표시 데이터:', {
-                        isDub: animeInfo.isDub,
-                        isSubtitle: animeInfo.isSubtitle,
-                        title: animeInfo.title,
-                        animeInfo: animeInfo
-                      });
-                      
                       // 더빙과 자막 여부 확인
                       const isDub = animeInfo.isDub === true;
                       const isSubtitle = animeInfo.isSubtitle === true;
-                      
+
                       let prefix = '';
                       if (isDub && isSubtitle) {
                         // 둘 다 true인 경우 자막으로 표시
@@ -1142,20 +1053,13 @@ function PlayerContent() {
                       } else if (isSubtitle) {
                         prefix = '(자막) ';
                       }
-                      
+
                       return `${prefix}${animeInfo.title}`;
                     })()}
                   </div>
                 )}
                 <div className={styles.episodeTitle}>
-                  {(() => {
-                    console.log('🔍 에피소드 표시 데이터:', {
-                      episodeNumber: episodeInfo.episodeNumber,
-                      title: episodeInfo.title,
-                      episodeInfo: episodeInfo
-                    });
-                    return `${episodeInfo.episodeNumber || '에피소드'}화`;
-                  })()}
+                  {`${episodeInfo.episodeNumber || '에피소드'}화`}
                 </div>
               </div>
             )}
