@@ -57,6 +57,7 @@ public class PaymentController { // 결제 컨트롤러 시작
 	private final SecurityUtil securityUtil; // 인증 사용자 식별 유틸
     private final PaymentMethodService paymentMethodService; // 결제수단 서비스
     private final ImportPaymentGateway importPaymentGateway; // 아임포트 게이트웨이
+    private final org.springframework.core.env.Environment environment; // 활성 프로파일 확인(테스트 엔드포인트 가드)
 
 	@Operation(summary = "아임포트 API 연결 테스트", description = "아임포트 API 연결 상태를 확인합니다.")
 	@ApiResponse(responseCode = "200", description = "연결 성공")
@@ -167,6 +168,10 @@ public class PaymentController { // 결제 컨트롤러 시작
 	@ApiResponse(responseCode = "200", description = "테스트 완료")
 	@PostMapping("/payments/webhook/test")
 	public ResponseEntity<Void> webhookTest(@RequestBody String rawBody, @RequestHeader HttpHeaders headers) {
+		// 개발 환경 전용: dev 프로파일이 아니면 노출하지 않는다(운영 위조 요청 차단)
+		if (!environment.acceptsProfiles(org.springframework.core.env.Profiles.of("dev"))) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+		}
 		log.info("웹훅 테스트 시작");
 		try {
 			paymentCommandService.processWebhook(headers, rawBody);
