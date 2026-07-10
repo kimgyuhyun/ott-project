@@ -88,6 +88,8 @@ services:                         # 서비스 정의 시작
       # Redis 네임스페이스
       REDIS_NAMESPACE: ${REDIS_NAMESPACE}
       RECENT_SEARCH_TTL_DAYS: ${RECENT_SEARCH_TTL_DAYS}
+      # HLS secure_link 서명 시크릿 (nginx secure_link_secret 과 반드시 동일해야 함)
+      SECURE_LINK_SECRET: ${SECURE_LINK_SECRET}
 
   frontend: # Next.js 프론트엔드 서비스
     image: ${FRONT_IMAGE:-para98/ott-frontend:latest}

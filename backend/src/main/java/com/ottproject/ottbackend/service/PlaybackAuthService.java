@@ -70,16 +70,23 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 		if (episode == null) {
 			throw new RuntimeException("Episode not found: " + episodeId);
 		}
-		
-		boolean isMember = membershipService.isMember(userId); // 멤버십 여부
 
 		String absolute = episode.getVideoUrl(); // 원본 절대 URL
+		if (absolute == null || absolute.isBlank()) {
+			throw new IllegalStateException("Episode video URL is not set: " + episodeId); // 원본 URL 누락 방어(NPE 방지)
+		}
+
+		boolean isMember = membershipService.isMember(userId); // 멤버십 여부
+
 		String filtered = isMember ? absolute : absolute.replace("master.m3u8", "master_720p.m3u8"); // 품질 제한 분기
 
 		String uriPath = filtered.replaceFirst("https?://[^/]+", ""); // 도메인 제거해 path 추출
 
 		long expires = HlsSignedUrlUtil.defaultExpiryFromNowSeconds(600); // TTL 10분
-		String secret = System.getProperty("secure.link.secret", System.getenv().getOrDefault("SECURE_LINK_SECRET", "change_me")); // 시크릿 로드
+		String secret = System.getProperty("secure.link.secret", System.getenv().get("SECURE_LINK_SECRET")); // 시크릿 로드
+		if (secret == null || secret.isBlank()) {
+			throw new IllegalStateException("SECURE_LINK_SECRET is not configured"); // 시크릿 미설정 시 서명 위조 방지를 위해 즉시 실패
+		}
 		String st = HlsSignedUrlUtil.generateSignature(uriPath, expires, secret); // 서명 생성
 
 		String join = filtered.contains("?") ? "&" : "?"; // 쿼리 구분자
