@@ -159,6 +159,20 @@ public class EpisodeComment {
     // ===== 편의 메서드 =====
 
     /**
+     * 본문 수정 (생성과 동일한 내용 검증 적용)
+     * @param newContent 새 내용 (1-500자, 공백 불가)
+     */
+    public void updateContent(String newContent) {
+        if (newContent == null || newContent.trim().isEmpty()) {
+            throw new IllegalArgumentException("댓글 내용은 필수입니다.");
+        }
+        if (newContent.trim().length() > 500) {
+            throw new IllegalArgumentException("댓글 내용은 500자 이하여야 합니다.");
+        }
+        this.content = newContent.trim();
+    }
+
+    /**
      * 대댓글인지 확인
      * @return 부모 댓글이 있으면 true (대댓글), 없으면 false (최상위 댓글)
      */

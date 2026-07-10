@@ -108,7 +108,8 @@ public class EpisodeCommentsService {
         EpisodeComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
         if (!comment.getUser().getId().equals(userId)) throw new SecurityException("forbidden");
-        comment.setContent(content); // 내용 갱신
+        if (comment.getStatus() != CommentStatus.ACTIVE) throw new IllegalStateException("수정할 수 없는 댓글입니다."); // 삭제/신고된 댓글 수정 불가
+        comment.updateContent(content); // 내용 갱신(길이/공백 검증 포함)
         commentRepository.save(comment); // 저장
     }
 
