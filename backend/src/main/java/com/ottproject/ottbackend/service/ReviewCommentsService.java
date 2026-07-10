@@ -92,14 +92,9 @@ public class ReviewCommentsService {
             }
         }
 
-        Comment comment = Comment.createComment( // 댓글 엔티티 생성
-                user, // 연관: 작성자
-                review, // 연관: 부모 리뷰
-                content // 내용
-        );
-        if (parent != null) {
-            comment = Comment.createReply(user, review, parent, content);
-        }
+        Comment comment = (parent == null) // 부모 유무로 댓글/대댓글 분기(불필요한 중복 생성 제거)
+                ? Comment.createComment(user, review, content)
+                : Comment.createReply(user, review, parent, content);
 
         Comment savedComment = commentRepository.save(comment); // 저장 후 ID 반환
         
