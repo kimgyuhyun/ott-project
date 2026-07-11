@@ -133,7 +133,9 @@ export const useProrationPayment = () => {
           name: '플랜 업그레이드 차액 결제',
           buyer_email: user?.email || '',
           buyer_name: user?.username || '',
-          m_redirect_url: window.location.origin + '/membership/success',
+          // 모바일 리다이렉트 흐름에서는 이 콜백이 실행되지 않으므로, success 페이지가
+          // paymentId/type + 아임포트가 붙여주는 imp_uid로 확정 API를 호출한다.
+          m_redirect_url: window.location.origin + '/membership/success?paymentId=' + checkoutResponse.paymentId + '&type=proration',
           popup: preferPortOnePopup(),
         };
 
