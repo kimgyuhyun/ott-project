@@ -34,6 +34,8 @@ dependencies {
 	implementation 'org.springframework.session:spring-session-data-redis'
 	// Kafka: 결제 성공 이후 부수효과(알림/통계/추천)를 아웃박스→카프카로 비동기 분리
 	implementation 'org.springframework.kafka:spring-kafka'
+	// RabbitMQ: 정기결제 실패 재시도를 지연 큐(TTL+DLX)로 건별 스케줄링
+	implementation 'org.springframework.boot:spring-boot-starter-amqp'
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'

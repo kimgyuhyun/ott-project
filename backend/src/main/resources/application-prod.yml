@@ -86,6 +86,17 @@ spring:
     listener:
       ack-mode: record # 레코드 단위 커밋
 
+  # RabbitMQ 연결 (정기결제 실패 재시도 지연 큐: TTL+DLX)
+  # 브로커는 default(internal) 네트워크의 ott-rabbitmq. 자격증명은 compose 기본값과 동일 규칙.
+  rabbitmq:
+    host: ${RABBITMQ_HOST:ott-rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:ott}
+    password: ${RABBITMQ_PASSWORD:ott-local}
+    listener:
+      simple:
+        default-requeue-rejected: false # 처리 예외 시 무한 재큐잉 방지(리스너 내부에서 로깅 후 폐기)
+
   # 메일 설정 (네이버 SMTP)
   mail:
     host: ${MAIL_HOST:smtp.naver.com}
@@ -219,6 +230,13 @@ iamport:
 payments:
   test-amount: ${PAYMENT_TEST_AMOUNT:1}
   dev-mode: ${PAYMENT_DEV_MODE:false}
+
+# 정기결제 실패 재시도 지연(밀리초) - RabbitMQ 대기 큐의 x-message-ttl로 사용
+# 주의: 큐 인자는 최초 선언 시 고정되므로 값 변경 시 기존 대기 큐를 삭제해야 반영된다.
+billing:
+  retry:
+    first-delay-ms: ${BILLING_RETRY_FIRST_DELAY_MS:10800000}   # 1차 실패 후 3시간
+    second-delay-ms: ${BILLING_RETRY_SECOND_DELAY_MS:86400000} # 2차 실패 후 24시간
 
 # MyBatis 설정
 mybatis:

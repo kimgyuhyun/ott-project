@@ -54,6 +54,24 @@ services:                         # 서비스 정의 시작
     networks:
       - default
 
+  rabbitmq: # RabbitMQ 브로커 - 정기결제 실패 재시도 지연 큐(TTL+DLX)
+    # alpine 변형은 이 호스트에서 .erlang.cookie 권한 오류(eacces)로 기동 실패 → debian 기반 사용
+    image: rabbitmq:3.13-management # management UI 포함(로컬 시연용)
+    container_name: ott-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5672:5672"   # 로컬(호스트) AMQP 접근용 (netlock 배포에선 내부통신만 사용)
+      - "127.0.0.1:15672:15672" # management UI (루프백 전용, netlock 배포에선 접근 불가)
+    environment:
+      # 기본 guest 계정은 localhost 접속만 허용되므로 컨테이너 간 통신용 계정을 만든다.
+      # 브로커는 내부 네트워크 전용(공인 노출 없음). 운영에서는 .env로 덮어쓸 것.
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-ott}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-ott-local}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - default
+
   app: # Spring Boot 애플리케이션 서비스
     image: ${APP_IMAGE:-para98/ott-backend:latest}
     container_name: ott-app # 컨테이너 이름
@@ -66,6 +84,7 @@ services:                         # 서비스 정의 시작
       - postgres # postgres 서비스가 먼저 시작되어야 함
       - redis
       - kafka # 카프카 브로커가 먼저 기동되어야 함
+      - rabbitmq # 정기결제 재시도 지연 큐 브로커
     env_file: # .env 파일에서 환경변수 로드
       - .env
     networks:
@@ -158,6 +177,7 @@ services:                         # 서비스 정의 시작
 volumes:                         # 볼륨 정의
   postgres_data:                 # PostgreSQL 데이터 저장용 볼륨
   kafka_data:                    # Kafka(KRaft) 로그/메타데이터 저장용 볼륨
+  rabbitmq_data:                 # RabbitMQ 메시지/메타데이터 저장용 볼륨(지연 큐 내구성)
 
 networks:                        # 네트워크 정의
   default:                       # 기본 네트워크 (모든 컨테이너가 통신 가능)

@@ -104,6 +104,16 @@ spring:
     listener:
       ack-mode: record # 레코드 단위 커밋
 
+  # RabbitMQ 연결 (정기결제 실패 재시도 지연 큐: TTL+DLX)
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:ott}
+    password: ${RABBITMQ_PASSWORD:ott-local}
+    listener:
+      simple:
+        default-requeue-rejected: false # 처리 예외 시 무한 재큐잉 방지
+
   # 메일 설정 (네이버 SMTP 예시)
   mail:
     host: ${MAIL_HOST:smtp.naver.com} # SMTP 서버
@@ -233,6 +243,13 @@ payments:
   test-amount: ${PAYMENT_TEST_AMOUNT:1}
   # 개발 환경에서는 모든 결제(정기결제, 차액결제)를 1원으로 처리
   dev-mode: ${PAYMENT_DEV_MODE:true}
+
+# 정기결제 실패 재시도 지연(밀리초) - 개발/시연용 짧은 값(30초/60초)
+# 주의: 큐 인자는 최초 선언 시 고정되므로 값 변경 시 기존 대기 큐를 삭제해야 반영된다.
+billing:
+  retry:
+    first-delay-ms: ${BILLING_RETRY_FIRST_DELAY_MS:30000}   # 1차 실패 후 30초
+    second-delay-ms: ${BILLING_RETRY_SECOND_DELAY_MS:60000} # 2차 실패 후 60초
 
 # MyBatis 설정 (최상위 루트)
 mybatis:
