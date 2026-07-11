@@ -139,7 +139,7 @@ public class MembershipNotificationService { // 알림 메일 서비스
         msg.setSubject("[OTT] 결제가 완료되었습니다"); // 제목
         msg.setText("안녕하세요, " + user.getName() + "님.\n\n" +
                 "멤버십 결제가 정상적으로 완료되었습니다.\n" +
-                "플랜: " + (planCode != null ? planCode : "") + "\n" +
+                "플랜: " + getPlanLabelFromCode(planCode) + "\n" +
                 "결제 금액: " + (amount != null ? amount : 0) + "원\n" +
                 (paidAt != null ? ("결제 일시: " + paidAt) : "") + "\n\n" +
                 "이용해 주셔서 감사합니다."); // 본문
@@ -171,6 +171,18 @@ public class MembershipNotificationService { // 알림 메일 서비스
      * - BASIC, PREMIUM, FREE 등 코드에 따라 사용자 표시명을 간결히 표기한다.
      * - 코드가 없거나 매칭되지 않으면 기존 name 을 반환한다.
      */
+    /**
+     * 결제 이벤트의 플랜 코드(BASIC_MONTHLY 등)를 사용자 표시명으로 변환
+     * - 매칭되지 않으면 코드 원문을 그대로 표기한다.
+     */
+    private String getPlanLabelFromCode(String planCode) {
+        if (planCode == null || planCode.isBlank()) return "";
+        String normalized = planCode.trim().toUpperCase();
+        if (normalized.contains("PREMIUM")) return "프리미엄 멤버십";
+        if (normalized.contains("BASIC")) return "베이직 멤버십";
+        return planCode;
+    }
+
     private String getPlanLabel(MembershipPlan plan) {
         if (plan == null) return "";
         String code = plan.getCode();
