@@ -60,6 +60,10 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=flat-square&logo=postgresql)
 ![Redis](https://img.shields.io/badge/Redis-7-red?style=flat-square&logo=redis)
 
+### Messaging & Events
+![Apache Kafka](https://img.shields.io/badge/Apache%20Kafka-Outbox-black?style=flat-square&logo=apachekafka)
+![RabbitMQ](https://img.shields.io/badge/RabbitMQ-TTL%2BDLX-orange?style=flat-square&logo=rabbitmq)
+
 ### Infrastructure
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=flat-square&logo=docker)
 ![Docker Hub](https://img.shields.io/badge/Docker%20Hub-Registry-blue?style=flat-square&logo=docker)
@@ -152,9 +156,13 @@ com.ottproject.ottbackend/
 - **계정 관리**: 이메일 인증/닉네임 설정, 접근 제어
 
 ### 결제/멤버십
-> Iamport 결제 + 환불 정책 + 구독 관리 + 등급별 혜택
+> Iamport 결제 + Outbox/Kafka 부수효과 + RabbitMQ 재청구 + 환불 정책 + 구독 관리 + 등급별 혜택
 
 - **결제 시스템**: Iamport 연동 - 결제 생성/웹훅 수신, 결제/취소/환불 상태 동기화
+- **결제 확정(동기)**: `@Transactional`로 PG 재검증 → 상태 확정 → 구독 생성/플랜 변경을 한 트랜잭션에서 원자적으로 처리(실패 시 롤백), 클라 확정·웹훅·재조정 배치의 3중 확인으로 수렴
+- **부수효과 분리(Outbox + Kafka)**: 결제 확정과 동일 트랜잭션으로 `outbox_events` 적재 → `payment.succeeded` 발행 → 영수증 메일 발송, at-least-once + Redis 멱등(메일 장애가 결제 확정에 영향 없음)
+- **정기결제 자동 청구(배치)**: `@Scheduled` 스윕이 `nextBillingAt` 기준으로 만기 구독을 청구(DB가 진실의 원천 → 자가 치유 안전망)
+- **실패 재청구 / dunning(RabbitMQ)**: 청구 실패 시 TTL+DLX 지연 큐로 3h → 24h 뒤 건별 재시도, 최후 복구는 스윕 배치가 담당
 - **환불 정책**: 24시간 내 환불, 시청 시간 기준 환불 정책 적용
 - **구독 관리**: 구독 해지 - 말일 해지 예약 및 즉시 해지 분기, 멱등키 적용
 - **등급별 혜택**: 멤버십 등급별 화질 제한, 전용 관리/가이드 페이지에서 멤버십 관리
