@@ -1,14 +1,18 @@
 package com.ottproject.ottbackend.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ottproject.ottbackend.dto.PaymentSucceededEventDto;
 import com.ottproject.ottbackend.dto.ProrationPaymentRequestDto;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
+import com.ottproject.ottbackend.entity.OutboxEvent;
 import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PaymentStatus;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
+import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -46,6 +50,8 @@ public class ProrationPaymentService {
     private final MembershipSubscriptionRepository subscriptionRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway; // 아임포트 재검증(무단 업그레이드 차단)
+    private final OutboxEventRepository outboxEventRepository; // 아웃박스 이벤트 리포지토리(영수증 메일 등 부수효과 발행)
+    private final ObjectMapper objectMapper; // 이벤트 페이로드 JSON 직렬화
 
     // 테스트 결제 금액(원). 0이면 실제 차액으로 결제(메인 결제와 동일 규칙 → 재검증 통과)
     @Value("${payments.test-amount:0}")
@@ -182,6 +188,35 @@ public class ProrationPaymentService {
         currentSubscription.setPlanChangeScheduledAt(null);
         currentSubscription.setChangeType(null);
         subscriptionRepository.save(currentSubscription);
+
+        // [Kafka/Outbox] 영수증 메일 등 부수효과를 일반 결제와 동일하게 아웃박스 경유로 발행한다.
+        // - 일반 결제(PaymentCommandService.markSucceededAndProvision)와 동일한 이벤트/토픽을 적재해
+        //   OutboxPublisher → payment.succeeded → PaymentEventConsumer의 영수증 메일 경로로 수렴시킨다.
+        // - 결제 확정/플랜 변경과 "같은 트랜잭션"(@Transactional)이므로 적재 실패 시 예외를 전파해 함께 롤백한다.
+        try {
+            PaymentSucceededEventDto evt = new PaymentSucceededEventDto(
+                    UUID.randomUUID().toString(), // 이벤트 고유 식별자(컨슈머 멱등 키)
+                    payment.getId(),
+                    userId,
+                    targetPlan.getCode(), // 업그레이드된 플랜 코드(영수증 한글 표기는 컨슈머에서 코드로 매핑)
+                    payment.getPrice() != null ? payment.getPrice().getAmount() : null, // 차액 청구액
+                    payment.getPaidAt()
+            );
+            OutboxEvent outbox = OutboxEvent.create(
+                    "Payment", // aggregateType
+                    String.valueOf(payment.getId()), // aggregateId
+                    "PaymentSucceeded", // eventType
+                    "payment.succeeded", // topic
+                    evt.getEventId(), // eventId
+                    objectMapper.writeValueAsString(evt) // payload(JSON)
+            );
+            outboxEventRepository.save(outbox);
+            log.info("차액 결제 아웃박스 적재 완료 - eventId: {}, paymentId: {}", evt.getEventId(), payment.getId());
+        } catch (Exception e) {
+            // 아웃박스 적재는 결제 확정/플랜 변경과 원자적이어야 한다(영수증 메일 유실 방지). 실패 시 함께 롤백한다.
+            log.error("차액 결제 아웃박스 이벤트 적재 실패 - paymentId: {}", payment.getId(), e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "아웃박스 이벤트 적재 실패: " + e.getMessage(), e);
+        }
 
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
