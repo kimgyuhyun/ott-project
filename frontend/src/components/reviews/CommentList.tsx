@@ -433,7 +433,7 @@ export default function CommentList({ reviewId, myRating = 0, onCommentCreated, 
                 {/* 대댓글 영역 */}
                 <div className={styles.repliesSection}>
                   <div className={styles.repliesHeader}>
-                     {(Boolean(replies[comment.id]?.length) || (comment.repliesCount && comment.repliesCount > 0)) && (
+                     {(Boolean(replies[comment.id]?.length) || (typeof comment.repliesCount === 'number' && comment.repliesCount > 0)) && (
                       <button
                         onClick={async () => {
                           setExpandedReplies(prev => {
