@@ -8,7 +8,7 @@ import { cancelMembership, cancelScheduledPlanChange, resumeMembership, requestR
 import CancelPlanChangeModal from "@/components/membership/CancelPlanChangeModal";
 import PaymentMethodChangeModal from "@/components/membership/PaymentMethodChangeModal";
 import CancelMembershipModal from "@/components/membership/CancelMembershipModal";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/lib/AuthContext";
 import styles from "./manage.module.css";
 
 export default function MembershipManagePage() {
