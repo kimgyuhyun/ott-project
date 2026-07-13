@@ -2,7 +2,6 @@
 import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import { useState, useEffect } from "react";
 import { usePayment } from "@/hooks/usePayment";
-import { useAuth } from "@/hooks/useAuth";
 import { PaymentService } from "@/types/payment";
 import styles from "./PaymentModal.module.css";
 
@@ -42,7 +41,6 @@ export default function PaymentModal({
   const [errorMessage, setErrorMessage] = useState('');
   
   const { processPayment, isLoading, error } = usePayment();
-  const { user } = useAuth();
 
   // 에러 발생 시 에러 모달 표시
   useEffect(() => {

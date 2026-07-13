@@ -7,7 +7,7 @@ import { getAnimeDetail } from "@/lib/api/anime";
 import { getUserMembership } from "@/lib/api/membership";
 import PlayerSettingsModal from "@/components/player/PlayerSettingsModal";
 import EpisodeCommentList from "@/components/episode/EpisodeCommentList";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/lib/AuthContext";
 import LoginRequiredModal from "@/components/auth/LoginRequiredModal";
 import { AnimeDetail, Episode } from "@/types/anime";
 import { SkipMeta } from "@/types/player";
@@ -89,8 +89,10 @@ function PlayerContent() {
   // 키보드 단축키 도움말 상태
   const [showKeyboardHelp, setShowKeyboardHelp] = useState(false);
   
-  // 로그인 상태 체크 추가
-  const { isLoggedIn, isLoading: authLoading } = useAuth();
+  // 로그인 상태 체크 추가 (AuthContext 로 일원화: 미확정 상태는 authLoading 으로 표현)
+  const { isAuthenticated, isInitialized } = useAuth();
+  const isLoggedIn = isAuthenticated ?? false;
+  const authLoading = !isInitialized;
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {

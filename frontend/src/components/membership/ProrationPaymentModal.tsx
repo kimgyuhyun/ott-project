@@ -2,7 +2,6 @@
 import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import { useState, useEffect } from "react";
 import { useProrationPayment } from "@/hooks/useProrationPayment";
-import { useAuth } from "@/hooks/useAuth";
 import { PaymentService } from "@/types/payment";
 import styles from "./ProrationPaymentModal.module.css";
 
@@ -42,7 +41,6 @@ export default function ProrationPaymentModal({
   const [errorMessage, setErrorMessage] = useState('');
   
   const { processProrationPayment, isLoading, error } = useProrationPayment();
-  const { user } = useAuth();
 
   // 에러 발생 시 에러 모달 표시
   useEffect(() => {

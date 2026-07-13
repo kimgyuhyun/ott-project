@@ -6,7 +6,7 @@ import {
   preferPortOnePopup,
   getPortOneMerchantCode,
 } from '@/lib/portone/loadPortOne';
-import { useAuth } from './useAuth';
+import { useAuth } from '@/lib/AuthContext';
 import { 
   PaymentError, 
   PaymentErrorCode, 
