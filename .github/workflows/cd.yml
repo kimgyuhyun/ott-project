@@ -45,7 +45,7 @@ jobs:
         env:
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           OWNER: ${{ github.repository_owner }}
-          ENV_FILE_CONTENT: ${{ toJSON(secrets.ENV_FILE) }}
+          AGE_KEY: ${{ secrets.AGE_KEY }}
         run: |
           Set-StrictMode -Version Latest
           $ProgressPreference = 'SilentlyContinue'
@@ -70,13 +70,18 @@ jobs:
             Get-ChildItem $backupDir -Filter 'db_*.sql' | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) } | ForEach-Object { Remove-Item $_.FullName -Force }
           } catch { Write-Host "DB backup skipped: $($_.Exception.Message)" }
 
-          # --- 2) .env 생성 (GitHub Secret) ---
-          $envJson = $env:ENV_FILE_CONTENT
-          if ($envJson -and $envJson -ne 'null' -and $envJson.Trim() -ne '""') {
-            $envContent = [System.Text.RegularExpressions.Regex]::Unescape($envJson.Trim('"'))
-            Set-Content -Path .env -Value $envContent -NoNewline
-            Write-Host '.env written from secret'
-          } else { throw 'ENV_FILE secret missing' }
+          # --- 2) .env 생성 (SOPS+age: 커밋된 .env.enc 복호화. 진짜 값은 .env.enc 한 곳에만) ---
+          if (-not $env:AGE_KEY) { throw 'AGE_KEY secret missing' }
+          $keyFile = Join-Path $env:TEMP 'age-cd-key.txt'
+          Set-Content -Path $keyFile -Value $env:AGE_KEY -NoNewline
+          try {
+            $env:SOPS_AGE_KEY_FILE = $keyFile
+            sops --decrypt --input-type dotenv --output-type dotenv --output .env .env.enc
+            if ($LASTEXITCODE -ne 0) { throw 'sops decrypt failed' }
+            Write-Host '.env decrypted from .env.enc (SOPS+age)'
+          } finally {
+            Remove-Item $keyFile -Force -ErrorAction SilentlyContinue
+          }
 
           # --- 3) commit-sha 태그로 pull (러너는 직전 'Log in to ghcr' 스텝에서 인증됨) ---
           Write-Host '=== PULL from ghcr ==='
