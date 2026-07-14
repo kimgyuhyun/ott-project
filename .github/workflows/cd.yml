@@ -72,10 +72,10 @@ jobs:
 
           # --- 2) .env 생성 (SOPS+age: 커밋된 .env.enc 복호화. 진짜 값은 .env.enc 한 곳에만) ---
           # self-hosted 러너는 사용자 PATH를 못 물려받아 'sops'를 못 찾을 수 있으므로,
-          # PATH에 있으면 그걸 쓰고 없으면 고정 경로(C:\tools\sops.exe)로 폴백한다.
+          # PATH에 있으면 그걸 쓰고 없으면 고정 경로(C:\solo-project\tools\sops.exe)로 폴백한다.
           if (-not $env:AGE_KEY) { throw 'AGE_KEY secret missing' }
           $sopsCmd = Get-Command sops -ErrorAction SilentlyContinue
-          $sopsExe = if ($sopsCmd) { $sopsCmd.Source } else { 'C:\tools\sops.exe' }
+          $sopsExe = if ($sopsCmd) { $sopsCmd.Source } else { 'C:\solo-project\tools\sops.exe' }
           if (-not (Test-Path $sopsExe)) { throw "sops not found (PATH or $sopsExe)" }
           $keyFile = Join-Path $env:TEMP 'age-cd-key.txt'
           Set-Content -Path $keyFile -Value $env:AGE_KEY -NoNewline
