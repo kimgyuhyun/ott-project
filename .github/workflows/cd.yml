@@ -71,14 +71,19 @@ jobs:
           } catch { Write-Host "DB backup skipped: $($_.Exception.Message)" }
 
           # --- 2) .env 생성 (SOPS+age: 커밋된 .env.enc 복호화. 진짜 값은 .env.enc 한 곳에만) ---
+          # self-hosted 러너는 사용자 PATH를 못 물려받아 'sops'를 못 찾을 수 있으므로,
+          # PATH에 있으면 그걸 쓰고 없으면 고정 경로(C:\tools\sops.exe)로 폴백한다.
           if (-not $env:AGE_KEY) { throw 'AGE_KEY secret missing' }
+          $sopsCmd = Get-Command sops -ErrorAction SilentlyContinue
+          $sopsExe = if ($sopsCmd) { $sopsCmd.Source } else { 'C:\tools\sops.exe' }
+          if (-not (Test-Path $sopsExe)) { throw "sops not found (PATH or $sopsExe)" }
           $keyFile = Join-Path $env:TEMP 'age-cd-key.txt'
           Set-Content -Path $keyFile -Value $env:AGE_KEY -NoNewline
           try {
             $env:SOPS_AGE_KEY_FILE = $keyFile
-            sops --decrypt --input-type dotenv --output-type dotenv --output .env .env.enc
+            & $sopsExe --decrypt --input-type dotenv --output-type dotenv --output .env .env.enc
             if ($LASTEXITCODE -ne 0) { throw 'sops decrypt failed' }
-            Write-Host '.env decrypted from .env.enc (SOPS+age)'
+            Write-Host ".env decrypted from .env.enc (SOPS+age) via $sopsExe"
           } finally {
             Remove-Item $keyFile -Force -ErrorAction SilentlyContinue
           }
