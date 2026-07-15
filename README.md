@@ -226,7 +226,7 @@ ott-project/
   - 검색/필터/정렬 · 주간 편성 · 작품 상세/모달 UX
 - **인프라**
   - nginx 리버스 프록시/secure_link, Docker Compose, Docker Hub, GitHub Actions CD
-  - 환경변수/비밀키 관리(`ENV_FILE`/Secrets), 루프백 바인딩 보안 하드닝
+  - 환경변수/비밀키 관리(SOPS+age 암호화 `.env.enc` 단일 소스, CD가 `AGE_KEY`로 복호화), 루프백 바인딩 보안 하드닝
 
 ---
 

@@ -36,8 +36,8 @@
   - Iamport
 
 ### 비밀키 관리
-- **방식**: `ENV_FILE`/Secrets 사용
-- **보안**: 민감한 정보는 환경변수로 관리
+- **방식**: SOPS+age로 암호화한 `.env.enc`를 git에 커밋(값의 단일 소스). CD가 GitHub Secret `AGE_KEY`(age 개인키)로 복호화해 배포 시 `.env` 생성
+- **보안**: 진짜 값은 `.env.enc` 한 곳에만 존재하고 GitHub엔 개인키만 보관 → 평문 원본이 어긋날 여지 없음
 
 ## 모니터링
 
