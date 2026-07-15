@@ -77,6 +77,20 @@ jobs:
           $sopsCmd = Get-Command sops -ErrorAction SilentlyContinue
           $sopsExe = if ($sopsCmd) { $sopsCmd.Source } else { 'C:\solo-project\tools\sops.exe' }
           if (-not (Test-Path $sopsExe)) { throw "sops not found (PATH or $sopsExe)" }
+
+          # self-hosted 러너의 영속 워크스페이스에는 gitattributes(eol=lf) 도입 전에
+          # 체크아웃된 CRLF .env.enc가 남아있을 수 있다. blob이 안 바뀌면 checkout이
+          # 워킹트리를 재기록하지 않아 CRLF가 그대로 눌러앉는다. 그러면 SOPS가 메타데이터
+          # 타임스탬프의 \r까지 파싱해 'parsing time ... \x0d'로 실패하므로, 복호화 직전
+          # CR을 제거한다(.env.enc는 순수 ASCII라 안전). .NET WriteAllText는 BOM/CRLF를
+          # 추가하지 않는다.
+          $encPath = Join-Path $PWD '.env.enc'
+          $enc = [IO.File]::ReadAllText($encPath)
+          if ($enc.Contains("`r")) {
+            [IO.File]::WriteAllText($encPath, $enc.Replace("`r", ""))
+            Write-Host 'normalized .env.enc CRLF -> LF before decrypt'
+          }
+
           $keyFile = Join-Path $env:TEMP 'age-cd-key.txt'
           Set-Content -Path $keyFile -Value $env:AGE_KEY -NoNewline
           try {
