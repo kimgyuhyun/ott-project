@@ -1,0 +1,3 @@
+# Encrypted secrets must stay LF on every checkout (incl. self-hosted Windows
+# runner). CRLF corrupts the SOPS metadata timestamp -> "parsing time ... \x0d".
+*.enc text eol=lf
