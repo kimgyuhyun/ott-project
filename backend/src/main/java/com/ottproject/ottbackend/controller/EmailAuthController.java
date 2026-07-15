@@ -10,6 +10,7 @@ import com.ottproject.ottbackend.security.SessionEventListener;
 import com.ottproject.ottbackend.service.AuthEventService;
 import com.ottproject.ottbackend.service.EmailAuthService;
 import com.ottproject.ottbackend.service.LoginAttemptService;
+import com.ottproject.ottbackend.service.TurnstileVerifier;
 import com.ottproject.ottbackend.service.VerificationEmailService;
 import com.ottproject.ottbackend.util.ClientRequestUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -60,6 +61,7 @@ public class EmailAuthController {
     private final VerificationEmailService verificationEmailService;  // 이메일 인증 코드 발송/검증 주입
     private final AuthEventService authEventService; // 인증 이벤트(로그인/로그아웃 등) 감사 로그 기록 주입
     private final LoginAttemptService loginAttemptService; // 로그인 실패 횟수 기반 계정 잠금(brute-force 방어) 주입
+    private final TurnstileVerifier turnstileVerifier; // Cloudflare Turnstile(봇/사람 확인) 검증 주입
 
     @Operation(summary = "회원가입", description = "이메일/비밀번호/프로필 정보로 신규 계정을 생성합니다.")
     @ApiResponse(responseCode = "200", description = "성공",
@@ -152,6 +154,14 @@ public class EmailAuthController {
                     "로그인 시도가 너무 많아 일시적으로 잠겼습니다. 잠시 후 다시 시도해주세요.");
         }
 
+        // Turnstile(사람 확인): 직전 로그인 실패가 임계치 이상이면 토큰 검증을 요구한다.
+        // 정상 첫 로그인은 통과하고, 실패 후 재시도부터 사람 확인 → 봇 자동화(brute-force) 차단.
+        // 비밀번호 검증 전에 막으므로 실패 카운터를 증가시키지 않는다(사람 확인 실패는 로그인 실패가 아님).
+        if (loginAttemptService.isChallengeRequired(requestDto.getEmail())
+                && !turnstileVerifier.verify(requestDto.getTurnstileToken())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "TURNSTILE_REQUIRED");
+        }
+
         UserResponseDto responseDto;
         try {
             responseDto = emailAuthService.login(requestDto.getEmail(), requestDto.getPassword());
@@ -222,13 +232,19 @@ public class EmailAuthController {
 
     @Operation(summary = "이메일 인증코드 발송", description = "입력 이메일로 인증코드 전송")
     @ApiResponse(responseCode = "200", description = "발송됨") // Swagger 문서에 표시할 내용들
-    @PostMapping("/send-verification-code") // POST 요청을 처리하는 엔드포인트 /api/auth/send-verification-code 
-    public ResponseEntity<String> sendVerificationCode(@Parameter(description = "이메일") @RequestParam String email) {
+    @PostMapping("/send-verification-code") // POST 요청을 처리하는 엔드포인트 /api/auth/send-verification-code
+    public ResponseEntity<String> sendVerificationCode(@Parameter(description = "이메일") @RequestParam String email,
+                                                       @Parameter(description = "Turnstile 토큰") @RequestParam(required = false) String turnstileToken) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // String을 타입 매게변수로 넘기면 sendVerificationCode 메서드는 ResponseEntity<String) 타입만 반환가능
         // @Parameter(description = "이메일")은 Swagger 문서용 어노테이션임 APi 문서에 파라미터 설명을 표시함
         // @RequestParam이 쿼리 파라미터를 받는 어노테이션임
         // 스프링이 HTTP 요청에 URL에서 쿼리 파라미터를 추출해서 email 파라미터에 넣어줌
+        // Turnstile(사람 확인): 인증코드 발송은 비로그인 공개 엔드포인트 + 실제 메일 발송을 유발(남용 시 메일 폭탄/평판 하락)
+        // → 항상 사람 확인을 요구한다. (secret 미설정 시 verify 가 no-op 으로 통과)
+        if (!turnstileVerifier.verify(turnstileToken)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "TURNSTILE_REQUIRED");
+        }
         verificationEmailService.sendVerificationEmail(email);
         // HTTP 요청에서 추출한 이메일을 verificationEmailService에 sendVerificationEmail 메서드에 태워보냄
         // sendVerificationEmail 메서드는 이메일을 받아서 6자리 인증 코드를 생성하고 이메일과 코드를 매핑해서 메모리에 저장, 이메일 발송함

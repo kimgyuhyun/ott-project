@@ -1,7 +1,8 @@
 "use client"; // csr
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext"; // lib에서 가져온 인증 상태 관리용 훅
 import { login, register, checkEmailDuplicate, sendVerificationCode, verifyCode } from "@/lib/api/auth"; // lib 에서 가져온 API 함수들들
+import Turnstile from "./Turnstile"; // Cloudflare Turnstile(봇/사람 확인) 위젯
 import styles from "./EmailAuthForm.module.css";
 
 type AuthMode = 'login' | 'register'; // typeScript의 타입 정의 AuthMode는 login 또는 register만 가능
@@ -49,6 +50,13 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
   const [emailVerified, setEmailVerified] = useState(false); // 이메일 인증 완료 여부고 기본값 false
   const [successMessage, setSuccessMessage] = useState(''); // 성공 메시지 빈 문자열로 초기화해서 변수에 할당
 
+  // Turnstile(사람 확인) 관련 상태
+  const [turnstileToken, setTurnstileToken] = useState(''); // 위젯 통과 시 받는 토큰(백엔드로 전달)
+  const [showTurnstile, setShowTurnstile] = useState(false); // 로그인 실패 후 사람 확인 위젯 표시 여부
+  const [turnstileKey, setTurnstileKey] = useState(0); // 값이 바뀌면 위젯을 새로 렌더(1회용 토큰 재발급용)
+  // 토큰 만료 시 초기화(위젯이 자동으로 재요구). useCallback 으로 참조를 고정해 위젯 불필요한 재렌더 방지
+  const handleTurnstileExpire = useCallback(() => setTurnstileToken(''), []);
+
   // useEffect가 없으니 콜백 함수 개념은 없음
   const handleSubmit = async (e: React.FormEvent) => { // 사용자가 폼 제출시 실행되는 비동기 함수
     // e: React.FormEvent는 폼 제출 이벤트 객체의 타입이고 브라우저가 폼 제출시 자동으로 전달함
@@ -62,7 +70,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
     try { // ===는 값과 타입 모두 비교하는것 // try는 handleSubmit 실행 시 바로 try 블록을 실행함
       // 폼 제출시 try 블록 안의 코드를 실행한다는 뜻
       if (mode === 'login') { // mode가 'login'일때 실행
-        const user = await login(email, password); // login 함수는 lib/api/auth에 정의되어있음 백엔드 API를 호출하는 함수임
+        const user = await login(email, password, turnstileToken); // 사람 확인이 요구된 경우 토큰을 함께 전달
         // loing 함수 호출함 email, password는 위에서 useState로 구조 분해 할당해서 만든 변수들
         // await으로 응답이 올 때까지 대기함 이 아래라인은 일정시간동안 계속 대기함 다른 함수는 실행 가능 (비동기)
         // 사용자가 폼 제출하면 handleSubmit 함수가 실행되고 try 블록이 실행됨
@@ -146,7 +154,15 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
       // 회원가입 모드: 네트워크, 백엔드 서버, 인증코드 불일치, 인증코드 만료, 회원가입 실패시 여기로 옴
       // 즉 try 블록 안의 모든 코드에서 에러가 발생하면 여기로옴옴
       if (mode === 'login') { // 만약 mode가 'login'이면
-        setError('로그인에 실패했습니다. 회원가입이 필요할 수 있습니다.'); // 에러 메시지 출력
+        // 로그인 실패 → 다음 시도부터 사람 확인 위젯 표시(백엔드도 실패 1회부터 토큰을 요구함)
+        // 1회용 토큰이므로 초기화하고 key 를 바꿔 위젯을 새로 렌더한다.
+        setShowTurnstile(true);
+        setTurnstileToken('');
+        setTurnstileKey((k) => k + 1);
+        const msg = err instanceof Error && err.message.includes('TURNSTILE_REQUIRED')
+          ? '아래 사람 확인을 완료한 뒤 다시 로그인해주세요.'
+          : '로그인에 실패했습니다. 회원가입이 필요할 수 있습니다.';
+        setError(msg); // 에러 메시지 출력
       } else { // 만약 mode가 'login'이 아니라 register 일 때 실행
         setError(err instanceof Error ? err.message : '오류가 발생했습니다.'); // 에러 메시지 출력
         // err instanceOf: err가 Error 타입인지 확인
@@ -185,16 +201,23 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
       setError('이메일을 입력하고 중복 확인을 먼저 해주세요.');
       return;
     }
+    if (!turnstileToken) { // 사람 확인(위젯) 미완료면 발송 막기(백엔드도 토큰 없으면 거부)
+      setError('아래 사람 확인을 먼저 완료해주세요.');
+      return;
+    }
 
     setIsLoading(true); // 로딩 상태를 true로 설정
     setError(''); // 에러 메시지를 빈 문자열로 설정
-    
+
     try {
-      await sendVerificationCode(email); // sendVerificationCode 함수에 email을 태워 보내면
+      await sendVerificationCode(email, turnstileToken); // 이메일 + 사람 확인 토큰을 함께 전달
       // 입력폼에 email에 인증코드가 발송됨
+      setTurnstileToken(''); // 토큰은 1회용이므로 발송 후 초기화
       setSuccessMessage('인증코드가 이메일로 발송되었습니다. 이메일을 확인해주세요.');
       setRegisterStep('verification'); // 회원가입단계를 이메일 인증 단계로 변경
     } catch (err) {
+      setTurnstileToken(''); // 실패 시에도 토큰 초기화(재요구)
+      setTurnstileKey((k) => k + 1); // 위젯 새로 렌더
       setError(err instanceof Error ? err.message : '인증코드 발송에 실패했습니다.');
     } finally {
       setIsLoading(false); // 로딩 상태를 false로 초기화
@@ -210,6 +233,8 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
     setEmailChecked(false); // 이메일 중복 확인 완료 상태를 false로 설정
     setEmailVerified(false); // 이메일 인증 여부를 false로 설정
     setSuccessMessage(''); // 성공 메시지를 빈 문자열로 설정
+    setShowTurnstile(false); // 사람 확인 위젯 상태 초기화
+    setTurnstileToken(''); // 토큰 초기화
   }; // switchToRegister 함수 종료
 
   const switchToLogin = () => { // 재할당 불가 함수 // 로그인 폼에 진입할때 모드를 로그인 모드로 변경하는 함수
@@ -218,6 +243,8 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
     setEmailChecked(false); // 이메일 중복 확인 완료 상태를 false로 설정
     setEmailVerified(false); // 이메일 인증 여부를 false로 설정
     setSuccessMessage(''); // 성공 메시지를 빈 문자열로 설정
+    setShowTurnstile(false); // 사람 확인 위젯 상태 초기화(로그인 모드는 실패 후에만 표시)
+    setTurnstileToken(''); // 토큰 초기화
   }; // switchToLogin 함수 종료
 
   const resetForm = () => { // 재할당 불가 함수 // 처음부터 다시 시작 버튼 클릭 시 실행
@@ -230,6 +257,8 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
     setEmailVerified(false); // 이메일 인증 여부를 false로 설정
     setSuccessMessage(''); // 성공 메시지를 빈 문자열로 설정
     setRegisterStep('email'); // 회원가입단계를 이메일 입력 단계로 변경
+    setTurnstileToken(''); // 토큰 초기화
+    setTurnstileKey((k) => k + 1); // 위젯 새로 렌더
   }; // resetForm 함수 종료
 
   return ( // JSX 반환 시작
@@ -301,10 +330,13 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
           {mode === 'register' && registerStep === 'email' && emailChecked && (
             // mode가 register고 registerStep이 email이고 emailChecked가 true면 렌더링
             <div className={styles.inputGroup}> {/* inputGroup css 클래스 적용*/}
+              {/* 인증코드 발송 전 사람 확인(봇의 메일 남용 방지). 통과해야 발송 버튼 활성화 */}
+              <Turnstile key={turnstileKey} onVerify={setTurnstileToken} onExpire={handleTurnstileExpire} />
               <button // 버튼
                 type="button" // 타입을 버튼으로 설정함
                 onClick={handleSendVerificationCode} // handleSendVerificationCode 함수를 onCLick에 연결함
                 // handleSendVerificationCode 함수는 이메일 인증코드를 보내는 함수임임
+                disabled={!turnstileToken} // 사람 확인 통과 전에는 비활성화
                 className={styles.sendVerificationButton} // sendVerificationButton css 클래스 적용
               >
                 인증코드 발송 {/* 위에 동작을 인증코드 발송 버튼에 연결함*/}
@@ -401,6 +433,13 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
             </div>
           )}
 
+          {mode === 'login' && showTurnstile && (
+            // 로그인 실패 후에만 사람 확인 위젯 표시(정상 첫 로그인은 위젯 없이 통과)
+            <div className={styles.inputGroup}> {/* inputGroup css 클래스 적용*/}
+              <Turnstile key={turnstileKey} onVerify={setTurnstileToken} onExpire={handleTurnstileExpire} />
+            </div>
+          )}
+
           {error && ( // error 상태변수가 빈 문자열이 아니면 렌더링
             <div className={styles.errorMessage}>{error}</div>
           )}  {/* errorMessage css 클래스 적용 {error}은 상태변수의 값을 문자열로 표시함 407*/}
@@ -411,7 +450,7 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
 
           <button
             type="submit" // 타입을 submit으로 설정함 폼제출용 버튼임
-            disabled={isLoading || (mode === 'register' && registerStep === 'email' && !emailChecked) || (mode === 'register' && registerStep === 'verification' && !verificationCode)}
+            disabled={isLoading || (mode === 'register' && registerStep === 'email' && !emailChecked) || (mode === 'register' && registerStep === 'verification' && !verificationCode) || (mode === 'login' && showTurnstile && !turnstileToken)}
             // disabled는 비활성화를 뜻함 버튼은 렌더링되지만, disabled={true}일 때 클릭할 수 없음
             // isLoading이 ture 면 조건식이 true가 되고 disalbed가 true가 되서 버튼이 비활성화됨
             // 회원가입 모드에 이메일 단계고 이메일 중복 확인이 안되어있으면 버튼이 비활성화됨

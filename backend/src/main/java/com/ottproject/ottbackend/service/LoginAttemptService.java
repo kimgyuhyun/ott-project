@@ -45,6 +45,9 @@ public class LoginAttemptService {
     @Value("${app.login.lock-minutes:15}")
     private long lockMinutes; // 잠금 지속 시간(기본 15분)
 
+    @Value("${app.login.turnstile-after-fails:1}")
+    private int turnstileAfterFails; // 이 횟수 이상 실패 시 Turnstile(사람 확인) 요구(기본 1회)
+
     /**
      * 현재 잠금 상태 여부
      *
@@ -63,6 +66,39 @@ public class LoginAttemptService {
             return Long.parseLong(value) >= maxFailAttempts;
         } catch (NumberFormatException e) {
             return false; // 비정상 값은 잠금으로 보지 않음
+        }
+    }
+
+    /**
+     * Turnstile(사람 확인) 요구 여부
+     * - 직전까지 누적된 로그인 실패가 임계치 이상이면 다음 로그인 시 사람 확인을 요구한다.
+     * - 큰 사이트들이 쓰는 "정상 첫 로그인은 통과, 실패하면 그때부터 캡차" 방식.
+     *
+     * @param email 대상 이메일
+     * @return 사람 확인이 필요하면 true
+     */
+    public boolean isChallengeRequired(String email) {
+        return getFailCount(email) >= turnstileAfterFails;
+    }
+
+    /**
+     * 현재 누적된 로그인 실패 횟수(없으면 0)
+     *
+     * @param email 대상 이메일
+     * @return 누적 실패 횟수
+     */
+    public long getFailCount(String email) {
+        if (email == null || email.isBlank()) {
+            return 0L;
+        }
+        String value = redisTemplate.opsForValue().get(key(email));
+        if (value == null) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException e) {
+            return 0L; // 비정상 값은 0으로 취급
         }
     }
 

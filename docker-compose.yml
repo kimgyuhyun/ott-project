@@ -140,6 +140,8 @@ services:                         # 서비스 정의 시작
       RECENT_SEARCH_TTL_DAYS: ${RECENT_SEARCH_TTL_DAYS}
       # HLS secure_link 서명 시크릿 (nginx secure_link_secret 과 반드시 동일해야 함)
       SECURE_LINK_SECRET: ${SECURE_LINK_SECRET}
+      # Cloudflare Turnstile(봇 방어) 비밀 키 — 미설정 시 검증 기능 비활성(no-op)
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
 
   frontend: # Next.js 프론트엔드 서비스
     image: ${FRONT_IMAGE:-para98/ott-frontend:latest}

@@ -80,14 +80,15 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 }
 
 // 로그인 API
-export async function login(email: string, password: string): Promise<UserResponse> {
+// turnstileToken: 직전 로그인 실패로 사람 확인이 요구될 때만 채워서 보냄(그 외엔 undefined)
+export async function login(email: string, password: string, turnstileToken?: string): Promise<UserResponse> {
   // 외부에서 import해서 사용가능한 비동기 함수 function이 붙으면 호이스팅,제네릭이 가능하지만 export여서 호이스팅 불가함
   // email 파라미터는 String 형식으로 받아야함, password 파라미터도 string 형식으로 받아야함
   // 참고로 자바스크립트 함수는 리턴 타입이 지정 불가하고 타입스크립트는 리턴타입을 타입추론해서 생략 가능함
   return apiCall<UserResponse>('/api/auth/login', { // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
     // 파라미터로 백엔드 api 경로, 요청 본문을 apiCall 함수에 태워보냄
     method: 'POST', // 요청형식 POST로 지정
-    body: JSON.stringify({ email, password }), // JSON.stringify는 Javascript 내장 함수임
+    body: JSON.stringify({ email, password, turnstileToken }), // JSON.stringify는 Javascript 내장 함수임
     // {email, password}는 객체 리터럴 문법이고 축약식임 이걸로 JavaScript 객체를 만들고 그걸 함수에 넘겨주면
     // JSON 문자열이 반환되고 그게 요청 본문으로 저장됨
     // 이 login 함수는 그냥 로그인 폼폼에서 string이랑 password보내면 그걸 Javascript 객체로 만들고 문자열로 변환한뒤
@@ -180,13 +181,16 @@ export async function getCurrentUser(): Promise<CurrentUser | null> { // import 
 // GET 요청은 요청 본문이없고 POST는 요청 본문이 있음
 
 // 이메일 인증 코드 발송
-export const sendVerificationCode = async (email: string): Promise<void> => {
+// turnstileToken: 사람 확인 위젯 통과 후 발급된 토큰(발송은 항상 사람 확인 요구)
+export const sendVerificationCode = async (email: string, turnstileToken?: string): Promise<void> => {
   // 파라미터로 email을 받고 이건 string 타입이어야하고 
   // Promise<void>는 리턴값이 없다는 뜻이고 이 함수는 리턴값이 void 타입이어야한다고 약속한것
   // () => {} 는 익명 함수이자 화살표 함수고 함수 정의할 때 사용
   // 아래 동작 정의를 import 해서 사용 가능한 재할당 불가 변수 sendVerificationCode에 할당함
   // sendVerificationCOde는 import 가능 재할당 불가 비동기 함수가됨됨
-  const response = await fetch(`${API_BASE}/api/auth/send-verification-code?email=${encodeURIComponent(email)}`, {
+  // 이메일과 함께 turnstileToken 을 쿼리 파라미터로 붙인다(토큰은 비밀값이 아니고 1회용임)
+  const query = `email=${encodeURIComponent(email)}${turnstileToken ? `&turnstileToken=${encodeURIComponent(turnstileToken)}` : ''}`;
+  const response = await fetch(`${API_BASE}/api/auth/send-verification-code?${query}`, {
     //  유저가 회원가입 폼에서 입력한 email값이 여기에 전달되고 그걸 URL 쿼리 파라미터에 추가함
     // fetch 함수에 상대경로랑 쿼리 파라미터에 추가한값을 합쳐서 전달
     method: 'POST', // 요청형식 POST로 지정

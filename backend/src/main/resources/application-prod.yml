@@ -226,6 +226,10 @@ iamport:
     nice:
       channel-key: ${IAMPORT_NICE_CHANNEL_KEY:}
 
+# Cloudflare Turnstile (봇 방어) — secret 미설정 시 기능 비활성(no-op)
+turnstile:
+  secret-key: ${TURNSTILE_SECRET_KEY:}
+
 # 결제 설정 (운영 환경)
 payments:
   test-amount: ${PAYMENT_TEST_AMOUNT:1}
@@ -256,6 +260,7 @@ app:
   login:
     max-fail-attempts: ${LOGIN_MAX_FAIL_ATTEMPTS:5} # 잠금 임계치(실패 횟수)
     lock-minutes: ${LOGIN_LOCK_MINUTES:15}          # 잠금 지속 시간(분)
+    turnstile-after-fails: ${LOGIN_TURNSTILE_AFTER_FAILS:1} # 이 횟수 이상 실패 시 사람 확인(Turnstile) 요구
 
 # Swagger UI 비활성화 (프로덕션)
 springdoc:
