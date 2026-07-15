@@ -1,0 +1,56 @@
+#!/bin/sh
+# ============================================================================
+# pre-commit 훅: .env 가 바뀌었으면 .env.enc 를 자동 재암호화하고 스테이징한다.
+# ----------------------------------------------------------------------------
+# 배경
+#  - .env(평문, git 무시) 와 .env.enc(암호화, 커밋됨) 는 자동 동기화되지 않는다.
+#  - secret 을 .env 에 추가/수정한 뒤 재암호화를 깜빡하면 CD 가 옛 값을 쓰게 된다.
+#  - 이 훅이 커밋 시점에 그 동기화를 자동으로 해준다.
+#
+# 왜 해시로 비교하나
+#  - SOPS 는 암호화마다 IV(난수)가 달라 내용이 같아도 .env.enc 바이트가 매번 바뀐다.
+#  - 매 커밋 재암호화 시 .env 를 안 건드린 커밋에도 .env.enc 가 변경돼 diff 가 지저분해진다.
+#  - 그래서 .env 의 sha256 을 로컬(.git 내부)에 기록해 두고, 값이 바뀐 경우에만 재암호화한다.
+#
+# 안전장치
+#  - .env 가 없으면(클론 직후 등) 아무것도 하지 않는다.
+#  - sops 가 PATH 에 없으면 경고만 하고 커밋은 막지 않는다.
+#  - 암호화는 공개키(.sops.yaml)만 쓰므로 age 비밀키 없이 동작한다.
+#
+# 설치(재클론 후 1회): git config core.hooksPath scripts/git-hooks
+# ============================================================================
+
+ENV_FILE=".env"
+ENC_FILE=".env.enc"
+HASH_FILE=".git/.env.sha256"   # 로컬 전용(커밋되지 않음) — 마지막으로 암호화한 .env 의 해시
+
+# .env 가 없으면 스킵(재암호화할 원본이 없음)
+[ -f "$ENV_FILE" ] || exit 0
+
+# 현재 .env 해시 계산
+current_hash=$(sha256sum "$ENV_FILE" | awk '{print $1}')
+prev_hash=""
+[ -f "$HASH_FILE" ] && prev_hash=$(cat "$HASH_FILE")
+
+# 변경 없으면(해시 동일) 아무것도 안 함 → 불필요한 .env.enc 변경 방지
+if [ "$current_hash" = "$prev_hash" ]; then
+  exit 0
+fi
+
+# sops 없으면 경고만(커밋 자체는 통과시킴 — 실무 흐름을 막지 않기 위해)
+if ! command -v sops >/dev/null 2>&1; then
+  echo "[pre-commit] 경고: sops 를 찾을 수 없어 .env.enc 를 갱신하지 못했습니다. 수동으로: sops -e .env > .env.enc" >&2
+  exit 0
+fi
+
+echo "[pre-commit] .env 변경 감지 → .env.enc 재암호화 중..."
+# 재암호화 실패 시 커밋 중단 → 옛 값이 그대로 나가는 사고 방지
+if ! sops -e "$ENV_FILE" > "$ENC_FILE"; then
+  echo "[pre-commit] 오류: .env.enc 재암호화 실패. 커밋을 중단합니다." >&2
+  exit 1
+fi
+
+git add "$ENC_FILE"
+printf '%s' "$current_hash" > "$HASH_FILE"   # 성공한 뒤에만 해시 기록(실패 시 다음 커밋에 재시도)
+echo "[pre-commit] .env.enc 갱신 및 스테이징 완료"
+exit 0
