@@ -11,6 +11,7 @@ import com.ottproject.ottbackend.repository.CharacterRepository;
 import com.ottproject.ottbackend.repository.DirectorRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Propagation;
@@ -49,6 +50,10 @@ public class SimpleAnimeDataCollectorService {
     private final DirectorRepository directorRepository;
     private final AnimeBatchProcessor animeBatchProcessor;
     private final PlatformTransactionManager transactionManager;
+    // 자기 자신을 프록시로 얻기 위한 provider.
+    // 같은 클래스 안에서 collectAnime(...) 을 직접 호출하면 프록시를 타지 않아 @Transactional 이 적용되지 않는다.
+    // (ObjectProvider 는 지연 조회라 자기 참조로 인한 순환 의존성이 생기지 않는다)
+    private final ObjectProvider<SimpleAnimeDataCollectorService> selfProvider;
     
     
     /**
@@ -448,8 +453,14 @@ public class SimpleAnimeDataCollectorService {
     
     /**
      * 인기 애니메이션 일괄 수집 - 안전한 배치 처리
+     *
+     * 트랜잭션 주의(의도적으로 @Transactional 없음)
+     * - 여기에 트랜잭션을 걸면 수집 전체(수십 분~수 시간)가 한 트랜잭션으로 묶인다.
+     * - 그 상태에서 항목 하나가 실패하면(내부의 @Transactional 빈이 참여 중이므로)
+     *   공유 트랜잭션이 rollback-only 로 마킹되고, 루프는 예외를 잡고 계속 돌다가
+     *   마지막 커밋에서 "Transaction silently rolled back..." 으로 전부 실패한다.
+     * - 따라서 수집은 항목 단위로 각자 트랜잭션을 갖는다(아래 selfProvider 경유 호출).
      */
-    @Transactional(rollbackFor = Exception.class)
     public CollectionResult collectPopularAnime(int limit) {
         log.info("🚀 인기 애니메이션 일괄 수집 시작: {}개", limit);
         
@@ -483,7 +494,9 @@ public class SimpleAnimeDataCollectorService {
                 log.info("📺 [{}/{}] 애니메이션 수집 시작: MAL ID {}", globalIndex, popularIds.size(), malId);
                 
                 try {
-                    boolean success = collectAnime(malId);
+                    // 프록시 경유 호출: 항목마다 collectAnime 의 @Transactional 이 독립적으로 적용된다.
+                    // (직접 호출하면 self-invocation 이라 프록시를 안 타고, 단일 동기화 경로와 동작이 달라진다)
+                    boolean success = selfProvider.getObject().collectAnime(malId);
                     if (success) {
                         successCount++;
                         log.info("✅ [{}/{}] 수집 성공: MAL ID {}", globalIndex, popularIds.size(), malId);
