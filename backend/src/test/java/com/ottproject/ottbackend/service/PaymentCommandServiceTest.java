@@ -33,10 +33,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * PaymentCommandService.applyWebhookEvent 단위 테스트
@@ -230,5 +232,86 @@ class PaymentCommandServiceTest {
 
         assertThatThrownBy(() -> service.applyWebhookEvent(1L, event(PaymentStatus.PENDING)))
                 .isInstanceOf(ResponseStatusException.class);
+    }
+
+    // ===== 환불 정책: 7일 이내 AND 전혀 시청하지 않음 =====
+
+    /** 결제일이 daysAgo 일 전인 SUCCEEDED 결제(사용자 1, 9900원) */
+    private Payment succeededPaymentPaidDaysAgo(long daysAgo) {
+        MembershipPlan plan = new MembershipPlan();
+        plan.setPrice(new Money(9900L, "KRW"));
+        Payment payment = Payment.createSucceededPayment(userWithId(1L), plan, PaymentProvider.IMPORT,
+                "imp_1", new Money(9900L, "KRW"), LocalDateTime.now().minusDays(daysAgo));
+        payment.setPaidAt(LocalDateTime.now().minusDays(daysAgo));
+        return payment;
+    }
+
+    @Test
+    @DisplayName("환불 성공 - 7일 이내 + 미시청이면 전액 환불되고 구독은 즉시 해지된다")
+    void refundSucceedsWithinPolicy() {
+        Payment payment = succeededPaymentPaidDaysAgo(3);
+        MembershipSubscription sub = activeSubscription();
+        PaymentGateway.RefundResult rr = new PaymentGateway.RefundResult();
+        rr.refundedAt = LocalDateTime.now();
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(1L), any())).willReturn(0);
+        given(paymentGateway.issueRefund("imp_1", 9900L)).willReturn(rr);
+        given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
+                .willReturn(Optional.of(sub));
+
+        service.refundIfEligible(1L, 1L);
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(payment.getRefundedAmount()).isEqualTo(9900L); // 전액
+        assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
+        assertThat(sub.isAutoRenew()).isFalse();
+    }
+
+    @Test
+    @DisplayName("남의 결제는 환불할 수 없다 - 403")
+    void cannotRefundOthersPayment() {
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(succeededPaymentPaidDaysAgo(1)));
+
+        // 결제 소유자는 1번 사용자인데 2번 사용자가 환불 시도
+        assertThatThrownBy(() -> service.refundIfEligible(2L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("본인 결제만");
+        verifyNoInteractions(paymentGateway);
+    }
+
+    @Test
+    @DisplayName("7일 초과면 환불 불가 - 게이트웨이 호출조차 하지 않는다")
+    void refundRejectedAfterSevenDays() {
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(succeededPaymentPaidDaysAgo(8)));
+
+        assertThatThrownBy(() -> service.refundIfEligible(1L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("환불 가능 기간을 초과");
+        verifyNoInteractions(paymentGateway);
+    }
+
+    @Test
+    @DisplayName("1초라도 시청했으면 환불 불가 - 콘텐츠 소비 후 환불 방지")
+    void refundRejectedWhenWatched() {
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(succeededPaymentPaidDaysAgo(1)));
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(1L), any())).willReturn(1); // 1초
+
+        assertThatThrownBy(() -> service.refundIfEligible(1L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("시청한 경우 환불이 불가");
+        verifyNoInteractions(paymentGateway);
+    }
+
+    @Test
+    @DisplayName("이미 환불된 결제는 다시 환불할 수 없다 - 중복 환불 방지")
+    void cannotRefundTwice() {
+        Payment payment = succeededPaymentPaidDaysAgo(1);
+        payment.setStatus(PaymentStatus.REFUNDED); // 이미 환불됨
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+
+        assertThatThrownBy(() -> service.refundIfEligible(1L, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("환불 대상 결제가 아닙니다");
+        verifyNoInteractions(paymentGateway);
     }
 }
