@@ -8,6 +8,8 @@ import com.ottproject.ottbackend.repository.SocialAccountRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -16,7 +18,9 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -366,10 +370,18 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
         boolean isNew = Boolean.TRUE.equals(isNewUserFlag.get());
         attributes.put("isNewUser", isNew); // 신규 사용자 여부 추가
 
+        // DB 의 역할(USER/ADMIN)을 Spring Security 권한(ROLE_*)으로 부여한다.
+        // 주의: attributes 의 "userRole" 은 단순 데이터라 인가에 쓰이지 않는다.
+        // 이게 없으면 DB 가 ADMIN 이어도 authorities 에 ROLE_ADMIN 이 없어
+        // /api/admin/** (hasRole("ADMIN")) 이 403 이 된다(프론트는 attributes 의 role 을 보므로 화면은 열림).
+        // 이메일 로그인 경로(SessionAuthenticationFilter/LocalUserDetailsService)와 동일한 규칙을 맞춘다.
+        List<GrantedAuthority> authorities = new ArrayList<>(oAuth2User.getAuthorities()); // 제공자 기본 권한 유지
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())); // DB 역할 추가
+
         // 새로운 OAuth2User 객체 생성 및 반환
         // Spring Security에서 사용할 수 있는 DefaultOAuth2User 객체 생성
         return new org.springframework.security.oauth2.core.user.DefaultOAuth2User(
-                oAuth2User.getAuthorities(), // 기존 권한 정보 (소셜 로그인 제공자에서 받은 권한)
+                authorities, // 제공자 기본 권한 + DB 역할(ROLE_USER/ROLE_ADMIN)
                 attributes, // 사용자 속성 정보 (소셜 로그인 정보 + 애플리케이션 정보)
                 "userEmail" // nameAttributeKey - Spring Security 에서 사용자 식별에 사용할 키 (이메일 사용)
         );
