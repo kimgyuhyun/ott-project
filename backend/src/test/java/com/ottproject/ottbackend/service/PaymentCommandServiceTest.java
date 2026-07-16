@@ -50,8 +50,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * - CANCELED → 자동갱신 중단 + 말일 해지 예약(즉시 해지 아님)
  * - REFUNDED → 결제 REFUNDED + 구독 즉시 해지(정책)
  *
- * SUCCEEDED 는 markSucceededAndProvision(구독 프로비저닝/아웃박스)으로 수렴하는 무거운
- * 경로라 이 단위 테스트 범위에서 제외한다.
+ * SUCCEEDED 는 markSucceededAndProvision(구독 프로비저닝/아웃박스)으로 수렴한다.
+ * private 이라 applyWebhookEvent(SUCCEEDED) 경유로 검증한다(가시성 완화 불필요).
  */
 @ExtendWith(MockitoExtension.class)
 class PaymentCommandServiceTest {
@@ -83,6 +83,7 @@ class PaymentCommandServiceTest {
     /** 9900원 PENDING 결제(세션 sess_1, 사용자 1) */
     private Payment pendingPayment() {
         MembershipPlan plan = new MembershipPlan();
+        plan.setCode("BASIC");
         plan.setPrice(new Money(9900L, "KRW"));
         return Payment.createPendingPayment(userWithId(1L), plan, PaymentProvider.IMPORT,
                 "sess_1", new Money(9900L, "KRW"));
@@ -232,6 +233,81 @@ class PaymentCommandServiceTest {
 
         assertThatThrownBy(() -> service.applyWebhookEvent(1L, event(PaymentStatus.PENDING)))
                 .isInstanceOf(ResponseStatusException.class);
+    }
+
+    // ===== SUCCEEDED 확정/지급(markSucceededAndProvision) =====
+
+    /** SUCCEEDED 웹훅(imp_uid/영수증 포함) */
+    private PaymentWebhookEventDto succeededEvent() {
+        PaymentWebhookEventDto e = event(PaymentStatus.SUCCEEDED);
+        e.providerPaymentId = "imp_1";
+        e.receiptUrl = "https://receipt.test/1";
+        return e;
+    }
+
+    @Test
+    @DisplayName("SUCCEEDED 확정 - 결제를 확정하고 멤버십을 지급하며 아웃박스에 1건 적재한다")
+    void succeededConfirmsPaymentAndProvisionsMembership() {
+        Payment payment = pendingPayment();
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+
+        service.applyWebhookEvent(1L, succeededEvent());
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+        assertThat(payment.getPaidAt()).isEqualTo(NOW);
+        assertThat(payment.getProviderPaymentId()).isEqualTo("imp_1");
+        assertThat(payment.getReceiptUrl()).isEqualTo("https://receipt.test/1");
+        verify(membershipCommandService).subscribe(eq(1L), any());
+        verify(outboxEventRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("멱등 - 이미 SUCCEEDED 인 결제는 멤버십을 재지급하지 않는다(중복 지급 방지)")
+    void alreadySucceededPaymentIsNotProvisionedAgain() {
+        Payment payment = pendingPayment();
+        payment.setStatus(PaymentStatus.SUCCEEDED); // 클라 확정/이전 웹훅으로 이미 확정됨
+        payment.setPaidAt(NOW.minusMinutes(5));
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+
+        // eventId 가 다른(=멱등키로 못 거르는) 재전송 웹훅도 여기서 막혀야 한다
+        service.applyWebhookEvent(1L, succeededEvent());
+
+        // 핵심: 한 번 결제로 구독 기간이 두 번 늘어나면 안 된다
+        verify(membershipCommandService, never()).subscribe(anyLong(), any());
+        verify(outboxEventRepository, never()).save(any());
+        // 최초 확정 시각도 덮어쓰지 않아야 한다
+        assertThat(payment.getPaidAt()).isEqualTo(NOW.minusMinutes(5));
+    }
+
+    @Test
+    @DisplayName("구독 지급이 실패하면 예외를 전파한다 - 결제만 SUCCEEDED 로 남는 것을 막는다")
+    void provisioningFailurePropagatesSoPaymentRollsBack() {
+        Payment payment = pendingPayment();
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        org.mockito.BDDMockito.willThrow(new RuntimeException("subscribe boom"))
+                .given(membershipCommandService).subscribe(anyLong(), any());
+
+        // 과거 회귀: 리스너의 블랭킷 catch 로 구독 생성 실패가 묻혀 돈만 받고 혜택이 안 나갔다
+        assertThatThrownBy(() -> service.applyWebhookEvent(1L, succeededEvent()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("멤버십 구독 생성 실패");
+        verify(outboxEventRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("아웃박스 적재가 실패하면 예외를 전파한다 - 부수효과 유실 방지(함께 롤백)")
+    void outboxFailurePropagates() {
+        Payment payment = pendingPayment();
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(outboxEventRepository.save(any())).willThrow(new RuntimeException("db down"));
+
+        assertThatThrownBy(() -> service.applyWebhookEvent(1L, succeededEvent()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("아웃박스 이벤트 적재 실패");
     }
 
     // ===== 환불 정책: 7일 이내 AND 전혀 시청하지 않음 =====
