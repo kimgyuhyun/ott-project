@@ -245,7 +245,16 @@ public class MembershipCommandService {
     private Integer calculateProration(MembershipSubscription subscription, MembershipPlan newPlan) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime endAt = subscription.getEndAt();
-        
+
+        // 무기한 구독(endAt=null)은 남은 일수를 정의할 수 없어 차액을 계산하지 않는다.
+        // findActiveEffectiveByUser 가 "s.endAt is null or s.endAt >= :now" 로 무기한 구독을 허용하므로
+        // 이 값이 실제로 도달한다(가드가 없으면 ChronoUnit.DAYS.between(now, null) 에서 NPE → 500).
+        // ProrationPaymentService 와 달리 여기에는 호출부 거절 가드가 없어, 0을 반환하면 차액 0원
+        // 무료 업그레이드가 되므로 직접 400 으로 거절한다.
+        if (endAt == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료일이 없는 구독은 차액을 계산할 수 없습니다.");
+        }
+
         // 남은 일수 계산
         long remainingDays = ChronoUnit.DAYS.between(now, endAt);
         if (remainingDays <= 0) {

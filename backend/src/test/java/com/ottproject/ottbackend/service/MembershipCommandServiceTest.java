@@ -380,6 +380,26 @@ class MembershipCommandServiceTest {
         verifyNoInteractions(eventPublisher);
     }
 
+    @Test
+    @DisplayName("업그레이드 - 종료일이 없는 구독이어도 500 이 아니라 400 으로 거절한다")
+    void upgradeOnOpenEndedSubscriptionIsRejected() {
+        MembershipPlan basic = plan("BASIC", 9900L, 1);
+        MembershipPlan premium = plan("PREMIUM", 19900L, 1);
+        MembershipSubscription sub = subscriptionOnPlan(basic);
+        sub.setEndAt(null); // 무기한: 조회 쿼리가 "s.endAt is null" 을 유효 구독으로 취급한다
+        given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
+                .willReturn(Optional.of(sub));
+        given(planRepository.findByCode("PREMIUM")).willReturn(Optional.of(premium));
+
+        // 남은 일수를 정의할 수 없어 차액을 계산할 수 없다(가드가 없으면 NPE → 500)
+        assertThatThrownBy(() -> service.changePlan(1L, changeReq("PREMIUM")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("차액을 계산할 수 없습니다");
+        // 거절했으면 플랜도 그대로고 돈도 걷지 않아야 한다
+        assertThat(sub.getMembershipPlan()).isSameAs(basic);
+        verifyNoInteractions(eventPublisher);
+    }
+
     // ===== 플랜 변경 예약 취소 =====
 
     @Test
