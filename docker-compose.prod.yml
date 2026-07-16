@@ -26,12 +26,16 @@ services:
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET}
       
-      # 도메인 설정 (프로덕션 환경 강제 설정)
-      BASE_URL: ${BASE_URL:-https://laputa.kozow.com}
-      FRONTEND_ORIGIN: ${BASE_URL:-https://laputa.kozow.com}
-      COOKIE_DOMAIN: ${COOKIE_DOMAIN}
-      COOKIE_SECURE: ${COOKIE_SECURE}
-      COOKIE_SAME_SITE: ${COOKIE_SAME_SITE}
+      # 도메인 설정 (프로덕션 고정값 — 하드코딩)
+      # 주의: ${BASE_URL:-기본값} 는 .env 에 BASE_URL 이 "비어있을 때만" 기본값을 쓴다.
+      # .env(개발용)에 BASE_URL=http://127.0.0.1 이 값으로 있으면 그게 그대로 들어와
+      # OAuth redirect_uri 가 127.0.0.1 이 되어 구글/카카오 로그인이 깨진다(엄격한 redirect_uri 검사).
+      # prod 전용 파일이므로 도메인/쿠키는 .env 와 무관하게 프로덕션 값으로 고정한다.
+      BASE_URL: https://laputa.kozow.com
+      FRONTEND_ORIGIN: https://laputa.kozow.com
+      COOKIE_DOMAIN: laputa.kozow.com
+      COOKIE_SECURE: "true"
+      COOKIE_SAME_SITE: lax
       
       # 메일 설정
       MAIL_HOST: ${MAIL_HOST}
