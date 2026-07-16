@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -184,6 +185,34 @@ class RecurringBillingServiceTest {
         assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.ACTIVE);
         assertThat(sub.getRetryCount()).isZero();
         verify(paymentRepository).save(any(Payment.class));
+    }
+
+    @Test
+    @DisplayName("1순위 결제수단 실패 시 다음 수단으로 폴백해 성공한다")
+    void fallsBackToSecondPaymentMethod() {
+        PaymentMethod primary = mock(PaymentMethod.class);
+        given(primary.getProviderMethodId()).willReturn("pm_primary");
+        PaymentMethod backup = mock(PaymentMethod.class);
+        given(backup.getProviderMethodId()).willReturn("pm_backup");
+        PaymentGateway.ChargeResult cr = new PaymentGateway.ChargeResult();
+        cr.providerPaymentId = "imp_backup_1";
+        cr.paidAt = LocalDateTime.now();
+
+        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
+                .willReturn(List.of(primary, backup)); // 기본 → 보조 순서
+        given(paymentGateway.chargeWithSavedMethod(anyString(), eq("pm_primary"), anyLong(), anyString(), anyString()))
+                .willThrow(new PaymentGateway.ChargeException(
+                        PaymentGateway.FailureType.SOFT_DECLINE, "LIMIT_EXCEEDED", "한도 초과"));
+        given(paymentGateway.chargeWithSavedMethod(anyString(), eq("pm_backup"), anyLong(), anyString(), anyString()))
+                .willReturn(cr);
+
+        service.retryBilling(SUB_ID, 1);
+
+        // 보조 수단으로 결제됐으므로 구독은 정상 복구되고 재시도는 예약되지 않아야 한다
+        assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.ACTIVE);
+        assertThat(sub.getRetryCount()).isZero();
+        verifyNoInteractions(billingRetryPublisher);
     }
 
     @Test

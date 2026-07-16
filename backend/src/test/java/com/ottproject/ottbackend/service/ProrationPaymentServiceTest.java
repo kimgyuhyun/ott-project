@@ -97,6 +97,17 @@ class ProrationPaymentServiceTest {
     }
 
     @Test
+    @DisplayName("무기한 구독(endAt=null)도 NPE 없이 0원 - 남은 기간을 계산할 수 없음")
+    void unlimitedSubscriptionDoesNotCrash() {
+        // findActiveEffectiveByUser 쿼리가 "s.endAt is null or s.endAt >= :now" 로
+        // 무기한 구독을 명시적으로 허용하므로 endAt=null 이 여기까지 도달할 수 있다.
+        MembershipSubscription sub = subscriptionOf(planWithMonthlyPrice(3000L), null);
+        MembershipPlan target = planWithMonthlyPrice(6000L);
+
+        assertThat(service.calculateProrationAmount(sub, target, NOW)).isZero();
+    }
+
+    @Test
     @DisplayName("다운그레이드는 음수가 아니라 0원 - 마이너스 청구(환불) 금지")
     void downgradeNeverGoesNegative() {
         MembershipSubscription sub = subscriptionOf(planWithMonthlyPrice(6000L), NOW.plusDays(15));

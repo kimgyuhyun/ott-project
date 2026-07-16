@@ -128,6 +128,43 @@ class PaymentCommandServiceTest {
     }
 
     @Test
+    @DisplayName("통화가 다르면 400 거부 - 통화 바꿔치기 방어")
+    void currencyMismatchIsRejected() {
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(pendingPayment()));
+        PaymentWebhookEventDto e = event(PaymentStatus.FAILED);
+        e.currency = "USD"; // 실제 결제는 KRW
+
+        assertThatThrownBy(() -> service.applyWebhookEvent(1L, e))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("currency mismatch");
+        verify(idempotencyKeyRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("세션ID가 다르면 400 거부 - 다른 결제건의 웹훅 오적용 방어")
+    void sessionMismatchIsRejected() {
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(pendingPayment()));
+        PaymentWebhookEventDto e = event(PaymentStatus.FAILED);
+        e.providerSessionId = "sess_other"; // 실제 결제 세션은 sess_1
+
+        assertThatThrownBy(() -> service.applyWebhookEvent(1L, e))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("session mismatch");
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 결제면 400 거부")
+    void unknownPaymentIsRejected() {
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findById(999L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.applyWebhookEvent(999L, event(PaymentStatus.FAILED)))
+                .isInstanceOf(ResponseStatusException.class);
+    }
+
+    @Test
     @DisplayName("FAILED 웹훅 - 결제는 FAILED, 활성 구독은 PAST_DUE 로 전환된다")
     void failedTransitionsPaymentAndSubscription() {
         Payment payment = pendingPayment();
