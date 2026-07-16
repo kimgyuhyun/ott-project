@@ -54,9 +54,10 @@ public class IdempotencyKey {
         if (requestType == null || requestType.trim().isEmpty()) {
             throw new IllegalArgumentException("요청 유형은 필수입니다.");
         }
-        if (response == null || response.trim().isEmpty()) {
-            throw new IllegalArgumentException("응답 데이터는 필수입니다.");
-        }
+        // response 는 검증하지 않는다: 이 엔티티에는 응답 컬럼이 없어 값이 저장되지 않고,
+        // 모든 호출처(웹훅/체크아웃/멤버십 해지)가 null 또는 "" 를 넘긴다.
+        // 과거에 필수 검증이 있어 eventId 가 달린 웹훅 처리마다 IllegalArgumentException 으로
+        // 멱등키 저장이 실패(→ PG 재전송 반복)했다.
 
         // IdempotencyKey 엔티티 생성
         IdempotencyKey idempotencyKey = new IdempotencyKey();
