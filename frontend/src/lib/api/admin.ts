@@ -38,6 +38,16 @@ export async function syncPopularAnime(limit: number = 50): Promise<BulkSyncResu
   return api.post<BulkSyncResult>(`/admin/anime/sync-popular?limit=${limit}`);
 }
 
+/**
+ * 애니메이션 데이터 TMDB 보강 (전체)
+ * POST /api/admin/anime/enhance-all
+ * - 백엔드가 @Async 라 "작업 시작"만 알리고 즉시 반환한다(진행 상황은 서버 로그).
+ * - 응답이 평문(text/plain)이라 api 헬퍼는 null 을 돌려주므로 반환값은 사용하지 않는다.
+ */
+export async function enhanceAllAnime(): Promise<void> {
+  await api.post<void>(`/admin/anime/enhance-all`);
+}
+
 // ===== 통계 / 감사 로그 =====
 // 백엔드: AdminStatsController (/api/admin/stats/**), ROLE_ADMIN 전용
 

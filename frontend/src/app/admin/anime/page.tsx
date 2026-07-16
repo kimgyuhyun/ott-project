@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import { syncAnime, syncPopularAnime } from "@/lib/api/admin";
+import { syncAnime, syncPopularAnime, enhanceAllAnime } from "@/lib/api/admin";
 import { getAnimeList } from "@/lib/api/anime";
 import type { AnimeListItem } from "@/types/anime";
 import styles from "../admin.module.css";
@@ -23,6 +23,10 @@ export default function AdminAnimePage() {
   const [bulkLimit, setBulkLimit] = useState("50");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkResult, setBulkResult] = useState<ResultState>(null);
+
+  // TMDB 보강 상태
+  const [enhanceLoading, setEnhanceLoading] = useState(false);
+  const [enhanceResult, setEnhanceResult] = useState<ResultState>(null);
 
   // 카탈로그 목록 상태
   const [items, setItems] = useState<AnimeListItem[]>([]);
@@ -86,6 +90,21 @@ export default function AdminAnimePage() {
     }
   };
 
+  const handleEnhanceAll = async () => {
+    if (!window.confirm("한국어 정보가 없는 애니를 TMDB로 보강합니다. 서버에서 백그라운드로 진행됩니다. 시작할까요?")) return;
+    setEnhanceLoading(true);
+    setEnhanceResult(null);
+    try {
+      await enhanceAllAnime();
+      // 백엔드가 @Async 라 완료가 아니라 "시작"만 응답한다. 진행/결과는 서버 로그에서 확인.
+      setEnhanceResult({ ok: true, text: "보강 작업을 시작했습니다. 진행 상황은 서버 로그를 확인하세요. (완료 후 목록 새로고침)" });
+    } catch (e) {
+      setEnhanceResult({ ok: false, text: e instanceof Error ? e.message : "보강 시작 실패" });
+    } finally {
+      setEnhanceLoading(false);
+    }
+  };
+
   return (
     <div>
       <h1 className={styles.pageTitle}>애니 카탈로그 / 동기화</h1>
@@ -135,6 +154,22 @@ export default function AdminAnimePage() {
         {bulkResult && (
           <div className={`${styles.result} ${bulkResult.ok ? styles.resultOk : styles.resultErr}`}>
             {bulkResult.text}
+          </div>
+        )}
+      </section>
+
+      {/* TMDB 보강 */}
+      <section className={styles.panel}>
+        <h2 className={styles.panelTitle}>TMDB 데이터 보강</h2>
+        <p className={styles.panelHint}>Jikan으로 수집한 데이터에 한국어 제목/줄거리 등을 TMDB에서 채웁니다. 백그라운드로 실행되며 즉시 반환됩니다.</p>
+        <div className={styles.row}>
+          <button className={styles.button} onClick={handleEnhanceAll} disabled={enhanceLoading}>
+            {enhanceLoading ? "시작 중..." : "전체 보강 시작"}
+          </button>
+        </div>
+        {enhanceResult && (
+          <div className={`${styles.result} ${enhanceResult.ok ? styles.resultOk : styles.resultErr}`}>
+            {enhanceResult.text}
           </div>
         )}
       </section>
