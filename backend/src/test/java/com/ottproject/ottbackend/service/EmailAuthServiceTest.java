@@ -52,6 +52,7 @@ class EmailAuthServiceTest {
     @Mock private UserService userService;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AuthenticationManager authenticationManager;
+    @Mock private VerificationEmailService verificationEmailService;
     @Mock private UserMapper userMapper;
 
     @InjectMocks
@@ -85,9 +86,26 @@ class EmailAuthServiceTest {
     }
 
     @Test
-    @DisplayName("가입 - 신규 이메일이면 LOCAL/USER 권한 사용자로 저장한다")
-    void registerCreatesLocalUser() {
+    @DisplayName("가입 - 이메일 인증 티켓이 없으면 400, 계정을 만들지 않는다(소유 증명 없는 가입 차단)")
+    void registerWithoutEmailVerificationIsRejected() {
         given(userService.existsByEmail("user@test.com")).willReturn(false);
+        given(verificationEmailService.isEmailVerified("user@test.com")).willReturn(false);
+
+        // 프론트 3단계를 건너뛰고 /api/auth/register 를 직접 호출한 경우.
+        // 막지 않으면 남의 이메일로 가입되고, Turnstile 봇 방어도 함께 우회된다.
+        assertThatThrownBy(() -> service.register(registerReq()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("이메일 인증이 필요합니다");
+        verify(userService, never()).saveUser(any());
+        // 실패한 가입이 티켓을 소비하면 안 된다
+        verify(verificationEmailService, never()).consumeVerification(any());
+    }
+
+    @Test
+    @DisplayName("가입 - 인증된 이메일이면 LOCAL/USER 권한 + emailVerified=true 로 저장한다")
+    void registerCreatesVerifiedLocalUser() {
+        given(userService.existsByEmail("user@test.com")).willReturn(false);
+        given(verificationEmailService.isEmailVerified("user@test.com")).willReturn(true);
         given(userService.saveUser(any(User.class))).willAnswer(inv -> inv.getArgument(0));
 
         service.register(registerReq());
@@ -103,6 +121,32 @@ class EmailAuthServiceTest {
         assertThat(saved.getRole()).isEqualTo(UserRole.USER);
         // 암호화는 UserService.saveUser 의 책임 → 여기서는 평문이 그대로 넘어가는 게 정상
         assertThat(saved.getPassword()).isEqualTo("raw-pw");
+        // createLocalUser 는 false 로 고정하므로, 인증을 거쳤다는 사실을 계정에 남겨야 한다
+        assertThat(saved.isEmailVerified()).isTrue();
+    }
+
+    @Test
+    @DisplayName("가입 - 저장에 성공하면 인증 티켓을 소비한다(인증 1회로 계정 여러 개 방지)")
+    void registerConsumesVerificationTicket() {
+        given(userService.existsByEmail("user@test.com")).willReturn(false);
+        given(verificationEmailService.isEmailVerified("user@test.com")).willReturn(true);
+        given(userService.saveUser(any(User.class))).willAnswer(inv -> inv.getArgument(0));
+
+        service.register(registerReq());
+
+        verify(verificationEmailService).consumeVerification("user@test.com");
+    }
+
+    @Test
+    @DisplayName("가입 - 저장이 실패하면 티켓을 소비하지 않는다(재시도 시 인증을 다시 받게 하면 안 된다)")
+    void registerKeepsTicketWhenSaveFails() {
+        given(userService.existsByEmail("user@test.com")).willReturn(false);
+        given(verificationEmailService.isEmailVerified("user@test.com")).willReturn(true);
+        given(userService.saveUser(any(User.class))).willThrow(new RuntimeException("db down"));
+
+        assertThatThrownBy(() -> service.register(registerReq()))
+                .isInstanceOf(RuntimeException.class);
+        verify(verificationEmailService, never()).consumeVerification(any());
     }
 
     // ===== 로그인 =====

@@ -38,6 +38,7 @@ public class EmailAuthService {
 	private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder; // 비밀번호 암호화 주입(비밀번호 변경 시 사용)
 	// SPring Security 에서 제공하는 암호화 인터페이스임
 	private final AuthenticationManager authenticationManager; // 표준 인증 위임(로컬 로그인)
+	private final VerificationEmailService verificationEmailService; // 이메일 인증 티켓 확인/소비(가입 전제조건)
 	private final com.ottproject.ottbackend.mappers.UserMapper userMapper; // 사용자 매퍼 주입
 	// User 엔티티를 UserResponseDto로 변환해줌 MapStruct로 자동 매핑 코드 생성
 	// User 엔티티에는 비밀번호 등 민감 정보가 포함되기 때문에 UserResponseDto로 바꿔서 비밀번호를 제외한 안전한 정보만 포함함
@@ -49,6 +50,13 @@ public class EmailAuthService {
 			// 상태코드와 에러메시지를 생성자에 인자로 넘겨서 ResponseStatusException 객체를 생성해서 던짐
 			// CONFLCT를 넣으면 409 상태 코드가 생성되고 의미는 리소스 충돌(이미 존재하는 리소스)임
 		}
+		// 이메일 소유 증명 요구: 인증코드 발송/검증을 거친 티켓이 있어야 가입할 수 있다.
+		// 프론트는 이메일 -> 인증코드 -> 비밀번호 3단계지만 그 순서는 브라우저 안에만 있어서,
+		// /api/auth/register 를 직접 호출하면 1·2단계가 통째로 사라진다(남의 이메일로 가입 가능).
+		// Turnstile 봇 방어도 인증코드 발송 단계에만 걸려 있어 이 검사가 봇 대량가입까지 함께 막는다.
+		if (!verificationEmailService.isEmailVerified(requestDto.getEmail())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이메일 인증이 필요합니다.");
+		}
 		User user = User.createLocalUser(  // existByEmail이 false를 반환하면 중복된게 아니라는 뜻으로 여기가 실행
 			// createLocalUser는 static 키워드가 붙은 정적 팩토리 메서드이고 객체를 생성하지않고 클래스명으로 직접 호출이 가능함
 			// 생성자로 오버로딩은 파라미터 타입/개수가 달라야하는데 회원가입할 때 필요한 파라미터는 모두 동일함 그래서 생성자 오버로딩은 사용못하고
@@ -58,10 +66,16 @@ public class EmailAuthService {
 				requestDto.getPassword(), // 요청객체에서 Password값 꺼내서 파라미터로 전달
 				requestDto.getName() // 요청객체에서 Name값 꺼내서 파라미터로 전달
 		); // User 엔티티에 정의된 정적 팩토리 메서드인 createLocalUser로 로컬유저를 생성해서 user 변수에 할당함
+		// createLocalUser 는 emailVerified 를 false 로 고정해서 만든다. 위에서 티켓을 확인했으므로
+		// 이 계정의 이메일은 실제로 인증된 것이고, 그 사실을 계정에 남긴다(프로필의 "이메일 인증됨" 표시가 이 값을 읽는다).
+		user.setEmailVerified(true);
 		User saveUser = userService.saveUser(user);
 		// userService에 saveUser 메서드에 user 객체를 태워보냄
 		// saveUser 메서드는 user 객체를 DB에 저장하고 저장된 객체를 반환함
 		// 반환된 객체를 saveuser 변수에 할당
+		// 티켓 소비는 저장 성공 뒤에 한다(저장이 실패했는데 티켓만 날리면 재시도 시 인증을 다시 받아야 한다).
+		// 하나의 인증으로 여러 계정을 만들지 못하게 한다.
+		verificationEmailService.consumeVerification(requestDto.getEmail());
 		return userMapper.toUserResponseDto(saveUser);
 		// userMapper에 toUserResponseDto 메서드에 Db에 저장한 user를태워보내면
 		// User 객체가 userResponseDto로 변환되서 반환되고 그 값을 바로 리턴해줌
