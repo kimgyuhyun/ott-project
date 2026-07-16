@@ -5,6 +5,9 @@ import { login, register, checkEmailDuplicate, sendVerificationCode, verifyCode 
 import Turnstile from "./Turnstile"; // Cloudflare Turnstile(봇/사람 확인) 위젯
 import styles from "./EmailAuthForm.module.css";
 
+// 기본 이메일 형식 검증(백엔드 검증과 동일 기준) — 형식 깨진 값이 서버까지 가서 500 나는 것을 프론트에서 먼저 차단
+const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
 type AuthMode = 'login' | 'register'; // typeScript의 타입 정의 AuthMode는 login 또는 register만 가능
 // 로그인 / 회원가입 모드드
 type RegisterStep = 'email' | 'verification' | 'password'; // typeScript의 타입 정의 RegisterStep는 email, verification, password만 가능
@@ -179,7 +182,12 @@ export default function EmailAuthForm({ onClose, onSuccess, isRegister = false }
       setError('이메일을 입력해주세요.');
       return;
     }
-    
+    if (!EMAIL_REGEX.test(email)) { // 형식이 올바르지 않으면 여기서 차단(진행 막음)
+      setError('이메일 형식이 올바르지 않습니다.');
+      setEmailChecked(false);
+      return;
+    }
+
     try { // email 값이 입력됐으면 실행
       const isDuplicate = await checkEmailDuplicate(email); // 114 라인의 이메일 중복 체크랑 똑같이 동작함
       // 여긴 수동으로 중복확인 버튼 클릭 시 실행되는 곳이고 114라인은 폼 제출시 실행되는 곳이라 중복체크가 이중으로 들어감

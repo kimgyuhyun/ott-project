@@ -240,6 +240,11 @@ public class EmailAuthController {
         // @Parameter(description = "이메일")은 Swagger 문서용 어노테이션임 APi 문서에 파라미터 설명을 표시함
         // @RequestParam이 쿼리 파라미터를 받는 어노테이션임
         // 스프링이 HTTP 요청에 URL에서 쿼리 파라미터를 추출해서 email 파라미터에 넣어줌
+        // 이메일 형식 검증: 형식이 깨진 값이 메일 발송까지 가면 주소 파싱 예외로 500(INTERNAL_ERROR)이 난다.
+        // 여기서 미리 걸러 400 + 명확한 메시지로 응답한다.
+        if (email == null || !email.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이메일 형식이 올바르지 않습니다.");
+        }
         // Turnstile(사람 확인): 인증코드 발송은 비로그인 공개 엔드포인트 + 실제 메일 발송을 유발(남용 시 메일 폭탄/평판 하락)
         // → 항상 사람 확인을 요구한다. (secret 미설정 시 verify 가 no-op 으로 통과)
         if (!turnstileVerifier.verify(turnstileToken)) {
