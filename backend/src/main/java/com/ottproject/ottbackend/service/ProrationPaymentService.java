@@ -77,8 +77,8 @@ public class ProrationPaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업그레이드만 차액 결제가 가능합니다.");
         }
 
-        // 차액 계산
-        Integer prorationAmount = calculateProrationAmount(currentSubscription, targetPlan);
+        // 차액 계산 (구독 조회에 쓴 기준 시각을 그대로 사용)
+        Integer prorationAmount = calculateProrationAmount(currentSubscription, targetPlan, now);
         
         if (prorationAmount <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "차액이 없습니다.");
@@ -237,9 +237,10 @@ public class ProrationPaymentService {
     /**
      * 차액 계산
      * - 남은 기간에 대한 차액을 계산한다.
+     * - 기준 시각(now)을 파라미터로 받는 순수 함수: 내부에서 LocalDateTime.now() 를 부르면
+     *   시간을 고정할 수 없어 결정적 테스트가 불가능하다. 테스트 접근을 위해 package-private.
      */
-    private Integer calculateProrationAmount(MembershipSubscription subscription, MembershipPlan targetPlan) {
-        LocalDateTime now = LocalDateTime.now();
+    Integer calculateProrationAmount(MembershipSubscription subscription, MembershipPlan targetPlan, LocalDateTime now) {
         LocalDateTime endAt = subscription.getEndAt();
         
         // 남은 일수 계산
