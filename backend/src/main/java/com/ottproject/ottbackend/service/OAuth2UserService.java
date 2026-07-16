@@ -356,7 +356,8 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
      * @param user 애플리케이션에서 처리한 사용자 정보
      * @return Spring Security 에서 사용할 수 있는 OAuth2User 객체
      */
-    private OAuth2User createOAuth2User(OAuth2User oAuth2User, User user) {
+    // 테스트에서 직접 검증할 수 있도록 package-private (loadUser 전체를 태우려면 실제 OAuth2 요청이 필요함)
+    OAuth2User createOAuth2User(OAuth2User oAuth2User, User user) {
         // 기존 OAuth2User 의 attributes 에 사용자 정보 추가
         // 소셜 로그인 제공자로부터 받은 정보 + 애플리케이션에서 추가한 정보를 모두 포함
         Map<String, Object> attributes = new HashMap<>(oAuth2User.getAttributes()); // 원본 attributes 복사
