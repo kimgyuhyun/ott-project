@@ -35,10 +35,12 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
       - name: Build backend (Gradle)
+        # 테스트를 함께 실행한다(-x test 제거). 핵심 로직 회귀가 빌드 시점에 잡히도록 하는 것이 목적이므로
+        # 테스트가 깨지면 이미지 push/배포로 진행되지 않아야 한다.
         run: |
           cd backend
           chmod +x gradlew || true
-          ./gradlew clean build -x test
+          ./gradlew clean build
       - name: Compute lowercase image ref
         id: img
         run: echo "ref=${REGISTRY}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/ott-backend" >> "$GITHUB_OUTPUT"
