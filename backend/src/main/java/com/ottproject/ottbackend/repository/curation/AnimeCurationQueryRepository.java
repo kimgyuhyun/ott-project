@@ -88,6 +88,10 @@ public class AnimeCurationQueryRepository {
         if (request.getIsExclusive() != null) update.set(anime.isExclusive, request.getIsExclusive());
         if (request.getIsPopular() != null) update.set(anime.isPopular, request.getIsPopular());
         if (request.getIsNew() != null) update.set(anime.isNew, request.getIsNew());
+        if (request.getIsCompleted() != null) update.set(anime.isCompleted, request.getIsCompleted());
+        if (request.getIsSubtitle() != null) update.set(anime.isSubtitle, request.getIsSubtitle());
+        if (request.getIsDub() != null) update.set(anime.isDub, request.getIsDub());
+        if (request.getIsSimulcast() != null) update.set(anime.isSimulcast, request.getIsSimulcast());
 
         // Auditing 이 개입하지 않으므로 수정 시각을 직접 남긴다.
         update.set(anime.updatedAt, LocalDateTime.now());

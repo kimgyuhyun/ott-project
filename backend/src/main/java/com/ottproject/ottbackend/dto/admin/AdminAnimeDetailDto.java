@@ -10,37 +10,34 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 
 /**
- * 관리자 큐레이션 목록/상세 항목
+ * 관리자 큐레이션 단건 상세 (수정 폼용)
  *
- * 큰 흐름
- * - 운영자가 큐레이션 판단에 필요한 필드만 노출한다(사용자향 AnimeListDto 와 목적이 다르다).
- * - 사용자 목록에는 보이지 않는 값(isActive, curated, malId)을 함께 보여줘야
- *   "왜 이 작품이 사용자에게 안 보이는가"를 이 화면에서 설명할 수 있다.
- *
- * 줄거리(synopsis/fullSynopsis)는 담지 않는다 — fullSynopsis 가 TEXT 라 목록 응답이 본문 덩어리가 된다.
- * 수정 폼은 AdminAnimeDetailDto(GET /{animeId})로 전체를 따로 받는다.
+ * 목록(AdminAnimeListItemDto)과 나누는 이유
+ * - fullSynopsis 는 TEXT 라 목록 20건에 실어 보내면 응답이 본문 덩어리가 된다.
+ *   목록은 판단에 필요한 것만, 상세는 수정 가능한 전부를 담는다.
  *
  * 필드 개요
- * - id/title/titleEn/titleJp/posterUrl: 식별과 수정 대상
- * - status/year: 검색 조건과 짝을 이루는 메타
- * - isActive + 배지 7종: 운영자가 켜고 끄는 값(수집 시 휴리스틱으로 찍힌 값이라 목록에서 바로 보여야 한다)
- * - curated/syncOrigin: 이 행의 내력(운영자가 손댔는지, 어디서 들어왔는지)
- * - updatedAt: 마지막 변경 시각
+ * - 수정 가능: title/titleEn/titleJp, synopsis/fullSynopsis, posterUrl/backdropUrl, 배지 7종, isActive
+ * - 읽기 전용 맥락: id/malId/status/year/curated/syncOrigin/updatedAt
  */
 @Getter
 @Builder
 @AllArgsConstructor
-public class AdminAnimeListItemDto {
+public class AdminAnimeDetailDto {
 
     private final Long id;
     private final Long malId;
+
+    // 콘텐츠 — TMDB 보강이 쓰는 필드와 겹친다(수정 시 curated 가 켜진다)
     private final String title;
     private final String titleEn;
     private final String titleJp;
+    private final String synopsis;
+    private final String fullSynopsis;
     private final String posterUrl;
-    private final AnimeStatus status;
-    private final Integer year;
-    private final Boolean isActive;
+    private final String backdropUrl;
+
+    // 운영자 판단 배지 — 수집 시 하드코딩/휴리스틱으로 정해진 값이라 사람이 바로잡아야 한다
     private final Boolean isExclusive;
     private final Boolean isPopular;
     private final Boolean isNew;
@@ -48,25 +45,27 @@ public class AdminAnimeListItemDto {
     private final Boolean isSubtitle;
     private final Boolean isDub;
     private final Boolean isSimulcast;
+
+    private final Boolean isActive;
+
+    // 읽기 전용 맥락
+    private final AnimeStatus status;
+    private final Integer year;
     private final Boolean curated;
     private final SyncOrigin syncOrigin;
     private final LocalDateTime updatedAt;
 
-    /**
-     * 엔티티 → DTO 변환.
-     * syncOrigin 은 저장된 값이 아니라 malId 유무에서 파생한다(전용 컬럼이 없다).
-     */
-    public static AdminAnimeListItemDto from(Anime anime) {
-        return AdminAnimeListItemDto.builder()
+    public static AdminAnimeDetailDto from(Anime anime) {
+        return AdminAnimeDetailDto.builder()
                 .id(anime.getId())
                 .malId(anime.getMalId())
                 .title(anime.getTitle())
                 .titleEn(anime.getTitleEn())
                 .titleJp(anime.getTitleJp())
+                .synopsis(anime.getSynopsis())
+                .fullSynopsis(anime.getFullSynopsis())
                 .posterUrl(anime.getPosterUrl())
-                .status(anime.getStatus())
-                .year(anime.getYear())
-                .isActive(anime.getIsActive())
+                .backdropUrl(anime.getBackdropUrl())
                 .isExclusive(anime.getIsExclusive())
                 .isPopular(anime.getIsPopular())
                 .isNew(anime.getIsNew())
@@ -74,7 +73,11 @@ public class AdminAnimeListItemDto {
                 .isSubtitle(anime.getIsSubtitle())
                 .isDub(anime.getIsDub())
                 .isSimulcast(anime.getIsSimulcast())
+                .isActive(anime.getIsActive())
+                .status(anime.getStatus())
+                .year(anime.getYear())
                 .curated(anime.getCurated())
+                // 전용 컬럼이 아니라 malId 유무에서 파생한다(SyncOrigin 참고)
                 .syncOrigin(anime.getMalId() != null ? SyncOrigin.JIKAN : SyncOrigin.MANUAL)
                 .updatedAt(anime.getUpdatedAt())
                 .build();

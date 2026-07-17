@@ -125,8 +125,9 @@ export default function AdminAnimePage() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  // 편집 모달 대상. null 이면 닫힘.
-  const [editing, setEditing] = useState<AdminAnimeItem | null>(null);
+  // 편집 모달 대상 ID. null 이면 닫힘.
+  // 항목 객체가 아니라 ID 만 들고 모달이 상세를 따로 받는다 — 줄거리는 목록 응답에 없다.
+  const [editing, setEditing] = useState<number | null>(null);
 
   const handleEditSaved = () => {
     setEditing(null);
@@ -469,10 +470,14 @@ export default function AdminAnimePage() {
                       {it.isExclusive && <span className={`${styles.badge} ${styles.badgeOn}`}>독점</span>}
                       {it.isPopular && <span className={`${styles.badge} ${styles.badgeOn}`}>인기</span>}
                       {it.isNew && <span className={`${styles.badge} ${styles.badgeOn}`}>신작</span>}
+                      {it.isCompleted && <span className={`${styles.badge} ${styles.badgeOn}`}>완결</span>}
+                      {it.isSubtitle && <span className={`${styles.badge} ${styles.badgeOn}`}>자막</span>}
+                      {it.isDub && <span className={`${styles.badge} ${styles.badgeOn}`}>더빙</span>}
+                      {it.isSimulcast && <span className={`${styles.badge} ${styles.badgeOn}`}>동시</span>}
                     </td>
                     <td style={{ color: "#9aa0aa" }}>{it.syncOrigin === "JIKAN" ? "Jikan" : "수동"}</td>
                     <td>
-                      <button className={styles.pagerBtn} onClick={() => setEditing(it)}>수정</button>
+                      <button className={styles.pagerBtn} onClick={() => setEditing(it.id)}>수정</button>
                     </td>
                   </tr>
                 ))
@@ -501,9 +506,9 @@ export default function AdminAnimePage() {
         </div>
       </section>
 
-      {editing && (
+      {editing !== null && (
         <AnimeCurationEditModal
-          anime={editing}
+          animeId={editing}
           onClose={() => setEditing(null)}
           onSaved={handleEditSaved}
         />

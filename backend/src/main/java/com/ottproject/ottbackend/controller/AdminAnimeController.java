@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.dto.PagedResponse;
+import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
 import com.ottproject.ottbackend.dto.admin.AdminAnimeListItemDto;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationPreviewResponse;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
@@ -80,11 +81,11 @@ public class AdminAnimeController {
     /**
      * 단건 조회 (수정 폼용)
      */
-    @Operation(summary = "애니 단건 조회", description = "큐레이션 수정 폼에 채울 현재 값을 조회합니다.")
+    @Operation(summary = "애니 단건 조회", description = "큐레이션 수정 폼에 채울 현재 값을 조회합니다(줄거리 포함).")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @ApiResponse(responseCode = "404", description = "애니메이션 없음")
     @GetMapping("/{animeId}")
-    public ResponseEntity<AdminAnimeListItemDto> getForCuration(@PathVariable Long animeId) {
+    public ResponseEntity<AdminAnimeDetailDto> getForCuration(@PathVariable Long animeId) {
         return ResponseEntity.ok(animeCurationService.get(animeId));
     }
 
@@ -94,11 +95,12 @@ public class AdminAnimeController {
      * 부분 수정이다 — 요청에 없는(null) 필드는 그대로 둔다.
      */
     @Operation(summary = "애니 단건 큐레이션 수정",
-            description = "제목/포스터/배지/노출 여부를 수정합니다. 전달하지 않은 필드는 변경하지 않습니다.")
+            description = "제목/줄거리/이미지/배지/노출 여부를 수정합니다. 전달하지 않은 필드는 변경하지 않습니다. "
+                    + "콘텐츠(제목/줄거리/이미지)가 실제로 바뀌면 curated 가 켜져 TMDB 자동 보강에서 제외됩니다.")
     @ApiResponse(responseCode = "200", description = "수정 성공")
     @ApiResponse(responseCode = "404", description = "애니메이션 없음")
     @PatchMapping("/{animeId}")
-    public ResponseEntity<AdminAnimeListItemDto> updateCuration(
+    public ResponseEntity<AdminAnimeDetailDto> updateCuration(
             @PathVariable Long animeId,
             @RequestBody AnimeCurationUpdateRequest request) {
 

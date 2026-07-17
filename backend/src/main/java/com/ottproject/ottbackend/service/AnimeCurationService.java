@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.PagedResponse;
+import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
 import com.ottproject.ottbackend.dto.admin.AdminAnimeListItemDto;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationPreviewResponse;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
@@ -65,10 +66,11 @@ public class AnimeCurationService {
 
     /**
      * 단건 조회(수정 폼용).
+     * 목록보다 넓은 상세 DTO 를 준다 — 줄거리처럼 목록에 싣기 무거운 값이 수정 대상이기 때문이다.
      */
     @Transactional(readOnly = true)
-    public AdminAnimeListItemDto get(Long animeId) {
-        return AdminAnimeListItemDto.from(loadOrThrow(animeId));
+    public AdminAnimeDetailDto get(Long animeId) {
+        return AdminAnimeDetailDto.from(loadOrThrow(animeId));
     }
 
     /**
@@ -83,30 +85,38 @@ public class AnimeCurationService {
      *
      * @return 수정 결과
      */
-    public AdminAnimeListItemDto update(Long animeId, AnimeCurationUpdateRequest request) {
+    public AdminAnimeDetailDto update(Long animeId, AnimeCurationUpdateRequest request) {
         Anime anime = loadOrThrow(animeId);
 
-        // 콘텐츠 필드: 값이 실제로 달라질 때만 반영하고, 그 경우에만 curated 를 켠다.
+        // 콘텐츠 필드: AnimeEnhancementService 가 덮어쓰는 필드와 정확히 같은 집합이다.
+        // 값이 실제로 달라질 때만 반영하고, 그 경우에만 curated 를 켠다.
         boolean contentChanged = false;
         contentChanged |= applyIfChanged(request.getTitle(), anime.getTitle(), anime::setTitle);
         contentChanged |= applyIfChanged(request.getTitleEn(), anime.getTitleEn(), anime::setTitleEn);
         contentChanged |= applyIfChanged(request.getTitleJp(), anime.getTitleJp(), anime::setTitleJp);
+        contentChanged |= applyIfChanged(request.getSynopsis(), anime.getSynopsis(), anime::setSynopsis);
+        contentChanged |= applyIfChanged(request.getFullSynopsis(), anime.getFullSynopsis(), anime::setFullSynopsis);
         contentChanged |= applyIfChanged(request.getPosterUrl(), anime.getPosterUrl(), anime::setPosterUrl);
+        contentChanged |= applyIfChanged(request.getBackdropUrl(), anime.getBackdropUrl(), anime::setBackdropUrl);
 
         // 배지/노출 여부: 보강이 건드리지 않는 값이라 curated 와 무관하다.
         if (request.getIsExclusive() != null) anime.setIsExclusive(request.getIsExclusive());
         if (request.getIsPopular() != null) anime.setIsPopular(request.getIsPopular());
         if (request.getIsNew() != null) anime.setIsNew(request.getIsNew());
+        if (request.getIsCompleted() != null) anime.setIsCompleted(request.getIsCompleted());
+        if (request.getIsSubtitle() != null) anime.setIsSubtitle(request.getIsSubtitle());
+        if (request.getIsDub() != null) anime.setIsDub(request.getIsDub());
+        if (request.getIsSimulcast() != null) anime.setIsSimulcast(request.getIsSimulcast());
         if (request.getIsActive() != null) anime.setIsActive(request.getIsActive());
 
         // 운영자가 콘텐츠를 실제로 고쳤을 때만 보강 제외 대상으로 표시한다.
-        // 배지만 토글했다고 켜면 그 작품의 제목 보강이 영구히 막혀버린다.
+        // 배지만 토글했다고 켜면 그 작품의 콘텐츠 보강이 영구히 막혀버린다.
         if (contentChanged) {
             anime.setCurated(Boolean.TRUE);
             log.info("애니 큐레이션으로 표시: ID {} - 이후 TMDB 자동 보강 제외", animeId);
         }
 
-        return AdminAnimeListItemDto.from(anime);
+        return AdminAnimeDetailDto.from(anime);
     }
 
     /**

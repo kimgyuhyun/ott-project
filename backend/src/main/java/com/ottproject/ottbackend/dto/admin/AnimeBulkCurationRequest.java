@@ -12,9 +12,12 @@ import lombok.Setter;
  * - 검색 조건에 걸린 작품 전체에 같은 변경을 적용한다(예: 특정 연도 일괄 비활성화, 배지 일괄 해제).
  * - 제목/포스터는 일부러 뺐다. 여러 작품을 같은 제목으로 만드는 건 의미가 없다.
  *
+ * 콘텐츠(제목/줄거리/이미지)는 대상이 아니다. 그래서 벌크는 curated 를 건드리지 않는다 —
+ * 보강이 덮어쓰는 필드를 손대지 않으므로 보강에서 제외할 이유가 없다.
+ *
  * 필드 개요
  * - condition: 대상 선정 조건. 비어 있으면 전체가 대상이 되므로 서비스가 거부한다
- * - isActive/isExclusive/isPopular/isNew: 적용할 값(null = 유지)
+ * - 배지 7종 + isActive: 적용할 값(null = 유지)
  * - expectedCount: 미리보기에서 확인한 건수. 실제와 다르면 서비스가 409 로 중단한다
  */
 @Getter
@@ -29,6 +32,10 @@ public class AnimeBulkCurationRequest {
     private Boolean isExclusive;
     private Boolean isPopular;
     private Boolean isNew;
+    private Boolean isCompleted;
+    private Boolean isSubtitle;
+    private Boolean isDub;
+    private Boolean isSimulcast;
 
     /**
      * 미리보기 시점에 운영자가 본 대상 건수.
@@ -43,6 +50,7 @@ public class AnimeBulkCurationRequest {
      * 아무 값도 없으면 조건에 걸린 행을 훑기만 하고 아무것도 안 바꾸는 요청이라 거부한다.
      */
     public boolean hasAnyChange() {
-        return isActive != null || isExclusive != null || isPopular != null || isNew != null;
+        return isActive != null || isExclusive != null || isPopular != null || isNew != null
+                || isCompleted != null || isSubtitle != null || isDub != null || isSimulcast != null;
     }
 }

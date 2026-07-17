@@ -38,6 +38,10 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
   const [isExclusive, setIsExclusive] = useState<TriState>("");
   const [isPopular, setIsPopular] = useState<TriState>("");
   const [isNew, setIsNew] = useState<TriState>("");
+  const [isCompleted, setIsCompleted] = useState<TriState>("");
+  const [isSubtitle, setIsSubtitle] = useState<TriState>("");
+  const [isDub, setIsDub] = useState<TriState>("");
+  const [isSimulcast, setIsSimulcast] = useState<TriState>("");
 
   const [preview, setPreview] = useState<AnimeBulkCurationPreview | null>(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +53,10 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
     if (isExclusive) changes.isExclusive = isExclusive === "true";
     if (isPopular) changes.isPopular = isPopular === "true";
     if (isNew) changes.isNew = isNew === "true";
+    if (isCompleted) changes.isCompleted = isCompleted === "true";
+    if (isSubtitle) changes.isSubtitle = isSubtitle === "true";
+    if (isDub) changes.isDub = isDub === "true";
+    if (isSimulcast) changes.isSimulcast = isSimulcast === "true";
     return changes;
   };
 
@@ -97,6 +105,10 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
     if (isExclusive) labels.push(isExclusive === "true" ? "독점 켜기" : "독점 끄기");
     if (isPopular) labels.push(isPopular === "true" ? "인기 켜기" : "인기 끄기");
     if (isNew) labels.push(isNew === "true" ? "신작 켜기" : "신작 끄기");
+    if (isCompleted) labels.push(isCompleted === "true" ? "완결 켜기" : "완결 끄기");
+    if (isSubtitle) labels.push(isSubtitle === "true" ? "자막 켜기" : "자막 끄기");
+    if (isDub) labels.push(isDub === "true" ? "더빙 켜기" : "더빙 끄기");
+    if (isSimulcast) labels.push(isSimulcast === "true" ? "동시방영 켜기" : "동시방영 끄기");
     return labels.join(", ");
   };
 
@@ -130,6 +142,10 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
         {renderSelect("독점", isExclusive, setIsExclusive, "켜기", "끄기")}
         {renderSelect("인기", isPopular, setIsPopular, "켜기", "끄기")}
         {renderSelect("신작", isNew, setIsNew, "켜기", "끄기")}
+        {renderSelect("완결", isCompleted, setIsCompleted, "켜기", "끄기")}
+        {renderSelect("자막", isSubtitle, setIsSubtitle, "켜기", "끄기")}
+        {renderSelect("더빙", isDub, setIsDub, "켜기", "끄기")}
+        {renderSelect("동시방영", isSimulcast, setIsSimulcast, "켜기", "끄기")}
 
         {error && <div className={`${styles.result} ${styles.resultErr}`}>{error}</div>}
 

@@ -61,7 +61,9 @@ export async function enhanceAllAnime(): Promise<void> {
 // 유입 경로 (enum SyncOrigin) — 전용 컬럼이 아니라 malId 유무에서 파생된다
 export type SyncOrigin = "JIKAN" | "MANUAL";
 
-// 큐레이션 목록/상세 항목 (AdminAnimeListItemDto)
+// 큐레이션 목록 항목 (AdminAnimeListItemDto)
+// 줄거리는 없다 — fullSynopsis 가 TEXT 라 목록에 실으면 응답이 본문 덩어리가 된다.
+// 수정 폼은 getAnimeForCuration 으로 상세를 따로 받는다.
 export interface AdminAnimeItem {
   id: number;
   malId: number | null;
@@ -75,9 +77,20 @@ export interface AdminAnimeItem {
   isExclusive: boolean;
   isPopular: boolean;
   isNew: boolean;
+  isCompleted: boolean;
+  isSubtitle: boolean;
+  isDub: boolean;
+  isSimulcast: boolean;
   curated: boolean;
   syncOrigin: SyncOrigin;
   updatedAt: string;
+}
+
+// 큐레이션 단건 상세 (AdminAnimeDetailDto) — 수정 폼이 채워야 하는 값 전부
+export interface AdminAnimeDetail extends AdminAnimeItem {
+  synopsis: string | null;
+  fullSynopsis: string | null;
+  backdropUrl: string | null;
 }
 
 // 검색 조건 (AnimeCurationSearchCondition) — 모든 필드가 선택이며 자유 조합된다
@@ -96,13 +109,22 @@ export interface AnimeCurationSearchCondition {
 // 단건 수정 요청 (AnimeCurationUpdateRequest)
 // 전달하지 않은 필드는 변경되지 않는다(부분 수정). 그래서 false 는 "끄기"라는 실제 값이다.
 export interface AnimeCurationUpdateRequest {
+  // 콘텐츠 — TMDB 보강이 덮어쓰는 필드와 같은 집합. 실제로 바뀌면 백엔드가 curated 를 켠다.
   title?: string;
   titleEn?: string;
   titleJp?: string;
+  synopsis?: string;
+  fullSynopsis?: string;
   posterUrl?: string;
+  backdropUrl?: string;
+  // 배지 — 수집 시 하드코딩/휴리스틱으로 찍힌 값이라 사람이 바로잡는다(isDub 은 평점으로 추측된다)
   isExclusive?: boolean;
   isPopular?: boolean;
   isNew?: boolean;
+  isCompleted?: boolean;
+  isSubtitle?: boolean;
+  isDub?: boolean;
+  isSimulcast?: boolean;
   isActive?: boolean;
 }
 
@@ -120,6 +142,10 @@ export interface AnimeBulkCurationRequest {
   isExclusive?: boolean;
   isPopular?: boolean;
   isNew?: boolean;
+  isCompleted?: boolean;
+  isSubtitle?: boolean;
+  isDub?: boolean;
+  isSimulcast?: boolean;
   expectedCount: number;
 }
 
@@ -162,21 +188,23 @@ export async function searchAnimeForCuration(
 /**
  * 큐레이션 단건 조회 (수정 폼용)
  * GET /api/admin/anime/{animeId}
+ * - 목록에 없는 줄거리/배경이미지까지 준다. 수정 폼은 목록 항목이 아니라 이걸로 채워야 한다.
  */
-export async function getAnimeForCuration(animeId: number): Promise<AdminAnimeItem> {
-  return api.get<AdminAnimeItem>(`/admin/anime/${animeId}`);
+export async function getAnimeForCuration(animeId: number): Promise<AdminAnimeDetail> {
+  return api.get<AdminAnimeDetail>(`/admin/anime/${animeId}`);
 }
 
 /**
  * 큐레이션 단건 수정
  * PATCH /api/admin/anime/{animeId}
- * - 제목/포스터를 실제로 바꾸면 백엔드가 curated 를 켠다(이후 TMDB 자동 보강이 그 작품을 건너뛴다).
+ * - 콘텐츠(제목/줄거리/이미지)를 실제로 바꾸면 백엔드가 curated 를 켠다
+ *   → 이후 TMDB 자동 보강이 그 작품을 통째로 건너뛴다. 그래서 보강이 채우던 값도 여기서 관리해야 한다.
  */
 export async function updateAnimeCuration(
   animeId: number,
   request: AnimeCurationUpdateRequest,
-): Promise<AdminAnimeItem> {
-  return api.patch<AdminAnimeItem>(`/admin/anime/${animeId}`, request);
+): Promise<AdminAnimeDetail> {
+  return api.patch<AdminAnimeDetail>(`/admin/anime/${animeId}`, request);
 }
 
 /**
