@@ -207,6 +207,81 @@
   color: #ff9b9b;
 }
 
+/* 큐레이션 검색 필터 */
+.filterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filterLabel {
+  color: #9aa0aa;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.select {
+  background: #0e0f13;
+  border: 1px solid #2c2f38;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #e8e9ec;
+  font-size: 14px;
+  width: 100%;
+}
+
+.select:focus {
+  outline: none;
+  border-color: #816bff;
+}
+
+/* 필터 그리드 안에서는 입력칸이 칸을 꽉 채운다(.input 의 고정폭 200px 무시) */
+.filterField .input {
+  width: 100%;
+}
+
+/* 목록의 상태 배지 */
+.badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+.badgeOn {
+  background: rgba(129, 107, 255, 0.16);
+  border: 1px solid rgba(129, 107, 255, 0.45);
+  color: #b3a4ff;
+}
+
+/* 비활성 작품 — 사용자에게 노출되지 않는다는 뜻이라 눈에 띄어야 한다 */
+.badgeOff {
+  background: rgba(230, 80, 80, 0.12);
+  border: 1px solid rgba(230, 80, 80, 0.4);
+  color: #ff9b9b;
+}
+
+.badgeCurated {
+  background: rgba(70, 200, 120, 0.12);
+  border: 1px solid rgba(70, 200, 120, 0.4);
+  color: #6fe0a0;
+}
+
+/* 비활성 행은 목록에서 흐리게 — 노출 중인 작품과 한눈에 구분 */
+.rowInactive td {
+  opacity: 0.55;
+}
+
 /* 카탈로그 테이블 */
 .tableWrap {
   overflow-x: auto;
