@@ -3,6 +3,7 @@ package com.ottproject.ottbackend.controller;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.admin.AdminAnimeListItemDto;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
+import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
 import com.ottproject.ottbackend.service.AnimeCurationService;
 import com.ottproject.ottbackend.service.AnimeEnhancementService;
 import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
@@ -33,6 +34,8 @@ import org.springframework.web.bind.annotation.*;
  *
  * 엔드포인트 개요
  * - GET /search: 큐레이션 대상 동적 검색
+ * - GET /{animeId}: 단건 조회(수정 폼용)
+ * - PATCH /{animeId}: 단건 큐레이션 수정
  * - POST /sync/{malId}: 단일 애니메이션 동기화
  * - POST /sync-popular: 인기 애니메이션 일괄 동기화
  * - POST /enhance-all: 전체 TMDB 보강(비동기)
@@ -68,6 +71,34 @@ public class AdminAnimeController {
             @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(animeCurationService.search(condition, page, size));
+    }
+
+    /**
+     * 단건 조회 (수정 폼용)
+     */
+    @Operation(summary = "애니 단건 조회", description = "큐레이션 수정 폼에 채울 현재 값을 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "애니메이션 없음")
+    @GetMapping("/{animeId}")
+    public ResponseEntity<AdminAnimeListItemDto> getForCuration(@PathVariable Long animeId) {
+        return ResponseEntity.ok(animeCurationService.get(animeId));
+    }
+
+    /**
+     * 단건 큐레이션 수정
+     *
+     * 부분 수정이다 — 요청에 없는(null) 필드는 그대로 둔다.
+     */
+    @Operation(summary = "애니 단건 큐레이션 수정",
+            description = "제목/포스터/배지/노출 여부를 수정합니다. 전달하지 않은 필드는 변경하지 않습니다.")
+    @ApiResponse(responseCode = "200", description = "수정 성공")
+    @ApiResponse(responseCode = "404", description = "애니메이션 없음")
+    @PatchMapping("/{animeId}")
+    public ResponseEntity<AdminAnimeListItemDto> updateCuration(
+            @PathVariable Long animeId,
+            @RequestBody AnimeCurationUpdateRequest request) {
+
+        return ResponseEntity.ok(animeCurationService.update(animeId, request));
     }
 
     // ===== Jikan 동기화 =====
