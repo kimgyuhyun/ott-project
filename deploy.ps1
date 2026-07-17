@@ -34,4 +34,12 @@ Write-Host '=== VERIFY frontend egress is blocked (expected: BLOCKED) ==='
 $egress = docker exec ott-frontend node -e "const s=require('net').connect({host:'1.1.1.1',port:443,timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
 if ("$egress" -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend egress is NOT blocked' }
 Write-Host "frontend egress: $egress"
+
+# Security invariant (2026-07-18 network segmentation): frontend must NOT reach
+# the data tier (postgres/redis live on the app-only 'data' network). If this is
+# REACHABLE the segmentation regressed and a compromised frontend could pivot to the DB.
+Write-Host '=== VERIFY frontend cannot reach data tier (expected: BLOCKED) ==='
+$lateral = docker exec ott-frontend node -e "const s=require('net').connect({host:'ott-postgres',port:5432,timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
+if ("$lateral" -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend can reach postgres (data tier not isolated)' }
+Write-Host "frontend -> postgres: $lateral"
 Write-Host '=== DEPLOY OK ==='

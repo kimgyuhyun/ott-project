@@ -2,7 +2,8 @@
 # pgAdmin GUI (opt-in) — egress 락(netlock)을 유지하면서 GUI로 DB 접근
 # ----------------------------------------------------------------------------
 # 설계:
-#   - pgAdmin을 default(internal) 네트워크에 붙여 ott-postgres:5432 로 직접 도달.
+#   - pgAdmin을 data(데이터 계층) 네트워크에 붙여 ott-postgres:5432 로 직접 도달.
+#     (2026-07-18 내부망 분리로 postgres는 default가 아닌 data망에 있음)
 #   - internal 네트워크 컨테이너는 호스트로 포트 publish가 불가하므로,
 #     nginx와 동일한 패턴으로 별도 bridge(pgadmin-egress)에도 연결해 포트를 연다.
 #   - 호스트 노출은 127.0.0.1(루프백)에만 → 외부에서는 접근 불가.
@@ -36,7 +37,7 @@ services:
       - pgadmin_data:/var/lib/pgadmin
       - ./pgadmin/servers.json:/pgadmin4/servers.json:ro   # postgres 연결 사전 등록
     networks:
-      - default          # internal: ott-postgres 도달용
+      - data             # 데이터 계층: ott-postgres 도달용 (netlock 배포 시 internal)
       - pgadmin-egress   # 호스트 포트 publish용
     depends_on:
       - postgres

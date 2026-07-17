@@ -10,8 +10,15 @@ services:
       SPRING_PROFILES_ACTIVE: prod
       # 프로덕션 데이터베이스 연결 정보 (실제 환경에 맞게 수정 필요)
       SPRING_DATASOURCE_URL: jdbc:postgresql://ott-postgres:5432/ott_project_db
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}  # 환경변수 사용 권장
+      # [SECURITY 2026-07-18] 앱 런타임 커넥션은 최소권한 계정(ott_app)으로 낮춘다.
+      # DB_APP_USERNAME/DB_APP_PASSWORD 미설정 시 root+DB_PASSWORD 로 폴백(현재 동작 유지).
+      SPRING_DATASOURCE_USERNAME: ${DB_APP_USERNAME:-root}
+      SPRING_DATASOURCE_PASSWORD: ${DB_APP_PASSWORD:-${DB_PASSWORD}}
+      # flyway 마이그레이션(DDL)은 계속 권한 계정 root 로 실행한다. ott_app 에는 DDL 권한을
+      # 주지 않으므로, url 을 명시해 flyway 가 런타임과 분리된 별도 datasource(root)로 붙게 강제한다.
+      SPRING_FLYWAY_URL: jdbc:postgresql://ott-postgres:5432/ott_project_db
+      SPRING_FLYWAY_USER: root
+      SPRING_FLYWAY_PASSWORD: ${DB_PASSWORD}
       # JPA 설정 (프로덕션용)
       SPRING_JPA_HIBERNATE_DDL_AUTO: validate
       # Redis 설정
@@ -97,6 +104,15 @@ services:
       - /app/.next/cache:size=256m,mode=1777
     mem_limit: 1g
     cpus: 1.5
+
+  redis: # Redis 캐시 서비스
+    env_file:
+      - .env  # REDIS_PASSWORD 주입
+    # [SECURITY 2026-07-18] requirepass 인증. base 의 command 는 배열이라 오버라이드가
+    # 통째로 대체하므로 기존 --save ""/--appendonly no 플래그를 함께 유지한다.
+    # ${REDIS_PASSWORD:-} 는 .env 에 값이 있으면 인증 강제, 비어있으면 --requirepass ""
+    # 로 인증 비활성(기존 동작 보존). Spring 은 application-prod.yml 의 REDIS_PASSWORD 로 접속.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--requirepass", "${REDIS_PASSWORD:-}"]
 
   postgres: # PostgreSQL 데이터베이스 서비스
     environment:

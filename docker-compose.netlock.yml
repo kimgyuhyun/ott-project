@@ -7,9 +7,10 @@
 #       나가야 동작한다 → 프론트엔드의 아웃바운드를 끊으면 침해돼도 무력화된다.
 #
 # 설계:
-#   - default 네트워크를 internal(인터넷 불가, 컨테이너 간 통신만)로 전환
+#   - default(웹)·data(데이터) 네트워크를 internal(인터넷 불가, 컨테이너 간 통신만)로 전환
 #   - 인터넷이 꼭 필요한 backend(app: OAuth/메일/결제/TMDB)만 별도 egress 브리지에 연결
-#   - frontend/postgres/redis/nginx는 default(internal)에만 존재 → 인터넷 egress 없음
+#   - frontend/nginx는 default에만, postgres/redis/kafka/rabbitmq는 data에만 존재 → 인터넷 egress 없음
+#     (2026-07-18 횡이동 차단: frontend가 뚫려도 데이터 계층(data망)에 도달 불가)
 #   - 공개 진입은 nginx의 published 포트(80/443)뿐 (published 포트는 internal과 무관하게 동작)
 #
 # 적용(배포):
@@ -27,7 +28,8 @@ services:
     image: ${APP_IMAGE:-ott-backend:clean}
     pull_policy: ${APP_PULL_POLICY:-never}
     networks:
-      - default                         # 내부: postgres/redis/frontend/nginx와 통신
+      - default                         # 웹 계층: frontend/nginx와 통신
+      - data                            # 데이터 계층: postgres/redis/kafka/rabbitmq (app 전용)
       - egress                          # 외부: OAuth/메일/결제/TMDB 아웃바운드(백엔드만 허용)
 
   frontend:                             # Next.js 프론트엔드 (이번 감염 대상)
@@ -48,5 +50,8 @@ services:
 networks:
   default:
     internal: true                      # 인터넷 차단(컨테이너 상호 통신은 유지)
+  data:
+    internal: true                      # [SECURITY 2026-07-18] 데이터 계층도 인터넷 차단
+                                        # (base에서 일반 bridge로 두면 netlock 배포 시 DB/브로커가 egress를 되찾는 회귀 발생)
   egress:
     driver: bridge                      # 인터넷 가능(backend 전용 아웃바운드 경로)

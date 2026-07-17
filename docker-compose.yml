@@ -14,7 +14,7 @@ services:                         # 서비스 정의 시작
     volumes:                      # 데이터 영속성 볼륨
       - postgres_data:/var/lib/postgresql/data  # PostgreSQL 데이터 저장 경로
     networks:
-      - default
+      - data                      # [SECURITY 2026-07-18] 데이터 계층 전용망 — frontend/nginx에서 도달 불가
 
   redis: # Redis 캐시 서비스
     image: redis:7-alpine
@@ -24,7 +24,7 @@ services:                         # 서비스 정의 시작
       - "127.0.0.1:6379:6379"
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     networks:
-      - default
+      - data                      # [SECURITY 2026-07-18] 데이터 계층 전용망
 
   kafka: # Kafka 브로커(KRaft 단일 노드) - 결제 부수효과 이벤트 스트림
     image: apache/kafka:3.7.0 # 공식 ASF 이미지(KRaft 내장, 스토리지 자동 포맷)
@@ -52,7 +52,7 @@ services:                         # 서비스 정의 시작
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
-      - default
+      - data                      # [SECURITY 2026-07-18] 데이터 계층 전용망
 
   rabbitmq: # RabbitMQ 브로커 - 정기결제 실패 재시도 지연 큐(TTL+DLX)
     # alpine 변형은 이 호스트에서 .erlang.cookie 권한 오류(eacces)로 기동 실패 → debian 기반 사용
@@ -70,7 +70,7 @@ services:                         # 서비스 정의 시작
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
-      - default
+      - data                      # [SECURITY 2026-07-18] 데이터 계층 전용망
 
   app: # Spring Boot 애플리케이션 서비스
     image: ${APP_IMAGE:-ott-backend:clean}
@@ -88,7 +88,8 @@ services:                         # 서비스 정의 시작
     env_file: # .env 파일에서 환경변수 로드
       - .env
     networks:
-      - default
+      - default                   # 웹 계층: nginx/frontend와 통신
+      - data                      # [SECURITY 2026-07-18] 데이터 계층: postgres/redis/kafka/rabbitmq는 app만 접근
     environment: # 환경 변수 설정
       # Spring 프로파일 설정
       SPRING_PROFILES_ACTIVE: dev
@@ -182,5 +183,13 @@ volumes:                         # 볼륨 정의
   rabbitmq_data:                 # RabbitMQ 메시지/메타데이터 저장용 볼륨(지연 큐 내구성)
 
 networks:                        # 네트워크 정의
-  default:                       # 기본 네트워크 (모든 컨테이너가 통신 가능)
+  # [SECURITY 2026-07-18] 내부망 2계층 분리(횡이동 차단):
+  #   default(웹): nginx ↔ frontend ↔ app        — 데이터스토어 도달 불가
+  #   data(데이터): app ↔ postgres/redis/kafka/rabbitmq — app만 접근 가능
+  # 배경: 2026-06 frontend 런타임 침해. egress는 netlock이 끊지만, 평평한 단일망에서는
+  #       뚫린 frontend가 postgres/redis/kafka/rabbitmq에 직접 접속 가능했다.
+  #       frontend는 실제로 app(8090)하고만 통신하므로 데이터 계층을 별도망으로 격리한다.
+  default:                       # 웹 계층 (nginx, frontend, app)
+    driver: bridge
+  data:                          # 데이터 계층 (app, postgres, redis, kafka, rabbitmq)
     driver: bridge
