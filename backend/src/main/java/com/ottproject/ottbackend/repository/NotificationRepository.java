@@ -58,6 +58,13 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     /**
      * 사용자별 특정 콘텐츠 관련 알림 중복 확인
      */
-    @Query(value = "SELECT COUNT(n) FROM notifications n WHERE n.user_id = :userId AND n.type = :type AND n.data LIKE CONCAT('%\"contentId\":', :contentId, '%') AND n.is_read = false", nativeQuery = true)
+    // contentId 뒤의 경계(쉼표 또는 닫는 중괄호)까지 함께 봐야 한다.
+    // 경계 없이 '%"contentId":1%' 로 찾으면 "contentId":123 에도 걸려서,
+    // 123번 콘텐츠의 안 읽은 알림 하나가 1번 콘텐츠 알림을 통째로 막아버린다.
+    @Query(value = "SELECT COUNT(*) FROM notifications n " +
+            "WHERE n.user_id = :userId AND n.type = :type AND n.is_read = false " +
+            "AND (n.data LIKE CONCAT('%\"contentId\":', :contentId, ',%') " +
+            "  OR n.data LIKE CONCAT('%\"contentId\":', :contentId, '}%'))",
+            nativeQuery = true)
     long countDuplicateNotifications(@Param("userId") Long userId, @Param("type") String type, @Param("contentId") String contentId);
 }

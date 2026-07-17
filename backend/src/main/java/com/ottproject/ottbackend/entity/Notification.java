@@ -80,9 +80,12 @@ public class Notification {
         notification.type = NotificationType.EPISODE_UPDATE;
         notification.title = "새로운 에피소드 업데이트";
         notification.content = String.format("%s %d화가 업데이트되었습니다.", animeTitle, episodeNumber);
+        // contentId 는 중복 알림 검사(countDuplicateNotifications)가 찾는 키다.
+        // 이 키가 빠져 있던 동안 에피소드 알림은 중복 검사가 한 번도 걸리지 않았다.
+        // 값 뒤에 항상 쉼표가 오도록 마지막에 두지 않는다 — 검사 쿼리가 경계로 쉼표/닫는 중괄호를 본다.
         notification.data = String.format(
-            "{\"animeId\":%d,\"episodeId\":%d,\"animeTitle\":\"%s\",\"episodeNumber\":%d}",
-            animeId, episodeId, animeTitle, episodeNumber
+            "{\"contentId\":%d,\"animeId\":%d,\"episodeId\":%d,\"animeTitle\":\"%s\",\"episodeNumber\":%d}",
+            episodeId, animeId, episodeId, animeTitle, episodeNumber
         );
         notification.isRead = false;
         
