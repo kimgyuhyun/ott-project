@@ -7,8 +7,8 @@ import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.Duration;
-import java.util.Random;
 
 /**
  * VerificationEmailService
@@ -50,6 +50,10 @@ public class VerificationEmailService {
 
     private static final Duration CODE_TTL = Duration.ofMinutes(10); // 메일 본문 안내와 반드시 같아야 한다
     private static final Duration VERIFIED_TTL = Duration.ofMinutes(30); // 인증 직후 가입을 마치기에 충분한 창
+
+    // 인증 코드는 계정 소유권 증명이므로 예측 불가능해야 한다.
+    // java.util.Random 은 시드(48비트)만 알면 이후 코드를 그대로 재현할 수 있어 인증에 쓸 수 없다.
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     public void sendVerificationEmail(String to) {
         String verificationCode = generateVerificationCode();
@@ -110,10 +114,9 @@ public class VerificationEmailService {
 
     private String generateVerificationCode() {
         // 6자리 인증 코드 생성 (0~9 숫자로 구성) 외부에선 쓰지 않으므로 private로 선언 String타입을 반환함
-        Random random = new Random(); // 랜덤 객체 생성
         StringBuilder code = new StringBuilder(); // 인증 코드를 넣을 빈 버퍼 생성성
         for (int i = 0; i < 6; i++) {
-            code.append(random.nextInt(10));
+            code.append(SECURE_RANDOM.nextInt(10));
         }
         return code.toString(); // 버퍼에 쌓인 6자리 숫자를 String으로 변환해서 반환함
     }
