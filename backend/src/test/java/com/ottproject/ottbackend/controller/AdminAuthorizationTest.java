@@ -10,19 +10,12 @@ import com.ottproject.ottbackend.security.SessionAuthenticationFilter;
 import com.ottproject.ottbackend.service.LocalUserDetailsService;
 import com.ottproject.ottbackend.service.OAuth2UserService;
 import com.ottproject.ottbackend.service.StatsSnapshotService;
-import org.apache.ibatis.mapping.Environment;
-import org.apache.ibatis.session.SqlSessionFactory;
-import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory;
-import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.jdbc.datasource.SimpleDriverDataSource;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -50,7 +43,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // OAuth2ClientProperties 가 기동 시 "Client id of registration 'google' must not be empty" 로 컨텍스트를 깨뜨린다.
 // 인가 규칙만 검증하면 되므로 더미 자격증명을 넣어 프로퍼티 검증만 통과시킨다(실제 소셜 로그인은 하지 않음).
 @WebMvcTest(controllers = AdminStatsController.class)
-@Import({SecurityConfig.class, SessionAuthenticationFilter.class, AdminAuthorizationTest.MyBatisStubConfig.class})
+@Import({SecurityConfig.class, SessionAuthenticationFilter.class, WebSliceTestSupport.class})
 @TestPropertySource(properties = {
         "spring.security.oauth2.client.registration.google.client-id=test",
         "spring.security.oauth2.client.registration.google.client-secret=test",
@@ -60,24 +53,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.security.oauth2.client.registration.naver.client-secret=test"
 })
 class AdminAuthorizationTest {
-
-    /**
-     * 메인 클래스의 @MapperScan("...mybatis") 이 웹 슬라이스에서도 매퍼 빈 15개를 등록하려 하는데,
-     * @WebMvcTest 에는 SqlSessionFactory 가 없어 "Property 'sqlSessionFactory' or 'sqlSessionTemplate'
-     * are required" 로 컨텍스트가 깨진다.
-     * 이 테스트는 인가 규칙만 보므로 매퍼 등록만 가능한 빈 설정의 팩토리를 넣어준다(실제 쿼리 없음).
-     */
-    @TestConfiguration
-    static class MyBatisStubConfig {
-        @Bean
-        SqlSessionFactory sqlSessionFactory() {
-            org.apache.ibatis.session.Configuration cfg = new org.apache.ibatis.session.Configuration();
-            // Environment 가 없으면 SqlSessionTemplate 생성 시 getEnvironment().getDataSource() 에서 NPE 가 난다.
-            // 쿼리를 실행하지 않으므로 DataSource 는 연결 정보 없는 껍데기로 충분하다.
-            cfg.setEnvironment(new Environment("test", new JdbcTransactionFactory(), new SimpleDriverDataSource()));
-            return new DefaultSqlSessionFactory(cfg);
-        }
-    }
 
     @Autowired
     private MockMvc mvc;
