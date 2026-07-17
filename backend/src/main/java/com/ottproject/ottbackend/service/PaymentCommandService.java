@@ -108,7 +108,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			return;
 		}
 
-		// 4. (성공인 경우) API 선재검증 후 전이 적용
+		// 4. API 선재검증 후 전이 적용
 		if (event.status == PaymentStatus.SUCCEEDED) {
 			// merchant_uid로 기대 금액 조회
 			Payment paymentForVerify = paymentQueryMapper.findByProviderSessionId(event.providerSessionId);
@@ -135,9 +135,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				log.error("API 선재검증 실패 - imp_uid: {}, merchant_uid: {}", event.providerPaymentId, event.providerSessionId);
 				throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "웹훅 재검증 실패");
 			}
+		} else if (event.status == PaymentStatus.FAILED || event.status == PaymentStatus.CANCELED) {
+			verifyNonSuccessWebhook(event);
 		}
-		
-		// 5. 결제 이벤트 처리(성공은 위 선재검증 통과 후 진행)
+
+		// 5. 결제 이벤트 처리(모든 전이는 위 선재검증 통과 후 진행)
 		processPaymentEvent(event);
 		
 		log.info("웹훅 처리 완료 - merchant_uid: {}", event.providerSessionId);
@@ -161,6 +163,26 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		}
 	}
 	
+	/**
+	 * 실패/취소 웹훅 재검증
+	 * - 웹훅 주장만으로 상태를 바꾸면 위조 요청 하나로 구독을 PAST_DUE/해지 예약 상태로 떨어뜨릴 수 있다.
+	 *   merchant_uid로 아임포트에 실제 상태를 역조회해 주장과 일치할 때만 전이를 허용한다.
+	 * - 조회 불가/상태 불일치는 거부(fail-closed, SUCCEEDED 경로와 동일 정책).
+	 *   정상 실패건의 연체 전환은 RecurringBillingService 가 청구 실패 시 자체적으로 수행하므로
+	 *   여기서 거부해도 PAST_DUE 전이와 재시도(dunning)는 유실되지 않는다.
+	 */
+	private void verifyNonSuccessWebhook(PaymentWebhookEventDto event) {
+		ImportPaymentGateway.ReconcileResult r = null;
+		if (paymentGateway instanceof ImportPaymentGateway) {
+			r = ((ImportPaymentGateway) paymentGateway).findByMerchantUid(event.providerSessionId); // 내부에서 예외를 흡수하고 found=false 반환
+		}
+		if (r == null || !r.found || mapIamportStatus(r.status) != event.status) {
+			log.error("웹훅 재검증 실패 - merchant_uid: {}, 웹훅 주장: {}, 아임포트 실제: {}",
+				event.providerSessionId, event.status, (r == null ? null : r.status));
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "웹훅 재검증 실패");
+		}
+	}
+
 	/**
 	 * 결제 이벤트 처리
 	 */
@@ -260,6 +282,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				dto.providerPaymentId = safeString(body.get("imp_uid"));
 				dto.providerSessionId = safeString(body.get("merchant_uid"));
 				dto.status = mapIamportStatus(safeString(body.get("status")));
+				// 멱등키: 아임포트 웹훅에는 이벤트 ID가 없어 (결제, 상태) 조합으로 만든다.
+				// imp_uid 단독으로 쓰면 정상적인 paid→cancelled 전이의 두 번째가 "이미 처리됨"으로 삼켜진다.
+				if (dto.providerPaymentId != null && !dto.providerPaymentId.isBlank() && dto.status != null) {
+					dto.eventId = dto.providerPaymentId + ":" + dto.status.name();
+				}
 				java.lang.Number amt = safeNumber(body.get("amount"));
 				dto.amount = (amt == null ? null : amt.longValue());
 				dto.currency = safeString(body.get("currency"));

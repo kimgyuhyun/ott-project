@@ -24,6 +24,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -59,7 +60,7 @@ class PaymentCommandServiceTest {
     @Mock private MembershipPlanRepository membershipPlanRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private IdempotencyKeyRepository idempotencyKeyRepository;
-    @Mock private PaymentGateway paymentGateway;
+    @Mock private ImportPaymentGateway paymentGateway; // 재검증 경로가 IMPORT 구현에 의존(instanceof 분기)
     @Mock private PlayerProgressReadService playerProgressReadService;
     @Mock private MembershipSubscriptionRepository subscriptionRepository;
     @Mock private PaymentQueryMapper paymentQueryMapper;
@@ -308,6 +309,89 @@ class PaymentCommandServiceTest {
         assertThatThrownBy(() -> service.applyWebhookEvent(1L, succeededEvent()))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("아웃박스 이벤트 적재 실패");
+    }
+
+    // ===== 웹훅 진입점(processWebhook): 실패/취소 웹훅 위조 방어 =====
+    //
+    // 공격 시나리오: merchant_uid만 맞히면 서명 없는 웹훅으로 남의 결제를 FAILED 로 만들어
+    // 구독을 PAST_DUE 로 떨어뜨리고 시청을 차단할 수 있었다(성공 웹훅만 API 재검증했음).
+
+    private String iamportBody(String status) {
+        return "{\"imp_uid\":\"imp_1\",\"merchant_uid\":\"sess_1\",\"status\":\"" + status + "\"}";
+    }
+
+    private ImportPaymentGateway.ReconcileResult reconcile(boolean found, String status) {
+        ImportPaymentGateway.ReconcileResult r = new ImportPaymentGateway.ReconcileResult();
+        r.found = found;
+        r.status = status;
+        return r;
+    }
+
+    @Test
+    @DisplayName("위조 failed 웹훅 - 아임포트 실제 상태가 paid 면 400 거부(결제/구독 손대지 않음)")
+    void forgedFailedWebhookIsRejected() {
+        given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
+        given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(true, "paid"));
+
+        assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("failed")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("웹훅 재검증 실패");
+
+        verifyNoInteractions(subscriptionRepository, paymentRepository);
+    }
+
+    @Test
+    @DisplayName("아임포트에 결제 기록이 없으면 failed 웹훅을 거부한다(fail-closed)")
+    void unverifiableFailedWebhookIsRejected() {
+        given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
+        given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(false, null));
+
+        assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("failed")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("웹훅 재검증 실패");
+
+        verifyNoInteractions(subscriptionRepository, paymentRepository);
+    }
+
+    @Test
+    @DisplayName("정상 failed 웹훅 - 아임포트 실제 상태와 일치하면 전이된다(재검증이 정상 흐름을 막지 않음)")
+    void genuineFailedWebhookIsApplied() {
+        Payment payment = pendingPayment();
+        payment.setId(1L);
+        MembershipSubscription sub = activeSubscription();
+        given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
+        given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(true, "failed"));
+        given(paymentQueryMapper.findByProviderSessionId("sess_1")).willReturn(payment);
+        given(idempotencyKeyRepository.findByKeyValue("imp_1:FAILED")).willReturn(Optional.empty());
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
+                .willReturn(Optional.of(sub));
+
+        service.processWebhook(new HttpHeaders(), iamportBody("failed"));
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
+        assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.PAST_DUE);
+    }
+
+    @Test
+    @DisplayName("위조 cancelled 웹훅 - 아임포트가 paid 라고 하면 400 거부(임의 해지 예약 방어)")
+    void forgedCanceledWebhookIsRejected() {
+        given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
+        given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(true, "paid"));
+
+        assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("cancelled")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("웹훅 재검증 실패");
+
+        verifyNoInteractions(subscriptionRepository, paymentRepository);
+    }
+
+    @Test
+    @DisplayName("아임포트 웹훅 멱등키 - imp_uid 단독이 아니라 (imp_uid, status) 조합이어야 한다")
+    void iamportWebhookEventIdCombinesImpUidAndStatus() {
+        // imp_uid 단독이면 정상적인 paid→cancelled 전이의 두 번째가 "이미 처리됨"으로 삼켜진다
+        assertThat(service.parseWebhookPayload(iamportBody("paid")).eventId).isEqualTo("imp_1:SUCCEEDED");
+        assertThat(service.parseWebhookPayload(iamportBody("cancelled")).eventId).isEqualTo("imp_1:CANCELED");
     }
 
     // ===== 환불 정책: 7일 이내 AND 전혀 시청하지 않음 =====
