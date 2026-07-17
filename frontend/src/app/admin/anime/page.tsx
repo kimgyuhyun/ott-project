@@ -7,6 +7,7 @@ import {
   searchAnimeForCuration,
 } from "@/lib/api/admin";
 import type { AdminAnimeItem, AnimeCurationSearchCondition } from "@/lib/api/admin";
+import AnimeCurationEditModal from "@/components/admin/AnimeCurationEditModal";
 import styles from "../admin.module.css";
 
 type ResultState = { ok: boolean; text: string } | null;
@@ -122,6 +123,14 @@ export default function AdminAnimePage() {
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // 편집 모달 대상. null 이면 닫힘.
+  const [editing, setEditing] = useState<AdminAnimeItem | null>(null);
+
+  const handleEditSaved = () => {
+    setEditing(null);
+    loadCatalog(page, appliedFilters); // 보던 조건/페이지를 유지한 채 값만 갱신
+  };
 
   const handleSingleSync = async () => {
     const id = Number(malId);
@@ -399,13 +408,14 @@ export default function AdminAnimePage() {
                 <th style={{ width: 70 }}>연도</th>
                 <th style={{ width: 200 }}>큐레이션</th>
                 <th style={{ width: 90 }}>유입</th>
+                <th style={{ width: 70 }}></th>
               </tr>
             </thead>
             <tbody>
               {listLoading ? (
-                <tr><td colSpan={7} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>불러오는 중...</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>불러오는 중...</td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>조건에 맞는 작품이 없습니다.</td></tr>
+                <tr><td colSpan={8} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>조건에 맞는 작품이 없습니다.</td></tr>
               ) : (
                 items.map((it) => (
                   <tr key={it.id} className={it.isActive ? undefined : styles.rowInactive}>
@@ -430,6 +440,9 @@ export default function AdminAnimePage() {
                       {it.isNew && <span className={`${styles.badge} ${styles.badgeOn}`}>신작</span>}
                     </td>
                     <td style={{ color: "#9aa0aa" }}>{it.syncOrigin === "JIKAN" ? "Jikan" : "수동"}</td>
+                    <td>
+                      <button className={styles.pagerBtn} onClick={() => setEditing(it)}>수정</button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -456,6 +469,14 @@ export default function AdminAnimePage() {
           </button>
         </div>
       </section>
+
+      {editing && (
+        <AnimeCurationEditModal
+          anime={editing}
+          onClose={() => setEditing(null)}
+          onSaved={handleEditSaved}
+        />
+      )}
     </div>
   );
 }
