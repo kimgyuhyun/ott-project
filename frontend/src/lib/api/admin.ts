@@ -1,7 +1,7 @@
 import { api } from "./index";
 
 // 관리자 전용 API 함수들
-// 백엔드: SimpleAdminAnimeSyncController (/api/admin/anime/**), ROLE_ADMIN 전용
+// 백엔드: AdminAnimeController (/api/admin/anime/**), ROLE_ADMIN 전용
 
 // 단일 동기화 결과 (SyncResult)
 export interface SyncResult {
