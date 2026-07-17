@@ -1,6 +1,6 @@
 package com.ottproject.ottbackend.service;
 
-import com.ottproject.ottbackend.dto.admin.AdminAnimeListItemDto;
+import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
@@ -65,6 +65,10 @@ class AnimeCurationServiceTest {
         anime.setIsExclusive(false);
         anime.setIsPopular(false);
         anime.setIsNew(false);
+        anime.setIsCompleted(false);
+        anime.setIsSubtitle(true);
+        anime.setIsDub(false);
+        anime.setIsSimulcast(false);
         anime.setCurated(false);
     }
 
@@ -223,6 +227,112 @@ class AnimeCurationServiceTest {
 
             assertThat(anime.getCurated()).isTrue();
         }
+
+        /**
+         * curated 는 "보강이 이 작품을 건너뛴다"는 뜻이다. 그러므로 보강이 덮어쓰는 필드 전부가
+         * 판정 대상이어야 한다 — 줄거리/배경이미지를 고쳤는데 켜지지 않으면 보강이 도로 덮어쓴다.
+         * (AnimeEnhancementService 가 쓰는 필드: title, synopsis, fullSynopsis, backdropUrl, posterUrl)
+         */
+        @Test
+        @DisplayName("줄거리를 고쳐도 curated 가 켜진다 - 보강이 덮어쓰는 필드다")
+        void marksCuratedWhenSynopsisChanges() {
+            givenAnimeExists();
+            AnimeCurationUpdateRequest request = emptyRequest();
+            request.setSynopsis("사람이 고친 줄거리");
+
+            animeCurationService.update(ANIME_ID, request);
+
+            assertThat(anime.getSynopsis()).isEqualTo("사람이 고친 줄거리");
+            assertThat(anime.getCurated()).isTrue();
+        }
+
+        @Test
+        @DisplayName("전체 줄거리를 고쳐도 curated 가 켜진다")
+        void marksCuratedWhenFullSynopsisChanges() {
+            givenAnimeExists();
+            AnimeCurationUpdateRequest request = emptyRequest();
+            request.setFullSynopsis("사람이 고친 전체 줄거리");
+
+            animeCurationService.update(ANIME_ID, request);
+
+            assertThat(anime.getCurated()).isTrue();
+        }
+
+        @Test
+        @DisplayName("배경 이미지를 고쳐도 curated 가 켜진다")
+        void marksCuratedWhenBackdropChanges() {
+            givenAnimeExists();
+            AnimeCurationUpdateRequest request = emptyRequest();
+            request.setBackdropUrl("http://new/backdrop.jpg");
+
+            animeCurationService.update(ANIME_ID, request);
+
+            assertThat(anime.getCurated()).isTrue();
+        }
+
+        @Test
+        @DisplayName("자막/더빙 배지만 바꾸면 curated 를 켜지 않는다 - 보강이 안 쓰는 필드다")
+        void doesNotMarkCuratedForNewBadgesOnly() {
+            givenAnimeExists();
+            AnimeCurationUpdateRequest request = emptyRequest();
+            request.setIsDub(true);
+            request.setIsSubtitle(false);
+            request.setIsSimulcast(true);
+            request.setIsCompleted(true);
+
+            animeCurationService.update(ANIME_ID, request);
+
+            assertThat(anime.getCurated()).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("휴리스틱으로 찍힌 배지 바로잡기")
+    class HeuristicBadges {
+
+        /**
+         * 수집 시 isDub 은 평점으로 추측되고(determineIsDub), isSubtitle 은 항상 true 로 박힌다.
+         * 이 값들이 사용자 화면의 필터로 그대로 노출되므로 사람이 고칠 수 있어야 한다.
+         */
+        @Test
+        @DisplayName("더빙 여부를 바로잡을 수 있다 - 수집 시 평점으로 추측된 값이다")
+        void canCorrectDubFlag() {
+            anime.setIsDub(true); // 평점 기반 추측 결과
+            givenAnimeExists();
+            AnimeCurationUpdateRequest request = emptyRequest();
+            request.setIsDub(false);
+
+            animeCurationService.update(ANIME_ID, request);
+
+            assertThat(anime.getIsDub()).isFalse();
+        }
+
+        @Test
+        @DisplayName("자막 여부를 끌 수 있다 - 수집 시 항상 true 로 박힌다")
+        void canTurnOffSubtitleFlag() {
+            anime.setIsSubtitle(true);
+            givenAnimeExists();
+            AnimeCurationUpdateRequest request = emptyRequest();
+            request.setIsSubtitle(false);
+
+            animeCurationService.update(ANIME_ID, request);
+
+            assertThat(anime.getIsSubtitle()).isFalse();
+        }
+
+        @Test
+        @DisplayName("동시방영/완결 여부도 바로잡을 수 있다")
+        void canCorrectSimulcastAndCompleted() {
+            givenAnimeExists();
+            AnimeCurationUpdateRequest request = emptyRequest();
+            request.setIsSimulcast(true);
+            request.setIsCompleted(true);
+
+            animeCurationService.update(ANIME_ID, request);
+
+            assertThat(anime.getIsSimulcast()).isTrue();
+            assertThat(anime.getIsCompleted()).isTrue();
+        }
     }
 
     @Nested
@@ -365,10 +475,23 @@ class AnimeCurationServiceTest {
         void returnsCurrentValues() {
             givenAnimeExists();
 
-            AdminAnimeListItemDto dto = animeCurationService.get(ANIME_ID);
+            AdminAnimeDetailDto dto = animeCurationService.get(ANIME_ID);
 
             assertThat(dto.getId()).isEqualTo(ANIME_ID);
             assertThat(dto.getTitle()).isEqualTo("기존 제목");
+        }
+
+        @Test
+        @DisplayName("목록에 없는 줄거리까지 준다 - 수정 폼이 채워야 하는 값이다")
+        void includesSynopsisWhichListOmits() {
+            anime.setSynopsis("짧은 줄거리");
+            anime.setFullSynopsis("전체 줄거리");
+            givenAnimeExists();
+
+            AdminAnimeDetailDto dto = animeCurationService.get(ANIME_ID);
+
+            assertThat(dto.getSynopsis()).isEqualTo("짧은 줄거리");
+            assertThat(dto.getFullSynopsis()).isEqualTo("전체 줄거리");
         }
 
         @Test

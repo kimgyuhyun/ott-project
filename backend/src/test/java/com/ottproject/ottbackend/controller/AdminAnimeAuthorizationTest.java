@@ -2,6 +2,7 @@ package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.config.SecurityConfig;
 import com.ottproject.ottbackend.dto.PagedResponse;
+import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
 import com.ottproject.ottbackend.dto.admin.AdminAnimeListItemDto;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationPreviewResponse;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
@@ -109,9 +110,9 @@ class AdminAnimeAuthorizationTest {
         given(animeCurationService.search(any(), anyInt(), anyInt()))
                 .willReturn(new PagedResponse<>(List.<AdminAnimeListItemDto>of(), 0L, 0, 20));
         given(animeCurationService.get(anyLong()))
-                .willReturn(AdminAnimeListItemDto.builder().id(1L).build());
+                .willReturn(AdminAnimeDetailDto.builder().id(1L).build());
         given(animeCurationService.update(anyLong(), any(AnimeCurationUpdateRequest.class)))
-                .willReturn(AdminAnimeListItemDto.builder().id(1L).build());
+                .willReturn(AdminAnimeDetailDto.builder().id(1L).build());
         given(animeCurationService.previewBulkCuration(any(AnimeCurationSearchCondition.class)))
                 .willReturn(new AnimeBulkCurationPreviewResponse(1L, List.of()));
         given(animeCurationService.applyBulkCuration(any(AnimeBulkCurationRequest.class)))
