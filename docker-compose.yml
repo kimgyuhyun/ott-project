@@ -73,7 +73,7 @@ services:                         # 서비스 정의 시작
       - default
 
   app: # Spring Boot 애플리케이션 서비스
-    image: ${APP_IMAGE:-para98/ott-backend:latest}
+    image: ${APP_IMAGE:-ott-backend:clean}
     container_name: ott-app # 컨테이너 이름
     restart: unless-stopped
     ports: # 포트 매핑
@@ -144,7 +144,7 @@ services:                         # 서비스 정의 시작
       TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
 
   frontend: # Next.js 프론트엔드 서비스
-    image: ${FRONT_IMAGE:-para98/ott-frontend:latest}
+    image: ${FRONT_IMAGE:-ott-frontend:clean}
     container_name: ott-frontend
     restart: unless-stopped
     env_file: # .env 파일에서 환경변수 로드

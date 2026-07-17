@@ -1,4 +1,10 @@
-# 개발용 오버라이드 - docker-compose up 시 자동 적용
+# 개발용 오버라이드 - 반드시 명시적으로 지정해야 적용된다:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# [SECURITY 2026-07-18] 예전 파일명(docker-compose.override.yml)은 플래그 없는
+# `docker compose up` 에 자동 병합돼, 실수로 실행하면 netlock(egress 차단)이 빠지고
+# 프론트가 dev 모드로 떠서 인터넷 아웃바운드가 다시 열리는 함정이 있었다.
+# 자동 병합을 끊기 위해 .dev.yml 로 개명했다. 안전한 배포는 deploy.ps1 참고.
 
 services:
   app:

@@ -2,7 +2,7 @@
 
 services:
   app: # Spring Boot 애플리케이션 서비스
-    image: para98/ott-backend:latest  # 이미지 사용
+    image: ${APP_IMAGE:-ott-backend:clean}  # CD가 APP_IMAGE=ghcr digest 로 덮어씀. 수동 배포 기본값=로컬 클린 이미지
     env_file:
       - .env  # 서버의 .env 파일 사용
     environment:
@@ -77,7 +77,7 @@ services:
     cpus: 2.0
 
   frontend: # Next.js 프론트엔드 서비스
-    image: para98/ott-frontend:latest  # 이미지 사용
+    image: ${FRONT_IMAGE:-ott-frontend:clean}  # CD가 FRONT_IMAGE=ghcr digest 로 덮어씀. 수동 배포 기본값=로컬 클린 이미지
     environment:
       # 프로덕션에서는 브라우저가 내부 호스트(ott-app)에 접근할 수 없으므로
       # NEXT_PUBLIC_BACKEND_ORIGIN을 노출하지 않습니다. Nginx가 /api 및 /login/oauth2/* 를 프록시합니다.

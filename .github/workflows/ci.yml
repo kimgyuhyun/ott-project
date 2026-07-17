@@ -63,7 +63,7 @@ jobs:
           image-ref: ${{ steps.img.outputs.ref }}:${{ github.sha }}
           severity: 'CRITICAL'
           ignore-unfixed: true
-          exit-code: '0'   # [2026-06-24] report-only: 스캔 결과는 로그로 보되 배포는 막지 않음(운영 안정). 실제 취약점은 의존성 패치로 해결.
+          exit-code: '1'   # [2026-07-18] 게이트 활성화: 패치 가능한 CRITICAL 이 있으면 CI 실패 → push/배포 차단. ignore-unfixed 라 고칠 수 없는 취약점엔 안 막힘(무한 실패 방지).
           format: 'table'
 
   frontend:
@@ -105,5 +105,5 @@ jobs:
           image-ref: ${{ steps.img.outputs.ref }}:${{ github.sha }}
           severity: 'CRITICAL'
           ignore-unfixed: true
-          exit-code: '0'   # [2026-06-24] report-only: 스캔 결과는 로그로 보되 배포는 막지 않음(운영 안정).
+          exit-code: '1'   # [2026-07-18] 게이트 활성화: 패치 가능한 CRITICAL 이 있으면 CI 실패 → push/배포 차단. ignore-unfixed 라 고칠 수 없는 취약점엔 안 막힘.
           format: 'table'

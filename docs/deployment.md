@@ -13,17 +13,21 @@
 - **공개 포트**: 80 (HTTP), 443 (HTTPS)만 외부 노출
 - **내부 통신**: 백엔드(8090), 프론트(3000), DB(5432), Redis(6379)는 컨테이너 내부 통신만 사용
 
-### 환경 설정
-- **개발 환경**: `docker-compose.yml` 사용
-- **운영 환경**: `docker-compose.prod.yml` 사용
-- **환경 변수**: `env.example` 참고
+### 실행 명령 (중요)
+- **운영 배포(권장)**: `.\deploy.ps1` — 아래 3개 파일을 고정으로 묶어 egress 차단까지 적용
+  - `docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.netlock.yml up -d`
+- **개발**: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`
+- **주의**: 플래그 없는 `docker compose up` 은 배포 명령이 아니다.
+  netlock(egress 차단)이 빠져 프론트 인터넷 접근이 다시 열리므로 사용하지 말 것.
+- **환경 변수**: `env.example` 참고. 실제 값은 `.env.enc`(SOPS+age)에서 복호화해 `.env` 로 주입.
 
 ## CI/CD
 
 ### GitHub Actions
 - **배포 방식**: Self-hosted runner 사용
 - **보안**: SSH(22) 포트는 닫고 GitHub Actions로만 배포
-- **Docker Hub**: 이미지 레지스트리로 사용
+- **레지스트리**: GitHub Container Registry(ghcr.io, 비공개). CD가 커밋 이미지를 digest로 고정해 배포
+  (구 Docker Hub `para98` 는 침해 이력으로 폐기)
 
 ## SSL/TLS 설정
 
