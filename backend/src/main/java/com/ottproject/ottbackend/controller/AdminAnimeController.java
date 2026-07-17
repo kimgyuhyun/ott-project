@@ -1,5 +1,9 @@
 package com.ottproject.ottbackend.controller;
 
+import com.ottproject.ottbackend.dto.PagedResponse;
+import com.ottproject.ottbackend.dto.admin.AdminAnimeListItemDto;
+import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
+import com.ottproject.ottbackend.service.AnimeCurationService;
 import com.ottproject.ottbackend.service.AnimeEnhancementService;
 import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
 import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService.CollectionResult;
@@ -28,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
  *   옮기면 즉시 전세계 공개가 된다.
  *
  * 엔드포인트 개요
+ * - GET /search: 큐레이션 대상 동적 검색
  * - POST /sync/{malId}: 단일 애니메이션 동기화
  * - POST /sync-popular: 인기 애니메이션 일괄 동기화
  * - POST /enhance-all: 전체 TMDB 보강(비동기)
@@ -38,11 +43,32 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/admin/anime")
 @RequiredArgsConstructor
 @Slf4j
-@Tag(name = "관리자 애니메이션 관리", description = "Jikan 동기화 / TMDB 보강 API")
+@Tag(name = "관리자 애니메이션 관리", description = "큐레이션 / Jikan 동기화 / TMDB 보강 API")
 public class AdminAnimeController {
 
     private final SimpleAnimeDataCollectorService collectorService;
     private final AnimeEnhancementService animeEnhancementService;
+    private final AnimeCurationService animeCurationService;
+
+    // ===== 큐레이션 =====
+
+    /**
+     * 큐레이션 대상 검색
+     *
+     * 조건은 전부 선택이며 자유롭게 조합된다. 아무 조건도 주지 않으면 전체 목록이다.
+     * 조건 객체는 쿼리 파라미터로 바인딩된다(예: ?status=ONGOING&year=2026&isActive=false).
+     */
+    @Operation(summary = "애니 큐레이션 검색",
+            description = "제목(한/영/일 통합)/상태/연도/노출여부/배지/큐레이션여부/유입경로를 자유 조합해 검색합니다.")
+    @ApiResponse(responseCode = "200", description = "검색 성공")
+    @GetMapping("/search")
+    public ResponseEntity<PagedResponse<AdminAnimeListItemDto>> searchForCuration(
+            AnimeCurationSearchCondition condition,
+            @Parameter(description = "페이지 번호(0-base)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기") @RequestParam(defaultValue = "20") int size) {
+
+        return ResponseEntity.ok(animeCurationService.search(condition, page, size));
+    }
 
     // ===== Jikan 동기화 =====
 

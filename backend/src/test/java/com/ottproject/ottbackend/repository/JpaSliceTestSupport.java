@@ -19,8 +19,9 @@ import org.springframework.jdbc.datasource.SimpleDriverDataSource;
  * - spring.flyway.enabled=false : 마이그레이션이 PostgreSQL 전용 문법이라 H2 에서 깨진다
  * - spring.jpa.hibernate.ddl-auto=create-drop : 엔티티로 H2 스키마를 만든다
  */
+// 하위 패키지(repository.curation)의 슬라이스 테스트도 임포트하므로 public 이어야 한다.
 @TestConfiguration
-class JpaSliceTestSupport {
+public class JpaSliceTestSupport {
 
     @Bean
     SqlSessionFactory sqlSessionFactory() {
