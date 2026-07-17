@@ -144,6 +144,13 @@ public class Anime {
 	@Column(nullable = false)
 	private Boolean isActive = true; // 활성화 여부
 
+	// 운영자가 콘텐츠(제목/포스터)를 직접 손본 작품 표시.
+	// TMDB 자동 보강(AnimeEnhancementService)은 이 값이 true 인 작품을 건너뛴다 —
+	// 외부 API 가 운영자의 판단을 덮어쓰지 않게 하려는 것이 이 플래그의 유일한 목적이다.
+	// createAnime 팩토리에는 넣지 않는다(신규 수집분은 항상 false 로 시작).
+	@Column(nullable = false)
+	private Boolean curated = Boolean.FALSE; // 운영자 큐레이션 여부
+
 	@CreatedDate // 생성일시 자동 설정
 	@Column(nullable = false)
 	private java.time.LocalDateTime createdAt; // 생성일시

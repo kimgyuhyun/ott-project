@@ -37,8 +37,8 @@ public class AnimeEnhancementService {
         log.info("🚀 애니메이션 데이터 보완 시작");
         
         try {
-            // 한국어 정보가 없는 애니메들 조회
-            List<Anime> animeWithoutKorean = animeRepository.findByTitleIsNull();
+            // 한국어 정보가 없는 애니메들 조회 (운영자가 큐레이션한 작품은 제외)
+            List<Anime> animeWithoutKorean = animeRepository.findByTitleIsNullAndCuratedIsFalse();
             log.info("보완 대상 애니메 수: {}", animeWithoutKorean.size());
             
             int successCount = 0;

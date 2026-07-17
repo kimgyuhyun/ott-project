@@ -20,6 +20,7 @@ import java.util.Optional;
  * 메서드 개요
  * - findById: 비관적 쓰기 락으로 단건 조회
  * - existsByTitle: 제목 중복 여부 조회
+ * - findByTitleIsNullAndCuratedIsFalse: TMDB 보강 대상(운영자가 손대지 않은 것만) 조회
  */
 @Repository // 스프링 컴포넌트 스캔 + 예외 변환
 public interface AnimeRepository extends JpaRepository<Anime, Long> { // 통합 Anime JPA 리포지토리
@@ -28,10 +29,14 @@ public interface AnimeRepository extends JpaRepository<Anime, Long> { // 통합 
     @NonNull Optional<Anime> findById(@NonNull Long id); // 파생 메서드 + @Lock로 대체(문자열 JPQL 제거)
 
     boolean existsByTitle(String title); // 저장 전 유니크 체크
-    
+
     Optional<Anime> findByTitle(String title); // 제목으로 조회
-    
-    List<Anime> findByTitleIsNull(); // 한국어 제목이 없는 애니메이션 조회
+
+    /**
+     * TMDB 보강 대상 조회.
+     * 운영자가 큐레이션한 작품(curated=true)은 제외한다 — 자동 보강이 사람의 판단을 덮어쓰지 않게 한다.
+     */
+    List<Anime> findByTitleIsNullAndCuratedIsFalse();
 }
 
 
