@@ -5,19 +5,12 @@ import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
-import org.apache.ibatis.mapping.Environment;
-import org.apache.ibatis.session.SqlSessionFactory;
-import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory;
-import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.jdbc.datasource.SimpleDriverDataSource;
 import org.springframework.test.context.TestPropertySource;
 
 import java.time.LocalDateTime;
@@ -38,7 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - 사용자 일치 AND 상태 일치 AND startAt <= now AND (endAt is null OR endAt >= now)
  */
 @DataJpaTest
-@Import(MembershipSubscriptionRepositoryTest.MyBatisStubConfig.class)
+@Import(JpaSliceTestSupport.class)
 // Flyway 마이그레이션은 PostgreSQL 전용 문법이라 H2 슬라이스에서 실행되면 깨진다.
 // 이 테스트는 JPQL 만 보므로 Hibernate 가 엔티티에서 만든 스키마로 충분하다.
 @TestPropertySource(properties = {
@@ -46,22 +39,6 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 class MembershipSubscriptionRepositoryTest {
-
-    /**
-     * 메인 클래스의 @MapperScan("...mybatis") 이 JPA 슬라이스에서도 매퍼 빈을 등록하려 하는데,
-     * @DataJpaTest 에는 MyBatis 자동설정이 없어 SqlSessionFactory 부재로 컨텍스트가 깨진다.
-     * 이 테스트는 JPA 쿼리만 보므로 쿼리를 실행하지 않는 껍데기 팩토리를 넣어준다.
-     * (AdminAuthorizationTest 의 같은 이름 설정과 동일한 우회 — 그쪽은 package-private 이라 재사용 불가)
-     */
-    @TestConfiguration
-    static class MyBatisStubConfig {
-        @Bean
-        SqlSessionFactory sqlSessionFactory() {
-            org.apache.ibatis.session.Configuration cfg = new org.apache.ibatis.session.Configuration();
-            cfg.setEnvironment(new Environment("test", new JdbcTransactionFactory(), new SimpleDriverDataSource()));
-            return new DefaultSqlSessionFactory(cfg);
-        }
-    }
 
     @Autowired
     private MembershipSubscriptionRepository subscriptionRepository;

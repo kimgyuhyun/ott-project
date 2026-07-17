@@ -4,20 +4,13 @@ import com.ottproject.ottbackend.config.JpaAuditingConfig;
 import com.ottproject.ottbackend.entity.Notification;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.NotificationType;
-import org.apache.ibatis.mapping.Environment;
-import org.apache.ibatis.session.SqlSessionFactory;
-import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory;
-import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.jdbc.datasource.SimpleDriverDataSource;
 import org.springframework.test.context.TestPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,28 +26,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - 에피소드 알림 data 에 contentId 키가 아예 없어서 중복 검사가 늘 0 → 같은 알림이 계속 쌓였다.
  * - 값 경계가 없어 "contentId":1 이 "contentId":123 에 매칭 → 엉뚱한 알림이 막혔다.
  */
+// Notification 은 @CreatedDate(nullable=false)를 쓰는데 팩토리가 값을 넣지 않는다.
+// JpaAuditingConfig 를 실어야 저장 시 createdAt 이 채워진다(안 실으면 not-null 위반).
 @DataJpaTest
-@Import({NotificationRepositoryTest.MyBatisStubConfig.class, JpaAuditingConfig.class})
+@Import({JpaSliceTestSupport.class, JpaAuditingConfig.class})
 // Flyway 마이그레이션은 PostgreSQL 전용이라 H2 슬라이스에서 돌리면 깨진다.
 @TestPropertySource(properties = {
         "spring.flyway.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop"
 })
 class NotificationRepositoryTest {
-
-    /**
-     * 메인 클래스의 @MapperScan 이 JPA 슬라이스에서도 매퍼를 등록하려 해서 SqlSessionFactory 가 필요하다.
-     * 쿼리를 실행하지 않는 껍데기로 충분하다.
-     */
-    @TestConfiguration
-    static class MyBatisStubConfig {
-        @Bean
-        SqlSessionFactory sqlSessionFactory() {
-            org.apache.ibatis.session.Configuration cfg = new org.apache.ibatis.session.Configuration();
-            cfg.setEnvironment(new Environment("test", new JdbcTransactionFactory(), new SimpleDriverDataSource()));
-            return new DefaultSqlSessionFactory(cfg);
-        }
-    }
 
     @Autowired
     private NotificationRepository notificationRepository;
