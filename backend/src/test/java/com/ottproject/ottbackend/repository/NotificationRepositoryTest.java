@@ -1,6 +1,5 @@
 package com.ottproject.ottbackend.repository;
 
-import com.ottproject.ottbackend.config.JpaAuditingConfig;
 import com.ottproject.ottbackend.entity.Notification;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.NotificationType;
@@ -12,6 +11,8 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
+
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,10 +27,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - 에피소드 알림 data 에 contentId 키가 아예 없어서 중복 검사가 늘 0 → 같은 알림이 계속 쌓였다.
  * - 값 경계가 없어 "contentId":1 이 "contentId":123 에 매칭 → 엉뚱한 알림이 막혔다.
  */
-// Notification 은 @CreatedDate(nullable=false)를 쓰는데 팩토리가 값을 넣지 않는다.
-// JpaAuditingConfig 를 실어야 저장 시 createdAt 이 채워진다(안 실으면 not-null 위반).
+// JpaAuditingConfig 를 일부러 싣지 않는다. Notification 은 @CreatedDate(nullable=false)인데 팩토리가
+// 값을 넣지 않아 Auditing 을 켜고 싶어지지만, @EnableJpaAuditing 은 AspectJ 로 위빙된
+// AnnotationBeanConfigurerAspect(JVM 전역 싱글턴)에 이 컨텍스트의 BeanFactory 를 심어 놓는다.
+// 테스트 컨텍스트는 캐싱되어 닫히지 않으므로 그 참조가 계속 살아, 이후 실행되는 '다른' 슬라이스에서
+// AuditingEntityListener 가 남의 BeanFactory 로부터 핸들러를 주입받아 타임스탬프를 덮어쓴다.
+// (실제로 UserRepositorySignupCountTest 가 실행 순서에 따라 깨졌다)
+// 그래서 여기서는 Auditing 대신 픽스처가 createdAt 을 직접 채운다 — 이 테스트는 시각을 검증하지 않는다.
 @DataJpaTest
-@Import({JpaSliceTestSupport.class, JpaAuditingConfig.class})
+@Import(JpaSliceTestSupport.class)
 // Flyway 마이그레이션은 PostgreSQL 전용이라 H2 슬라이스에서 돌리면 깨진다.
 @TestPropertySource(properties = {
         "spring.flyway.enabled=false",
@@ -43,6 +49,8 @@ class NotificationRepositoryTest {
     @Autowired
     private TestEntityManager entityManager;
 
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 17, 12, 0);
+
     private User user;
 
     @BeforeEach
@@ -55,8 +63,17 @@ class NotificationRepositoryTest {
                 user.getId(), NotificationType.COMMENT_ACTIVITY.name(), String.valueOf(contentId));
     }
 
+    /**
+     * 알림을 저장한다. createdAt 은 @CreatedDate 지만 Auditing 을 싣지 않으므로(클래스 주석 참고)
+     * not-null 을 만족시키려면 직접 채워야 한다. 이 테스트는 시각을 검증하지 않아 고정값으로 충분하다.
+     */
+    private Notification persist(Notification notification) {
+        notification.setCreatedAt(NOW);
+        return entityManager.persist(notification);
+    }
+
     private Notification persistCommentActivity(Long contentId) {
-        return entityManager.persist(Notification.createCommentActivityNotification(
+        return persist(Notification.createCommentActivityNotification(
                 user, "활동자", "COMMENT_LIKE", "REVIEW_COMMENT", contentId, 7L, null, "댓글"));
     }
 
@@ -91,7 +108,7 @@ class NotificationRepositoryTest {
     @DisplayName("다른 사용자의 알림은 중복으로 세지 않는다")
     void ignoresOtherUsersNotifications() {
         User other = entityManager.persist(User.createLocalUser("other@example.com", "password", "타인"));
-        entityManager.persist(Notification.createCommentActivityNotification(
+        persist(Notification.createCommentActivityNotification(
                 other, "활동자", "COMMENT_LIKE", "REVIEW_COMMENT", 123L, 7L, null, "댓글"));
 
         assertThat(countCommentActivityDuplicates(123L)).isZero();
@@ -111,7 +128,7 @@ class NotificationRepositoryTest {
     @Test
     @DisplayName("에피소드 알림도 중복 검사가 걸린다 - data 에 contentId 가 없어 늘 0 이던 회귀")
     void countsDuplicateForEpisodeUpdate() {
-        entityManager.persist(Notification.createEpisodeUpdateNotification(user, "제목", 3, 7L, 42L));
+        persist(Notification.createEpisodeUpdateNotification(user, "제목", 3, 7L, 42L));
 
         long count = notificationRepository.countDuplicateNotifications(
                 user.getId(), NotificationType.EPISODE_UPDATE.name(), "42");
@@ -122,7 +139,7 @@ class NotificationRepositoryTest {
     @Test
     @DisplayName("에피소드 알림도 접두어만 같은 ID 에는 걸리지 않는다")
     void episodeUpdateDoesNotMatchOnIdPrefix() {
-        entityManager.persist(Notification.createEpisodeUpdateNotification(user, "제목", 3, 7L, 42L));
+        persist(Notification.createEpisodeUpdateNotification(user, "제목", 3, 7L, 42L));
 
         long count = notificationRepository.countDuplicateNotifications(
                 user.getId(), NotificationType.EPISODE_UPDATE.name(), "4");

@@ -35,9 +35,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - QuerydslConfig: JPAQueryFactory 빈
  * - AnimeCurationQueryRepository: @DataJpaTest 는 Spring Data 리포지토리만 등록하고
  *   일반 @Repository 컴포넌트는 스캔에서 제외하므로 직접 임포트해야 한다.
- * - JpaAuditingConfig 는 임포트하지 않는다. 다만 저장 시 Auditing 이 실제로 개입하는지는
- *   컨텍스트 구성에 따라 달라지는 것으로 보인다(단독 실행과 전체 빌드에서 updatedAt 이 다르게 나왔다).
- *   그래서 시각 검증은 픽스처 상수가 아니라 저장 직후 DB 값을 기준으로 한다.
+ * - JpaAuditingConfig 는 임포트하지 않는다(이유는 JpaSliceTestSupport 의 경고 참고).
+ *   시각 검증은 픽스처 상수가 아니라 저장 직후 DB 값을 기준으로 해서, 혹시 다른 테스트가 Auditing 을
+ *   켜더라도 이 테스트의 결론(=벌크가 updatedAt 을 갱신했는가)이 흔들리지 않게 한다.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 아래 URL 을 쓰기 위해 자동 대체를 끈다
@@ -466,9 +466,9 @@ class AnimeCurationQueryRepositoryTest {
          * 벌크 UPDATE 는 영속성 컨텍스트를 우회하므로 @LastModifiedDate 가 발동하지 않는다.
          * 리포지토리가 updatedAt 을 직접 세팅하지 않으면 수정 시각이 낡은 채 남아 "언제 바뀌었나"를 추적할 수 없다.
          *
-         * 기준 시각을 픽스처 상수(NOW)가 아니라 DB 에서 읽어오는 이유: 저장 시점에 Auditing 이 개입하는지가
-         * 컨텍스트 구성에 따라 달라진다(단독 실행과 전체 빌드에서 다르게 나왔다).
-         * 저장 직후의 실제 값을 기준으로 삼으면 그 변수와 무관하게 "벌크가 시각을 갱신했는가"만 검증할 수 있다.
+         * 기준 시각을 픽스처 상수(NOW)가 아니라 DB 에서 읽어오는 이유: Auditing 개입 여부가 다른 테스트의
+         * 실행 순서에 오염될 수 있어서다(JpaSliceTestSupport 의 경고 참고). 저장 직후의 실제 값을 기준으로
+         * 삼으면 그 변수와 무관하게 "벌크가 시각을 갱신했는가"만 검증할 수 있다.
          */
         @Test
         @DisplayName("수정 시각을 갱신한다 - Auditing 이 벌크에는 개입하지 않으므로 직접 세팅해야 한다")
