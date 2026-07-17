@@ -1,11 +1,14 @@
 package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.admin.AdminAnimeListItemDto;
+import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
+import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.curation.AnimeCurationQueryRepository;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -40,6 +43,7 @@ class AnimeCurationServiceTest {
 
     @Mock private AnimeCurationQueryRepository curationQueryRepository;
     @Mock private AnimeRepository animeRepository;
+    @Mock private EntityManager entityManager;
 
     @InjectMocks private AnimeCurationService animeCurationService;
 
@@ -49,6 +53,9 @@ class AnimeCurationServiceTest {
 
     @BeforeEach
     void setUp() {
+        // EntityManager 는 @PersistenceContext 필드 주입이라 @InjectMocks 가 채우지 못한다.
+        ReflectionTestUtils.setField(animeCurationService, "entityManager", entityManager);
+
         anime = new Anime();
         ReflectionTestUtils.setField(anime, "id", ANIME_ID);
         anime.setTitle("기존 제목");
@@ -215,6 +222,137 @@ class AnimeCurationServiceTest {
             animeCurationService.update(ANIME_ID, request);
 
             assertThat(anime.getCurated()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("벌크 수정 안전장치")
+    class BulkGuards {
+
+        private AnimeCurationSearchCondition yearCondition() {
+            AnimeCurationSearchCondition condition = new AnimeCurationSearchCondition();
+            condition.setYear(2026);
+            return condition;
+        }
+
+        private AnimeBulkCurationRequest bulkRequest(AnimeCurationSearchCondition condition, long expectedCount) {
+            AnimeBulkCurationRequest request = new AnimeBulkCurationRequest();
+            request.setCondition(condition);
+            request.setIsActive(false);
+            request.setExpectedCount(expectedCount);
+            return request;
+        }
+
+        @Test
+        @DisplayName("조건이 비면 거부한다 - 빈 조건은 카탈로그 전체를 뒤집는다")
+        void rejectsEmptyCondition() {
+            AnimeBulkCurationRequest request = bulkRequest(new AnimeCurationSearchCondition(), 0);
+
+            assertThatThrownBy(() -> animeCurationService.applyBulkCuration(request))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining("400");
+
+            verify(curationQueryRepository, never()).applyBulkCuration(any(), any());
+        }
+
+        @Test
+        @DisplayName("조건 객체 자체가 없어도 거부한다")
+        void rejectsNullCondition() {
+            AnimeBulkCurationRequest request = bulkRequest(null, 0);
+
+            assertThatThrownBy(() -> animeCurationService.applyBulkCuration(request))
+                    .isInstanceOf(ResponseStatusException.class);
+
+            verify(curationQueryRepository, never()).applyBulkCuration(any(), any());
+        }
+
+        @Test
+        @DisplayName("공백뿐인 제목 키워드는 조건으로 치지 않아 거부된다")
+        void rejectsBlankKeywordAsOnlyCondition() {
+            AnimeCurationSearchCondition condition = new AnimeCurationSearchCondition();
+            condition.setTitleKeyword("   ");
+            AnimeBulkCurationRequest request = bulkRequest(condition, 0);
+
+            assertThatThrownBy(() -> animeCurationService.applyBulkCuration(request))
+                    .isInstanceOf(ResponseStatusException.class);
+
+            verify(curationQueryRepository, never()).applyBulkCuration(any(), any());
+        }
+
+        @Test
+        @DisplayName("바꿀 값이 없으면 거부한다")
+        void rejectsRequestWithNoChanges() {
+            AnimeBulkCurationRequest request = new AnimeBulkCurationRequest();
+            request.setCondition(yearCondition());
+            request.setExpectedCount(3);
+
+            assertThatThrownBy(() -> animeCurationService.applyBulkCuration(request))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining("400");
+
+            verify(curationQueryRepository, never()).applyBulkCuration(any(), any());
+        }
+
+        @Test
+        @DisplayName("미리보기 건수와 실제가 다르면 409 로 중단한다 - 승인한 것보다 많이 바뀌면 안 된다")
+        void rejectsCountMismatch() {
+            AnimeCurationSearchCondition condition = yearCondition();
+            given(curationQueryRepository.countByCondition(condition)).willReturn(50L); // 그새 늘어남
+            AnimeBulkCurationRequest request = bulkRequest(condition, 3);
+
+            assertThatThrownBy(() -> animeCurationService.applyBulkCuration(request))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining("409");
+
+            verify(curationQueryRepository, never()).applyBulkCuration(any(), any());
+        }
+
+        @Test
+        @DisplayName("건수가 일치하면 적용하고 영향 건수를 돌려준다")
+        void appliesWhenCountMatches() {
+            AnimeCurationSearchCondition condition = yearCondition();
+            given(curationQueryRepository.countByCondition(condition)).willReturn(3L);
+            AnimeBulkCurationRequest request = bulkRequest(condition, 3);
+            given(curationQueryRepository.applyBulkCuration(condition, request)).willReturn(3L);
+
+            assertThat(animeCurationService.applyBulkCuration(request)).isEqualTo(3L);
+        }
+
+        @Test
+        @DisplayName("벌크 전에 flush 하고 후에 clear 한다 - 더티 체킹이 벌크를 되돌리거나 1차 캐시가 낡으면 안 된다")
+        void flushesBeforeAndClearsAfter() {
+            AnimeCurationSearchCondition condition = yearCondition();
+            given(curationQueryRepository.countByCondition(condition)).willReturn(3L);
+            AnimeBulkCurationRequest request = bulkRequest(condition, 3);
+            given(curationQueryRepository.applyBulkCuration(condition, request)).willReturn(3L);
+
+            animeCurationService.applyBulkCuration(request);
+
+            org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(entityManager, curationQueryRepository);
+            inOrder.verify(entityManager).flush();
+            inOrder.verify(curationQueryRepository).applyBulkCuration(condition, request);
+            inOrder.verify(entityManager).clear();
+        }
+
+        @Test
+        @DisplayName("미리보기도 조건 없이는 거부한다")
+        void previewRejectsEmptyCondition() {
+            assertThatThrownBy(() -> animeCurationService.previewBulkCuration(new AnimeCurationSearchCondition()))
+                    .isInstanceOf(ResponseStatusException.class);
+        }
+
+        @Test
+        @DisplayName("미리보기는 건수와 표본을 돌려주고 아무것도 바꾸지 않는다")
+        void previewReturnsCountAndSampleWithoutChanging() {
+            AnimeCurationSearchCondition condition = yearCondition();
+            given(curationQueryRepository.countByCondition(condition)).willReturn(42L);
+            given(curationQueryRepository.search(condition, 0, 10)).willReturn(java.util.List.of(anime));
+
+            var preview = animeCurationService.previewBulkCuration(condition);
+
+            assertThat(preview.getAffectedCount()).isEqualTo(42L);
+            assertThat(preview.getSample()).hasSize(1);
+            verify(curationQueryRepository, never()).applyBulkCuration(any(), any());
         }
     }
 

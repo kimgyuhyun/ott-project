@@ -2,6 +2,8 @@ package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.admin.AdminAnimeListItemDto;
+import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationPreviewResponse;
+import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
 import com.ottproject.ottbackend.service.AnimeCurationService;
@@ -36,6 +38,8 @@ import org.springframework.web.bind.annotation.*;
  * - GET /search: 큐레이션 대상 동적 검색
  * - GET /{animeId}: 단건 조회(수정 폼용)
  * - PATCH /{animeId}: 단건 큐레이션 수정
+ * - POST /bulk/preview: 벌크 수정 영향 건수 미리보기
+ * - PATCH /bulk: 조건 기반 벌크 큐레이션
  * - POST /sync/{malId}: 단일 애니메이션 동기화
  * - POST /sync-popular: 인기 애니메이션 일괄 동기화
  * - POST /enhance-all: 전체 TMDB 보강(비동기)
@@ -99,6 +103,40 @@ public class AdminAnimeController {
             @RequestBody AnimeCurationUpdateRequest request) {
 
         return ResponseEntity.ok(animeCurationService.update(animeId, request));
+    }
+
+    /**
+     * 벌크 수정 미리보기
+     *
+     * 실행 전에 몇 건이 바뀌는지 확인한다. 여기서 받은 affectedCount 를 벌크 요청의 expectedCount 로
+     * 되돌려 보내야 실행된다.
+     */
+    @Operation(summary = "벌크 큐레이션 미리보기",
+            description = "조건에 걸린 건수와 표본을 돌려줍니다. 실제 수정은 하지 않습니다.")
+    @ApiResponse(responseCode = "200", description = "미리보기 성공")
+    @ApiResponse(responseCode = "400", description = "조건이 비어 있음")
+    @PostMapping("/bulk/preview")
+    public ResponseEntity<AnimeBulkCurationPreviewResponse> previewBulkCuration(
+            @RequestBody AnimeCurationSearchCondition condition) {
+
+        return ResponseEntity.ok(animeCurationService.previewBulkCuration(condition));
+    }
+
+    /**
+     * 조건 기반 벌크 큐레이션
+     *
+     * 조건에 걸린 작품 전체에 같은 배지/노출 여부를 적용한다(제목/포스터는 대상이 아니다).
+     */
+    @Operation(summary = "조건 기반 벌크 큐레이션",
+            description = "검색 조건에 걸린 작품 전체에 배지/노출 여부를 일괄 적용합니다. "
+                    + "미리보기에서 확인한 건수를 expectedCount 로 함께 보내야 합니다.")
+    @ApiResponse(responseCode = "200", description = "적용 성공(영향 건수 반환)")
+    @ApiResponse(responseCode = "400", description = "조건이 비었거나 변경할 값이 없음")
+    @ApiResponse(responseCode = "409", description = "대상 건수가 미리보기와 다름")
+    @PatchMapping("/bulk")
+    public ResponseEntity<BulkCurationResult> applyBulkCuration(@RequestBody AnimeBulkCurationRequest request) {
+        long affected = animeCurationService.applyBulkCuration(request);
+        return ResponseEntity.ok(new BulkCurationResult(affected));
     }
 
     // ===== Jikan 동기화 =====
@@ -222,6 +260,19 @@ public class AdminAnimeController {
     }
 
     // ===== 응답 DTO =====
+
+    /**
+     * 벌크 큐레이션 결과 DTO
+     */
+    public static class BulkCurationResult {
+        private final long affectedCount;
+
+        public BulkCurationResult(long affectedCount) {
+            this.affectedCount = affectedCount;
+        }
+
+        public long getAffectedCount() { return affectedCount; }
+    }
 
     /**
      * 단일 동기화 결과 DTO

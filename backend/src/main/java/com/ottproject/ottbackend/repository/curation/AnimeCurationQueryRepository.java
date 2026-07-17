@@ -1,14 +1,17 @@
 package com.ottproject.ottbackend.repository.curation;
 
+import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.enums.SyncOrigin;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import com.querydsl.jpa.impl.JPAUpdateClause;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static com.ottproject.ottbackend.entity.QAnime.anime;
@@ -29,6 +32,7 @@ import static com.ottproject.ottbackend.entity.QAnime.anime;
  * 메서드 개요
  * - search: 조건에 맞는 엔티티 페이지 조회
  * - countByCondition: 조건에 맞는 전체 건수(페이지네이션/벌크 미리보기 공용)
+ * - applyBulkCuration: 조건에 맞는 전체에 배지/노출 여부 일괄 적용
  */
 @Repository
 @RequiredArgsConstructor
@@ -63,6 +67,32 @@ public class AnimeCurationQueryRepository {
                 .where(toPredicate(condition))
                 .fetchOne();
         return total == null ? 0L : total;
+    }
+
+    /**
+     * 조건에 맞는 전체에 배지/노출 여부를 일괄 적용하고 영향 건수를 돌려준다.
+     *
+     * 벌크 연산의 묵시적 동작(반드시 알고 쓸 것)
+     * - 이 UPDATE 는 영속성 컨텍스트를 거치지 않고 DB 로 바로 나간다. 따라서 1차 캐시가 갱신되지 않고,
+     *   호출자(AnimeCurationService)가 실행 전 flush / 실행 후 clear 를 책임진다.
+     * - @LastModifiedDate 는 영속성 컨텍스트의 라이프사이클 이벤트로 동작하므로 여기서는 발동하지 않는다.
+     *   그대로 두면 updated_at 이 낡은 채 남아 "언제 바뀌었나"를 추적할 수 없다. 그래서 직접 세팅한다.
+     * - Anime 에는 @Version 이 없어 낙관적 락 증가 문제는 없다.
+     *
+     * 조건이 비었는지는 여기서 막지 않는다(빈 조건 = 전체). 그 판단은 서비스의 안전장치가 한다.
+     */
+    public long applyBulkCuration(AnimeCurationSearchCondition condition, AnimeBulkCurationRequest request) {
+        JPAUpdateClause update = queryFactory.update(anime).where(toPredicate(condition));
+
+        if (request.getIsActive() != null) update.set(anime.isActive, request.getIsActive());
+        if (request.getIsExclusive() != null) update.set(anime.isExclusive, request.getIsExclusive());
+        if (request.getIsPopular() != null) update.set(anime.isPopular, request.getIsPopular());
+        if (request.getIsNew() != null) update.set(anime.isNew, request.getIsNew());
+
+        // Auditing 이 개입하지 않으므로 수정 시각을 직접 남긴다.
+        update.set(anime.updatedAt, LocalDateTime.now());
+
+        return update.execute();
     }
 
     /**

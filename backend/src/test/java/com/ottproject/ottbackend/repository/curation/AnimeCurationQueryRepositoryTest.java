@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.repository.curation;
 
 import com.ottproject.ottbackend.config.QuerydslConfig;
+import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.enums.AnimeStatus;
@@ -34,8 +35,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * - QuerydslConfig: JPAQueryFactory 빈
  * - AnimeCurationQueryRepository: @DataJpaTest 는 Spring Data 리포지토리만 등록하고
  *   일반 @Repository 컴포넌트는 스캔에서 제외하므로 직접 임포트해야 한다.
- * - JpaAuditingConfig 는 싣지 않는다 — 픽스처가 createdAt/updatedAt 을 직접 넣고,
- *   Auditing 이 끼면 저장 시각으로 덮어써서 시각 기반 검증이 불가능해진다.
+ * - JpaAuditingConfig 는 임포트하지 않는다. 다만 저장 시 Auditing 이 실제로 개입하는지는
+ *   컨텍스트 구성에 따라 달라지는 것으로 보인다(단독 실행과 전체 빌드에서 updatedAt 이 다르게 나왔다).
+ *   그래서 시각 검증은 픽스처 상수가 아니라 저장 직후 DB 값을 기준으로 한다.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 아래 URL 을 쓰기 위해 자동 대체를 끈다
@@ -371,6 +373,132 @@ class AnimeCurationQueryRepositoryTest {
 
             assertThat(searchIds(condition)).isEmpty();
             assertThat(curationQueryRepository.countByCondition(condition)).isZero();
+        }
+    }
+
+    @Nested
+    @DisplayName("벌크 수정")
+    class BulkUpdate {
+
+        private AnimeBulkCurationRequest deactivateRequest(AnimeCurationSearchCondition condition) {
+            AnimeBulkCurationRequest request = new AnimeBulkCurationRequest();
+            request.setCondition(condition);
+            request.setIsActive(false);
+            return request;
+        }
+
+        private AnimeCurationSearchCondition byYear(int year) {
+            AnimeCurationSearchCondition condition = emptyCondition();
+            condition.setYear(year);
+            return condition;
+        }
+
+        /**
+         * 벌크는 영속성 컨텍스트를 우회하므로, 검증 전에 1차 캐시를 비워야 DB 의 실제 값을 읽는다.
+         * (프로덕션에서는 AnimeCurationService 가 clear 를 책임진다)
+         */
+        private Anime reloadFromDatabase(Long id) {
+            entityManager.flush();
+            entityManager.clear();
+            return entityManager.find(Anime.class, id);
+        }
+
+        @Test
+        @DisplayName("조건에 걸린 작품을 일괄 비활성화한다")
+        void deactivatesMatchingAnime() {
+            Anime a = persist(anime("A", AnimeStatus.ONGOING, 2026));
+            Anime b = persist(anime("B", AnimeStatus.COMPLETED, 2026));
+
+            long affected = curationQueryRepository.applyBulkCuration(byYear(2026), deactivateRequest(byYear(2026)));
+
+            assertThat(affected).isEqualTo(2);
+            assertThat(reloadFromDatabase(a.getId()).getIsActive()).isFalse();
+            assertThat(reloadFromDatabase(b.getId()).getIsActive()).isFalse();
+        }
+
+        @Test
+        @DisplayName("조건에 안 걸린 작품은 건드리지 않는다")
+        void leavesNonMatchingAnimeAlone() {
+            Anime target = persist(anime("A", AnimeStatus.ONGOING, 2026));
+            Anime other = persist(anime("B", AnimeStatus.ONGOING, 2025));
+
+            curationQueryRepository.applyBulkCuration(byYear(2026), deactivateRequest(byYear(2026)));
+
+            assertThat(reloadFromDatabase(target.getId()).getIsActive()).isFalse();
+            assertThat(reloadFromDatabase(other.getId()).getIsActive()).isTrue(); // 그대로
+        }
+
+        @Test
+        @DisplayName("배지를 일괄 해제한다")
+        void clearsBadgesInBulk() {
+            Anime a = anime("A", AnimeStatus.ONGOING, 2026);
+            a.setIsPopular(true);
+            a.setIsExclusive(true);
+            persist(a);
+
+            AnimeBulkCurationRequest request = new AnimeBulkCurationRequest();
+            request.setCondition(byYear(2026));
+            request.setIsPopular(false);
+            request.setIsExclusive(false);
+
+            curationQueryRepository.applyBulkCuration(byYear(2026), request);
+
+            Anime reloaded = reloadFromDatabase(a.getId());
+            assertThat(reloaded.getIsPopular()).isFalse();
+            assertThat(reloaded.getIsExclusive()).isFalse();
+        }
+
+        @Test
+        @DisplayName("요청에 없는 필드는 유지한다")
+        void leavesUnspecifiedFieldsUntouched() {
+            Anime a = anime("A", AnimeStatus.ONGOING, 2026);
+            a.setIsPopular(true);
+            persist(a);
+
+            curationQueryRepository.applyBulkCuration(byYear(2026), deactivateRequest(byYear(2026)));
+
+            Anime reloaded = reloadFromDatabase(a.getId());
+            assertThat(reloaded.getIsActive()).isFalse();  // 바꾼 것
+            assertThat(reloaded.getIsPopular()).isTrue();  // 안 건드린 것
+        }
+
+        /**
+         * 벌크 UPDATE 는 영속성 컨텍스트를 우회하므로 @LastModifiedDate 가 발동하지 않는다.
+         * 리포지토리가 updatedAt 을 직접 세팅하지 않으면 수정 시각이 낡은 채 남아 "언제 바뀌었나"를 추적할 수 없다.
+         *
+         * 기준 시각을 픽스처 상수(NOW)가 아니라 DB 에서 읽어오는 이유: 저장 시점에 Auditing 이 개입하는지가
+         * 컨텍스트 구성에 따라 달라진다(단독 실행과 전체 빌드에서 다르게 나왔다).
+         * 저장 직후의 실제 값을 기준으로 삼으면 그 변수와 무관하게 "벌크가 시각을 갱신했는가"만 검증할 수 있다.
+         */
+        @Test
+        @DisplayName("수정 시각을 갱신한다 - Auditing 이 벌크에는 개입하지 않으므로 직접 세팅해야 한다")
+        void refreshesUpdatedAtDespiteAuditingNotFiring() {
+            Anime a = persist(anime("A", AnimeStatus.ONGOING, 2026));
+            LocalDateTime updatedAtBeforeBulk = reloadFromDatabase(a.getId()).getUpdatedAt();
+
+            curationQueryRepository.applyBulkCuration(byYear(2026), deactivateRequest(byYear(2026)));
+
+            assertThat(reloadFromDatabase(a.getId()).getUpdatedAt()).isAfter(updatedAtBeforeBulk);
+        }
+
+        @Test
+        @DisplayName("조건에 아무것도 안 걸리면 0건이다")
+        void returnsZeroWhenNothingMatches() {
+            persist(anime("A", AnimeStatus.ONGOING, 2026));
+
+            long affected = curationQueryRepository.applyBulkCuration(byYear(1999), deactivateRequest(byYear(1999)));
+
+            assertThat(affected).isZero();
+        }
+
+        @Test
+        @DisplayName("벌크는 curated 를 건드리지 않는다 - 배지 변경이 콘텐츠 보강까지 막으면 안 된다")
+        void doesNotTouchCuratedFlag() {
+            Anime a = persist(anime("A", AnimeStatus.ONGOING, 2026));
+
+            curationQueryRepository.applyBulkCuration(byYear(2026), deactivateRequest(byYear(2026)));
+
+            assertThat(reloadFromDatabase(a.getId()).getCurated()).isFalse();
         }
     }
 
