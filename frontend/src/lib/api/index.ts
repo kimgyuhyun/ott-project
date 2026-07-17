@@ -7,20 +7,10 @@ async function apiCall<T>(endpoint: string, init?: RequestInit): Promise<T> {
 		? endpoint
 		: (endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`);
 
-	// CSRF: 서버(Spring Security)가 CSRF 를 켜면 XSRF-TOKEN 쿠키를 내려준다(HttpOnly=false).
-	// 더블 서브밋 패턴상 쓰기 요청은 그 값을 X-XSRF-TOKEN 헤더로 되돌려줘야 한다.
-	// 서버 CSRF 가 꺼져 있으면 쿠키가 없어 헤더도 안 붙으므로 무해(no-op)하다.
-	const method = (init?.method || "GET").toUpperCase();
-	const csrfHeader: Record<string, string> = {};
-	if (method !== "GET" && method !== "HEAD" && typeof document !== "undefined") {
-		const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
-		if (m) csrfHeader["X-XSRF-TOKEN"] = decodeURIComponent(m[1]);
-	}
-
 	const res = await fetch(url, {
 		credentials: "include",
+		headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
 		...init,
-		headers: { "Content-Type": "application/json", ...csrfHeader, ...(init?.headers || {}) },
 	});
 
 	if (!res.ok) {

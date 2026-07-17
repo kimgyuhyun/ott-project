@@ -18,11 +18,13 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import com.ottproject.ottbackend.security.SessionAuthenticationFilter;
+import com.ottproject.ottbackend.security.OriginValidationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 
 /**
@@ -65,16 +67,24 @@ public class SecurityConfig {
     }
 
     /**
+     * 허용 오리진 목록(단일 소스). CORS 와 CSRF(Origin 검증 필터)가 같은 값을 쓴다.
+     * 운영에선 APP_CORS_ALLOWED_ORIGINS(=https://laputa.kozow.com)로 덮어쓴다.
+     */
+    private List<String> resolveAllowedOrigins() {
+        return org.springframework.util.StringUtils.commaDelimitedListToSet(
+                System.getProperty("app.cors.allowed-origins",
+                        System.getenv().getOrDefault("APP_CORS_ALLOWED_ORIGINS",
+                                "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000,https://finch-noted-entirely.ngrok-free.app"))
+        ).stream().toList();
+    }
+
+    /**
      * CORS 설정 Bean
      */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(org.springframework.util.StringUtils.commaDelimitedListToSet(
-                System.getProperty("app.cors.allowed-origins",
-                        System.getenv().getOrDefault("APP_CORS_ALLOWED_ORIGINS",
-                                "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000,https://finch-noted-entirely.ngrok-free.app"))
-        ).stream().toList());
+        configuration.setAllowedOrigins(resolveAllowedOrigins());
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
@@ -175,6 +185,14 @@ public class SecurityConfig {
                         .maxSessionsPreventsLogin(false) // 기본 세션 무효화
                 )
                 .userDetailsService(localUserDetailsService) // 기존 이메일 로그인용 customUserDetailService 등록
+                // CSRF 방어(오리진 검증): 상태변경 요청의 출처가 우리 도메인인지 확인. SameSite=Lax 위 한 겹.
+                // 공용 도메인(kozow.com) 특성상 SameSite 만으론 이웃 서브도메인 위조를 못 막아 추가한다.
+                // APP_SECURITY_ORIGIN_CHECK_ENABLED=false 로 즉시 끌 수 있는 킬스위치 제공(기본 ON).
+                .addFilterBefore(new OriginValidationFilter(
+                        new HashSet<>(resolveAllowedOrigins()),
+                        Boolean.parseBoolean(System.getProperty("app.security.origin-check.enabled",
+                                System.getenv().getOrDefault("APP_SECURITY_ORIGIN_CHECK_ENABLED", "true")))
+                ), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build(); // 설정된 securityFilterChain 반환
