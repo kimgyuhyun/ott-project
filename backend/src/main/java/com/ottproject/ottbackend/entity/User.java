@@ -96,7 +96,7 @@ public class User {
         }
         
         User user = new User();
-        user.email = email.trim().toLowerCase();
+        user.email = normalizeEmail(email);
         user.password = password;
         user.name = name.trim();
         user.role = UserRole.USER;
@@ -137,7 +137,7 @@ public class User {
         }
         
         User user = new User();
-        user.email = email.trim().toLowerCase();
+        user.email = normalizeEmail(email);
         user.password = null; // 소셜 로그인은 비밀번호 없음
         user.name = name.trim();
         user.role = UserRole.USER;
@@ -172,7 +172,7 @@ public class User {
         }
         
         User user = new User();
-        user.email = email.trim().toLowerCase();
+        user.email = normalizeEmail(email);
         user.password = password;
         user.name = name.trim();
         user.role = UserRole.ADMIN;
@@ -183,7 +183,18 @@ public class User {
         user.profileImage = null;
         user.createdAt = LocalDateTime.now();
         user.updatedAt = LocalDateTime.now();
-        
+
         return user;
+    }
+
+    /**
+     * 이메일 정규화 (계정 동일성 기준)
+     *
+     * 계정은 이 규칙으로 저장되므로(위 팩토리들), 이메일로 계정을 찾는 모든 경로(중복확인/로그인/조회)도
+     * 반드시 같은 기준으로 정규화해야 한다. 규칙이 흩어져 한 경로만 원본으로 조회하면, 대소문자만 다른
+     * 입력이 계정을 못 찾는 버그가 난다(로그인 실패, 중복가입 우회 등). 그래서 규칙을 여기 한 곳에 둔다.
+     */
+    public static String normalizeEmail(String email) {
+        return email == null ? null : email.trim().toLowerCase();
     }
 }

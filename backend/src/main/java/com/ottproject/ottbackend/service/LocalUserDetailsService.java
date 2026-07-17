@@ -28,7 +28,9 @@ public class LocalUserDetailsService implements UserDetailsService { // spring s
 
 	@Override // UserDetailsService 인터페이스 메서드 재정의
 	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-		User user = userRepository.findByEmail(email)
+		// 계정은 소문자로 저장되므로 로그인 조회도 같은 기준으로 정규화한다.
+		// (정규화 없이 원본으로 조회하면 대소문자만 다른 입력으로 로그인이 실패한다)
+		User user = userRepository.findByEmail(User.normalizeEmail(email))
 				.orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
 
 		boolean isSocialUser = user.getAuthProvider() != AuthProvider.LOCAL; // LOCAL 이 아닌 경우 소셜 로그인 사용자

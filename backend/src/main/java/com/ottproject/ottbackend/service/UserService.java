@@ -41,17 +41,20 @@ public class UserService {
         // Optional<User>로 감싸는 이유는 DB에 eamil을 넣었는데 해당 키에 매칭되는 데이터가 없을 시
         // NullPointerException이 발생해버리기 때문에 Optional<User>로 감싸서 반환하는것
         // 이렇게 반환해야 여기서 검증하고 예외처리 가능함함.orElseThrow(() -> new RuntimeException(예외 메시지)
-        return userRepository.findByEmail(email);
+        // 계정은 소문자로 저장되므로(User.normalizeEmail) 조회도 같은 기준으로 정규화한다.
+        // login 성공 뒤 원본 이메일로 이 메서드를 다시 부르는 경로가 있어, 정규화가 없으면 인증은
+        // 통과했는데 사용자 조회에서 못 찾아 401 이 나간다.
+        return userRepository.findByEmail(User.normalizeEmail(email));
         // Optional<User> 타입으로 email에 해당하는 user객체를 반환
     }
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션으로 등록
     public boolean existsByEmail(String email) { // 중복 확인 메서드
         // existByEmail 메서드는 파라미터 email을 String 타입으로 받고 boolean 타입을 반환함
-        // 계정은 항상 소문자로 저장되므로(User.createLocalUser 의 trim + toLowerCase) 조회도 같은 기준으로 정규화한다.
+        // 계정은 항상 소문자로 저장되므로(User.normalizeEmail) 조회도 같은 기준으로 정규화한다.
         // 원본 그대로 조회하면 대소문자만 다른 재가입이 중복 검사를 통과하고, 저장 단계에서 email 의
         // unique 제약에 걸려 409 대신 500 이 나간다.
-        return email != null && userRepository.existsByEmail(email.trim().toLowerCase());
+        return email != null && userRepository.existsByEmail(User.normalizeEmail(email));
         // 파라미터로 받은 email을 넣으면 DB에 접근해서 중복여부를 확인하고 반환 treu면 중복 false면 중복 아님
     }
 

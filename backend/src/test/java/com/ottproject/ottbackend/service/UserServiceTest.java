@@ -1,5 +1,6 @@
 package com.ottproject.ottbackend.service;
 
+import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -8,6 +9,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -47,5 +50,18 @@ class UserServiceTest {
         assertThat(service.existsByEmail(null)).isFalse();
 
         verifyNoInteractions(userRepository);
+    }
+
+    @Test
+    @DisplayName("이메일 조회 - 대소문자/공백이 달라도 저장 규칙과 같은 기준으로 조회한다")
+    void findByEmailNormalizes() {
+        // login 성공 뒤 원본 이메일로 다시 조회하는 경로가 있어, 정규화가 없으면 인증은 통과했는데
+        // 사용자 조회에서 못 찾아 401 이 난다.
+        User stored = User.createLocalUser("tester@example.com", "{bcrypt}hash", "테스터");
+        given(userRepository.findByEmail("tester@example.com")).willReturn(Optional.of(stored));
+
+        assertThat(service.findByEmail("  TesTer@Example.COM  ")).contains(stored);
+
+        verify(userRepository).findByEmail("tester@example.com");
     }
 }

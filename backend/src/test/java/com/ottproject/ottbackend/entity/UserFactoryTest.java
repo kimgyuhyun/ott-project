@@ -147,4 +147,21 @@ class UserFactoryTest {
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
+
+    @Nested
+    @DisplayName("normalizeEmail")
+    class NormalizeEmail {
+
+        @Test
+        @DisplayName("trim + 소문자로 정규화한다 - 계정을 찾는 모든 경로가 저장 규칙과 같은 기준을 쓴다")
+        void trimsAndLowercases() {
+            assertThat(User.normalizeEmail("  TesTer@Example.COM  ")).isEqualTo("tester@example.com");
+        }
+
+        @Test
+        @DisplayName("null 은 null 로 둔다 - 이메일 없는 조회가 NPE 로 터지지 않게")
+        void keepsNull() {
+            assertThat(User.normalizeEmail(null)).isNull();
+        }
+    }
 }
