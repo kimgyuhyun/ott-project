@@ -48,7 +48,10 @@ public class UserService {
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션으로 등록
     public boolean existsByEmail(String email) { // 중복 확인 메서드
         // existByEmail 메서드는 파라미터 email을 String 타입으로 받고 boolean 타입을 반환함
-        return userRepository.existsByEmail(email);
+        // 계정은 항상 소문자로 저장되므로(User.createLocalUser 의 trim + toLowerCase) 조회도 같은 기준으로 정규화한다.
+        // 원본 그대로 조회하면 대소문자만 다른 재가입이 중복 검사를 통과하고, 저장 단계에서 email 의
+        // unique 제약에 걸려 409 대신 500 이 나간다.
+        return email != null && userRepository.existsByEmail(email.trim().toLowerCase());
         // 파라미터로 받은 email을 넣으면 DB에 접근해서 중복여부를 확인하고 반환 treu면 중복 false면 중복 아님
     }
 
