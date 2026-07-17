@@ -62,7 +62,7 @@ public class Review {
      * 
      * @param user 리뷰 작성자
      * @param anime 리뷰 대상 애니메이션
-     * @param content 리뷰 내용 (10자 이상 1000자 이하)
+     * @param content 리뷰 내용 (1000자 이하)
      * @return 생성된 Review 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
@@ -76,9 +76,6 @@ public class Review {
         }
         if (content == null || content.trim().isEmpty()) {
             throw new IllegalArgumentException("리뷰 내용은 필수입니다.");
-        }
-        if (content.trim().length() < 10) {
-            throw new IllegalArgumentException("리뷰 내용은 10자 이상이어야 합니다.");
         }
         if (content.trim().length() > 1000) {
             throw new IllegalArgumentException("리뷰 내용은 1000자 이하여야 합니다.");
@@ -170,9 +167,6 @@ public class Review {
         }
         if (newContent == null || newContent.trim().isEmpty()) {
             throw new IllegalArgumentException("리뷰 내용은 필수입니다.");
-        }
-        if (newContent.trim().length() < 10) {
-            throw new IllegalArgumentException("리뷰 내용은 10자 이상이어야 합니다.");
         }
         if (newContent.trim().length() > 1000) {
             throw new IllegalArgumentException("리뷰 내용은 1000자 이하여야 합니다.");

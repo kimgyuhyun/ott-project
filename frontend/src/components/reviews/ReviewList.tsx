@@ -249,13 +249,7 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
     }
     
     if (!newReview.content.trim()) return;
-    
-    // 최소 길이 검증 (10자 이상)
-    if (newReview.content.trim().length < 10) {
-      alert('리뷰는 10자 이상 작성해주세요.');
-      return;
-    }
-    
+
     // 최대 길이 검증 (1000자 이하)
     if (newReview.content.trim().length > 1000) {
       alert('리뷰는 1000자 이하로 작성해주세요.');
@@ -595,12 +589,12 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
               // 포커스를 잃을 때 약간의 지연을 두어 버튼 클릭이 가능하도록 함
               setTimeout(() => setIsReviewFocused(false), 200);
             }}
-            placeholder="이 작품에 대한 내 평가를 남겨보세요! (10자 이상)"
+            placeholder="이 작품에 대한 내 평가를 남겨보세요!"
             className={styles.reviewTextarea}
             rows={4}
           />
           <div className={styles.characterCount}>
-            {newReview.content.length}/1000자 (최소 10자)
+            {newReview.content.length}/1000자
           </div>
           {isReviewFocused && (
             <div className={styles.formButtons}>
