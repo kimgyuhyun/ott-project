@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/admin";
 import type { AdminAnimeItem, AnimeCurationSearchCondition } from "@/lib/api/admin";
 import AnimeCurationEditModal from "@/components/admin/AnimeCurationEditModal";
+import AnimeBulkCurationModal from "@/components/admin/AnimeBulkCurationModal";
 import styles from "../admin.module.css";
 
 type ResultState = { ok: boolean; text: string } | null;
@@ -130,6 +131,21 @@ export default function AdminAnimePage() {
   const handleEditSaved = () => {
     setEditing(null);
     loadCatalog(page, appliedFilters); // 보던 조건/페이지를 유지한 채 값만 갱신
+  };
+
+  // 벌크 모달
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkResultText, setBulkResultText] = useState<ResultState>(null);
+
+  // 벌크는 '검색에 실제로 적용된' 조건을 쓴다. 입력 중인 필터를 쓰면
+  // 운영자가 눈으로 본 목록과 수정 대상이 어긋난다.
+  const appliedCondition = toCondition(appliedFilters);
+  const hasAppliedCondition = Object.keys(appliedCondition).length > 0;
+
+  const handleBulkApplied = (affectedCount: number) => {
+    setBulkOpen(false);
+    setBulkResultText({ ok: true, text: `${affectedCount.toLocaleString()}건을 일괄 수정했습니다.` });
+    loadCatalog(page, appliedFilters);
   };
 
   const handleSingleSync = async () => {
@@ -393,9 +409,24 @@ export default function AdminAnimePage() {
             조건 초기화
           </button>
           <span style={{ color: "#9aa0aa", fontSize: 13 }}>총 {total.toLocaleString()}건</span>
+          <button
+            className={styles.pagerBtn}
+            style={{ marginLeft: "auto" }}
+            onClick={() => { setBulkResultText(null); setBulkOpen(true); }}
+            // 조건 없는 벌크는 백엔드가 400 으로 거부한다(=전체 수정 방지). 버튼 단계에서 미리 막는다.
+            disabled={listLoading || !hasAppliedCondition || total === 0}
+            title={hasAppliedCondition ? undefined : "먼저 검색 조건을 걸어야 합니다"}
+          >
+            이 조건으로 일괄 수정
+          </button>
         </div>
 
         {listError && <div className={`${styles.result} ${styles.resultErr}`}>{listError}</div>}
+        {bulkResultText && (
+          <div className={`${styles.result} ${bulkResultText.ok ? styles.resultOk : styles.resultErr}`}>
+            {bulkResultText.text}
+          </div>
+        )}
 
         <div className={styles.tableWrap} style={{ marginTop: 14 }}>
           <table className={styles.table}>
@@ -475,6 +506,15 @@ export default function AdminAnimePage() {
           anime={editing}
           onClose={() => setEditing(null)}
           onSaved={handleEditSaved}
+        />
+      )}
+
+      {bulkOpen && (
+        <AnimeBulkCurationModal
+          condition={appliedCondition}
+          matchedCount={total}
+          onClose={() => setBulkOpen(false)}
+          onApplied={handleBulkApplied}
         />
       )}
     </div>
