@@ -67,10 +67,13 @@ public class AnimeCurationService {
     /**
      * 단건 조회(수정 폼용).
      * 목록보다 넓은 상세 DTO 를 준다 — 줄거리처럼 목록에 싣기 무거운 값이 수정 대상이기 때문이다.
+     *
+     * 락 없는 조회를 쓰는 이유: 이 트랜잭션은 readOnly 라 PostgreSQL 이 SELECT ... FOR UPDATE 를 거부한다.
+     * findById(락 O)를 쓰면 폼을 여는 것만으로 500 이 난다.
      */
     @Transactional(readOnly = true)
     public AdminAnimeDetailDto get(Long animeId) {
-        return AdminAnimeDetailDto.from(loadOrThrow(animeId));
+        return AdminAnimeDetailDto.from(loadForReadOrThrow(animeId));
     }
 
     /**
@@ -200,8 +203,15 @@ public class AnimeCurationService {
         return true;
     }
 
+    /** 수정용 로딩 — 쓰기 락을 잡는다(동시 수정 방어). 쓰기 트랜잭션에서만 호출할 것. */
     private Anime loadOrThrow(Long animeId) {
         return animeRepository.findById(animeId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "애니메이션을 찾을 수 없습니다."));
+    }
+
+    /** 조회용 로딩 — 락을 잡지 않는다. readOnly 트랜잭션에서 FOR UPDATE 가 나가면 PostgreSQL 이 거부한다. */
+    private Anime loadForReadOrThrow(Long animeId) {
+        return animeRepository.findByIdWithoutLock(animeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "애니메이션을 찾을 수 없습니다."));
     }
 }

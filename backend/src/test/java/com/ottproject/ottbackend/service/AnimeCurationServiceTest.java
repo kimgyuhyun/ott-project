@@ -80,6 +80,11 @@ class AnimeCurationServiceTest {
         given(animeRepository.findById(ANIME_ID)).willReturn(Optional.of(anime));
     }
 
+    /** 조회 경로는 락 없는 findByIdWithoutLock 을 탄다(GetOne 주석 참고). */
+    private void givenAnimeExistsForRead() {
+        given(animeRepository.findByIdWithoutLock(ANIME_ID)).willReturn(Optional.of(anime));
+    }
+
     @Nested
     @DisplayName("부분 수정")
     class PartialUpdate {
@@ -470,10 +475,28 @@ class AnimeCurationServiceTest {
     @DisplayName("단건 조회")
     class GetOne {
 
+        /**
+         * 이 트랜잭션은 readOnly 다. 락 걸린 findById 를 쓰면 PostgreSQL 이 SELECT ... FOR UPDATE 를 거부해
+         * ("cannot execute SELECT FOR UPDATE in a read-only transaction") 수정 폼을 여는 것만으로 500 이 난다.
+         * 실제로 그렇게 죽었다.
+         *
+         * 한계: H2 는 read-only 트랜잭션에서 FOR UPDATE 를 막지 않아 슬라이스 테스트로 재현되지 않는다.
+         * 그래서 "어느 조회 메서드를 쓰는가"를 아래 usesLockFreeLookup 으로 고정한다.
+         */
+        @Test
+        @DisplayName("락 없는 조회를 쓴다 - findById(FOR UPDATE)로 되돌리면 500 이 난다")
+        void usesLockFreeLookup() {
+            givenAnimeExistsForRead();
+
+            animeCurationService.get(ANIME_ID);
+
+            verify(animeRepository, never()).findById(ANIME_ID);
+        }
+
         @Test
         @DisplayName("현재 값을 그대로 돌려준다")
         void returnsCurrentValues() {
-            givenAnimeExists();
+            givenAnimeExistsForRead();
 
             AdminAnimeDetailDto dto = animeCurationService.get(ANIME_ID);
 
@@ -486,7 +509,7 @@ class AnimeCurationServiceTest {
         void includesSynopsisWhichListOmits() {
             anime.setSynopsis("짧은 줄거리");
             anime.setFullSynopsis("전체 줄거리");
-            givenAnimeExists();
+            givenAnimeExistsForRead();
 
             AdminAnimeDetailDto dto = animeCurationService.get(ANIME_ID);
 
@@ -497,10 +520,11 @@ class AnimeCurationServiceTest {
         @Test
         @DisplayName("없는 작품은 404")
         void rejectsUnknownAnime() {
-            given(animeRepository.findById(999L)).willReturn(Optional.empty());
+            given(animeRepository.findByIdWithoutLock(999L)).willReturn(Optional.empty());
 
             assertThatThrownBy(() -> animeCurationService.get(999L))
                     .isInstanceOf(ResponseStatusException.class);
         }
     }
+
 }
