@@ -67,4 +67,19 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
             "  OR n.data LIKE CONCAT('%\"contentId\":', :contentId, '}%'))",
             nativeQuery = true)
     long countDuplicateNotifications(@Param("userId") Long userId, @Param("type") String type, @Param("contentId") String contentId);
+
+    /**
+     * 사용자별 특정 콘텐츠 + 특정 활동 타입 알림 중복 확인
+     */
+    // 좋아요(COMMENT_LIKE)와 대댓글(COMMENT_REPLY)은 서로 다른 알림이므로 중복 판정 키를 공유하면 안 된다.
+    // activityType 을 빼면 내 댓글에 안 읽은 좋아요 알림이 하나만 있어도 대댓글 알림이 통째로 삼켜진다.
+    // 값이 따옴표로 닫히므로 contentId 와 달리 별도 경계 문자가 필요 없다("COMMENT_LIKE" 는 접두어 충돌이 없다).
+    @Query(value = "SELECT COUNT(*) FROM notifications n " +
+            "WHERE n.user_id = :userId AND n.type = :type AND n.is_read = false " +
+            "AND n.data LIKE CONCAT('%\"activityType\":\"', :activityType, '\"%') " +
+            "AND (n.data LIKE CONCAT('%\"contentId\":', :contentId, ',%') " +
+            "  OR n.data LIKE CONCAT('%\"contentId\":', :contentId, '}%'))",
+            nativeQuery = true)
+    long countDuplicateNotifications(@Param("userId") Long userId, @Param("type") String type,
+                                     @Param("contentId") String contentId, @Param("activityType") String activityType);
 }

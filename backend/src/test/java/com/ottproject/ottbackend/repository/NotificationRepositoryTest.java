@@ -59,8 +59,12 @@ class NotificationRepositoryTest {
     }
 
     private long countCommentActivityDuplicates(Long contentId) {
+        return countCommentActivityDuplicates(contentId, "COMMENT_LIKE");
+    }
+
+    private long countCommentActivityDuplicates(Long contentId, String activityType) {
         return notificationRepository.countDuplicateNotifications(
-                user.getId(), NotificationType.COMMENT_ACTIVITY.name(), String.valueOf(contentId));
+                user.getId(), NotificationType.COMMENT_ACTIVITY.name(), String.valueOf(contentId), activityType);
     }
 
     /**
@@ -123,6 +127,34 @@ class NotificationRepositoryTest {
                 user.getId(), NotificationType.EPISODE_UPDATE.name(), "123");
 
         assertThat(count).isZero();
+    }
+
+    /**
+     * 좋아요와 대댓글은 서로 다른 사건이다. 안 읽은 좋아요 알림이 대댓글 알림을 막으면
+     * 사용자는 자기 댓글에 달린 답글을 영영 모른다.
+     */
+    @Test
+    @DisplayName("활동 타입이 다르면 같은 댓글이어도 중복이 아니다 - 좋아요가 대댓글 알림을 막으면 안 된다")
+    void doesNotTreatDifferentActivityTypesAsDuplicate() {
+        persistCommentActivity(123L); // COMMENT_LIKE, 안 읽음
+
+        assertThat(countCommentActivityDuplicates(123L, "COMMENT_REPLY")).isZero();
+    }
+
+    @Test
+    @DisplayName("활동 타입이 같으면 기존대로 중복으로 센다")
+    void stillCountsDuplicateForSameActivityType() {
+        persistCommentActivity(123L); // COMMENT_LIKE, 안 읽음
+
+        assertThat(countCommentActivityDuplicates(123L, "COMMENT_LIKE")).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("활동 타입이 같아도 콘텐츠가 다르면 중복이 아니다")
+    void activityTypeMatchStillRequiresSameContent() {
+        persistCommentActivity(123L);
+
+        assertThat(countCommentActivityDuplicates(456L, "COMMENT_LIKE")).isZero();
     }
 
     @Test

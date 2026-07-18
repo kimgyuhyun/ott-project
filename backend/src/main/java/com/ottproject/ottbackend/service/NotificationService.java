@@ -105,7 +105,8 @@ public class NotificationService {
 
         // 중복 알림 확인
         String contentIdStr = String.valueOf(contentId);
-        long duplicateCount = notificationRepository.countDuplicateNotifications(userId, NotificationType.COMMENT_ACTIVITY.name(), contentIdStr);
+        long duplicateCount = notificationRepository.countDuplicateNotifications(
+                userId, NotificationType.COMMENT_ACTIVITY.name(), contentIdStr, activityType);
         if (duplicateCount > 0) {
             log.warn("🔔 [NOTIFICATION] 사용자 {}에게 이미 콘텐츠 {} 활동 알림이 존재합니다. (중복 개수: {})", userId, contentId, duplicateCount);
             return;
