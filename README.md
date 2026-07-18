@@ -152,6 +152,7 @@ com.ottproject.ottbackend
 - `canStream` — 미로그인 차단, 비활성/미공개 차단, **1~3화 무료 · 4화↑ 멤버십 필요**를 실시간 멤버십 상태로 판정
 - 발급 시 멤버십 등급에 따라 **화질 제한**(비회원 → 720p 마스터로 치환)
 - nginx `secure_link` 서명(`e`/`st`, TTL 10m)을 부착 — *현재 배포는 공개 테스트 MP4라 서명 검증 오리진이 없어 **설계 스텁**이며, 접근 제어는 `canStream` 게이트가 담당. 실제 HLS 오리진 도입 시 동일 시크릿으로 `secure_link_md5`만 켜면 코드 변경 없이 효력 발생.*
+- 데모 영상은 Blender Foundation 오픈 무비(CC BY 3.0)를 쓴다 — [외부 연동](#외부-연동) 참고.
 
 ### 5. 구독 라이프사이클
 - **말일 해지 예약**(`cancelAtPeriodEnd`)과 즉시 해지를 분기, 해지/재개에 **멱등키**로 중복 방지
@@ -237,6 +238,8 @@ ott-project/
 - **콘텐츠/메타데이터**: TMDB, Jikan
 - **결제**: Iamport (카카오/토스/나이스 채널 키)
 - **소셜 로그인**: Google, Kakao, Naver
+- **데모 영상**: [Big Buck Bunny](https://peach.blender.org/) © Blender Foundation — [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+  실제 콘텐츠 대신 재생 파이프라인 시연용으로 전 에피소드에 동일 영상을 사용한다.
 
 ---
 
