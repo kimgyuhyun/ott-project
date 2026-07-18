@@ -11,7 +11,6 @@ import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PlanChangeType;
-import com.ottproject.ottbackend.event.ProrationPaymentRequestedEvent;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
@@ -23,7 +22,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -55,7 +53,6 @@ class MembershipCommandServiceTest {
     @Mock private MembershipSubscriptionRepository subscriptionRepository;
     @Mock private IdempotencyKeyRepository idempotencyKeyRepository;
     @Mock private MembershipNotificationService notificationService;
-    @Mock private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private MembershipCommandService service;
@@ -332,12 +329,15 @@ class MembershipCommandServiceTest {
         assertThatThrownBy(() -> service.changePlan(1L, changeReq("BASIC")))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("현재와 같은 플랜입니다");
-        verifyNoInteractions(eventPublisher);
     }
 
+    /**
+     * 이 API 에는 차액을 실제로 청구하는 경로가 없다. 예전에는 여기서 플랜을 즉시 올려줘서
+     * change-plan 을 직접 호출하면 결제 없이 업그레이드되는 뒷문이 있었다.
+     */
     @Test
-    @DisplayName("업그레이드 - 즉시 플랜이 바뀌고 차액 결제 이벤트가 발행된다")
-    void upgradeAppliesImmediatelyAndChargesProration() {
+    @DisplayName("업그레이드 - change-plan 으로는 거절하고 차액 결제 API 로 보낸다")
+    void upgradeThroughChangePlanIsRejected() {
         MembershipPlan basic = plan("BASIC", 9900L, 1);
         MembershipPlan premium = plan("PREMIUM", 19900L, 1);
         MembershipSubscription sub = subscriptionOnPlan(basic);
@@ -345,16 +345,12 @@ class MembershipCommandServiceTest {
                 .willReturn(Optional.of(sub));
         given(planRepository.findByCode("PREMIUM")).willReturn(Optional.of(premium));
 
-        MembershipPlanChangeResponseDto res = service.changePlan(1L, changeReq("PREMIUM"));
-
-        assertThat(res.getChangeType()).isEqualTo(PlanChangeType.UPGRADE);
-        // 상위 플랜은 즉시 적용돼야 한다(돈을 더 냈으므로)
-        assertThat(sub.getMembershipPlan()).isSameAs(premium);
-        // 즉시 적용했으면 예약은 남아있으면 안 된다
+        assertThatThrownBy(() -> service.changePlan(1L, changeReq("PREMIUM")))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("차액 결제 API");
+        // 거절했으면 플랜은 그대로여야 한다 - 무료 업그레이드가 되면 안 된다
+        assertThat(sub.getMembershipPlan()).isSameAs(basic);
         assertThat(sub.getNextPlan()).isNull();
-        assertThat(sub.getChangeType()).isNull();
-        assertThat(res.getProrationAmount()).isPositive();
-        verify(eventPublisher).publishEvent(any(ProrationPaymentRequestedEvent.class));
     }
 
     @Test
@@ -376,8 +372,6 @@ class MembershipCommandServiceTest {
         assertThat(sub.getNextPlan()).isSameAs(basic);
         assertThat(sub.getPlanChangeScheduledAt()).isEqualTo(nextBilling);
         assertThat(res.getProrationAmount()).isNull();
-        // 다운그레이드는 돈을 걷지 않는다
-        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -391,13 +385,10 @@ class MembershipCommandServiceTest {
                 .willReturn(Optional.of(sub));
         given(planRepository.findByCode("PREMIUM")).willReturn(Optional.of(premium));
 
-        // 남은 일수를 정의할 수 없어 차액을 계산할 수 없다(가드가 없으면 NPE → 500)
         assertThatThrownBy(() -> service.changePlan(1L, changeReq("PREMIUM")))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("차액을 계산할 수 없습니다");
-        // 거절했으면 플랜도 그대로고 돈도 걷지 않아야 한다
+                .isInstanceOf(ResponseStatusException.class);
+        // 거절했으면 플랜은 그대로여야 한다
         assertThat(sub.getMembershipPlan()).isSameAs(basic);
-        verifyNoInteractions(eventPublisher);
     }
 
     // ===== 플랜 변경 예약 취소 =====

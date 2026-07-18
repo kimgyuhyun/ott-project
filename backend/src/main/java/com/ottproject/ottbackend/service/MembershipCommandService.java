@@ -12,15 +12,12 @@ import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 
 /**
  * MembershipCommandService
@@ -42,7 +39,6 @@ public class MembershipCommandService {
     private final MembershipSubscriptionRepository subscriptionRepository; // 구독 변경(JPA)
     private final com.ottproject.ottbackend.repository.IdempotencyKeyRepository idempotencyKeyRepository; // 멱등키 저장소
     private final MembershipNotificationService notificationService; // 알림 메일 서비스
-    private final ApplicationEventPublisher eventPublisher; // 이벤트 발행자
 
     /**
      * 구독 신청/연장
@@ -182,41 +178,13 @@ public class MembershipCommandService {
                 ? PlanChangeType.UPGRADE 
                 : PlanChangeType.DOWNGRADE;
 
+        // 업그레이드는 차액을 실제로 청구하는 경로가 이 API 에 없다. 여기서 플랜을 바꿔주면
+        // 결제 없이 상위 플랜을 받아내는 뒷문이 된다(프론트도 업그레이드는 차액 결제 API 를 쓴다).
         if (changeType == PlanChangeType.UPGRADE) {
-            return handleUpgrade(currentSubscription, newPlan);
-        } else {
-            return handleDowngrade(currentSubscription, newPlan);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "업그레이드는 차액 결제 API(/api/proration-payments)를 사용해야 합니다.");
         }
-    }
-
-    /**
-     * 업그레이드 처리
-     * - 즉시 적용 + 차액 결제
-     */
-    private MembershipPlanChangeResponseDto handleUpgrade(MembershipSubscription subscription, MembershipPlan newPlan) {
-        // 차액 계산
-        Integer prorationAmount = calculateProration(subscription, newPlan);
-        
-        // 차액 결제 처리 (이벤트 발행)
-        eventPublisher.publishEvent(new com.ottproject.ottbackend.event.ProrationPaymentRequestedEvent(
-            subscription.getUser().getId(), 
-            prorationAmount
-        ));
-        
-        // 플랜 즉시 변경
-        subscription.setMembershipPlan(newPlan);
-        subscription.setNextPlan(null);
-        subscription.setPlanChangeScheduledAt(null);
-        subscription.setChangeType(null);
-        
-        // 다음 결제일은 기존 유지 (변경 없음)
-        
-        return MembershipPlanChangeResponseDto.builder()
-                .changeType(PlanChangeType.UPGRADE)
-                .effectiveDate(LocalDateTime.now())
-                .prorationAmount(prorationAmount)
-                .message("플랜이 즉시 업그레이드되었습니다. 차액 " + prorationAmount + "원이 결제되었습니다.")
-                .build();
+        return handleDowngrade(currentSubscription, newPlan);
     }
 
     /**
@@ -236,40 +204,6 @@ public class MembershipCommandService {
                 .message("다음 결제일(" + subscription.getNextBillingAt().toLocalDate() + ")부터 " + 
                         newPlan.getName() + " 플랜이 적용됩니다.")
                 .build();
-    }
-
-    /**
-     * 차액 계산 (업그레이드 시)
-     * - 남은 기간에 대한 차액을 계산
-     */
-    private Integer calculateProration(MembershipSubscription subscription, MembershipPlan newPlan) {
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime endAt = subscription.getEndAt();
-
-        // 무기한 구독(endAt=null)은 남은 일수를 정의할 수 없어 차액을 계산하지 않는다.
-        // findActiveEffectiveByUser 가 "s.endAt is null or s.endAt >= :now" 로 무기한 구독을 허용하므로
-        // 이 값이 실제로 도달한다(가드가 없으면 ChronoUnit.DAYS.between(now, null) 에서 NPE → 500).
-        // ProrationPaymentService 와 달리 여기에는 호출부 거절 가드가 없어, 0을 반환하면 차액 0원
-        // 무료 업그레이드가 되므로 직접 400 으로 거절한다.
-        if (endAt == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "종료일이 없는 구독은 차액을 계산할 수 없습니다.");
-        }
-
-        // 남은 일수 계산
-        long remainingDays = ChronoUnit.DAYS.between(now, endAt);
-        if (remainingDays <= 0) {
-            return 0;
-        }
-        
-        // 현재 플랜과 새 플랜의 일일 가격 차이
-        Integer currentDailyPrice = (int) (subscription.getMembershipPlan().getPrice().getAmount() / 30); // 월 가격을 일 가격으로 변환
-        Integer newDailyPrice = (int) (newPlan.getPrice().getAmount() / 30);
-        Integer dailyDifference = newDailyPrice - currentDailyPrice;
-        
-        // 차액 = 일일 차이 × 남은 일수
-        Integer prorationAmount = (int) (dailyDifference * remainingDays);
-        
-        return Math.max(0, prorationAmount); // 음수 방지
     }
 
 }

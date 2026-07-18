@@ -6,7 +6,6 @@ import com.ottproject.ottbackend.dto.PaymentCheckoutCreateSuccessResponseDto;
 import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
 import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
-import com.ottproject.ottbackend.dto.PaymentProrationRequestDto;
 import com.ottproject.ottbackend.dto.PaymentSucceededEventDto;
 import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.entity.MembershipPlan;
@@ -30,8 +29,6 @@ import com.ottproject.ottbackend.mybatis.PaymentQueryMapper;
 import com.ottproject.ottbackend.service.ImportPaymentGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
@@ -70,7 +67,6 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final MembershipSubscriptionRepository subscriptionRepository; // 구독 리포지토리(웹훅 전이 반영)
 	private final PaymentQueryMapper paymentQueryMapper; // 결제 조회 매퍼
 	private final PaymentMethodService paymentMethodService; // 결제수단 서비스
-	private final ApplicationEventPublisher eventPublisher; // 이벤트 발행자
 	private final MembershipCommandService membershipCommandService; // 멤버십 구독 생성(동기 직접 호출)
 	private final OutboxEventRepository outboxEventRepository; // 아웃박스 이벤트 리포지토리(부수효과 발행)
 	private final ObjectMapper objectMapper; // 이벤트 페이로드 JSON 직렬화
@@ -764,70 +760,6 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				return true;
 			default:
 				return false; // ready 등 미결 상태 → 유지
-		}
-	}
-
-	/**
-	 * 차액 결제 처리 (업그레이드 시)
-	 * - 개발 환경에서는 1원으로 처리
-	 * - 운영 환경에서는 실제 차액으로 처리
-	 */
-	public void processProrationPayment(Long userId, Integer prorationAmount) {
-		// 개발 환경에서는 1원으로 처리
-		Integer actualAmount = isDevEnvironment() ? 1 : prorationAmount;
-		
-		log.info("차액 결제 처리 - userId: {}, 원래 금액: {}, 실제 결제 금액: {}", 
-				userId, prorationAmount, actualAmount);
-		
-		// 사용자의 기본 결제 수단 조회
-		List<PaymentMethodResponseDto> paymentMethods = paymentMethodService.list(userId);
-		PaymentMethodResponseDto defaultPaymentMethod = paymentMethods.stream()
-				.filter(pm -> pm.isDefault)
-				.findFirst()
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "등록된 결제 수단이 없습니다."));
-		
-		// 차액 결제용 요청 생성
-		PaymentProrationRequestDto prorationRequest = new PaymentProrationRequestDto();
-		prorationRequest.setAmount(actualAmount);
-		prorationRequest.setDescription("멤버십 플랜 업그레이드 차액 결제");
-		
-		// 멱등키 생성 (차액 결제용)
-		String idempotencyKey = "proration_" + userId + "_" + System.currentTimeMillis();
-		
-		try {
-			// 차액 결제 처리 (임시로 로그만 출력)
-			log.info("차액 결제 처리 - userId: {}, amount: {}, paymentMethodId: {}", 
-					userId, actualAmount, defaultPaymentMethod.id);
-			
-		} catch (Exception e) {
-			log.error("차액 결제 실패 - userId: {}, amount: {}", userId, actualAmount, e);
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "차액 결제 처리 중 오류가 발생했습니다.");
-		}
-	}
-	
-	@Value("${payments.dev-mode:false}")
-	private boolean devMode; // 개발 모드 설정값
-	
-	/**
-	 * 개발 환경 여부 확인
-	 * - application-dev.yml에서 설정된 payments.dev-mode 값으로 판단
-	 */
-	private boolean isDevEnvironment() {
-		return devMode;
-	}
-
-	/**
-	 * 차액 결제 요청 이벤트 리스너
-	 * - 멤버십 업그레이드 시 발행된 이벤트를 처리하여 차액 결제 수행
-	 */
-	@EventListener
-	@Transactional
-	public void handleProrationPaymentRequested(com.ottproject.ottbackend.event.ProrationPaymentRequestedEvent event) {
-		try {
-			processProrationPayment(event.getUserId(), event.getAmount());
-			log.info("이벤트 기반 차액 결제 처리 완료 - userId: {}, amount: {}", event.getUserId(), event.getAmount());
-		} catch (Exception e) {
-			log.error("이벤트 기반 차액 결제 처리 실패 - userId: {}, amount: {}", event.getUserId(), event.getAmount(), e);
 		}
 	}
 

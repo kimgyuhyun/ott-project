@@ -23,7 +23,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -65,7 +64,6 @@ class PaymentCommandServiceTest {
     @Mock private MembershipSubscriptionRepository subscriptionRepository;
     @Mock private PaymentQueryMapper paymentQueryMapper;
     @Mock private PaymentMethodService paymentMethodService;
-    @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private MembershipCommandService membershipCommandService;
     @Mock private OutboxEventRepository outboxEventRepository;
     @Mock private ObjectMapper objectMapper;
