@@ -1,6 +1,9 @@
 package com.ottproject.ottbackend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ottproject.ottbackend.dto.PaymentCheckoutCreateRequestDto;
+import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
+import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
 import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.entity.MembershipPlan;
@@ -9,6 +12,7 @@ import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
+import com.ottproject.ottbackend.enums.PaymentMethodType;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
 import com.ottproject.ottbackend.mybatis.PaymentQueryMapper;
@@ -27,6 +31,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +44,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.times;
 
 /**
  * PaymentCommandService.applyWebhookEvent 단위 테스트
@@ -471,5 +477,66 @@ class PaymentCommandServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("환불 대상 결제가 아닙니다");
         verifyNoInteractions(paymentGateway);
+    }
+
+    // ===== 체크아웃 - 결제수단 중복 등록 =====
+
+    private PaymentCheckoutCreateRequestDto kakaoCheckoutReq() {
+        PaymentCheckoutCreateRequestDto req = new PaymentCheckoutCreateRequestDto();
+        req.planCode = "BASIC";
+        req.paymentService = "kakao";
+        return req;
+    }
+
+    private PaymentMethodResponseDto methodDto(long id, PaymentMethodType type) {
+        PaymentMethodResponseDto dto = new PaymentMethodResponseDto();
+        dto.id = id;
+        dto.type = type;
+        return dto;
+    }
+
+    private void givenCheckoutDependencies() {
+        MembershipPlan plan = new MembershipPlan();
+        plan.setCode("BASIC");
+        plan.setPrice(new Money(9900L, "KRW"));
+        given(membershipPlanRepository.findByCode("BASIC")).willReturn(Optional.of(plan));
+        PaymentGateway.CheckoutSession session = new PaymentGateway.CheckoutSession();
+        session.sessionId = "sess_1";
+        given(paymentGateway.createCheckoutSession(any(), any(), any(), any(), any(), anyLong()))
+                .willReturn(session);
+    }
+
+    /**
+     * 체크아웃마다 무조건 등록하면 결제를 반복할수록 같은 유형의 결제수단이 계속 쌓인다.
+     */
+    @Test
+    @DisplayName("같은 결제 서비스로 두 번 체크아웃해도 결제수단 등록은 1회 - 중복 적재 방지")
+    void reusesExistingPaymentMethodOnRepeatCheckout() {
+        givenCheckoutDependencies();
+        PaymentMethodResponseDto registered = methodDto(10L, PaymentMethodType.KAKAO_PAY);
+        // 1회차: 등록 전 목록은 비어 있고, 등록 후에는 방금 만든 수단이 보인다
+        // 2회차: 이미 같은 유형이 있으므로 등록 없이 재사용돼야 한다
+        given(paymentMethodService.list(1L))
+                .willReturn(List.of())
+                .willReturn(List.of(registered))
+                .willReturn(List.of(registered));
+
+        service.checkout(1L, kakaoCheckoutReq());
+        service.checkout(1L, kakaoCheckoutReq());
+
+        verify(paymentMethodService, times(1)).register(eq(1L), any(PaymentMethodRegisterRequestDto.class));
+    }
+
+    @Test
+    @DisplayName("유형이 다른 결제수단만 있으면 새로 등록한다")
+    void registersWhenNoMethodOfSameTypeExists() {
+        givenCheckoutDependencies();
+        given(paymentMethodService.list(1L))
+                .willReturn(List.of(methodDto(10L, PaymentMethodType.CARD)))
+                .willReturn(List.of(methodDto(11L, PaymentMethodType.KAKAO_PAY)));
+
+        service.checkout(1L, kakaoCheckoutReq());
+
+        verify(paymentMethodService).register(eq(1L), any(PaymentMethodRegisterRequestDto.class));
     }
 }

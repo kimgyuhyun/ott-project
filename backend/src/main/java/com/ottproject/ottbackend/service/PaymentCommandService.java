@@ -390,27 +390,40 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				methodType = PaymentMethodType.CARD;
 			}
 
-			// 결제수단 등록
-			PaymentMethodRegisterRequestDto methodDto = new PaymentMethodRegisterRequestDto();
-			methodDto.provider = PaymentProvider.IMPORT;
-			methodDto.type = methodType;
-			methodDto.providerMethodId = "temp_" + System.currentTimeMillis(); // 임시 ID
-			methodDto.brand = brandUpper; // ACCOUNT일 때만 세팅, CARD는 나중에 확정
-			methodDto.isDefault = true; // 첫 결제수단이므로 기본으로 설정
-			methodDto.priority = 100;
-			methodDto.label = (methodType == PaymentMethodType.CARD ? "카드" : 
-				methodType == PaymentMethodType.KAKAO_PAY ? "카카오페이" :
-				methodType == PaymentMethodType.TOSS_PAY ? "토스페이" :
-				methodType == PaymentMethodType.NICE_PAY ? "나이스페이" : "결제") + " 결제";
-			
-			paymentMethodService.register(userId, methodDto);
-			
-			// 등록된 결제수단 조회
-			List<PaymentMethodResponseDto> methods = paymentMethodService.list(userId);
-			if (!methods.isEmpty()) {
-				PaymentMethodResponseDto latestMethod = methods.get(0);
+			// 같은 유형의 결제수단이 이미 있으면 재사용한다.
+			// 체크아웃마다 무조건 등록하면 결제를 반복할수록 동일 유형 수단이 계속 쌓인다.
+			final PaymentMethodType resolvedType = methodType;
+			PaymentMethodResponseDto existingMethod = paymentMethodService.list(userId).stream()
+					.filter(pm -> pm.type == resolvedType)
+					.findFirst()
+					.orElse(null);
+
+			if (existingMethod == null) {
+				// 결제수단 등록
+				PaymentMethodRegisterRequestDto methodDto = new PaymentMethodRegisterRequestDto();
+				methodDto.provider = PaymentProvider.IMPORT;
+				methodDto.type = methodType;
+				methodDto.providerMethodId = "temp_" + System.currentTimeMillis(); // 임시 ID
+				methodDto.brand = brandUpper; // ACCOUNT일 때만 세팅, CARD는 나중에 확정
+				methodDto.isDefault = true; // 첫 결제수단이므로 기본으로 설정
+				methodDto.priority = 100;
+				methodDto.label = (methodType == PaymentMethodType.CARD ? "카드" :
+					methodType == PaymentMethodType.KAKAO_PAY ? "카카오페이" :
+					methodType == PaymentMethodType.TOSS_PAY ? "토스페이" :
+					methodType == PaymentMethodType.NICE_PAY ? "나이스페이" : "결제") + " 결제";
+
+				paymentMethodService.register(userId, methodDto);
+
+				// 등록된 결제수단 조회
+				List<PaymentMethodResponseDto> methods = paymentMethodService.list(userId);
+				if (!methods.isEmpty()) {
+					existingMethod = methods.get(0);
+				}
+			}
+
+			if (existingMethod != null) {
 				paymentMethod = new PaymentMethod();
-				paymentMethod.setId(latestMethod.id);
+				paymentMethod.setId(existingMethod.id);
 			}
 		}
 
