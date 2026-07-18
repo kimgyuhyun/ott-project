@@ -8,6 +8,7 @@ import {
 } from "@/lib/api/admin";
 import type { AdminAnimeItem, AnimeCurationSearchCondition } from "@/lib/api/admin";
 import AnimeCurationEditModal from "@/components/admin/AnimeCurationEditModal";
+import AnimeEpisodeManageModal from "@/components/admin/AnimeEpisodeManageModal";
 import AnimeBulkCurationModal from "@/components/admin/AnimeBulkCurationModal";
 import styles from "../admin.module.css";
 
@@ -128,6 +129,8 @@ export default function AdminAnimePage() {
   // 편집 모달 대상 ID. null 이면 닫힘.
   // 항목 객체가 아니라 ID 만 들고 모달이 상세를 따로 받는다 — 줄거리는 목록 응답에 없다.
   const [editing, setEditing] = useState<number | null>(null);
+  // 에피소드 모달은 제목까지 필요하다(헤더에 표시). 목록 항목에서 그대로 넘긴다.
+  const [managingEpisodesOf, setManagingEpisodesOf] = useState<{ id: number; title: string } | null>(null);
 
   const handleEditSaved = () => {
     setEditing(null);
@@ -477,7 +480,16 @@ export default function AdminAnimePage() {
                     </td>
                     <td style={{ color: "#9aa0aa" }}>{it.syncOrigin === "JIKAN" ? "Jikan" : "수동"}</td>
                     <td>
-                      <button className={styles.pagerBtn} onClick={() => setEditing(it.id)}>수정</button>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className={styles.pagerBtn} onClick={() => setEditing(it.id)}>수정</button>
+                        {/* 작품 필드와 에피소드는 저장 대상이 달라 모달을 나눈다 */}
+                        <button
+                          className={styles.pagerBtn}
+                          onClick={() => setManagingEpisodesOf({ id: it.id, title: it.title ?? "" })}
+                        >
+                          화수
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -511,6 +523,14 @@ export default function AdminAnimePage() {
           animeId={editing}
           onClose={() => setEditing(null)}
           onSaved={handleEditSaved}
+        />
+      )}
+
+      {managingEpisodesOf !== null && (
+        <AnimeEpisodeManageModal
+          animeId={managingEpisodesOf.id}
+          animeTitle={managingEpisodesOf.title}
+          onClose={() => setManagingEpisodesOf(null)}
         />
       )}
 

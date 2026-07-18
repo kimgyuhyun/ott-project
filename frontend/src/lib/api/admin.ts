@@ -232,6 +232,55 @@ export async function applyBulkCuration(
   return api.patch<BulkCurationResult>(`/admin/anime/bulk`, request);
 }
 
+// ===== 에피소드 관리 =====
+// 백엔드: AdminEpisodeController (/api/admin/animes/**), ROLE_ADMIN 전용
+// 경로가 /admin/anime(단수)가 아니라 /admin/animes(복수)다 — 컨트롤러가 그렇게 선언돼 있다.
+
+// 에피소드 단건 (AdminEpisodeDetailDto)
+export interface AdminEpisode {
+  id: number;
+  animeId: number;
+  episodeNumber: number;
+  title: string;
+  thumbnailUrl: string;
+  videoUrl: string;
+  isActive: boolean;
+  isReleased: boolean;
+}
+
+// 에피소드 부분 수정 요청 (EpisodeUpdateRequest)
+// 보내지 않은(undefined) 필드는 백엔드가 건드리지 않는다. 빈 문자열은 400 이다(not-null 컬럼).
+// episodeNumber 는 수정 대상이 아니다 — 시청 기록·진행률·댓글이 에피소드에 붙어 있다.
+export interface EpisodeUpdateRequest {
+  title?: string;
+  thumbnailUrl?: string;
+  videoUrl?: string;
+  isActive?: boolean;
+  isReleased?: boolean;
+}
+
+/**
+ * 작품의 화수 목록 조회
+ * GET /api/admin/animes/{animeId}/episodes
+ * - 화수 오름차순으로 온다.
+ */
+export async function listEpisodesForAdmin(animeId: number): Promise<AdminEpisode[]> {
+  return api.get<AdminEpisode[]>(`/admin/animes/${animeId}/episodes`);
+}
+
+/**
+ * 화수 부분 수정
+ * PATCH /api/admin/animes/{animeId}/episodes/{episodeId}
+ * - 영상 경로(videoUrl)를 고치는 유일한 경로다. 시드 SQL 로 들어간 값도 여기서 바로잡는다.
+ */
+export async function updateEpisodeForAdmin(
+  animeId: number,
+  episodeId: number,
+  request: EpisodeUpdateRequest,
+): Promise<AdminEpisode> {
+  return api.patch<AdminEpisode>(`/admin/animes/${animeId}/episodes/${episodeId}`, request);
+}
+
 // ===== 통계 / 감사 로그 =====
 // 백엔드: AdminStatsController (/api/admin/stats/**), ROLE_ADMIN 전용
 
