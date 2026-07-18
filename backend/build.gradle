@@ -77,6 +77,14 @@ dependencies {
 	testImplementation 'org.mockito:mockito-core'
 	testImplementation 'org.mockito:mockito-junit-jupiter'
 	testImplementation 'com.h2database:h2' // 테스트용 인메모리 DB
+
+	// Testcontainers: 운영과 같은 PostgreSQL 을 띄워 DB 방언에 의존하는 동작을 검증한다.
+	// H2 로는 못 잡는 것들이 있다 — 예: read-only 트랜잭션의 SELECT ... FOR UPDATE 거부.
+	// (H2 는 이를 허용해서, 큐레이션 단건 조회 500 이 슬라이스 테스트를 전부 통과하고 배포까지 갔다.)
+	// 버전을 비운 것은 의도적이다: Boot 3.5.4 의 dependency-management 가 testcontainers BOM 을 관리한다.
+	// Docker 가 필요하다 — 없는 환경에서는 해당 테스트가 skip 된다(DockerAvailable 조건 참고).
+	testImplementation 'org.testcontainers:junit-jupiter'
+	testImplementation 'org.testcontainers:postgresql'
 }
 
 // Lombok과 MapStruct 함께 사용할 때 필요한 설정
