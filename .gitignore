@@ -307,6 +307,9 @@ application-dev.properties
 # Security tooling runtime artifacts (do not commit)
 security/watchdog.log
 security/ALERT.txt
+# 호스트 방화벽 롤백 아티팩트(호스트 전용, 정책 덤프) — 커밋 금지
+security/*.wfw
+security/firewall-*-rollback-*.txt
 
 # Discord 웹훅 URL(비밀) — 커밋 금지
 security/discord-webhook.txt
