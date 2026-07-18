@@ -11,7 +11,7 @@ import lombok.Getter;
  * 필드 개요
  * - id/animeId: 생성된 에피소드와 소속 작품 식별자
  * - episodeNumber/title/thumbnailUrl/videoUrl: 저장된 값
- * - isReleased: 공개 여부(등록 직후에는 비공개)
+ * - isActive/isReleased: 활성화·공개 여부(등록 직후에는 비공개)
  */
 @Getter
 @Builder
@@ -24,6 +24,7 @@ public class AdminEpisodeDetailDto {
     private final String title;
     private final String thumbnailUrl;
     private final String videoUrl;
+    private final Boolean isActive;
     private final Boolean isReleased;
 
     public static AdminEpisodeDetailDto from(Episode episode) {
@@ -34,6 +35,7 @@ public class AdminEpisodeDetailDto {
                 .title(episode.getTitle())
                 .thumbnailUrl(episode.getThumbnailUrl())
                 .videoUrl(episode.getVideoUrl())
+                .isActive(episode.getIsActive())
                 .isReleased(episode.getIsReleased())
                 .build();
     }

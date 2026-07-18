@@ -22,18 +22,23 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 관리자 에피소드 등록 API 인가(Authorization) 규칙 테스트
+ * 관리자 에피소드 API 인가(Authorization) 규칙 테스트
  *
  * 지키려는 규칙
  * - 에피소드 등록은 ROLE_ADMIN 만 할 수 있다 — 등록되면 찜한 사용자 전원에게 알림이 나간다.
  *   일반 사용자가 부를 수 있으면 알림 스팸 발송기가 된다.
+ * - 화수 수정도 ROLE_ADMIN 만 — 영상 경로(videoUrl)를 바꿀 수 있어서, 열리면 재생 대상을 통째로 갈아끼울 수 있다.
  *
  * 보호는 전적으로 SecurityConfig 의 URL 패턴("/api/admin/**" → hasRole("ADMIN"))에 달려 있다.
  * 이 프로젝트에는 @EnableMethodSecurity 가 없어 @PreAuthorize 는 조용히 무시된다.
@@ -101,6 +106,67 @@ class AdminEpisodeAuthorizationTest {
 
         mvc.perform(post("/api/admin/animes/1/episodes")
                         .contentType(MediaType.APPLICATION_JSON).content(CREATE_BODY))
+                .andExpect(status().isOk());
+    }
+
+    private static final String UPDATE_BODY = """
+            {"videoUrl":"https://v/fixed.m3u8"}
+            """;
+
+    private void givenListAndUpdateReturnSomething() {
+        given(adminEpisodeService.listEpisodes(anyLong())).willReturn(List.of());
+        given(adminEpisodeService.updateEpisode(anyLong(), anyLong(), any()))
+                .willReturn(AdminEpisodeDetailDto.builder().id(1L).animeId(1L).episodeNumber(1).build());
+    }
+
+    @Test
+    @DisplayName("비로그인은 화수 목록을 볼 수 없다")
+    @WithAnonymousUser
+    void anonymousCannotList() throws Exception {
+        mvc.perform(get("/api/admin/animes/1/episodes")).andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @DisplayName("일반 사용자는 화수 목록을 볼 수 없다")
+    @WithMockUser(roles = "USER")
+    void normalUserCannotList() throws Exception {
+        givenListAndUpdateReturnSomething();
+
+        mvc.perform(get("/api/admin/animes/1/episodes")).andExpect(status().isForbidden());
+    }
+
+    /**
+     * 영상 경로를 바꿀 수 있는 경로다. 일반 사용자가 부를 수 있으면 재생 대상을 통째로 갈아끼울 수 있다.
+     */
+    @Test
+    @DisplayName("일반 사용자는 화수를 수정할 수 없다 - 영상 경로를 갈아끼울 수 있는 경로다")
+    @WithMockUser(roles = "USER")
+    void normalUserCannotUpdate() throws Exception {
+        givenListAndUpdateReturnSomething();
+
+        mvc.perform(patch("/api/admin/animes/1/episodes/10")
+                        .contentType(MediaType.APPLICATION_JSON).content(UPDATE_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("비로그인은 화수를 수정할 수 없다")
+    @WithAnonymousUser
+    void anonymousCannotUpdate() throws Exception {
+        mvc.perform(patch("/api/admin/animes/1/episodes/10")
+                        .contentType(MediaType.APPLICATION_JSON).content(UPDATE_BODY))
+                .andExpect(status().is4xxClientError());
+    }
+
+    @Test
+    @DisplayName("관리자는 화수 목록 조회와 수정을 할 수 있다")
+    @WithMockUser(roles = "ADMIN")
+    void adminCanListAndUpdate() throws Exception {
+        givenListAndUpdateReturnSomething();
+
+        mvc.perform(get("/api/admin/animes/1/episodes")).andExpect(status().isOk());
+        mvc.perform(patch("/api/admin/animes/1/episodes/10")
+                        .contentType(MediaType.APPLICATION_JSON).content(UPDATE_BODY))
                 .andExpect(status().isOk());
     }
 }

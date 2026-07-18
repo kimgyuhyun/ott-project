@@ -2,6 +2,7 @@ package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.dto.admin.AdminEpisodeDetailDto;
 import com.ottproject.ottbackend.dto.admin.EpisodeCreateRequest;
+import com.ottproject.ottbackend.dto.admin.EpisodeUpdateRequest;
 import com.ottproject.ottbackend.service.AdminEpisodeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 /**
  * 관리자 에피소드 관리 컨트롤러
@@ -27,6 +30,8 @@ import org.springframework.web.bind.annotation.*;
  *
  * 엔드포인트 개요
  * - POST /{animeId}/episodes: 에피소드 등록
+ * - GET /{animeId}/episodes: 화수 목록 조회
+ * - PATCH /{animeId}/episodes/{episodeId}: 화수 부분 수정
  */
 @RestController
 @RequestMapping("/api/admin/animes")
@@ -48,5 +53,30 @@ public class AdminEpisodeController {
             @Parameter(description = "에피소드 등록 정보", required = true) @RequestBody EpisodeCreateRequest request) {
 
         return ResponseEntity.ok(adminEpisodeService.createEpisode(animeId, request));
+    }
+
+    @Operation(summary = "에피소드 목록 조회", description = "작품의 화수 목록을 화수 오름차순으로 조회합니다.")
+    @ApiResponse(responseCode = "200", description = "조회 성공")
+    @ApiResponse(responseCode = "404", description = "애니메이션 없음")
+    @GetMapping("/{animeId}/episodes")
+    public ResponseEntity<List<AdminEpisodeDetailDto>> listEpisodes(
+            @Parameter(description = "애니메이션 ID", required = true) @PathVariable Long animeId) {
+
+        return ResponseEntity.ok(adminEpisodeService.listEpisodes(animeId));
+    }
+
+    @Operation(summary = "에피소드 수정",
+            description = "영상 URL/썸네일/제목/활성·공개 여부를 수정합니다. 전달하지 않은 필드는 변경하지 않습니다. "
+                    + "화수(episodeNumber)는 시청 기록이 붙어 있어 변경 대상이 아닙니다.")
+    @ApiResponse(responseCode = "200", description = "수정 성공")
+    @ApiResponse(responseCode = "400", description = "빈 값으로 수정 시도")
+    @ApiResponse(responseCode = "404", description = "에피소드 없음 또는 해당 작품 소속이 아님")
+    @PatchMapping("/{animeId}/episodes/{episodeId}")
+    public ResponseEntity<AdminEpisodeDetailDto> updateEpisode(
+            @Parameter(description = "애니메이션 ID", required = true) @PathVariable Long animeId,
+            @Parameter(description = "에피소드 ID", required = true) @PathVariable Long episodeId,
+            @Parameter(description = "수정할 값", required = true) @RequestBody EpisodeUpdateRequest request) {
+
+        return ResponseEntity.ok(adminEpisodeService.updateEpisode(animeId, episodeId, request));
     }
 }
