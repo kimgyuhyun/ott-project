@@ -23,6 +23,7 @@ import java.lang.reflect.Field;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
@@ -227,6 +228,75 @@ class ImportPaymentGatewayTest {
                             "merchant_uid", MERCHANT_UID, "imp_uid", IMP_UID));
 
             assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("chargeWithSavedMethod - 아임포트 논리 실패를 성공으로 오인하면 안 된다")
+    class ChargeWithSavedMethod {
+
+        /**
+         * /subscribe/payments/again 은 String 으로 응답을 받으므로 원문 JSON 을 그대로 돌려준다.
+         */
+        private void givenAgainResponds(String rawJson) throws Exception {
+            Object tokenResponse = newTokenResponse("test-token");
+            given(rest.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
+                    .willAnswer(invocation -> {
+                        String url = invocation.getArgument(0);
+                        if (url.endsWith("/users/getToken")) {
+                            return ResponseEntity.ok(tokenResponse);
+                        }
+                        return ResponseEntity.ok(rawJson);
+                    });
+        }
+
+        private PaymentGateway.ChargeResult charge() {
+            return gateway.chargeWithSavedMethod("cust_1", "billing_1", EXPECTED_AMOUNT, "KRW", "Subscription renewal");
+        }
+
+        /**
+         * 아임포트는 빌링키가 없어도 HTTP 200 을 준다. code 만이 실패를 알려준다.
+         */
+        @Test
+        @DisplayName("code 가 0 이 아니면 ChargeException 을 던진다 - HTTP 200 이어도 실패다")
+        void throwsWhenCodeIsNotZero() throws Exception {
+            givenAgainResponds("{\"code\":-1,\"message\":\"등록된 빌링키가 없습니다.\",\"response\":null}");
+
+            assertThatThrownBy(this::charge)
+                    .isInstanceOf(PaymentGateway.ChargeException.class)
+                    .hasMessage("등록된 빌링키가 없습니다.")
+                    .extracting(e -> ((PaymentGateway.ChargeException) e).errorCode)
+                    .isEqualTo("-1");
+        }
+
+        @Test
+        @DisplayName("code 가 0 이어도 status 가 paid 가 아니면 ChargeException 을 던진다")
+        void throwsWhenStatusIsNotPaid() throws Exception {
+            givenAgainResponds("{\"code\":0,\"message\":null,"
+                    + "\"response\":{\"status\":\"failed\",\"imp_uid\":\"imp_1\"}}");
+
+            assertThatThrownBy(this::charge).isInstanceOf(PaymentGateway.ChargeException.class);
+        }
+
+        @Test
+        @DisplayName("code 가 0 이고 status 가 paid 여도 imp_uid 가 없으면 ChargeException 을 던진다")
+        void throwsWhenImpUidMissing() throws Exception {
+            givenAgainResponds("{\"code\":0,\"message\":null,\"response\":{\"status\":\"paid\"}}");
+
+            assertThatThrownBy(this::charge).isInstanceOf(PaymentGateway.ChargeException.class);
+        }
+
+        @Test
+        @DisplayName("정상 응답이면 ChargeResult 를 반환한다")
+        void returnsResultOnSuccess() throws Exception {
+            givenAgainResponds("{\"code\":0,\"message\":null,\"response\":{\"status\":\"paid\","
+                    + "\"imp_uid\":\"" + IMP_UID + "\",\"receipt_url\":\"https://receipt.test/1\"}}");
+
+            PaymentGateway.ChargeResult result = charge();
+
+            assertThat(result.providerPaymentId).isEqualTo(IMP_UID);
+            assertThat(result.receiptUrl).isEqualTo("https://receipt.test/1");
+            assertThat(result.paidAt).isNotNull();
         }
     }
 

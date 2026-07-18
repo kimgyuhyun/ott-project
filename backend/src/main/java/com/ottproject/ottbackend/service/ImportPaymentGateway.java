@@ -97,10 +97,33 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 		String body = String.format("{\"customer_uid\":\"%s\",\"merchant_uid\":\"%s\",\"amount\":%d,\"name\":\"%s\"}", providerMethodId, merchantUid, amount, description == null ? "Subscription" : description); // 바디
 		ResponseEntity<String> res = rest.exchange(apiBase + "/subscribe/payments/again", HttpMethod.POST, new HttpEntity<>(body, h), String.class); // 호출
 
-		ChargeResult result = new ChargeResult(); // 결과
 		String resBody = (res != null ? res.getBody() : null); // 바디 추출
 		java.util.Map<String, Object> bodyMap = parseJsonToMap(resBody); // 응답 바디 맵
-		result.providerPaymentId = (String) nested(bodyMap, "response", "imp_uid"); // 외부 결제 ID
+
+		// 아임포트는 논리적 실패(빌링키 없음 등)도 HTTP 200 + code != 0 + response: null 로 응답한다.
+		// 여기서 걸러내지 않으면 실패한 청구가 imp_uid 없는 SUCCEEDED 결제로 저장되고 던닝이 영원히 돌지 않는다.
+		Number code = (Number) bodyMap.get("code"); // 아임포트 논리 응답 코드
+		String message = (String) bodyMap.get("message"); // 아임포트 실패 메시지
+		if (code == null || code.intValue() != 0) {
+			throw new ChargeException(
+				FailureType.SOFT_DECLINE,
+				code == null ? "UNKNOWN" : String.valueOf(code.intValue()),
+				message == null ? "아임포트 재청구 실패" : message
+			);
+		}
+
+		String status = (String) nested(bodyMap, "response", "status"); // 결제 상태
+		String impUid = (String) nested(bodyMap, "response", "imp_uid"); // 외부 결제 ID
+		if (!"paid".equals(status) || impUid == null || impUid.isBlank()) {
+			throw new ChargeException(
+				FailureType.SOFT_DECLINE,
+				"NOT_PAID",
+				message == null ? "아임포트 재청구가 완료되지 않음 - status: " + status : message
+			);
+		}
+
+		ChargeResult result = new ChargeResult(); // 결과
+		result.providerPaymentId = impUid; // 외부 결제 ID
 		java.time.Instant paid = java.time.Instant.now(); // 간단 처리
 		result.paidAt = java.time.LocalDateTime.ofInstant(paid, java.time.ZoneId.systemDefault()); // 지불 시각
 		result.receiptUrl = (String) nested(bodyMap, "response", "receipt_url"); // 영수증 URL
