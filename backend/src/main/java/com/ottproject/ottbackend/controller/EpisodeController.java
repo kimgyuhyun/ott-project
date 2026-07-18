@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,6 +31,7 @@ import java.util.List;
  */
 @RestController
 @RequiredArgsConstructor
+@Slf4j
 @RequestMapping("/api/episodes")
 public class EpisodeController {
     
@@ -95,7 +97,7 @@ public class EpisodeController {
             return ResponseEntity.ok().build();
         } catch (Exception e) {
             // 로그 기록 후 500 에러 반환
-            System.err.println("진행률 저장 실패: " + e.getMessage());
+            log.error("진행률 저장 실패 - episodeId: {}, userId: {}", id, userId, e);
             return ResponseEntity.internalServerError().build();
         }
     }
