@@ -126,16 +126,31 @@ jobs:
             Write-Host "scan clean: $img"
           }
 
-          # --- 6) 배포: digest 고정 이미지 + egress 차단 스택 ---
-          Write-Host '=== DEPLOY (digest-pinned, egress-locked) ==='
+          # --- 6) 배포: digest 고정 이미지 + egress 차단 스택 + 무중단 순차 교체 ---
+          # 배포 명령을 여기에 복사해두지 않고 deploy-rolling.ps1 을 호출한다.
+          # 예전에는 CD 가 compose 명령을 따로 들고 있어서, 수동 배포와 CD 가 서로 다른
+          # 파일 세트를 배포하는 드리프트가 생겼다(2026-07-20: 수동은 2인스턴스인데
+          # CD 는 ha 오버레이를 몰라서 --remove-orphans 로 ott-app-2 를 지워버리는 상태였음).
+          # 스크립트 하나만 고치면 양쪽이 같이 바뀌도록 경로를 하나로 합친다.
+          #
+          # 스크립트가 하는 일: 4파일 세트(yml+prod+netlock+ha)로 비백엔드부터 올리고,
+          # 백엔드는 ott-app → ott-app-2 순으로 하나씩 교체하며 각각 헬스를 확인한다.
+          # 동시 재생성은 실측 22초 장애(197요청 중 164건 502), 순차 교체는 1441요청 무실패.
+          Write-Host '=== DEPLOY (digest-pinned, egress-locked, rolling) ==='
           $env:APP_IMAGE = $appImage
           $env:FRONT_IMAGE = $frontImage
           $env:APP_PULL_POLICY = 'never'      # 이미 pull됨
           $env:FRONT_PULL_POLICY = 'never'
-          docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.netlock.yml --env-file .env up -d --remove-orphans
-          if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
+          .\deploy-rolling.ps1
+          if ($LASTEXITCODE -ne 0) { throw 'rolling deploy failed' }
           docker exec ott-nginx nginx -t; if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed' }
           docker exec ott-nginx nginx -s reload
+
+          # 수동 배포용 clean 태그를 방금 배포한 이미지로 맞춘다.
+          # 이 두 줄이 없으면 태그가 낡아, 수동 compose 배포 시 백엔드·프론트가 조용히
+          # 구버전으로 다운그레이드된다(2026-07-20 에 실제로 그 상태였다).
+          docker tag $appImage ott-backend:clean
+          docker tag $frontImage ott-frontend:clean
 
           # --- 7) 검증: 백엔드 헬스 + 프론트엔드 egress 차단(보안 불변식) ---
           # 기동 직후엔 백엔드가 아직 listen 전이라 wget이 'connection refused'(stderr)를 낸다.

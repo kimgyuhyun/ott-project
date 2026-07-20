@@ -21,6 +21,15 @@ if (-not (Test-Path .env)) {
     throw '.env not found. Decrypt it from .env.enc (SOPS+age) before deploying.'
 }
 
+# This script deploys the SINGLE-instance layout. Since 2026-07-20 the site runs
+# two backends behind an nginx upstream, and this file set does not include the ha
+# overlay - running it would drop nginx back to the single-backend config and
+# --remove-orphans would delete ott-app-2, all without saying so.
+# Use deploy-rolling.ps1 instead. This one stays for deliberate rollbacks.
+if (docker ps -q -f name=ott-app-2) {
+    throw 'ott-app-2 is running: this script would revert the site to a single instance. Use .\deploy-rolling.ps1. To roll back on purpose, remove ott-app-2 first (docker rm -f ott-app-2), then rerun this.'
+}
+
 Write-Host '=== SECURE DEPLOY (prod + egress-locked) ==='
 docker compose `
     -f docker-compose.yml `
