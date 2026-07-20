@@ -1,0 +1,147 @@
+# [실험 전용] 백엔드 다중 인스턴스 관찰용 독립 스택 — 2026-07-20
+#
+# 목적: 인스턴스가 2개일 때만 드러나는 문제(스케줄러 중복 실행, 분산락 필요성,
+#       세션 공유)를 눈으로 확인한다. 실험 후 이 파일과 ott-multi_* 볼륨을 지우면 흔적이 없다.
+#
+# 실행 (반드시 -p ott-multi 로 프로젝트 이름을 분리할 것):
+#   docker compose -p ott-multi -f docker-compose.multi.yml up -d
+# 정리:
+#   docker compose -p ott-multi -f docker-compose.multi.yml down -v
+#
+# 왜 독립 스택인가:
+#   이 호스트에서 ott-project 스택이 실서비스로 돌고 있다(포트포워딩 노출).
+#   같은 프로젝트 이름으로 dev 스택을 올리면 기존 컨테이너를 재생성해서 서비스가 끊기고,
+#   netlock 이 빠져 egress 가 열린다. 프로젝트 이름을 분리하면 컨테이너/네트워크/볼륨이
+#   전부 별개가 되어 실서비스를 건드리지 않는다. DB 도 새 빈 볼륨에서 Flyway 로 재생성된다.
+#
+# 실험 범위상 뺀 것:
+#   - nginx / frontend: 스케줄러 중복 관찰과 세션 확인(8091↔8092 직접 호출)에 불필요하고,
+#                       포트 80/443 이 실서비스와 충돌한다.
+#   - 망 2계층 분리: 이번 관찰 대상이 아니라 단일 네트워크로 단순화했다.
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: ott-multi-postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # 호스트 포트 미개방: 실서비스 5432 와 충돌 방지
+
+  redis:
+    image: redis:7-alpine
+    container_name: ott-multi-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    # 세션 공유 확인 대상. dev 프로파일은 Redis 비밀번호를 쓰지 않는다.
+
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: ott-multi-kafka
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@ott-multi-kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      # 호스트 노출용 EXTERNAL 리스너는 뺐다(실서비스 9092 와 충돌 방지). 내부 통신만 한다.
+      KAFKA_LISTENERS: "INTERNAL://:9094,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://ott-multi-kafka:9094"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: ott-multi-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ott
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-ott-local}
+
+  app1: &app
+    # 실서비스(ott-app)가 현재 돌리고 있는 것과 동일한 이미지. 같은 코드로 실험해야 의미가 있다.
+    # (ott-backend:clean 은 오래된 태그라 쓰지 않는다)
+    image: ${APP_IMAGE:-ghcr.io/kimgyuhyun/ott-backend:85b83dd1fe342b80ab13fbd15f604a902865e3b9}
+    container_name: ott-multi-app1
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:8091:8090"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # 접속 대상을 이 실험 스택 안으로 돌린다(.env 의 값을 덮어쓴다)
+      DB_HOST: ott-multi-postgres
+      DB_PORT: "5432"
+      REDIS_HOST: ott-multi-redis
+      REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP_SERVERS: ott-multi-kafka:9094
+      RABBITMQ_HOST: ott-multi-rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: ott
+      # 8091/8092 를 curl 로 직접 때리므로 쿠키/오리진을 로컬 기준으로 맞춘다
+      COOKIE_DOMAIN: 127.0.0.1
+      COOKIE_SECURE: "false"
+      COOKIE_SAME_SITE: lax
+      BASE_URL: http://127.0.0.1:8091
+      # curl 에는 Origin 헤더가 없어 오리진 검증 필터에 걸린다. 격리된 실험 스택에서만 끈다.
+      APP_SECURITY_ORIGIN_CHECK_ENABLED: "false"
+      # OutboxPublisher 성공 로그가 debug 라 기본 설정으로는 중복이 안 보인다.
+      # show-sql 은 로그가 묻혀서 끈다. 환경변수 기반 logging.level 은 키가 소문자로
+      # 내려가 클래스 로거에 안 붙을 수 있어 시스템 프로퍼티로 준다.
+      JAVA_TOOL_OPTIONS: >-
+        -Dlogging.level.com.ottproject.ottbackend.service.OutboxPublisher=DEBUG
+        -Dlogging.level.net.javacrumbs.shedlock=DEBUG
+        -Dspring.jpa.show-sql=false
+
+  app2:
+    <<: *app
+    container_name: ott-multi-app2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+      app1:
+        condition: service_started
+    ports:
+      - "127.0.0.1:8092:8090"
+
+  # [2단계] 로드밸런싱/무중단 배포 검증용. 실서비스 nginx(80/443)와 겹치지 않게 8888 을 쓴다.
+  nginx:
+    image: nginx:alpine
+    container_name: ott-multi-nginx
+    depends_on:
+      - app1
+      - app2
+    ports:
+      - "127.0.0.1:8888:80"
+    volumes:
+      - ./nginx/nginx.multi.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  postgres_data:
