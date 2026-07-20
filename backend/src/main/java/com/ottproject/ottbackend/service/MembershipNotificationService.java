@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -91,6 +92,8 @@ public class MembershipNotificationService { // 알림 메일 서비스
      * - 다운그레이드 예정인 사용자에게 3일 전 안내
      */
     @Scheduled(cron = "0 0 9 * * *") // 매일 오전 9시 실행
+    // 현재 본문은 스텁이라 무해하지만, 구현되면 안내 메일이 인스턴스 수만큼 중복 발송된다.
+    @SchedulerLock(name = "MembershipNotificationService_sendPlanChangeReminder", lockAtMostFor = "PT10M", lockAtLeastFor = "PT30S")
     public void sendPlanChangeReminder() {
         // TODO: 플랜 변경 예정일이 3일 후인 구독들을 조회하여 안내 메일 발송
         // 현재는 기본 구조만 구현

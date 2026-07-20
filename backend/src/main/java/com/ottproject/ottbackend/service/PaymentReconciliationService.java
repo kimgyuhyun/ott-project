@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.enums.PaymentStatus;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -36,6 +37,8 @@ public class PaymentReconciliationService {
 	 * - 건별로 별도 트랜잭션에서 정리(PaymentCommandService.reconcilePending 프록시 호출).
 	 */
 	@Scheduled(cron = "0 */10 * * * *") // 10분마다 실행
+	// 다중 인스턴스 중복 대사 방지(외부 결제 API 조회 + 상태 변경을 유발한다).
+	@SchedulerLock(name = "PaymentReconciliationService_reconcilePendingPayments", lockAtMostFor = "PT9M", lockAtLeastFor = "PT30S")
 	public void reconcilePendingPayments() {
 		LocalDateTime now = LocalDateTime.now();
 		LocalDateTime from = now.minusHours(24); // 하한: 24시간 전

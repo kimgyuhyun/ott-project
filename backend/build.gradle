@@ -43,6 +43,12 @@ dependencies {
 	implementation 'org.flywaydb:flyway-core:10.10.0'
 	implementation 'org.flywaydb:flyway-database-postgresql:10.10.0'
 
+	// ShedLock: @Scheduled 배치의 다중 인스턴스 중복 실행 방지(분산락).
+	// 인스턴스 2개 실험에서 아웃박스 이벤트 50건이 카프카에 100건으로 실리는 것을 확인했다.
+	// 저장소는 이미 쓰고 있는 Redis 를 재사용한다(세션 저장소와 동일 인스턴스, 키 네임스페이스만 분리).
+	implementation 'net.javacrumbs.shedlock:shedlock-spring:5.16.0'
+	implementation 'net.javacrumbs.shedlock:shedlock-provider-redis-spring:5.16.0'
+
 	// MapStruct
 	implementation 'org.mapstruct:mapstruct:1.6.3'
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'

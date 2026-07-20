@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.enums.OutboxStatus;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -38,8 +39,12 @@ public class OutboxPublisher {
     /**
      * 미발행(NEW) 이벤트 폴링 발행
      * - 기본 2초 주기(outbox.publish-interval-ms 로 조정)
+     * - 인스턴스가 여러 개면 락 없이는 같은 NEW 행을 동시에 집어 카프카에 중복 발행된다.
+     *   (실측: 이벤트 50건이 인스턴스 2개에서 100건으로 실림) → ShedLock 으로 한 번만 돌게 한다.
+     *   lockAtLeastFor 는 실행이 너무 빨리 끝나 락이 즉시 풀리는 것을 막는 하한이다.
      */
     @Scheduled(fixedDelayString = "${outbox.publish-interval-ms:2000}")
+    @SchedulerLock(name = "OutboxPublisher_publishPending", lockAtMostFor = "PT1M", lockAtLeastFor = "PT1S")
     public void publishPending() {
         List<OutboxEvent> batch = outboxEventRepository.findByStatusOrderByCreatedAtAsc(
                 OutboxStatus.NEW, PageRequest.of(0, BATCH_SIZE));

@@ -7,6 +7,7 @@ import com.ottproject.ottbackend.repository.DailyStatsRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +44,8 @@ public class StatsSnapshotService {
      * - 자정 직후 집계가 몰리지 않도록 10분 여유를 둔다.
      */
     @Scheduled(cron = "0 10 0 * * *", zone = "Asia/Seoul")
+    // upsert 라 중복 실행돼도 결과는 같지만, 집계 쿼리를 두 번 도는 낭비를 막는다.
+    @SchedulerLock(name = "StatsSnapshotService_snapshotYesterday", lockAtMostFor = "PT10M", lockAtLeastFor = "PT30S")
     public void snapshotYesterday() {
         LocalDate yesterday = LocalDate.now(KST).minusDays(1);
         DailyStats stats = buildSnapshot(yesterday);

@@ -13,6 +13,7 @@ import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.mybatis.MembershipSubscriptionQueryMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +52,10 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 	 * - 6시간마다 실행, 실제 서비스에서는 주기 조정 필요
 	 */
 	@Scheduled(cron = "0 0 */6 * * *") // 6시간마다 실행
+	// 다중 인스턴스 중복 청구 방지. cron 은 벽시계 정렬이라 인스턴스들이 정각에 동시 발화한다.
+	// lockAtMostFor 는 넉넉히 잡는다 — 구독을 순회하며 외부 결제 API 를 건건이 호출하므로
+	// 실행이 길다. 이 값보다 오래 걸리면 락이 먼저 풀려 다른 인스턴스가 중복 실행한다.
+	@SchedulerLock(name = "RecurringBillingService_runRecurringBilling", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")
 	@Transactional // 청구/연장 원자성 보장
 	public void runRecurringBilling() { // 배치 진입점
 		LocalDateTime now = LocalDateTime.now(); // 현재 시각
