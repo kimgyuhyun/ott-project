@@ -66,8 +66,13 @@ if (-not (Test-Path .env)) {
 
 # --- 1. Non-backend services first (frontend/nginx/datastores) -----------------
 # These are single-instance; recreating them is unrelated to backend rolling.
+#
+# --no-deps is REQUIRED here. nginx and frontend declare depends_on: app, so
+# without it compose pulls `app` into this step and recreates it while ott-app-2
+# may not exist yet - then step 2 recreates it a second time. That mistake cost
+# a real ~15s outage on the 2026-07-20 first deploy (364 failed requests).
 Write-Host '=== Updating non-backend services ==='
-docker compose @ComposeFiles up -d --remove-orphans postgres redis kafka rabbitmq frontend nginx
+docker compose @ComposeFiles up -d --remove-orphans --no-deps postgres redis kafka rabbitmq frontend nginx
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up (non-backend) failed' }
 
 # --- 2. Backend instances, one at a time --------------------------------------
@@ -102,7 +107,10 @@ foreach ($name in $Instances.Keys) {
     Write-Host "  $name egress: $dns"
 }
 
-Write-Host '=== ROLLING DEPLOY OK (no downtime) ==='
+Write-Host '=== ROLLING DEPLOY OK ==='
+Write-Host 'Note: if the nginx config itself changed, nginx was recreated above and'
+Write-Host '      that is a brief connection refusal no rolling can avoid.'
+Write-Host '      Backend-only deploys (the normal case) leave nginx untouched.'
 
 # FIRST RUN (switching from 1 instance to 2):
 #   Just run this script. Tested 2026-07-20: nginx starts fine with the upstream
