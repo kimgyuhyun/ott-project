@@ -42,6 +42,7 @@ class AdminEpisodeServiceTest {
     @Mock private AnimeRepository animeRepository;
     @Mock private EpisodeRepository episodeRepository;
     @Mock private NotificationTriggerService notificationTriggerService;
+    @Mock private AnimeCacheService animeCacheService;
 
     @InjectMocks
     private AdminEpisodeService service;

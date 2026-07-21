@@ -5,6 +5,8 @@ import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.service.AnimeQueryService;
+import com.ottproject.ottbackend.service.AnimeCacheService;
+import com.ottproject.ottbackend.service.FavoriteAnimeService;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import com.ottproject.ottbackend.service.PersonalizedRecommendationService;
@@ -33,10 +35,12 @@ import java.util.List;
 @RequestMapping("/api/anime") 
 public class AnimeController {
 
-    private final AnimeQueryService queryService; 
-    private final SecurityUtil securityUtil; 
+    private final AnimeQueryService queryService;
+    private final SecurityUtil securityUtil;
     private final PersonalizedRecommendationService personalizedRecommendationService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final AnimeCacheService animeCacheService;
+    private final FavoriteAnimeService favoriteAnimeService;
 
     /**
      * 애니 목록 조회(페이지네이션)
@@ -81,7 +85,10 @@ public class AnimeController {
             HttpSession session
     ) {
         Long userId = securityUtil.getCurrentUserIdOrNull(session);
-        return queryService.detail(aniId, userId);
+        AnimeDetailDto dto = animeCacheService.getDetailPublic(aniId); // 공용부는 캐시에서
+        if (dto == null) return null; // 작품 없음
+        dto.setIsFavorited(favoriteAnimeService.isFavorited(aniId, userId)); // 찜여부는 요청마다 합성(비로그인은 false)
+        return dto;
     }
 
     /**
@@ -126,24 +133,7 @@ public class AnimeController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/popular")
     public List<AnimeListDto> getPopular() {
-        return queryService.list(
-                null, // status
-                null, // genreIds
-                null, // minRating
-                null, // year
-                null, // quarter
-                null, // type
-                null, // isDub
-                null, // isSubtitle
-                null, // isExclusive
-                null, // isCompleted
-                null, // isNew
-                null, // isPopular
-                "rating", // sort
-                0, // page
-                10, // size
-                null // tagIds
-        ).getItems();
+        return animeCacheService.getPopular();
     }
 
     /**
@@ -189,7 +179,7 @@ public class AnimeController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/genres")
     public List<com.ottproject.ottbackend.dto.GenreSimpleDto> getGenres() {
-        return queryService.getAllGenres();
+        return animeCacheService.getGenres();
     }
 
     @Operation(summary = "태그 목록", description = "전체 태그를 반환합니다.")

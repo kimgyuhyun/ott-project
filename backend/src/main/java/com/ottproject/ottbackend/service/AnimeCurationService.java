@@ -44,6 +44,7 @@ public class AnimeCurationService {
 
     private final AnimeCurationQueryRepository curationQueryRepository;
     private final AnimeRepository animeRepository;
+    private final AnimeCacheService animeCacheService;
 
     // 벌크 UPDATE 는 영속성 컨텍스트를 우회하므로 flush/clear 를 직접 제어해야 한다(applyBulkCuration 참고).
     @PersistenceContext
@@ -119,6 +120,10 @@ public class AnimeCurationService {
             log.info("애니 큐레이션으로 표시: ID {} - 이후 TMDB 자동 보강 제외", animeId);
         }
 
+        // 더티 체킹은 커밋 시점에 UPDATE 를 낸다. 무효화는 커밋 후여야 낡은 값 재적재 레이스가 없다.
+        animeCacheService.evictDetail(animeId);
+        animeCacheService.evictPopular();
+
         return AdminAnimeDetailDto.from(anime);
     }
 
@@ -178,6 +183,9 @@ public class AnimeCurationService {
         entityManager.flush(); // 대기 중인 더티 체킹 변경을 벌크보다 먼저 DB 에 반영
         long affected = curationQueryRepository.applyBulkCuration(condition, request);
         entityManager.clear(); // 벌크 결과와 어긋난 1차 캐시를 버린다
+
+        // 조건 기반 벌크라 개별 ID 열거 비용이 커서 상세는 30분 TTL 백스톱에 맡기고 인기만 무효화한다.
+        animeCacheService.evictPopular();
 
         log.info("애니 벌크 큐레이션 적용: {}건", affected);
         return affected;

@@ -44,6 +44,7 @@ class AnimeCurationServiceTest {
     @Mock private AnimeCurationQueryRepository curationQueryRepository;
     @Mock private AnimeRepository animeRepository;
     @Mock private EntityManager entityManager;
+    @Mock private AnimeCacheService animeCacheService;
 
     @InjectMocks private AnimeCurationService animeCurationService;
 

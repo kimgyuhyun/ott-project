@@ -37,6 +37,7 @@ public class AdminEpisodeService {
     private final AnimeRepository animeRepository;
     private final EpisodeRepository episodeRepository;
     private final NotificationTriggerService notificationTriggerService;
+    private final AnimeCacheService animeCacheService;
 
     /**
      * 에피소드 등록
@@ -78,6 +79,9 @@ public class AdminEpisodeService {
         log.info("에피소드 등록 - animeId: {}, episodeNumber: {}", animeId, saved.getEpisodeNumber());
 
         notificationTriggerService.triggerEpisodeUpdateNotification(saved);
+
+        // 상세 공용부에 에피소드 목록이 포함되므로 커밋 후 무효화한다.
+        animeCacheService.evictDetail(animeId);
 
         return AdminEpisodeDetailDto.from(saved);
     }
@@ -127,6 +131,10 @@ public class AdminEpisodeService {
         if (request.getIsReleased() != null) episode.setIsReleased(request.getIsReleased());
 
         log.info("에피소드 수정 - animeId: {}, episodeId: {}", animeId, episodeId);
+
+        // 상세 공용부에 에피소드 목록이 포함되므로 커밋 후 무효화한다.
+        animeCacheService.evictDetail(animeId);
+
         return AdminEpisodeDetailDto.from(episode);
     }
 
