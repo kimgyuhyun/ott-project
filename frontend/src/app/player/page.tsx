@@ -426,8 +426,9 @@ function PlayerContent() {
         return;
       }
       
-      // 기타 에러는 기존 로직 유지
-      setStreamUrl('https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4');
+      // 기타 에러는 데모 영상으로 폴백. googleapis 샘플은 현재 403(사망)이므로
+      // DB가 표준으로 쓰는 살아있는 Blender 호스트로 맞춘다.
+      setStreamUrl('https://download.blender.org/peach/bigbuckbunny_movies/BigBuckBunny_320x180.mp4');
     } finally {
       setIsLoading(false);
     }
