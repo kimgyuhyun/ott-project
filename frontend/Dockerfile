@@ -29,6 +29,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 # standalone 출력은 실행에 필요한 최소 node_modules를 자체 포함하므로 별도 설치 불필요
 # (불필요한 npm ci 제거 → 공격 표면/이미지 크기 감소)
+# 런타임은 node server.js 만 실행하므로 npm 자체가 불필요. 베이스 이미지에 번들된 npm을
+# 제거해 npm 내부 node-tar(CVE-2026-59873, fixable CRITICAL) 등 취약점 표면을 없앤다.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
 
 # 빌드 산출물 복사 — 비root(node) 소유로 복사
 COPY --from=builder --chown=node:node /app/.next/standalone ./
