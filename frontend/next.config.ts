@@ -3,8 +3,10 @@ import type { NextConfig } from "next";
 /** PortOne/PG 결제 iframe — frame-src 없으면 default-src 'self'만 적용되어 차단됨 */
 /** Cloudflare Turnstile — 위젯 스크립트(challenges.cloudflare.com)를 script-src에 허용해야 로드됨
  *  (위젯 iframe/통신은 이미 frame-src 'https:' / connect-src 'https:' 로 커버됨) */
+/** media-src — 없으면 default-src 'self'로 폴백돼 외부 호스트(blender.org·w3.org 등)의
+ *  데모 영상이 <video>에서 차단된다. img-src와 동일하게 https 외부 미디어를 허용한다. */
 const CONTENT_SECURITY_POLICY =
-  "default-src 'self'; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' https://cdn.iamport.kr https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; frame-src 'self' https:;";
+  "default-src 'self'; img-src 'self' data: https:; media-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdn.iamport.kr https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; frame-src 'self' https:;";
 
 const nextConfig: NextConfig = {
   output: 'standalone', // Docker 빌드를 위한 standalone 모드 활성화
