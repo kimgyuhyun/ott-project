@@ -30,7 +30,11 @@ $ComposeFiles = @(
     '-f', 'docker-compose.yml',
     '-f', 'docker-compose.prod.yml',
     '-f', 'docker-compose.netlock.yml',
-    '-f', 'docker-compose.ha.yml'
+    '-f', 'docker-compose.ha.yml',
+    # Monitoring (prometheus/grafana/loki) MUST be in this file set. Without it the
+    # `--remove-orphans` below treats those containers as orphans and deletes them
+    # on every deploy. Including it keeps them alive (and started in step 1).
+    '-f', 'docker-compose.monitoring.yml'
 )
 
 # Instance name -> loopback port used to confirm it is actually up.
@@ -71,8 +75,8 @@ if (-not (Test-Path .env)) {
 # without it compose pulls `app` into this step and recreates it while ott-app-2
 # may not exist yet - then step 2 recreates it a second time. That mistake cost
 # a real ~15s outage on the 2026-07-20 first deploy (364 failed requests).
-Write-Host '=== Updating non-backend services ==='
-docker compose @ComposeFiles up -d --remove-orphans --no-deps postgres redis kafka rabbitmq frontend nginx
+Write-Host '=== Updating non-backend services (incl. monitoring) ==='
+docker compose @ComposeFiles up -d --remove-orphans --no-deps postgres redis kafka rabbitmq frontend nginx loki prometheus grafana
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up (non-backend) failed' }
 
 # --- 2. Backend instances, one at a time --------------------------------------

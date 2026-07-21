@@ -38,6 +38,13 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-amqp'
 	implementation 'org.springframework.boot:spring-boot-starter-mail'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	// Micrometer Prometheus 레지스트리: /actuator/prometheus 로 앱 지표(요청수/지연/JVM)를 노출.
+	// Prometheus 가 이 엔드포인트를 긁어 무중단 배포/다중 인스턴스 동작을 그래프로 관측한다.
+	// 버전은 Boot 3.5.4 의 dependency-management 가 관리한다.
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+	// Loki logback appender: 앱이 자기 로그를 Loki 로 직접 푸시(도커 소켓/특권 없이 관측성 확보).
+	// logback-spring.xml 의 LOKI appender(prod 프로파일)에서만 사용, dev 는 NOP 로 무력화.
+	implementation 'com.github.loki4j:loki-logback-appender:1.5.2'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
 	implementation 'org.flywaydb:flyway-core:10.10.0'

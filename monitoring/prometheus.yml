@@ -1,0 +1,17 @@
+# Prometheus 스크레이프 설정
+# ott-app / ott-app-2 의 /actuator/prometheus 를 주기적으로 긁어 지표를 수집한다.
+# 두 인스턴스를 각각 타깃으로 두므로 Prometheus 가 자동으로 붙이는 instance 라벨
+# (ott-app:8090 / ott-app-2:8090)로 인스턴스별 구분이 가능하다 → 롤링 배포 관측에 사용.
+global:
+  scrape_interval: 15s        # 15초마다 수집
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'ott-backend'
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - 'ott-app:8090'    # 1번 인스턴스 (도커 내부 DNS)
+          - 'ott-app-2:8090'  # 2번 인스턴스 (ha 오버레이. 단일 인스턴스 배포 시엔 down 으로 표시됨)
+        labels:
+          project: ott

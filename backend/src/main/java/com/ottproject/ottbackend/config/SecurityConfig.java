@@ -149,6 +149,7 @@ public class SecurityConfig {
                         .requestMatchers("/").permitAll() // 루트 경로 허용 (헬스체크용)
                         .requestMatchers("/health").permitAll() // 헬스체크 경로 허용
                         .requestMatchers("/actuator/health").permitAll() // Spring Actuator 헬스체크 (모니터링용)
+                        .requestMatchers("/actuator/prometheus").permitAll() // Prometheus 스크레이프용 (도커 내부망 전용, nginx 미공개)
                         .requestMatchers("/api/search/**").permitAll() // 검색(자동완성/본검색) 익명 허용
                         .requestMatchers("/api/payments/webhook", "/api/payments/*/webhook").permitAll() // 결제 웹훅은 인증 없이 수신
                         .requestMatchers("/api/admin/contents/**").hasRole("ADMIN") // Admin DB 관리 전용

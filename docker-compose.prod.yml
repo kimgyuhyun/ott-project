@@ -8,6 +8,8 @@ services:
     environment:
       # 프로덕션 프로파일 설정
       SPRING_PROFILES_ACTIVE: prod
+      # Loki 로그 인스턴스 라벨(logback-spring.xml 의 LOKI appender). app2 는 ha.yml 에서 ott-app-2 로 override.
+      LOKI_INSTANCE: ott-app
       # 프로덕션 데이터베이스 연결 정보 (실제 환경에 맞게 수정 필요)
       SPRING_DATASOURCE_URL: jdbc:postgresql://ott-postgres:5432/ott_project_db
       # [SECURITY 2026-07-18] 앱 런타임 커넥션은 최소권한 계정(ott_app)으로 낮춘다.

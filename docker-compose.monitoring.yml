@@ -1,0 +1,85 @@
+# ============================================================================
+# Prometheus + Grafana (opt-in) — 백엔드 관측성(metrics) 스택
+# ----------------------------------------------------------------------------
+# 목적: 무중단 배포/다중 인스턴스 실험을 그래프로 관측한다.
+#   - Prometheus 가 ott-app / ott-app-2 의 /actuator/prometheus 를 15초마다 긁는다.
+#   - Grafana 가 Prometheus 를 데이터소스로 그래프를 그린다.
+#
+# 네트워크 설계 (pgadmin.yml 과 동일한 패턴):
+#   - Prometheus 는 default(웹 계층)에 붙어 ott-app:8090 / ott-app-2:8090 에 도달한다.
+#     (netlock 배포 시 default 는 internal 이지만 컨테이너 간 통신은 유지되므로 스크레이프 가능)
+#   - internal 네트워크는 호스트로 포트 publish 가 불가하므로, 별도 bridge(monitoring)에도
+#     연결해 127.0.0.1 로만 포트를 연다(외부 노출 없음).
+#   - 데이터 계층(data)에는 붙이지 않는다 — 모니터링은 postgres/redis 에 직접 접근할 이유가 없다.
+#   - 주의: monitoring 은 bridge 라 egress 가 열린다(호스트 포트 publish 를 위해 불가피).
+#     pgadmin-egress 와 동일한 트레이드오프. Grafana 텔레메트리/업데이트확인은 env 로 꺼둔다.
+#
+# 올리기(기존 스택은 그대로 두고 모니터링만 추가):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml `
+#     -f docker-compose.netlock.yml -f docker-compose.ha.yml `
+#     -f docker-compose.monitoring.yml up -d --no-deps prometheus grafana
+#
+# 내리기(필요 없을 때):
+#   docker compose ... -f docker-compose.monitoring.yml rm -sf prometheus grafana
+#
+# 접속:
+#   - Prometheus: http://127.0.0.1:9090   (타깃 상태: Status > Targets)
+#   - Grafana:    http://127.0.0.1:3001   (admin / GRAFANA_PASSWORD, 기본 admin1234)
+# ============================================================================
+services:
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: ott-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"   # 루프백 전용 노출 (외부 X)
+    networks:
+      - default        # ott-app / ott-app-2 스크레이프용 (앱이 붙어있는 웹 계층)
+      - monitoring     # grafana 통신 + 호스트 포트 publish용
+
+  loki:
+    image: grafana/loki:3.1.1
+    container_name: ott-loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki_data:/loki
+    ports:
+      - "127.0.0.1:3100:3100"   # 루프백 전용 (디버깅용)
+    networks:
+      - default        # 백엔드(ott-app/ott-app-2)가 로그를 푸시하는 경로
+      - monitoring     # grafana 조회 + 호스트 포트 publish용
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: ott-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin1234}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"   # 사용통계 전송 차단
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"   # 업데이트 확인 아웃바운드 차단
+      GF_USERS_ALLOW_SIGN_UP: "false"           # 가입 비활성
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro   # provisioning 이 로드할 대시보드 JSON
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3001:3000"   # 루프백 전용 (3000 은 frontend 가 사용 중이라 3001)
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - monitoring
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+
+networks:
+  monitoring:
+    driver: bridge

@@ -1,0 +1,14 @@
+# Grafana 대시보드 자동 프로비저닝
+# /var/lib/grafana/dashboards 폴더의 *.json 을 부팅 시 자동 로드한다.
+apiVersion: 1
+
+providers:
+  - name: 'ott'
+    orgId: 1
+    folder: 'OTT'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

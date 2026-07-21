@@ -31,10 +31,12 @@ if (docker ps -q -f name=ott-app-2) {
 }
 
 Write-Host '=== SECURE DEPLOY (prod + egress-locked) ==='
+# Monitoring is included so `--remove-orphans` does not delete prometheus/grafana/loki.
 docker compose `
     -f docker-compose.yml `
     -f docker-compose.prod.yml `
     -f docker-compose.netlock.yml `
+    -f docker-compose.monitoring.yml `
     up -d --remove-orphans
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
 

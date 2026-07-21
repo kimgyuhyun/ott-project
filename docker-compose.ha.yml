@@ -35,6 +35,7 @@ services:
       #     -f docker-compose.netlock.yml -f docker-compose.ha.yml config --format json
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_BOOTSTRAP_SERVERS:-ott-kafka:9094}
       SECURE_LINK_SECRET: ${SECURE_LINK_SECRET:-}
+      LOKI_INSTANCE: ott-app-2   # prod.yml(app=ott-app) override — Loki 로그에서 인스턴스 구분용
     ports:
       # 롤링 배포 스크립트가 인스턴스별 기동 완료를 직접 확인하기 위한 루프백 포트.
       # (nginx 를 거치면 어느 인스턴스가 응답했는지 알 수 없어 순차 교체를 제어할 수 없다)

@@ -269,12 +269,16 @@ springdoc:
   swagger-ui:
     enabled: false
 
-# Actuator 헬스체크 설정 (UptimeRobot 모니터링용)
+# Actuator 설정 (health: UptimeRobot 모니터링용 / prometheus: 내부 Prometheus 스크레이프용)
 management:
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus   # prometheus 는 도커 내부망에서만 도달(8090 은 루프백+internal), nginx 는 공개하지 않음
   endpoint:
     health:
       show-details: never
+  prometheus:
+    metrics:
+      export:
+        enabled: true

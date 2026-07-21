@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <!-- Loki 푸시용 프로퍼티: compose 의 LOKI_URL/LOKI_INSTANCE 환경변수로 주입(prod), 없으면 기본값 -->
+    <springProperty scope="context" name="LOKI_URL" source="loki.url" defaultValue="http://loki:3100/loki/api/v1/push"/>
+    <springProperty scope="context" name="INSTANCE" source="loki.instance" defaultValue="ott-app"/>
+
     <!-- 콘솔 출력 설정 -->
     <!-- [%X{requestId}] [%X{clientIp}] : MdcLoggingFilter 가 심은 요청 추적 ID/클라이언트 IP -->
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{requestId:-}] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%thread] [%X{requestId:-}] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -19,7 +23,7 @@
             <maxHistory>30</maxHistory>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{requestId:-}] %-5level %logger{36} - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%thread] [%X{requestId:-}] %-5level %logger{36} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -36,7 +40,7 @@
             <maxHistory>90</maxHistory>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%X{requestId:-}] [%X{clientIp:-}] %-5level - %msg%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%X{requestId:-}] [%X{clientIp:-}] %-5level - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -93,15 +97,32 @@
     <logger name="org.springdoc" level="INFO" />
     <logger name="org.springdoc.core" level="INFO" />
 
+    <!-- Loki 푸시 appender: prod 에서만 실제 전송, 그 외 프로파일은 no-op(로컬 dev 에서 loki 없이도 안전) -->
+    <springProfile name="prod">
+        <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+            <batchTimeoutMs>5000</batchTimeoutMs>   <!-- 기본 60초 → 5초: 로그가 거의 실시간으로 Loki 에 도착 -->
+            <http><url>${LOKI_URL}</url></http>
+            <format>
+                <label><pattern>app=ott-backend,instance=${INSTANCE},level=%level</pattern></label>
+                <message><pattern>%d{HH:mm:ss.SSS, Asia/Seoul} [%thread] [%X{requestId:-}] %-5level %logger{36} - %msg%n</pattern></message>
+            </format>
+        </appender>
+    </springProfile>
+    <springProfile name="!prod">
+        <appender name="LOKI" class="ch.qos.logback.core.helpers.NOPAppender"/>
+    </springProfile>
+
     <!-- 루트 로거 설정 -->
     <root level="INFO">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="FILE" />
+        <appender-ref ref="LOKI" />
     </root>
 
     <!-- 에러 발생 시 스택 트레이스 전체 기록 -->
     <logger name="com.ottproject.ottbackend" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="FILE" />
+        <appender-ref ref="LOKI" />
     </logger>
 </configuration>
