@@ -513,9 +513,10 @@ function PlayerContent() {
     if (skipMeta && (autoSkipIntro || autoSkipOutro)) {
       const currentTimeSec = Math.floor(newCurrentTime);
       
-      // 오프닝 자동 스킵 (한 번만)
-      if (autoSkipIntro && skipMeta.introStart !== null && skipMeta.introEnd !== null && 
-          !hasSkippedIntro && currentTimeSec >= skipMeta.introStart && currentTimeSec <= skipMeta.introEnd) {
+      // 오프닝 자동 스킵 (한 번만): 켜져 있으면 인트로 시작(introStart)에 도달할 때까지
+      // 기다리지 않고, 인트로 끝 이전이면 즉시 introEnd 로 점프한다(시작하자마자 건너뜀).
+      if (autoSkipIntro && skipMeta.introStart !== null && skipMeta.introEnd !== null &&
+          !hasSkippedIntro && currentTimeSec < skipMeta.introEnd) {
         video.currentTime = skipMeta.introEnd;
         setHasSkippedIntro(true);
       }
