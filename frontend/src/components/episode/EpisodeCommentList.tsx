@@ -250,7 +250,7 @@ export default function EpisodeCommentList({ episodeId }: EpisodeCommentListProp
               // 포커스를 잃을 때 약간의 지연을 두어 버튼 클릭이 가능하도록 함
               setTimeout(() => setIsCommentFocused(false), 200);
             }}
-            placeholder="댓글을 작성해주세요..."
+            placeholder="댓글을 작성해주세요."
             className={styles.commentTextarea}
             rows={3}
           />
