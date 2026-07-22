@@ -71,26 +71,29 @@
 ## 아키텍처
 
 ```
-                        ┌──────────────────────────────────────────┐
-   Browser  ──HTTPS──►  │  nginx (edge, :80/:443)                   │
-                        │    /api/*  → backend                      │
-                        │    /*      → frontend (Next.js)           │
-                        └──────────┬────────────────┬───────────────┘
-                                   │                │
-                       ┌───────────▼──────┐   ┌─────▼─────────────┐
-                       │ backend (:8090)  │   │ frontend (:3000)  │
-                       │ Spring Boot      │   │ Next.js App Router│
-                       └──┬───┬───┬───┬───┘   └───────────────────┘
-                          │   │   │   │
-             ┌────────────┘   │   │   └──────────────┐
-             ▼                ▼   ▼                  ▼
-     ┌──────────────┐  ┌──────────┐ ┌───────────┐ ┌──────────────┐
-     │ PostgreSQL   │  │ Redis 7  │ │  Kafka    │ │  RabbitMQ    │
-     │ (JPA/Flyway) │  │ cache/rec│ │ payment   │ │ billing retry│
-     │              │  │          │ │ side-fx   │ │ (TTL + DLX)  │
-     └──────────────┘  └──────────┘ └───────────┘ └──────────────┘
+        Browser ──HTTPS──►  80/443  (유일한 공개 포트)
+                               ▼
+   ╔═══════════════════════════════════════════════════════════╗
+   ║  nginx (edge)                          [default · egress]  ║
+   ╚══════╤════════════════════════════════════╤═══════════════╝
+          │ /*                                 │ /api/* · /login/oauth2/*
+          ▼                                    ▼  (upstream 로드밸런싱)
+  ┌─────────────────────┐        ┌──────────────────────────────────┐
+  │ frontend (:3000)    │        │ app ×2 :  ott-app · ott-app-2     │
+  │ Next.js   [default] │        │ Spring Boot (:8090)               │
+  │ 인터넷·DB 도달 불가  │        │ [default · data · egress]         │
+  └─────────────────────┘        └───┬──────┬──────┬──────┬──────────┘
+                                     ▼      ▼      ▼      ▼   ← data 망 (app만 접근)
+                              ┌──────────┐┌───────┐┌──────┐┌──────────┐
+                              │PostgreSQL││Redis 7││Kafka ││RabbitMQ  │
+                              │  [data]  ││[data] ││[data]││ [data]   │
+                              └──────────┘└───────┘└──────┘└──────────┘
 
-     외부 연동: Iamport(결제) · TMDB/Jikan(메타데이터) · Google/Kakao/Naver(OAuth2)
+            app ×2 ──(egress 망)──►  OAuth · 메일 · Iamport · TMDB   (아웃바운드는 백엔드만)
+
+  ── 관측(monitoring) ───────────────────────────────────────────────
+     prometheus ──scrape──► app·app-2        loki ◄──loki4j push── app·app-2
+     prometheus · loki ──► grafana (:3001)    [prometheus·loki: default+monitoring]
 ```
 
 ### 계층 구조 (backend)
@@ -152,8 +155,9 @@ com.ottproject.ottbackend
 
 - `canStream` — 미로그인 차단, 비활성/미공개 차단, **1~3화 무료 · 4화↑ 멤버십 필요**를 실시간 멤버십 상태로 판정
 - 발급 시 멤버십 등급에 따라 **화질 제한**(비회원 → 720p 마스터로 치환)
-- nginx `secure_link` 서명(`e`/`st`, TTL 10m)을 부착 — *현재 배포는 공개 테스트 MP4라 서명 검증 오리진이 없어 **설계 스텁**이며, 접근 제어는 `canStream` 게이트가 담당. 실제 HLS 오리진 도입 시 동일 시크릿으로 `secure_link_md5`만 켜면 코드 변경 없이 효력 발생.*
-- 데모 영상은 Blender Foundation 오픈 무비(CC BY 3.0)를 쓴다 — [외부 연동](#외부-연동) 참고.
+- 영상은 **Cloudflare R2에 올린 실제 다화질 HLS**(마스터 + 3개 렌디션의 `.ts` 세그먼트)이고, 브라우저(hls.js)가 R2에서 직접 세그먼트를 받아 스트리밍한다.
+- nginx `secure_link` 서명(`e`/`st`, TTL 10m)을 부착 — *다만 R2를 `secure_link` 검증 오리진 앞단 없이 직접 서빙하므로 이 서명은 아직 검증되지 않는 **설계 스텁**이며, 접근 제어는 `canStream` 발급 게이트가 담당. R2 앞에 동일 시크릿(`SECURE_LINK_SECRET`)의 nginx/Worker `secure_link_md5` 오리진을 두면 코드 변경 없이 서명이 효력 발생.*
+- 데모 영상은 Blender Foundation 오픈 무비 **Sintel**(CC BY 3.0)를 쓴다 — [외부 연동](#외부-연동) 참고.
 
 ### 5. 구독 라이프사이클
 - **말일 해지 예약**(`cancelAtPeriodEnd`)과 즉시 해지를 분기, 해지/재개에 **멱등키**로 중복 방지
@@ -264,8 +268,8 @@ ott-project/
 - **콘텐츠/메타데이터**: TMDB, Jikan
 - **결제**: Iamport (카카오/토스/나이스 채널 키)
 - **소셜 로그인**: Google, Kakao, Naver
-- **데모 영상**: [Big Buck Bunny](https://peach.blender.org/) © Blender Foundation — [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
-  실제 콘텐츠 대신 재생 파이프라인 시연용으로 전 에피소드에 동일 영상을 사용한다.
+- **데모 영상**: [Sintel](https://durian.blender.org/) © Blender Foundation — [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/).
+  전 에피소드에 동일 영상을 사용하며, 3화질 ABR HLS로 재인코딩해 Cloudflare R2에서 서빙한다(실제 콘텐츠 대신 재생 파이프라인 시연용).
 
 ---
 
