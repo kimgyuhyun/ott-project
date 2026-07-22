@@ -83,20 +83,20 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 			throw new IllegalStateException("Episode video URL is not set: " + episodeId); // 원본 URL 누락 방어(NPE 방지)
 		}
 
-		boolean isMember = membershipService.isMember(userId); // 멤버십 여부
+		// 화질 티어링 없음: 접근은 canStream 게이트로 허용/차단만 하고,
+		// 허용된 사용자는 동일한 다화질 HLS 사다리를 그대로 받는다.
+		String uriPath = absolute.replaceFirst("https?://[^/]+", ""); // 도메인 제거해 path 추출
 
-		String filtered = isMember ? absolute : absolute.replace("master.m3u8", "master_720p.m3u8"); // 품질 제한 분기
-
-		String uriPath = filtered.replaceFirst("https?://[^/]+", ""); // 도메인 제거해 path 추출
-
-		long expires = HlsSignedUrlUtil.defaultExpiryFromNowSeconds(600); // TTL 10분
+		// TTL 6시간: 엣지 캐스케이드가 master 만료값을 하위 세그먼트까지 공유하므로,
+		// 최장 콘텐츠 재생 + 일시정지/탐색 여유를 덮어야 세션 중간에 403 이 안 난다.
+		long expires = HlsSignedUrlUtil.defaultExpiryFromNowSeconds(6 * 3600);
 		String secret = System.getProperty("secure.link.secret", System.getenv().get("SECURE_LINK_SECRET")); // 시크릿 로드
 		if (secret == null || secret.isBlank()) {
 			throw new IllegalStateException("SECURE_LINK_SECRET is not configured"); // 시크릿 미설정 시 서명 위조 방지를 위해 즉시 실패
 		}
-		String st = HlsSignedUrlUtil.generateSignature(uriPath, expires, secret); // 서명 생성
+		String st = HlsSignedUrlUtil.generateSignature(uriPath, expires, secret); // 마스터 진입 서명(하위 세그먼트는 엣지가 캐스케이드 서명)
 
-		String join = filtered.contains("?") ? "&" : "?"; // 쿼리 구분자
-		return filtered + join + "e=" + expires + "&st=" + st; // 최종 URL 반환
+		String join = absolute.contains("?") ? "&" : "?"; // 쿼리 구분자
+		return absolute + join + "e=" + expires + "&st=" + st; // 최종 URL 반환
 	}
 }
