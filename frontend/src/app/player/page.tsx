@@ -841,8 +841,10 @@ function PlayerContent() {
                       // handleTimeUpdate가 자동으로 상태를 업데이트하므로 여기서는 setCurrentTime 호출하지 않음
                     }
                   }}
+                  onClick={handlePlayPause} // 화면 클릭으로 재생/정지 토글
                   controls={false}
                   autoPlay
+                  style={{ cursor: 'pointer' }}
                 />
                
                {/* 커스텀 컨트롤 - 호버/활성시에만 렌더 */}
