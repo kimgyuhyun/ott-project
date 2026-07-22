@@ -50,9 +50,13 @@ export default async function Home() {
   ]);
 
   // Backend fetch failure returns null (vs. [] / {items:[]} for a genuinely empty list).
-  // Throwing on null makes Next.js keep serving the last good ISR page instead of caching a
-  // blank one. Weekly is a supplementary section, so its failures are tolerated.
-  if (animeListData === null || recommendedData === null || popularData === null) {
+  // At runtime, throwing on null makes Next.js keep serving the last good ISR page instead of
+  // caching a blank one. During the production build there is no backend to reach and no prior
+  // page to preserve, so we skip the throw and let the empty-safe render below produce a page;
+  // ISR fills it in on the first revalidation after deploy. Weekly is supplementary, so its
+  // failures are tolerated.
+  const isBuildPrerender = process.env.NEXT_PHASE === "phase-production-build";
+  if (!isBuildPrerender && (animeListData === null || recommendedData === null || popularData === null)) {
     throw new Error("Home data fetch failed; preserving last-good ISR page");
   }
 
