@@ -12,11 +12,14 @@ async function getBaseOrigin() {
 }
 
 async function fetchJson<T>(path: string): Promise<T | null> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 4000);
   try {
     const base = await getBaseOrigin();
     const response = await fetch(`${base}${path}`, {
       method: "GET",
       next: { revalidate },
+      signal: controller.signal,
     });
 
     if (!response.ok) return null;
@@ -25,6 +28,8 @@ async function fetchJson<T>(path: string): Promise<T | null> {
     return (await response.json()) as T;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
   }
 }
 
@@ -43,6 +48,13 @@ export default async function Home() {
     fetchJson<ListResponse>("/api/anime?isPopular=true&size=20&sort=id"),
     ...days.map((day) => fetchJson<Anime[]>(`/api/anime/weekly/${encodeURIComponent(day)}?limit=20`)),
   ]);
+
+  // Backend fetch failure returns null (vs. [] / {items:[]} for a genuinely empty list).
+  // Throwing on null makes Next.js keep serving the last good ISR page instead of caching a
+  // blank one. Weekly is a supplementary section, so its failures are tolerated.
+  if (animeListData === null || recommendedData === null || popularData === null) {
+    throw new Error("Home data fetch failed; preserving last-good ISR page");
+  }
 
   const initialWeeklyAnime: Record<string, Anime[]> = {};
   days.forEach((day, index) => {
