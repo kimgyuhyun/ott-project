@@ -13,6 +13,18 @@ import { AnimeDetail, Episode } from "@/types/anime";
 import { SkipMeta } from "@/types/player";
 import styles from "./player.module.css";
 
+// 화질 라벨(auto/1080p/720p/480p) → hls.js 레벨 인덱스.
+// 3단 사다리(높이 오름차순)를 480p/720p/1080p 순위에 1:1 매핑, auto 는 -1(ABR 자동).
+function qualityToHlsLevel(quality: string, levels: { height: number }[]): number {
+  if (quality === 'auto' || levels.length === 0) return -1;
+  const rank: Record<string, number> = { '480p': 0, '720p': 1, '1080p': 2 };
+  if (rank[quality] === undefined) return -1;
+  const ascending = levels
+    .map((lvl, index) => ({ index, height: lvl.height }))
+    .sort((a, b) => a.height - b.height);
+  return ascending[Math.min(rank[quality], ascending.length - 1)].index;
+}
+
 /**
  * 에피소드 재생 페이지
  * 비디오 플레이어, 컨트롤, 에피소드 정보, 다음 에피소드 이동 기능 포함
@@ -30,6 +42,8 @@ function PlayerContent() {
   const animeId = searchParams.get('animeId');
   
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  // hls.js 인스턴스를 이펙트 밖(화질 변경 핸들러)에서 참조하기 위한 ref
+  const hlsRef = useRef<import('hls.js').default | null>(null);
   // video 요소는 isLoading 게이트 때문에 streamUrl 세팅보다 늦게 마운트된다.
   // ref 를 state 로도 노출해, 요소가 실제로 붙은 뒤 src 세팅 이펙트가 다시 돌게 한다.
   const [videoNode, setVideoNode] = useState<HTMLVideoElement | null>(null);
@@ -70,6 +84,8 @@ function PlayerContent() {
     }
     return "auto";
   });
+  // MANIFEST_PARSED 이펙트에서 최신 화질 선호를 스테일 클로저 없이 읽기 위한 ref
+  const videoQualityRef = useRef(videoQuality);
   const [playbackRate, setPlaybackRate] = useState(() => {
     if (typeof window !== 'undefined') {
       return parseFloat(localStorage.getItem('player_playbackRate') || "1");
@@ -351,8 +367,13 @@ function PlayerContent() {
         return;
       }
       hls = new Hls();
+      hlsRef.current = hls;
       hls.loadSource(streamUrl);
       hls.attachMedia(el);
+      // 매니페스트에서 레벨 목록을 얻은 뒤, 저장된 화질 선호를 적용(auto 면 ABR 유지)
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (hls) hls.currentLevel = qualityToHlsLevel(videoQualityRef.current, hls.levels);
+      });
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!data.fatal) return;
         // hls.js 표준 복구 패턴: 네트워크/미디어 오류는 복구 시도, 그 외는 폐기
@@ -369,6 +390,7 @@ function PlayerContent() {
     return () => {
       destroyed = true;
       if (hls) hls.destroy();
+      hlsRef.current = null;
     };
   }, [streamUrl, videoNode]);
 
@@ -593,7 +615,11 @@ function PlayerContent() {
   // 비디오 품질 변경
   const handleVideoQualityChange = (quality: string) => {
     setVideoQuality(quality);
+    videoQualityRef.current = quality;
     localStorage.setItem('player_videoQuality', quality);
+    // hls.js 재생 중이면 즉시 레벨 전환(auto → ABR 복귀). Safari 네이티브 HLS 는 hlsRef 없음 → 무시
+    const hls = hlsRef.current;
+    if (hls) hls.currentLevel = qualityToHlsLevel(quality, hls.levels);
   };
 
   // 자동 스킵 설정 변경
