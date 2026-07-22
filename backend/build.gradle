@@ -1,6 +1,6 @@
 plugins {
 	id 'java'
-	id 'org.springframework.boot' version '3.5.4'
+	id 'org.springframework.boot' version '3.5.16'
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
@@ -44,11 +44,11 @@ dependencies {
 	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 	// Loki logback appender: 앱이 자기 로그를 Loki 로 직접 푸시(도커 소켓/특권 없이 관측성 확보).
 	// logback-spring.xml 의 LOKI appender(prod 프로파일)에서만 사용, dev 는 NOP 로 무력화.
-	implementation 'com.github.loki4j:loki-logback-appender:1.5.2'
+	implementation 'com.github.loki4j:loki-logback-appender:1.6.0'
 	implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
-	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.3'
-	implementation 'org.flywaydb:flyway-core:10.10.0'
-	implementation 'org.flywaydb:flyway-database-postgresql:10.10.0'
+	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:3.0.5'
+	implementation 'org.flywaydb:flyway-core:10.22.0'
+	implementation 'org.flywaydb:flyway-database-postgresql:10.22.0'
 
 	// ShedLock: @Scheduled 배치의 다중 인스턴스 중복 실행 방지(분산락).
 	// 인스턴스 2개 실험에서 아웃박스 이벤트 50건이 카프카에 100건으로 실리는 것을 확인했다.
@@ -79,7 +79,7 @@ dependencies {
 	annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
 
 	// SpringDoc OpenAPI (Swagger) - Boot 3.5.x 호환 버전으로 상향
-	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.17'
 
 	developmentOnly 'org.springframework.boot:spring-boot-devtools'
 	runtimeOnly 'org.postgresql:postgresql'
