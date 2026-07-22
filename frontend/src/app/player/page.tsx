@@ -549,18 +549,19 @@ function PlayerContent() {
     }
   }, [skipMeta, autoSkipIntro, autoSkipOutro, hasSkippedIntro, hasSkippedOutro]);
 
+  // 재생/정지 토글은 React 상태(isPlaying) 대신 엘리먼트의 실제 상태(video.paused)를 읽는다.
+  // isPlaying 을 의존하면 콜백이 매번 새로 생겨, deps 에 이 콜백이 빠진 keydown 리스너가
+  // 낡은 버전(isPlaying=false)을 붙들어 스페이스바가 정지를 못 하게 된다. paused 를 읽으면
+  // 콜백이 deps [] 로 안정적이라 그 문제가 사라진다.
   const handlePlayPause = useCallback(() => {
     const video = videoRef.current;
-    if (video) {
-      if (isPlaying) {
-        video.pause();
-        // pause 이벤트에서 setIsPlaying(false)가 호출되므로 여기서는 호출하지 않음
-      } else {
-        video.play();
-        // play 이벤트에서 setIsPlaying(true)가 호출되므로 여기서는 호출하지 않음
-      }
+    if (!video) return;
+    if (video.paused) {
+      video.play();  // play 이벤트에서 setIsPlaying(true)
+    } else {
+      video.pause(); // pause 이벤트에서 setIsPlaying(false)
     }
-  }, [isPlaying]);
+  }, []);
 
   const handleSeek = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const video = videoRef.current;
