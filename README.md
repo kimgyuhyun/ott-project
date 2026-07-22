@@ -64,6 +64,7 @@
 - **nginx** 리버스 프록시(HTTPS · secure_link), **Docker Compose** 단일 호스트 구성
 - **GitHub Actions** → **Docker Hub** 이미지 빌드/푸시 후 서버 배포
 - 보안 하드닝: 앱/프론트/브로커는 **루프백 전용 바인딩**, 외부 진입점은 nginx(80/443)뿐
+- **Prometheus + Grafana + Loki** 관측성 (별도 오버레이 — 아래 [모니터링](#모니터링-관측성) 참고)
 
 ---
 
@@ -165,6 +166,30 @@ com.ottproject.ottbackend
 
 ---
 
+## 모니터링 (관측성)
+
+![Prometheus](https://img.shields.io/badge/Prometheus-metrics-orange?style=flat-square&logo=prometheus)
+![Grafana](https://img.shields.io/badge/Grafana-dashboard-orange?style=flat-square&logo=grafana)
+![Loki](https://img.shields.io/badge/Loki-logs-yellow?style=flat-square&logo=grafana)
+
+배포한 백엔드가 잘 돌고 있는지 보려고 **Prometheus + Grafana + Loki** 를 붙였습니다.
+기존 스택은 그대로 두고 `docker-compose.monitoring.yml` 오버레이로만 얹습니다.
+
+- **메트릭** — Micrometer `/actuator/prometheus` 를 Prometheus 가 수집합니다. 무중단 배포용으로 인스턴스를 둘(`ott-app` · `ott-app-2`) 띄우면 **각 인스턴스를 따로 스크레이프**해서 요청량 · 지연 · JVM 상태를 인스턴스별로 나눠 볼 수 있습니다(롤링 배포 확인용).
+- **로그** — logback loki4j appender 로 앱이 직접 Loki 에 로그를 push 합니다(운영 프로파일에서만 전송, 로컬은 no-op). `app` · `instance` 라벨로 어느 인스턴스 로그인지 구분됩니다.
+- **대시보드** — 프로비저닝으로 데이터소스 · 대시보드가 자동 등록됩니다. 인스턴스별 UP · 요청량 · 에러율(4xx/5xx) · 평균 응답시간 · 엔드포인트 Top10 · HikariCP · GC · 힙 · CPU · 스레드와 애플리케이션 로그를 한 화면에 뒀습니다.
+
+Prometheus · Grafana · Loki 는 `127.0.0.1` 루프백으로만 노출하고(외부 진입점은 nginx 뿐), Grafana 텔레메트리 · 업데이트 확인은 꺼뒀습니다.
+
+```bash
+# 기존 스택 위에 모니터링만 얹기
+docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+  -f docker-compose.netlock.yml -f docker-compose.ha.yml \
+  -f docker-compose.monitoring.yml up -d --no-deps prometheus grafana loki
+```
+
+---
+
 ## 프로젝트 구조
 
 ```
@@ -230,6 +255,7 @@ ott-project/
 - **인프라**
   - nginx 리버스 프록시/secure_link, Docker Compose, Docker Hub, GitHub Actions CD
   - 환경변수/비밀키 관리(SOPS+age 암호화 `.env.enc` 단일 소스, CD가 `AGE_KEY`로 복호화), 루프백 바인딩 보안 하드닝
+  - Prometheus + Grafana + Loki 관측성(인스턴스별 메트릭 · loki4j 로그 push, 별도 오버레이)
 
 ---
 
