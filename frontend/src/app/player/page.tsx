@@ -29,7 +29,14 @@ function PlayerContent() {
   const episodeId = searchParams.get('episodeId');
   const animeId = searchParams.get('animeId');
   
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  // video 요소는 isLoading 게이트 때문에 streamUrl 세팅보다 늦게 마운트된다.
+  // ref 를 state 로도 노출해, 요소가 실제로 붙은 뒤 src 세팅 이펙트가 다시 돌게 한다.
+  const [videoNode, setVideoNode] = useState<HTMLVideoElement | null>(null);
+  const attachVideoRef = useCallback((node: HTMLVideoElement | null) => {
+    videoRef.current = node;
+    setVideoNode(node);
+  }, []);
   const [streamUrl, setStreamUrl] = useState<string>("");
   const [animeInfo, setAnimeInfo] = useState<AnimeDetail | null>(null);
   const [episodeInfo, setEpisodeInfo] = useState<Episode | null>(null);
@@ -318,7 +325,7 @@ function PlayerContent() {
   // HLS 소스 연결: m3u8 은 hls.js 로 재생(Safari 는 네이티브 지원), 그 외(더미 mp4 등)는 직접 src 설정
   // hls.js 를 붙이지 않으면 Chrome/Firefox/Edge 에서 m3u8 이 재생되지 않는다.
   useEffect(() => {
-    const video = videoRef.current;
+    const video = videoNode;
     if (!video || !streamUrl) return undefined;
 
     // m3u8 이 아니면(더미 mp4 등) 그대로 재생
@@ -363,7 +370,7 @@ function PlayerContent() {
       destroyed = true;
       if (hls) hls.destroy();
     };
-  }, [streamUrl]);
+  }, [streamUrl, videoNode]);
 
   // 비디오 자동 재생 시도 - 에피소드 변경 시에만 실행
   useEffect(() => {
@@ -788,7 +795,7 @@ function PlayerContent() {
                 )}
                 
                 <video
-                  ref={videoRef}
+                  ref={attachVideoRef}
                   className={styles.video}
                   onTimeUpdate={handleTimeUpdate}
                   onPlay={() => setIsPlaying(true)}
