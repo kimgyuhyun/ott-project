@@ -338,8 +338,11 @@ function PlayerContent() {
     setShowControls(false);
   };
 
-  // HLS 소스 연결: m3u8 은 hls.js 로 재생(Safari 는 네이티브 지원), 그 외(더미 mp4 등)는 직접 src 설정
-  // hls.js 를 붙이지 않으면 Chrome/Firefox/Edge 에서 m3u8 이 재생되지 않는다.
+  // HLS 소스 연결: m3u8 은 hls.js 를 우선 사용(수동 화질 레벨 제어를 위해).
+  // 주의: 요즘 Chrome/Edge 도 canPlayType('application/vnd.apple.mpegurl')='maybe' 로
+  // HLS 네이티브 지원을 보고한다. 네이티브를 먼저 검사하면 hls.js 인스턴스가 안 만들어져
+  // 수동 화질 선택이 동작하지 않는다(네이티브 HLS 는 JS 레벨 전환 API 가 없음).
+  // 그래서 hls.js 가 지원되면 항상 hls.js 로 재생하고, 미지원(iOS Safari)일 때만 네이티브로 폴백한다.
   useEffect(() => {
     const video = videoNode;
     if (!video || !streamUrl) return undefined;
@@ -350,20 +353,14 @@ function PlayerContent() {
       return undefined;
     }
 
-    // Safari/iOS 는 HLS 를 네이티브로 지원
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = streamUrl;
-      return undefined;
-    }
-
-    // 그 외 브라우저는 hls.js 사용 (동적 import 로 초기 번들 크기/SSR 이슈 회피)
+    // hls.js 사용 (동적 import 로 초기 번들 크기/SSR 이슈 회피)
     let hls: import('hls.js').default | null = null;
     let destroyed = false;
     void import('hls.js').then(({ default: Hls }) => {
       const el = videoRef.current;
       if (destroyed || !el) return;
       if (!Hls.isSupported()) {
-        el.src = streamUrl; // 최후 폴백
+        el.src = streamUrl; // hls.js 미지원(iOS Safari): 네이티브 HLS 폴백(레벨 제어 불가)
         return;
       }
       hls = new Hls();
