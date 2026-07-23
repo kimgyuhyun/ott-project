@@ -15,19 +15,20 @@ import org.springframework.stereotype.Service;
  * PlaybackAuthService
  *
  * 큰 흐름
- * - 재생 권한 검사와 Nginx secure_link 기반 서명 URL 생성을 제공한다.
+ * - 재생 권한 검사와 secure_link 서명 URL 생성을 제공한다.
  * - 1~3화 무료, 4화 이상 멤버십 필요 규칙을 적용한다.
  *
  * 메서드 개요
  * - canStream: 에피소드 재생 권한 여부 판단
- * - buildSignedStreamUrl: 품질 제한 적용 후 서명 URL 생성
+ * - buildSignedStreamUrl: master.m3u8 에 서명(e/st) 부착 후 URL 반환
  *
- * 현 배포 메모
- * - 아직 secure_link 검증 오리진이 없고 영상은 공개 테스트 URL(MP4)을 사용한다.
- *   따라서 여기서 붙이는 서명(st/e)은 현재 검증되지 않는 "설계 흔적"이며,
- *   접근 제어는 canStream(=URL 발급 게이트)에만 의존한다.
- * - 실제 HLS 오리진 도입 시 같은 SECURE_LINK_SECRET 으로 nginx secure_link_md5 를
- *   켜면 이 서명이 그대로 효력을 갖는다(코드 변경 불필요).
+ * 배포 메모
+ * - 영상은 R2 의 실제 다화질 HLS 이고, Cloudflare Worker 엣지가 이 서명을
+ *   실제로 검증한다. 여기서는 master.m3u8 하나만 서명(TTL 6h)하고, 하위
+ *   재생목록·세그먼트는 Worker 가 응답을 되쓰며 캐스케이드로 서명한다.
+ * - 접근 제어는 canStream(발급 게이트) + Worker(엣지 서명 검증) 2단.
+ *   R2 공개 접근은 꺼서 Worker 가 유일한 경로다.
+ * - 서명은 URL-safe base64(무패딩), 시크릿은 SECURE_LINK_SECRET(양측 공유).
  */
 @Slf4j
 @Service
