@@ -738,7 +738,7 @@
 
 .episodeProgressFill {
   height: 100%;
-  background-color: var(--primary, #ff5722);
+  background-color: var(--foreground-slight, #816BFF); /* '더보기' 텍스트와 동일 색 */
 }
 
 /* 시청 완료 배지 */
