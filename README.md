@@ -18,7 +18,7 @@
 | **소셜** | 작품 리뷰 + 리뷰 댓글/대댓글, 에피소드 댓글, 좋아요, 별점, 알림 |
 | **마이페이지** | 내 리뷰/댓글, 찜/좋아요, 시청 기록 · 정주행 진행, 활동 요약 |
 | **인증/인가** | OAuth2(구글/카카오/네이버) + 이메일 인증, 세션/쿠키 기반 접근 제어 |
-| **결제/멤버십** | Iamport 연동 결제/웹훅/환불, 등급별 화질 제한, 구독 해지/재개 · 플랜 변경 |
+| **결제/멤버십** | Iamport 연동 결제/웹훅/환불, 멤버십 기반 재생 권한(4화↑), 구독 해지/재개 · 플랜 변경 |
 | **정기결제** | 저장 결제수단 자동 청구, 실패 시 지연 재시도(던닝) · 자동 해지 <sup>[※](#3-정기결제-실패-던닝-rabbitmq-ttl--dlx)</sup> |
 | **검색** | 제목/장르/태그/인물 통합 검색 + 자동완성, 최근 검색어 |
 
@@ -151,12 +151,12 @@ com.ottproject.ottbackend
 > ※ *현재 배포는 카카오페이 **원타임 테스트 채널**(TC0ONETIME)이라 빌링키(`customer_uid`) 발급이 불가능해 실제 자동 청구는 항상 실패한다. 즉 **던닝 경로(재시도 → 자동 해지)가 동작하는 것까지가 데모 범위**이며, 청구 성공 경로는 실환경에서 재현되지 않는다. 정기결제 지원 채널로 전환하면 빌링키 등록만 추가하면 된다.*
 
 ### 4. 재생 권한 & 서명 URL
-접근 제어를 **URL 발급 게이트**에 집중시켰습니다.
+접근 제어를 **URL 발급 게이트(`canStream`) + 엣지 서명 검증(Cloudflare Worker)** 2단으로 구성했습니다.
 
 - `canStream` — 미로그인 차단, 비활성/미공개 차단, **1~3화 무료 · 4화↑ 멤버십 필요**를 실시간 멤버십 상태로 판정
-- 발급 시 멤버십 등급에 따라 **화질 제한**(비회원 → 720p 마스터로 치환)
-- 영상은 **Cloudflare R2에 올린 실제 다화질 HLS**(마스터 + 3개 렌디션의 `.ts` 세그먼트)이고, 브라우저(hls.js)가 R2에서 직접 세그먼트를 받아 스트리밍한다.
-- nginx `secure_link` 서명(`e`/`st`, TTL 10m)을 부착 — *다만 R2를 `secure_link` 검증 오리진 앞단 없이 직접 서빙하므로 이 서명은 아직 검증되지 않는 **설계 스텁**이며, 접근 제어는 `canStream` 발급 게이트가 담당. R2 앞에 동일 시크릿(`SECURE_LINK_SECRET`)의 nginx/Worker `secure_link_md5` 오리진을 두면 코드 변경 없이 서명이 효력 발생.*
+- 영상은 **Cloudflare R2에 올린 실제 다화질 HLS**(마스터 + 3개 렌디션의 `.ts` 세그먼트)이며, **Cloudflare Worker 엣지를 거쳐** 서빙된다. R2 공개 접근은 꺼서 Worker가 유일한 경로다(직링크는 `Unauthorized`).
+- 백엔드가 `master.m3u8`에 `secure_link` 형식 서명(`e`/`st`, TTL 6h)을 부착 → Worker가 서명·만료를 검증한 뒤, 응답 플레이리스트를 되쓰며 하위 재생목록·세그먼트에 **엣지가 캐스케이드 서명**을 이어 붙인다. 세그먼트마다 백엔드 서명이나 쿠키 없이 전 구간이 검증되고, 위조·만료 토큰은 **403**이다.
+- TTL이 세션 전체를 덮으므로(캐스케이드가 만료값 공유) 재생 중 토큰 만료로 끊기지 않는다. 백엔드-엣지 서명은 URL-safe base64로 바이트 단위 일치.
 - 데모 영상은 Blender Foundation 오픈 무비 **Sintel**(CC BY 3.0)를 쓴다 — [외부 연동](#외부-연동) 참고.
 
 ### 5. 구독 라이프사이클
@@ -249,7 +249,7 @@ ott-project/
   - 개인화 추천(찜/시청/평점 → 태그 가중치 → Redis → 상위 태그 추천)
   - 결제 플로우: 생성/검증, 웹훅 파싱/검증, 상태 전이, 환불(정책 검증) · 구독 해지(멱등키)
   - Outbox + Kafka 결제 부수효과 · RabbitMQ TTL/DLX 정기결제 던닝
-  - 재생 권한(멤버십 등급별 화질 제한, secure_link 서명 설계)
+  - 재생 권한(`canStream` 게이트 + Cloudflare Worker 엣지 secure_link 서명 검증·캐스케이드)
   - OpenAPI 문서화, Flyway 마이그레이션, MyBatis + JPA 혼용, 통합/서비스 테스트
 - **프론트엔드**
   - Next.js App Router, React Query 데이터 패칭/캐싱
@@ -257,7 +257,7 @@ ott-project/
   - 인증 흐름 · 댓글/리뷰/별점 · 마이페이지/알림 · 결제/멤버십 관리 UI
   - 검색/필터/정렬 · 주간 편성 · 작품 상세/모달 UX
 - **인프라**
-  - nginx 리버스 프록시/secure_link, Docker Compose, Docker Hub, GitHub Actions CD
+  - nginx 리버스 프록시, Cloudflare Worker 엣지(HLS secure_link 서명 검증), Docker Compose, Docker Hub, GitHub Actions CD
   - 환경변수/비밀키 관리(SOPS+age 암호화 `.env.enc` 단일 소스, CD가 `AGE_KEY`로 복호화), 루프백 바인딩 보안 하드닝
   - Prometheus + Grafana + Loki 관측성(인스턴스별 메트릭 · loki4j 로그 push, 별도 오버레이)
 
