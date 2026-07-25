@@ -60,15 +60,32 @@ jobs:
           $frontTag= "ghcr.io/$owner/ott-frontend:$sha"
           Write-Host "commit=$sha"
 
-          # --- 1) DB 백업 (실패해도 진행) ---
+          # --- 1) DB 백업 (age 암호화, 실패해도 진행) ---
+          # 평문 .sql을 backups\에 남기지 않는다: 덤프는 TEMP에 뜨고 즉시 암호화한 뒤
+          # finally에서 원본을 지운다. 공개키는 db-backup.ps1과 동일하므로 복구는
+          # 같은 age 개인키(Bitwarden "ott key")로 된다.
+          # age를 못 찾거나 암호화가 실패하면 백업 없이 배포를 계속한다 - 평문을 남기는
+          # 것보다 이 배포의 롤백 지점을 포기하는 쪽이 낫다(R2 야간 백업은 별도로 돈다).
+          $agePub = 'age1nzkslmrgdcec2a3v45ttydmzptfmnrt6774qp3we933csmd9a5rqlsa2zc'
+          $tmpSql = $null
           try {
             $backupDir = 'C:\solo-project\backups'
             if (-not (Test-Path $backupDir)) { New-Item -ItemType Directory -Path $backupDir | Out-Null }
-            $bf = Join-Path $backupDir ("db_{0}.sql" -f (Get-Date -Format 'yyyyMMdd_HHmmss'))
-            docker exec ott-postgres pg_dump -U root ott_project_db | Out-File -FilePath $bf -Encoding UTF8
-            Write-Host "DB backup -> $bf"
-            Get-ChildItem $backupDir -Filter 'db_*.sql' | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) } | ForEach-Object { Remove-Item $_.FullName -Force }
+            # sops와 같은 이유(self-hosted 러너가 사용자 PATH를 못 물려받음)로 고정 경로 폴백.
+            $ageCmd = Get-Command age -ErrorAction SilentlyContinue
+            $ageExe = if ($ageCmd) { $ageCmd.Source } else { 'C:\solo-project\tools\age.exe' }
+            if (-not (Test-Path $ageExe)) { throw "age not found (PATH or $ageExe)" }
+            $stamp  = Get-Date -Format 'yyyyMMdd_HHmmss'
+            $tmpSql = Join-Path $env:TEMP ("db_{0}.sql" -f $stamp)
+            $bf     = Join-Path $backupDir ("db_{0}.sql.age" -f $stamp)
+            docker exec ott-postgres pg_dump -U root ott_project_db | Out-File -FilePath $tmpSql -Encoding UTF8
+            if (-not (Test-Path $tmpSql) -or (Get-Item $tmpSql).Length -eq 0) { throw 'pg_dump produced empty file' }
+            & $ageExe -r $agePub -o $bf $tmpSql
+            if ($LASTEXITCODE -ne 0 -or -not (Test-Path $bf)) { throw "age encryption failed (exit $LASTEXITCODE)" }
+            Write-Host "DB backup -> $bf (age)"
+            Get-ChildItem $backupDir -Filter 'db_*.sql.age' | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-7) } | ForEach-Object { Remove-Item $_.FullName -Force }
           } catch { Write-Host "DB backup skipped: $($_.Exception.Message)" }
+          finally { if ($tmpSql -and (Test-Path $tmpSql)) { Remove-Item $tmpSql -Force -ErrorAction SilentlyContinue } }
 
           # --- 2) .env 생성 (SOPS+age: 커밋된 .env.enc 복호화. 진짜 값은 .env.enc 한 곳에만) ---
           # self-hosted 러너는 사용자 PATH를 못 물려받아 'sops'를 못 찾을 수 있으므로,
