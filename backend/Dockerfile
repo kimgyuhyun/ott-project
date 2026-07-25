@@ -2,6 +2,11 @@
 FROM amazoncorretto:21 AS builder
 WORKDIR /app
 
+# amazoncorretto:21 태그가 Amazon Linux 2 -> 2023으로 올라가며 findutils가 빠졌다.
+# Gradle wrapper는 xargs가 없으면 "xargs is not available"로 즉시 죽으므로
+# (backend/gradlew 222줄) 직접 넣어준다. COPY 앞에 두어 소스 변경 시 이 레이어는 재사용된다.
+RUN yum install -y findutils && yum clean all
+
 # Gradle 캐시 레이어 (의존성만)
 COPY gradlew .
 COPY gradle gradle
