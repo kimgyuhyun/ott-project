@@ -286,4 +286,4 @@ ott-project/
 - [배포 가이드](docs/deployment.md) — Docker 배포, 무중단 배포, CI/CD, SSL 설정
 - [운영 가이드](docs/operations.md) — 환경 변수, 모니터링, 백업과 복구
 - [보안 설계](docs/security.md) — 망분리, 이미지 공급망, 인증·최소권한, 애플리케이션 방어
-- [Kafka 아웃박스](docs/kafka-outbox.md) — 결제 부수효과 비동기화, 다중 인스턴스 중복 발행과 분산락
+- [비동기 메시징](docs/messaging.md) — 결제 이벤트 파이프라인(Outbox+Kafka), 정기결제 재시도(RabbitMQ TTL+DLX), 다중 인스턴스 중복 발행과 분산락

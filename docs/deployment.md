@@ -8,8 +8,8 @@
 - **Frontend**: Next.js 애플리케이션 (포트 3000)
 - **PostgreSQL**: 데이터베이스 (포트 5432)
 - **Redis**: 캐시 서버 (포트 6379)
-- **Kafka**: 결제 부수효과 이벤트 스트림 (KRaft 단일 노드). `docs/kafka-outbox.md` 참고
-- **RabbitMQ**: 정기결제 실패 재시도 지연 큐 (TTL+DLX)
+- **Kafka**: 결제 부수효과 이벤트 스트림 (KRaft 단일 노드). `docs/messaging.md` 참고
+- **RabbitMQ**: 정기결제 실패 재시도 지연 큐 (TTL+DLX). `docs/messaging.md` 참고
 
 ### 포트 설정
 - **공개 포트**: 80 (HTTP), 443 (HTTPS)만 외부 노출
