@@ -4,7 +4,8 @@
 # Flow: pg_dump (inside container) -> docker cp out -> age encrypt -> rclone -> R2
 # On failure: Discord alert (reuses security\discord-webhook.txt). Success is silent.
 # Run manually to test, then register in Task Scheduler (daily, low-traffic hour).
-# Restore needs the age PRIVATE key (backed up in Bitwarden: "ott key").
+# Restore needs the age PRIVATE key. It is held in a password manager, out of band --
+# never in this repo or on the server. Where it lives is deliberately not written down here.
 # ============================================================================
 $ErrorActionPreference = 'Stop'
 
