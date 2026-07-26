@@ -29,17 +29,19 @@ updates:
         update-types: ["version-update:semver-major"]
 
   # Docker 베이스 이미지
+  # npm/gradle과 달리 Docker는 advisory 매핑이 없어 security update PR이 따로 오지 않는다.
+  # 이 스케줄이 곧 유일한 패치 주기이므로 daily로 둔다(다이제스트가 실제로 움직일 때만 PR이 열린다).
   - package-ecosystem: "docker"
     directory: "/frontend"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
   - package-ecosystem: "docker"
     directory: "/backend"
     schedule:
-      interval: "weekly"
+      interval: "daily"
     ignore:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
