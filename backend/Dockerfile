@@ -1,5 +1,5 @@
 # Build stage
-FROM amazoncorretto:21 AS builder
+FROM amazoncorretto:21@sha256:540708337af29fda537479f2205d2d219a3780c3f07be5f42be96501789f610b AS builder
 WORKDIR /app
 
 # amazoncorretto:21 태그가 Amazon Linux 2 -> 2023으로 올라가며 findutils가 빠졌다.
@@ -26,7 +26,7 @@ RUN ./gradlew build -x test --no-daemon     # 실제 빌드 실행
 RUN cp "$(ls build/libs/*.jar | grep -v -- '-plain.jar' | head -n1)" /app/app.jar
 
 # Runtime stage
-FROM amazoncorretto:21
+FROM amazoncorretto:21@sha256:540708337af29fda537479f2205d2d219a3780c3f07be5f42be96501789f610b
 WORKDIR /app
 COPY --from=builder /app/app.jar app.jar
 
