@@ -564,9 +564,9 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		if (payment.getPaidAt().plusDays(7).isBefore(LocalDateTime.now())) { // 7일 초과
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "환불 가능 기간을 초과했습니다. (7일 이내만 환불 가능)"); // 400
 		}
-		// 시청 조건: 전혀 시청하지 않음 (1초라도 시청하면 환불 불가)
+		// 시청 조건: 시청 이력이 없어야 함 (시청 이력이 있으면 환불 불가)
 		int totalWatched = playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(userId, payment.getPaidAt()); // 4화 이상 누적 시청 초 합
-		if (totalWatched > 0) { // 1초라도 시청했으면 환불 불가
+		if (totalWatched > 0) { // 시청 이력이 있으면 환불 불가
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "콘텐츠를 시청한 경우 환불이 불가합니다."); // 400
 		}
 		// 게이트웨이 환불 실행(전액 환불)

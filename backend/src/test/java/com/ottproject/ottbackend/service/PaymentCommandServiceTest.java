@@ -455,7 +455,7 @@ class PaymentCommandServiceTest {
     }
 
     @Test
-    @DisplayName("1초라도 시청했으면 환불 불가 - 콘텐츠 소비 후 환불 방지")
+    @DisplayName("시청 이력이 있으면 환불 불가 - 콘텐츠 소비 후 환불 방지")
     void refundRejectedWhenWatched() {
         given(paymentRepository.findById(1L)).willReturn(Optional.of(succeededPaymentPaidDaysAgo(1)));
         given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(1L), any())).willReturn(1); // 1초

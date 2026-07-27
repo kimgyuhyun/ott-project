@@ -497,7 +497,7 @@ export default function MembershipManagePage() {
               • 환불은 결제일로부터 7일 이내에 서비스를 전혀 이용하지 않았을 때만 가능합니다.
             </p>
             <p className={styles.refundNoticeText}>
-              • 1초라도 콘텐츠를 시청한 경우 환불이 불가합니다.
+              • 감상하신 작품이 있는 경우 환불이 제한됩니다.
             </p>
           </div>
           
