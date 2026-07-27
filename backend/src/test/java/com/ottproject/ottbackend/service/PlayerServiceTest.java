@@ -53,6 +53,7 @@ class PlayerServiceTest {
     @Mock private EpisodeMapper episodeMapper;
     @Mock private PlayerQueryMapper playerQueryMapper;
     @Mock private PlaybackAuthService playbackAuthService;
+    @Mock private ProgressBufferService progressBuffer;
 
     @InjectMocks private PlayerService playerService;
 
@@ -89,47 +90,41 @@ class PlayerServiceTest {
     @DisplayName("saveProgress")
     class SaveProgress {
 
+        /**
+         * 위치·길이가 모두 유효하면 이전 값을 볼 필요가 없다.
+         * 이 경로에서 DB 를 건드리면 write-back 의 목적(커넥션 점유 제거)이 사라지므로 함께 고정한다.
+         */
         @Test
-        @DisplayName("기존 진행률이 있으면 새로 만들지 않고 위치를 갱신한다")
-        void updatesExistingProgress() {
-            EpisodeProgress existing = existingProgress(100, 1400);
-            given(progressRepository.findByUser_IdAndEpisode_Id(USER_ID, EPISODE_ID))
-                    .willReturn(Optional.of(existing));
-
+        @DisplayName("위치와 길이가 모두 유효하면 DB 없이 버퍼에만 쓴다")
+        void writesToBufferWithoutTouchingDb() {
             playerService.saveProgress(USER_ID, EPISODE_ID, 500, 1400);
 
-            EpisodeProgress saved = captureSaved();
-            assertThat(saved).isSameAs(existing);
-            assertThat(saved.getPositionSec()).isEqualTo(500);
+            verify(progressBuffer).write(USER_ID, EPISODE_ID, 500, 1400);
+            verify(progressRepository, never()).findByUser_IdAndEpisode_Id(USER_ID, EPISODE_ID);
+            verify(progressRepository, never()).save(org.mockito.ArgumentMatchers.any());
             verify(userRepository, never()).findById(USER_ID);
         }
 
         @Test
-        @DisplayName("진행률이 없으면 사용자/에피소드를 찾아 새로 만든다")
+        @DisplayName("위치가 총 길이를 넘으면 총 길이로 잘라 버퍼에 쓴다 - 진행률이 100% 를 넘으면 안 된다")
+        void clampsPositionToDuration() {
+            playerService.saveProgress(USER_ID, EPISODE_ID, 9999, 1400);
+
+            verify(progressBuffer).write(USER_ID, EPISODE_ID, 1400, 1400);
+        }
+
+        @Test
+        @DisplayName("진행률이 없으면 사용자/에피소드를 찾아 새로 만든다 - 길이가 없어 병합이 필요한 경우")
         void createsProgressWhenAbsent() {
             given(progressRepository.findByUser_IdAndEpisode_Id(USER_ID, EPISODE_ID)).willReturn(Optional.empty());
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
             given(episodeRepository.findById(EPISODE_ID)).willReturn(Optional.of(episode));
 
-            playerService.saveProgress(USER_ID, EPISODE_ID, 300, 1400);
+            playerService.saveProgress(USER_ID, EPISODE_ID, 300, null);
 
             EpisodeProgress saved = captureSaved();
             assertThat(saved.getUser()).isSameAs(user);
             assertThat(saved.getEpisode()).isSameAs(episode);
-            assertThat(saved.getPositionSec()).isEqualTo(300);
-            assertThat(saved.getDurationSec()).isEqualTo(1400);
-        }
-
-        @Test
-        @DisplayName("위치가 총 길이를 넘으면 총 길이로 잘라 저장한다 - 진행률이 100% 를 넘으면 안 된다")
-        void clampsPositionToDuration() {
-            EpisodeProgress existing = existingProgress(0, 1400);
-            given(progressRepository.findByUser_IdAndEpisode_Id(USER_ID, EPISODE_ID))
-                    .willReturn(Optional.of(existing));
-
-            playerService.saveProgress(USER_ID, EPISODE_ID, 9999, 1400);
-
-            assertThat(captureSaved().getPositionSec()).isEqualTo(1400);
         }
 
         @Test
@@ -189,13 +184,17 @@ class PlayerServiceTest {
             assertThat(saved.getPositionSec()).isZero();
         }
 
+        /**
+         * 버퍼 경로에서는 사용자/에피소드 존재 여부를 확인하지 않는다(DB 를 보지 않으므로).
+         * 없는 대상은 flush 의 FK 위반으로 걸러져 그 행만 버려진다. 병합이 필요한 경로에서는 종전대로 즉시 거부한다.
+         */
         @Test
-        @DisplayName("사용자나 에피소드가 없으면 진행률을 만들지 않는다")
+        @DisplayName("사용자나 에피소드가 없으면 진행률을 만들지 않는다 - 병합이 필요한 경우")
         void rejectsUnknownUserOrEpisode() {
             given(progressRepository.findByUser_IdAndEpisode_Id(USER_ID, EPISODE_ID)).willReturn(Optional.empty());
             given(userRepository.findById(USER_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> playerService.saveProgress(USER_ID, EPISODE_ID, 300, 1400))
+            assertThatThrownBy(() -> playerService.saveProgress(USER_ID, EPISODE_ID, 300, null))
                     .isInstanceOf(IllegalArgumentException.class);
 
             verify(progressRepository, never()).save(org.mockito.ArgumentMatchers.any());

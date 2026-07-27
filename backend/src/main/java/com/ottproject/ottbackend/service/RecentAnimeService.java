@@ -24,6 +24,7 @@ public class RecentAnimeService {
     
     private final EpisodeProgressRepository progressRepository;
     private final EpisodeMapper episodeMapper;
+    private final ProgressBufferService progressBuffer;
     
     /**
      * 최근본 목록에서 숨김 처리
@@ -75,6 +76,8 @@ public class RecentAnimeService {
         if (!episodeIds.isEmpty()) {
             // 해당 에피소드들의 진행률을 완전히 삭제
             progressRepository.deleteByUser_IdAndEpisode_IdIn(userId, episodeIds);
+            // 아직 DB 에 반영되지 않은 버퍼 값이 남아 있으면 다음 flush 가 삭제한 행을 되살린다
+            progressBuffer.evict(userId, episodeIds);
             System.out.println("🔧 [SERVICE] 정주행 목록에서 완전 삭제 완료");
         }
     }

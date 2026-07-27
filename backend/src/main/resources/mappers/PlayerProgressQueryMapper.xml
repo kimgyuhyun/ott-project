@@ -12,6 +12,20 @@
 		  and e.episode_number &gt;= 4 <!-- 4화 이상(1~3 무료 제외)만 유상 시청으로 간주 -->
 	</select> <!-- select 끝 -->
 
+	<!-- 진행률 버퍼 배치 반영: 한 문장으로 여러 행을 upsert 한다 --> <!-- 비즈니스 요약 주석 -->
+	<insert id="upsertProgressBatch"> <!-- 파라미터: rows(List&lt;EpisodeProgressFlushDto&gt;) -->
+		insert into episode_progress (user_id, episode_id, position_sec, duration_sec, updated_at) <!-- hidden_in_recent 는 DB 기본값 사용 -->
+		values
+		<foreach collection="rows" item="r" separator=","> <!-- 버퍼에서 꺼낸 행들을 values 목록으로 펼침 -->
+			(#{r.userId}, #{r.episodeId}, #{r.positionSec}, #{r.durationSec}, #{r.updatedAt})
+		</foreach>
+		on conflict (user_id, episode_id) do update set <!-- 유니크 제약(user_id, episode_id) 기준 갱신 -->
+			position_sec = excluded.position_sec,
+			duration_sec = excluded.duration_sec,
+			updated_at = excluded.updated_at
+		where episode_progress.updated_at &lt;= excluded.updated_at <!-- DB 값이 더 최신이면 덮어쓰지 않음(지연 반영분 역주행 방지) -->
+	</insert> <!-- insert 끝 -->
+
 </mapper> <!-- 매퍼 끝 -->
 
 

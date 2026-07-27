@@ -53,6 +53,7 @@ public class PlayerService {
     private final EpisodeMapper episodeMapper;
     private final com.ottproject.ottbackend.mybatis.PlayerQueryMapper playerQueryMapper;
     private final PlaybackAuthService playbackAuthService;
+    private final ProgressBufferService progressBuffer;
 
     // === 자막 관련 기능 ===
     
@@ -150,10 +151,27 @@ public class PlayerService {
     // === 진행률 관련 기능 ===
     
     /**
-     * 진행률 멱등 저장(있으면 갱신, 없으면 생성) - 동시성 안전
+     * 진행률 멱등 저장(있으면 갱신, 없으면 생성)
+     *
+     * - 위치·길이가 모두 유효하면 이전 값을 볼 필요가 없으므로 Redis 버퍼에만 쓰고 끝낸다(DB 접근 없음).
+     *   실트래픽은 컨트롤러가 두 값을 모두 필수로 검증하므로 항상 이 경로를 탄다.
+     * - 값이 불완전할 때만 이전 값과 병합해야 하므로 기존 DB 경로로 내려간다.
      */
-    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void saveProgress(Long userId, Long episodeId, Integer positionSec, Integer durationSec) {
+        if (positionSec != null && positionSec >= 0 && durationSec != null && durationSec > 0) {
+            progressBuffer.write(userId, episodeId, Math.min(positionSec, durationSec), durationSec);
+            return;
+        }
+        savePartialProgress(userId, episodeId, positionSec, durationSec);
+    }
+
+    /**
+     * 위치·길이 중 하나가 비어 있을 때의 진행률 저장(이전 값과 병합해야 하므로 DB 경로)
+     *
+     * 같은 빈 안에서 호출되어 프록시를 타지 않으므로 트랜잭션은 repository 각각이 연다.
+     * 원래도 Postgres 기본 격리수준(READ COMMITTED)이라 동작 차이는 없다.
+     */
+    private void savePartialProgress(Long userId, Long episodeId, Integer positionSec, Integer durationSec) {
         // 동시성 안전을 위해 먼저 조회(있으면 갱신, 없으면 생성)
         EpisodeProgress entity = progressRepository.findByUser_IdAndEpisode_Id(userId, episodeId)
                 .orElseGet(() -> {
@@ -181,9 +199,12 @@ public class PlayerService {
     }
     
     /**
-     * 진행률 단건 조회
+     * 진행률 단건 조회 - 아직 DB 에 반영되지 않은 버퍼 값을 먼저 본다
      */
     public java.util.Optional<EpisodeProgressResponseDto> getProgress(Long userId, Long episodeId) {
+        var buffered = progressBuffer.read(userId, episodeId);
+        if (buffered.isPresent()) return buffered;
+
         return progressRepository.findByUser_IdAndEpisode_Id(userId, episodeId)
                 .map(p -> EpisodeProgressResponseDto.builder()
                         .positionSec(p.getPositionSec())
@@ -193,12 +214,12 @@ public class PlayerService {
     }
     
     /**
-     * 진행률 벌크 조회(에피소드 ID 집합)
+     * 진행률 벌크 조회(에피소드 ID 집합) - 아직 DB 에 반영되지 않은 버퍼 값으로 덮어쓴다
      */
     public Map<Long, EpisodeProgressResponseDto> getBulkProgress(Long userId, java.util.Collection<Long> episodeIds) {
         List<EpisodeProgress> list = progressRepository.findByUser_IdAndEpisode_IdIn(userId, episodeIds);
         Map<Long, EpisodeProgressResponseDto> map = new HashMap<>();
-        
+
         for (EpisodeProgress p : list) {
             map.put(
                 p.getEpisode().getId(),
@@ -209,6 +230,7 @@ public class PlayerService {
                     .build()
             );
         }
+        map.putAll(progressBuffer.readAll(userId, episodeIds));
         return map;
     }
     
