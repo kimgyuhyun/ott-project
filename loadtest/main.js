@@ -7,9 +7,10 @@ import { Rate } from 'k6/metrics';
 // BACKENDS: 백엔드를 직접 때릴 때 쓴다(쉼표 구분). 지정하면 BASE 를 덮어쓰고
 //           VU 를 인스턴스별로 나눠 로드밸런싱을 흉내낸다. nginx 의 limit_req 를
 //           피해야 목표 부하가 만들어지기 때문이다(README 의 "레이트 리밋" 참고).
-// TEST: smoke = 스크립트가 도는지만 확인(부하 아님)
-//       slo   = 목표치(동시 시청자 500명) 통과 여부 판정
-//       knee  = 포화점 탐색(계단식 램프업)
+// TEST: smoke  = 스크립트가 도는지만 확인(부하 아님)
+//       slo    = 목표치(동시 시청자 500명) 통과 여부 판정
+//       knee   = 포화점 탐색(계단식 램프업)
+//       stress = 한계 RPS 탐색(open-loop). knee 로는 한계를 못 재기 때문이다 — RESULTS.md 참고
 const BACKENDS = (__ENV.BACKENDS || '').split(',').filter(Boolean);
 const BASE = BACKENDS.length
   ? BACKENDS[(__VU - 1 + BACKENDS.length) % BACKENDS.length]
@@ -55,27 +56,79 @@ const kneeStages = [
   { duration: '30s', target: 0 },
 ];
 
+// 한계 RPS 탐색: 사람 수가 아니라 초당 요청수를 직접 지정한다(open-loop).
+// closed-loop(ramping-vus)은 서버가 느려지면 VU 가 응답을 기다리느라 부하도 같이 줄어들어
+// 포화를 감춘다. 여기서는 서버가 느려져도 발생률이 유지되므로 큐가 쌓이는 게 그대로 보인다.
+// rate 단위는 이터레이션/초. 이터레이션 1회가 평균 약 1.4 요청이라 http RPS 는 그 1.4배다.
+const stressStages = [
+  // 워밍업. 낮은 발생률로 시작해 JIT 와 커넥션 풀을 데운 뒤 계단을 올린다.
+  { duration: '1m', target: 100 },
+  { duration: '30s', target: 500 },
+  { duration: '2m', target: 500 },
+  { duration: '30s', target: 1000 },
+  { duration: '2m', target: 1000 },
+  { duration: '30s', target: 2000 },
+  { duration: '2m', target: 2000 },
+  { duration: '30s', target: 4000 },
+  { duration: '2m', target: 4000 },
+];
+
+const viewerScenario = {
+  executor: 'ramping-vus',
+  startVUs: 0,
+  stages: MODE === 'knee' ? kneeStages : MODE === 'smoke' ? smokeStages : sloStages,
+  gracefulRampDown: '30s',
+};
+
+// preAllocatedVUs 는 시작 시점에 미리 만들어 두는 일꾼 수, maxVUs 는 서버가 느려졌을 때까지
+// 감안한 상한이다. 응답 7ms 기준으로는 일꾼 하나가 초당 약 140 이터레이션을 내므로 4000/s 에
+// 30명이면 되지만, 지연이 100ms 로 늘면 400명이 필요해진다.
+// 상한에 닿아 dropped_iterations 가 찍히면 두 가지 중 하나다: 서버가 느려져 일꾼이 모자랐거나
+// (= 포화 신호), 생성기가 한계였거나(= 측정 무효). 구분은 k6 CPU 로 한다.
+const stressScenario = {
+  executor: 'ramping-arrival-rate',
+  startRate: 20,
+  timeUnit: '1s',
+  preAllocatedVUs: 50,
+  maxVUs: 600,
+  stages: stressStages,
+};
+
+// 기존 판정 임계값. slo/knee 결과와 비교 가능해야 하므로 건드리지 않는다.
+const baseThresholds = {
+  'login_failed': ['rate<0.01'],
+  'http_req_failed': ['rate<0.001'],                       // 에러율 0.1% 미만
+  'http_req_duration{name:progress_save}': ['p(95)<500'],  // 백그라운드 저장이라 관대
+  'http_req_duration{name:anime_list}': ['p(95)<300'],     // 화면이 멈춰 보이는 구간
+  'http_req_duration{name:anime_detail}': ['p(95)<300'],
+  'http_req_duration{name:stream_url}': ['p(95)<500'],     // 재생 버튼 후 대기
+  'http_req_duration{name:login}': ['p(95)<1000'],
+};
+
+// stress 는 깨질 때까지 미는 게 목적이라 임계값이 판정이 아니라 '중단 조건'이다.
+// 서버가 무너진 뒤의 구간은 정보가 없고 운영 DB 에 부하만 주므로 즉시 멈춘다.
+// delayAbortEval 은 램프 초반의 표본 부족으로 오탐 중단되는 것을 막는다.
+// 중단 판정은 트래픽의 대부분이자 SLO 대상인 진행률 저장으로 본다. 전체 http_req_duration 으로
+// 걸면 측정 대상이 아닌 요청까지 섞여 엉뚱하게 중단된다(로그인 때문에 실제로 겪었다).
+const stressThresholds = {
+  'http_req_failed': [{ threshold: 'rate<0.01', abortOnFail: true, delayAbortEval: '1m' }],
+  'http_req_duration{name:progress_save}': [
+    { threshold: 'p(95)<500', abortOnFail: true, delayAbortEval: '1m' },
+  ],
+};
+
 export const options = {
   scenarios: {
-    viewers: {
-      executor: 'ramping-vus',
-      startVUs: 0,
-      stages: MODE === 'knee' ? kneeStages : MODE === 'smoke' ? smokeStages : sloStages,
-      gracefulRampDown: '30s',
-    },
+    viewers: MODE === 'stress' ? stressScenario : viewerScenario,
   },
   // 응답 본문을 버려서 부하 생성기 쪽 CPU/메모리 낭비를 줄인다(setup 은 개별로 예외 처리).
   discardResponseBodies: true,
-  thresholds: {
-    'login_failed': ['rate<0.01'],
-    'http_req_failed': ['rate<0.001'],                       // 에러율 0.1% 미만
-    'http_req_duration{name:progress_save}': ['p(95)<500'],  // 백그라운드 저장이라 관대
-    'http_req_duration{name:anime_list}': ['p(95)<300'],     // 화면이 멈춰 보이는 구간
-    'http_req_duration{name:anime_detail}': ['p(95)<300'],
-    'http_req_duration{name:stream_url}': ['p(95)<500'],     // 재생 버튼 후 대기
-    'http_req_duration{name:login}': ['p(95)<1000'],
-  },
+  thresholds: MODE === 'stress' ? stressThresholds : baseThresholds,
 };
+
+// stress 는 실패가 나는 것이 정상이라 요청마다 로그를 찍으면 초당 수천 줄이 되어
+// 생성기가 먼저 죽는다. 실패 건수는 http_req_failed 로 이미 집계되므로 로그는 끈다.
+const LOG_ERRORS = MODE !== 'stress';
 
 const jsonHeaders = { 'Content-Type': 'application/json', Origin: ORIGIN };
 const getHeaders = { Origin: ORIGIN };
@@ -115,8 +168,31 @@ export function setup() {
   if (freeEpisodeIds.length === 0) {
     fail('재생 가능한 무료 에피소드를 찾지 못했습니다.');
   }
+  // stress 에서는 로그인을 부하 구간에서 완전히 빼고 여기서 미리 끝낸다.
+  // 이유: open-loop 은 발생률을 맞추려고 VU 를 동적으로 늘리는데, VU 가 새로 생길 때마다
+  // 로그인(BCrypt)을 하면 "느려짐 → VU 증설 → 로그인 폭주 → 더 느려짐" 되먹임이 생긴다.
+  // 실측으로 이 되먹임이 두 번 측정을 날렸다(10초에 로그인 278건, VU 8 → 600). 인증은
+  // 측정 대상이 아니라 준비물이므로 여기서 세션만 받아 두고 VU 는 그것을 빌려 쓴다.
+  const sessions = [];
+  if (MODE === 'stress') {
+    const poolSize = Math.min(ACCOUNTS, Number(__ENV.LT_SESSIONS || 200));
+    for (let i = 1; i <= poolSize; i++) {
+      const email = `loadtest${String(i).padStart(4, '0')}@loadtest.local`;
+      const res = http.post(
+        `${BASE}/api/auth/login`,
+        JSON.stringify({ email, password: PASSWORD }),
+        { headers: jsonHeaders, responseType: 'text' }
+      );
+      if (res.status !== 200 || !res.cookies['JSESSIONID']) {
+        fail(`setup 로그인 실패: ${email} status=${res.status} — seed-users.sql 을 실행했는지 확인`);
+      }
+      sessions.push(res.cookies['JSESSIONID'][0].value);
+    }
+    console.log(`setup 세션 ${sessions.length}개 확보(부하 구간에서는 로그인하지 않는다)`);
+  }
+
   console.log(`setup 완료: 애니 ${aniIds.length}개, 무료 에피소드 ${freeEpisodeIds.length}개`);
-  return { aniIds, freeEpisodeIds };
+  return { aniIds, freeEpisodeIds, sessions };
 }
 
 // ── VU 상태 ─────────────────────────────────────────────────────────────
@@ -164,7 +240,10 @@ function login() {
 export default function (data) {
   if (vuJar === null) {
     vuJar = new http.CookieJar();
-    if (!login()) {
+    if (MODE === 'stress') {
+      // setup 에서 받아 둔 세션을 빌려 쓴다. 계정 수보다 VU 가 많으면 세션을 공유한다.
+      vuJar.set(BASE, 'JSESSIONID', data.sessions[__VU % data.sessions.length]);
+    } else if (!login()) {
       vuJar = null; // 다음 이터레이션에서 재시도
       sleep(TICK_SEC);
       return;
@@ -182,7 +261,7 @@ export default function (data) {
     JSON.stringify({ positionSec, durationSec: 1440 }),
     { headers: jsonHeaders, jar: vuJar, tags: { name: 'progress_save' } }
   );
-  if (progressRes.status !== 200) {
+  if (progressRes.status !== 200 && LOG_ERRORS) {
     console.error(`진행률 저장 실패: episodeId=${myEpisodeId} status=${progressRes.status}`);
   }
 
@@ -199,7 +278,7 @@ export default function (data) {
       jar: vuJar,
       tags: { name: 'anime_list' },
     });
-    if (res.status !== 200) console.error(`목록 조회 실패: status=${res.status}`);
+    if (res.status !== 200 && LOG_ERRORS) console.error(`목록 조회 실패: status=${res.status}`);
   }
 
   // ── 상세 조회 ──
@@ -210,7 +289,7 @@ export default function (data) {
       jar: vuJar,
       tags: { name: 'anime_detail' },
     });
-    if (res.status !== 200) console.error(`상세 조회 실패: aniId=${aniId} status=${res.status}`);
+    if (res.status !== 200 && LOG_ERRORS) console.error(`상세 조회 실패: aniId=${aniId} status=${res.status}`);
   }
 
   // ── 재생 시작 (약 8%) ──
@@ -220,10 +299,14 @@ export default function (data) {
       jar: vuJar,
       tags: { name: 'stream_url' },
     });
-    if (!check(res, { 'stream-url 200': (r) => r.status === 200 })) {
+    if (!check(res, { 'stream-url 200': (r) => r.status === 200 }) && LOG_ERRORS) {
       console.error(`스트림 URL 실패: episodeId=${myEpisodeId} status=${res.status}`);
     }
   }
 
-  sleep(TICK_SEC);
+  // open-loop 에서는 발생률을 executor 가 통제하므로 이터레이션 안에서 자면 안 된다.
+  // 5초를 자면 일꾼 하나가 초당 0.2 이터레이션밖에 못 내서 목표 RPS 를 만들 수 없다.
+  if (MODE !== 'stress') {
+    sleep(TICK_SEC);
+  }
 }
