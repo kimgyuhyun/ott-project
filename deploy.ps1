@@ -40,6 +40,34 @@ docker compose `
     up -d --remove-orphans
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
 
+# nginx config change -> force-recreate.
+# The conf is a single-file bind mount, so the `up -d` above does not notice when
+# only its CONTENTS change, and nginx keeps serving the config it parsed at
+# startup. Recreate only when the file is newer than the running container.
+# (Same check as deploy-rolling.ps1 step 1b; this path mounts the non-ha conf.)
+$NginxConf = 'nginx\nginx.prod.conf'   # mounted by docker-compose.prod.yml
+$nginxExists = docker ps -a --filter 'name=^ott-nginx$' --format '{{.Names}}'
+if (-not $nginxExists) {
+    $nginxStale = $true
+} else {
+    $startedAt  = docker inspect ott-nginx --format '{{.State.StartedAt}}'
+    $started    = [datetime]::ParseExact($startedAt.Substring(0, 19), 'yyyy-MM-ddTHH:mm:ss', $null)
+    $nginxStale = (Get-Item $NginxConf).LastWriteTimeUtc -gt $started
+}
+
+if ($nginxStale) {
+    Write-Host '=== nginx config is newer than the running container - recreating nginx ==='
+    docker compose `
+        -f docker-compose.yml `
+        -f docker-compose.prod.yml `
+        -f docker-compose.netlock.yml `
+        -f docker-compose.monitoring.yml `
+        up -d --no-deps --force-recreate nginx
+    if ($LASTEXITCODE -ne 0) { throw 'docker compose up (nginx recreate) failed' }
+} else {
+    Write-Host '=== nginx config unchanged - leaving nginx untouched ==='
+}
+
 # Security invariant: frontend must NOT reach the internet.
 Write-Host '=== VERIFY frontend egress is blocked (expected: BLOCKED) ==='
 $egress = docker exec ott-frontend node -e "const s=require('net').connect({host:'1.1.1.1',port:443,timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
