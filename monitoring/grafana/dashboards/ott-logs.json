@@ -1,0 +1,105 @@
+{
+  "uid": "ott-logs",
+  "title": "OTT 컨테이너 로그",
+  "tags": ["ott", "logs"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "label": "서비스",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "ottloki" },
+        "query": "label_values(service)",
+        "refresh": 1,
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".+",
+        "current": { "text": "All", "value": "$__all" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "서비스별 로그 발생량 (초당)",
+      "description": "Alloy 가 수집하는 컨테이너들. 백엔드(ott-app/ott-app-2)는 loki4j 로 따로 들어오므로 여기 없다.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "loki", "uid": "ottloki" },
+      "fieldConfig": { "defaults": { "unit": "logs/s", "custom": { "fillOpacity": 10 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "ottloki" },
+          "expr": "sum by (service) (rate({service=~\"$service\"}[1m]))",
+          "legendFormat": "{{service}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "nginx 444 차단 (봇 스캔 지표)",
+      "description": "444 는 응답 없이 연결을 끊는 코드다. 값이 튀면 스캐너가 훑고 있다는 뜻.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "loki", "uid": "ottloki" },
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "fillOpacity": 20 } }, "overrides": [] },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "ottloki" },
+          "expr": "sum(rate({service=\"nginx\"} |= \" 444 \" [5m]))",
+          "legendFormat": "차단"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "선택한 서비스 로그",
+      "gridPos": { "h": 12, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "loki", "uid": "ottloki" },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "ottloki" },
+          "expr": "{service=~\"$service\"}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "logs",
+      "title": "postgres 로그 (deadlock / 느린쿼리 / 커넥션 거절)",
+      "description": "DB풀 병목 조사용. 이 로그는 Alloy 도입 전에는 Loki 에 아예 없었다.",
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+      "datasource": { "type": "loki", "uid": "ottloki" },
+      "options": {
+        "showTime": true,
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "dedupStrategy": "none",
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "loki", "uid": "ottloki" },
+          "expr": "{service=\"postgres\"}"
+        }
+      ]
+    }
+  ]
+}
