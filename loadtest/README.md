@@ -1,5 +1,19 @@
 # 부하 테스트
 
+## 파일
+
+| 파일 | 무엇 |
+|---|---|
+| `main.js` | k6 부하 시나리오. 시청자를 모사해 진행률 저장·탐색·스트림URL 발급을 비중대로 섞어 건다 |
+| `seed-users.sql` | 테스트 계정 500개를 DB 에 직접 심는다(회원가입 API 는 이메일 인증 티켓을 요구해서 못 쓴다) |
+| `cleanup-users.sql` | 그 계정과 딸린 `episode_progress` 를 회수한다. **측정이 끝나면 반드시 실행** |
+| `diag-session.ps1` | 로그인 후 세션이 유지되는지 요청마다 상태코드·Redis 키·세션 ID 를 찍는다 |
+| `diag-rotation.ps1` | 로그인 쿠키가 첫 요청 뒤에도 살아있는지(세션 ID 이중 회전 회귀 확인) |
+| `diag-concurrent.ps1` | 같은 계정의 두 세션이 공존하는지, 인스턴스를 나눠 세 시나리오로 확인 |
+
+`diag-*.ps1` 은 부하 테스트가 아니라 세션 동작을 좁혀 보는 도구다. 원인 규명이 끝난 뒤에는
+회귀 확인용으로 쓴다.
+
 ## 목표
 
 | 항목 | 값 |
@@ -101,20 +115,13 @@ docker exec -i ott-postgres psql -U root -d ott_project_db < loadtest/cleanup-us
 
 계정과 함께 `episode_progress` 도 CASCADE 로 지워진다.
 
-## 진단 스크립트
+## 진단 스크립트 실행
 
-`diag-*.ps1` 은 부하 테스트가 아니라 세션 동작을 좁혀 보는 도구다. 비밀번호는 `LT_PASSWORD`
-환경변수로 받는다(미지정 시 즉시 실패).
+비밀번호는 `LT_PASSWORD` 환경변수로 받는다(미지정 시 즉시 실패).
 
 ```bash
 $env:LT_PASSWORD='...'; powershell -ExecutionPolicy Bypass -File .\loadtest\diag-rotation.ps1
 ```
-
-| 스크립트 | 확인하는 것 |
-|---|---|
-| `diag-session.ps1` | 로그인 후 세션이 유지되는지 |
-| `diag-rotation.ps1` | 로그인 쿠키가 첫 요청 뒤에도 살아있는지(세션 ID 이중 회전 재현용) |
-| `diag-concurrent*.ps1` | 같은 계정의 두 세션이 공존하는지(동시 로그인 제한 재현용) |
 
 ## 레이트 리밋: 단일 IP 로는 목표 부하가 안 만들어진다
 
