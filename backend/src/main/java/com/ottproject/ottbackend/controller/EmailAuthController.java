@@ -6,6 +6,7 @@ import com.ottproject.ottbackend.dto.AuthRegisterRequestDto;
 import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.enums.AuthEventType;
 import com.ottproject.ottbackend.enums.AuthProvider;
+import com.ottproject.ottbackend.enums.UserRole;
 import com.ottproject.ottbackend.security.SessionEventListener;
 import com.ottproject.ottbackend.service.AuthEventService;
 import com.ottproject.ottbackend.service.EmailAuthService;
@@ -14,11 +15,18 @@ import com.ottproject.ottbackend.service.TurnstileVerifier;
 import com.ottproject.ottbackend.service.VerificationEmailService;
 import com.ottproject.ottbackend.util.ClientRequestUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +35,8 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
+import java.util.List;
 
 /**
  * EmailAuthController
@@ -62,6 +72,7 @@ public class EmailAuthController {
     private final AuthEventService authEventService; // 인증 이벤트(로그인/로그아웃 등) 감사 로그 기록 주입
     private final LoginAttemptService loginAttemptService; // 로그인 실패 횟수 기반 계정 잠금(brute-force 방어) 주입
     private final TurnstileVerifier turnstileVerifier; // Cloudflare Turnstile(봇/사람 확인) 검증 주입
+    private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository(); // 로그인 성공 시 SecurityContext 를 세션에 저장
 
     @Operation(summary = "회원가입", description = "이메일/비밀번호/프로필 정보로 신규 계정을 생성합니다.")
     @ApiResponse(responseCode = "200", description = "성공",
@@ -129,7 +140,7 @@ public class EmailAuthController {
     @ApiResponse(responseCode = "200", description = "성공", 
             content = @Content(schema = @Schema(implementation = UserResponseDto.class))) // Swagger 문서에 표시할 내용들
     @PostMapping("/login") // POST 요청을 처리하는 엔드포인트 /api/auth/login 
-    public ResponseEntity<UserResponseDto> login(@Valid @RequestBody AuthLoginRequestDto requestDto, HttpSession session, HttpServletRequest request) {
+    public ResponseEntity<UserResponseDto> login(@Valid @RequestBody AuthLoginRequestDto requestDto, HttpSession session, HttpServletRequest request, HttpServletResponse response) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // UserResponseDto를 타입 매게변수로 넘기면 login 메서드는 ResponseEntity<UserResponseDto) 타입만 반환가능
         // @Valid는 입력 데이터 유효성 검증 에너테이션임 스프링이 검증을 수행해줌
@@ -180,6 +191,11 @@ public class EmailAuthController {
         // 공격자가 미리 심어둔 세션 ID 가 인증 후에도 그대로 유지되는 것을 막기 위해 명시적으로 회전시킨다.
         request.changeSessionId();
         session.setAttribute("userEmail", requestDto.getEmail());
+        // SecurityContext 를 세션에 명시적으로 저장한다(회전 직후에 저장해야 새 세션에 실린다).
+        // 저장하지 않으면 다음 요청에서 SessionAuthenticationFilter 가 인증을 붙이는 시점이
+        // "방금 인증된 새 로그인"으로 보여 Spring Security 의 세션 고정 방어가 한 번 더 발동하고,
+        // 그 결과 로그인 응답으로 내려간 세션 ID 가 첫 요청 이후 무효화된다.
+        saveSecurityContext(request, response, requestDto.getEmail(), responseDto.getRole());
         // setAttribute 메서드는 세션에 키와 값을 저장하는 메서드임
         // setAttribue 메서드에 인자로 키 "userEmail" 에 값으로로 요청본문에 json을 Java 객체로 바꿔서넣은 변수에서 Email을 값으로 태워보냄
         // 그럼 session에 키와값이 설정됨
@@ -196,6 +212,22 @@ public class EmailAuthController {
         // ResponseEntity.ok(responseDto)를 리턴해주는데 이때 상태코드로 200이 들어가고
         // 응답 본문에는 responseDto 객체를 JSON 문자열로 변환해서 넣어줌 이걸 전송
 
+    }
+
+    /**
+     * 로그인 성공 시점의 인증 정보를 SecurityContext 에 담아 세션에 저장한다.
+     * - Spring Security 6 에서는 SecurityContextHolder 에 set 하는 것만으로는 저장되지 않고,
+     *   SecurityContextRepository.saveContext 를 직접 호출해야 세션에 실린다.
+     * - 권한 표기는 SessionAuthenticationFilter 가 만드는 인증 객체와 동일하게 맞춘다.
+     */
+    private void saveSecurityContext(HttpServletRequest request, HttpServletResponse response,
+                                     String email, UserRole role) {
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                email, null, List.of(new SimpleGrantedAuthority("ROLE_" + role.name())));
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+        securityContextRepository.saveContext(context, request, response);
     }
 
     @Operation(summary = "로그아웃", description = "세션 무효화")
