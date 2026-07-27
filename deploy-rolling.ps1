@@ -76,7 +76,7 @@ if (-not (Test-Path .env)) {
 # may not exist yet - then step 2 recreates it a second time. That mistake cost
 # a real ~15s outage on the 2026-07-20 first deploy (364 failed requests).
 Write-Host '=== Updating non-backend services (incl. monitoring) ==='
-docker compose @ComposeFiles up -d --remove-orphans --no-deps postgres redis kafka rabbitmq frontend nginx loki prometheus grafana
+docker compose @ComposeFiles up -d --remove-orphans --no-deps postgres redis kafka rabbitmq frontend nginx loki prometheus grafana alloy
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up (non-backend) failed' }
 
 # --- 2. Backend instances, one at a time --------------------------------------

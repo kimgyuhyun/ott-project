@@ -1,0 +1,96 @@
+// ============================================================================
+// Grafana Alloy — 컨테이너 로그 수집 (docker.sock 없이)
+// ----------------------------------------------------------------------------
+// 왜 파일을 직접 읽나:
+//   표준 방식(discovery.docker)은 /var/run/docker.sock 을 마운트해야 하는데,
+//   소켓은 뚫리면 곧 호스트 장악이다(:ro 로 붙여도 API 호출은 그대로 된다).
+//   2026-06 XMRig 침해 이력이 있는 호스트라 이 선은 넘지 않는다.
+//   대신 /var/lib/docker/containers 를 읽기전용으로 붙여 도커가 쓴 json-file
+//   로그를 직접 tail 한다. 감수하는 위험은 "전 컨테이너 로그 열람"까지이고
+//   컨테이너 조작·호스트 접근은 불가하다.
+//
+// 컨테이너 이름을 어떻게 붙이나:
+//   로그 파일 경로에는 컨테이너 ID밖에 없고, 소켓 없이는 ID→이름을 못 얻는다.
+//   그래서 반대로 도커에게 이름을 로그에 써넣게 시킨다:
+//   docker-compose.monitoring.yml 에서 수집 대상 서비스마다
+//     labels:  log_service: nginx
+//     logging: driver json-file, options.labels: log_service
+//   를 주면 json-file 드라이버가 각 줄에 {"attrs":{"log_service":"nginx"}} 를
+//   붙여준다. 아래 파이프라인은 그 값을 service 라벨로 승격시킨다.
+//
+// 백엔드(ott-app / ott-app-2) 제외:
+//   백엔드는 이미 loki4j(Loki4jAppender)로 Loki에 직접 push 한다(requestId·instance
+//   라벨 포함, 파싱보다 정확). 여기서 또 읽으면 중복이므로 log_service 라벨을
+//   주지 않았고, 아래 stage.match 가 service 가 빈 줄을 전부 버린다.
+//   → "라벨 없는 컨테이너는 수집하지 않는다"가 곧 제외 규칙이다.
+// ============================================================================
+
+logging {
+  level  = "warn"
+  format = "logfmt"
+}
+
+// 컨테이너 로그 파일 목록. 컨테이너가 생기고 사라지므로 주기적으로 다시 훑는다.
+local.file_match "containers" {
+  path_targets = [{
+    __path__ = "/var/lib/docker/containers/*/*-json.log",
+  }]
+  sync_period = "30s"
+}
+
+loki.source.file "containers" {
+  targets    = local.file_match.containers.targets
+  forward_to = [loki.process.docker.receiver]
+}
+
+loki.process "docker" {
+  // json-file 한 줄: {"log":"...","stream":"stdout","attrs":{"log_service":"nginx"},"time":"..."}
+  stage.json {
+    expressions = {
+      log       = "log",
+      stream    = "stream",
+      timestamp = "time",
+      service   = "attrs.log_service",
+    }
+  }
+
+  stage.labels {
+    values = {
+      service = "",
+      stream  = "",
+    }
+  }
+
+  // log_service 라벨이 없는 컨테이너(=백엔드, 그리고 모니터링 스택 자신)는 버린다.
+  stage.match {
+    selector            = "{service=\"\"}"
+    action              = "drop"
+    drop_counter_reason = "unlabeled_container"
+  }
+
+  // 수집 시각이 아니라 도커가 기록한 실제 시각을 쓴다.
+  stage.timestamp {
+    source = "timestamp"
+    format = "RFC3339Nano"
+  }
+
+  // filename 은 컨테이너 ID를 포함해 재생성 때마다 새 스트림이 된다 → 라벨에서 제거.
+  stage.label_drop {
+    values = ["filename"]
+  }
+
+  // Loki 에 저장할 본문은 json 껍데기가 아니라 원래 로그 한 줄.
+  stage.output {
+    source = "log"
+  }
+
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  // loki 는 default(웹 계층) 망에 있다. alloy 도 default 에만 붙으므로
+  // netlock 배포에서 alloy 는 인터넷 egress 가 전혀 없다.
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
