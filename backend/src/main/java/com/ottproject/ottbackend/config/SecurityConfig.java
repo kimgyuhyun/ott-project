@@ -181,10 +181,6 @@ public class SecurityConfig {
                                 .userService(OAuth2UserService) // OAuth2 사용자 정보 처리 서비스
                         )
                 )
-                .sessionManagement(session -> session
-                        .maximumSessions(1) // 동시 세션 수 제한(1개)
-                        .maxSessionsPreventsLogin(false) // 기본 세션 무효화
-                )
                 .userDetailsService(localUserDetailsService) // 기존 이메일 로그인용 customUserDetailService 등록
                 // CSRF 방어(오리진 검증): 상태변경 요청의 출처가 우리 도메인인지 확인. SameSite=Lax 위 한 겹.
                 // 공용 도메인(kozow.com) 특성상 SameSite 만으론 이웃 서브도메인 위조를 못 막아 추가한다.
