@@ -22,6 +22,13 @@ services:
       service: app          # prod 의 image/env_file/environment/보안하드닝/리소스상한을 전부 상속
     container_name: ott-app-2
     restart: unless-stopped
+    # base 의 x-logging 앵커는 파일을 넘어가지 않고, extends 는 prod.yml 의 app 을
+    # 상속하므로 base 에 붙인 로그 회전이 app2 에는 딸려오지 않는다. 여기서 같은 값을 준다.
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     pull_policy: ${APP_PULL_POLICY:-never}   # netlock 의 app 설정과 동일하게 맞춘다
     depends_on:
       - postgres
