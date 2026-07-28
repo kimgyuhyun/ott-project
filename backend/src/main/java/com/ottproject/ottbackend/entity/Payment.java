@@ -58,8 +58,12 @@ public class Payment { // 엔티티 시작
     @Column(nullable = false)
     private PaymentStatus status = PaymentStatus.PENDING; // 초기 상태 PENDING
     
-    @Column(length = 255)
-    private String providerSessionId; // 체크아웃 세션 식별자
+    // 유니크: 정기결제 재청구가 PG 호출 전에 결정적 merchant_uid 로 PENDING 을 선삽입하고,
+    // 중복 배달의 두 번째 삽입이 여기서 떨어지는 것이 이중 청구를 막는 1차 방어선이다.
+    // NULL 은 서로 충돌하지 않으므로 값이 없는 행에는 영향이 없다.
+    // 운영 스키마는 V20260729100000 마이그레이션이 만든다(여기 선언은 매핑 일치 + 테스트 스키마용).
+    @Column(length = 255, unique = true)
+    private String providerSessionId; // 체크아웃 세션 식별자(merchant_uid)
     
     @Column(length = 255)
     private String providerPaymentId; // 최종 결제 식별자
