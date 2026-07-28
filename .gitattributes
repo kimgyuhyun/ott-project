@@ -1,3 +1,8 @@
 # Encrypted secrets must stay LF on every checkout (incl. self-hosted Windows
 # runner). CRLF corrupts the SOPS metadata timestamp -> "parsing time ... \x0d".
 *.enc text eol=lf
+
+# 컨테이너 안에서 실행되는 셸 스크립트. CRLF 로 체크아웃되면 리눅스 bash 가
+# '\r' 을 명령 일부로 읽어 깨진다. security/initdb/*.sh 는 postgres 컨테이너에
+# 그대로 바인드 마운트되므로 러너 체크아웃의 줄바꿈이 곧 실행 결과가 된다.
+*.sh text eol=lf
