@@ -6,6 +6,14 @@
 
 > 🌐 서비스 주소: **https://laputa.kozow.com** (단일 호스트 Docker Compose 배포)
 
+| 측정한 것 | 결과 |
+|---|---|
+| 안전 운영 한계 | **약 1,840 RPS** (동시 시청자 약 6,600명 환산 — 목표 부하 500명의 13배) |
+| 성능 개선 | 병목(DB 커넥션 풀)을 규명해 **포화점 1,200 → 1,840 RPS (1.5배)** — [측정 기록](loadtest/RESULTS.md) |
+| 무너지는 방식 | graceful — 한계 초과에도 909,084 요청 중 **에러 0건**, 지연만 상승 |
+
+숫자의 전제·측정 방법·한계는 [부하 테스트 결과](loadtest/RESULTS.md)에 그대로 적어 뒀습니다.
+
 ---
 
 ## 주요 기능
@@ -64,7 +72,7 @@
 - **nginx** 리버스 프록시(HTTPS · secure_link), **Docker Compose** 단일 호스트 구성
 - **GitHub Actions** → **Docker Hub** 이미지 빌드/푸시 후 서버 배포
 - 보안 하드닝: 앱/프론트/브로커는 **루프백 전용 바인딩**, 외부 진입점은 nginx(80/443)뿐
-- **Prometheus + Grafana + Loki** 관측성 (별도 오버레이 — 아래 [모니터링](#모니터링-관측성) 참고)
+- **Prometheus + Grafana + Loki** 관측성 (별도 오버레이 — 아래 [성능과 관측성](#성능과-관측성) 참고)
 
 ---
 
@@ -168,13 +176,43 @@ com.ottproject.ottbackend
 ### 6. Redis 캐싱 전략
 추천 결과 · 태그 선호도 · 시청 집합 · 24h 트렌드 · 인기 검색어/평균 별점 등 **자주 조회·재계산 비용이 큰 데이터**를 네임스페이스(`ott`) + TTL로 캐싱해 응답 지연과 DB 부하를 낮춥니다.
 
+### 7. 시청 진행률 write-back — 포화점 1.5배
+부하 테스트로 **병목을 먼저 규명하고**, 그 지점만 겨냥해 고친 뒤 **같은 조건으로 재측정**했습니다.
+
+- **문제** — 시청 진행률 저장이 전체 요청의 72%(5초마다 1회)인데 매번 DB로 직행했습니다. 포화 구간에서 **Hikari 풀 20/20 고갈 + 대기 스레드 179개**, 지연의 대부분이 쿼리가 아니라 *커넥션을 기다린 시간*이었습니다.
+- **해결** — 요청 경로에서는 **Redis 버퍼에만 쓰고**, 스케줄러가 10초마다 버퍼를 통째로 들어내 **배치 upsert** 합니다(`ProgressBufferService`). 다중 인스턴스에서는 ShedLock 분산락으로 flush가 한 번만 돌게 했습니다.
+- **결과** — 같은 부하대(약 1,390 RPS)에서 커넥션 **20/20 · 대기 179 → 1~2/20 · 대기 0**, p50 8.4ms → 3.2ms. 포화점 **1,200 → 약 1,840 RPS**, 최대 처리량 1,440 → 약 2,240 RPS. 이전 측정은 5분 46초에 자동 중단됐지만 개선 후에는 11분 시나리오를 완주했습니다.
+- **유실 검증** — 부하 종료 후 버퍼 잔량 0, DB 반영 시각이 종료 시각과 일치, flush 오류 0건.
+- **병목 이동** — 이제 DB 풀이 아니라 **JVM CPU**입니다(1,390 RPS에서 이미 87%). 다만 목표 부하의 13배까지 나왔으므로 **CPU 개선은 실익이 없다고 판단해 멈췄습니다.**
+
+> ※ *개선 폭 1.5배는 write-back 단독 효과가 아닙니다. 같은 배포에 **OSIV 비활성화**(`open-in-view: false`)가 함께 들어갔고 이것도 커넥션 점유 시간에 직접 영향을 줍니다. 기여도를 나누려면 커밋을 따로 배포해 재야 하는데, 하지 않았습니다.*
+
 ---
 
-## 모니터링 (관측성)
+## 성능과 관측성
 
+![k6](https://img.shields.io/badge/k6-load%20testing-purple?style=flat-square&logo=k6)
 ![Prometheus](https://img.shields.io/badge/Prometheus-metrics-orange?style=flat-square&logo=prometheus)
 ![Grafana](https://img.shields.io/badge/Grafana-dashboard-orange?style=flat-square&logo=grafana)
 ![Loki](https://img.shields.io/badge/Loki-logs-yellow?style=flat-square&logo=grafana)
+
+**"측정 → 병목 규명 → 개선 → 재측정"** 을 한 사이클 돌렸습니다. 그 결과가 [핵심 설계 7번](#7-시청-진행률-write-back--포화점-15배)이고,
+아래는 그걸 가능하게 한 도구들입니다.
+
+### 부하 테스트 (k6)
+
+- **closed-loop(`knee`)** — 계단식 VU 증가로 "동시 시청자 몇 명까지"를 봅니다. 1500 VU까지 꺾이지 않았지만, VU가 5초 주기라 **417 RPS가 구조적 상한**이라 한계 자체는 잴 수 없었습니다.
+- **open-loop(`stress`)** — `ramping-arrival-rate` 로 목표 RPS를 직접 지정해 **한계와 무너지는 방식**을 봅니다. SLO 이탈 시 자동 중단(`abortOnFail`).
+- 측정이 무효가 된 실패도 남겨 뒀습니다 — nginx `limit_req`가 VU 500명을 IP 한 개로 묶어 72%를 막은 건(로그 38,059건과 k6 실패 38,058건 대조로 규명), open-loop에서 로그인을 부하 구간에 두면 *느려짐 → VU 증설 → BCrypt → 더 느려짐* 되먹임이 생긴 건. 인증은 `setup()`으로 빼서 해결했습니다.
+- 시나리오·실행법은 [loadtest/README.md](loadtest/README.md), 실측치는 [loadtest/RESULTS.md](loadtest/RESULTS.md).
+
+### DB 쿼리 관측
+
+- `pg_stat_statements` — 쿼리별 누적 호출/시간 집계. `shared_preload_libraries`로 로드하고 확장 생성은 `initdb`로 자동화했습니다.
+- `auto_explain` — 임계 시간 초과 쿼리의 실행 계획을 자동 로깅. 임계값(`log_min_duration`)은 재배포 없이 `ALTER SYSTEM`으로 바꿀 수 있게 일부러 커맨드라인에서 뺐습니다(`-c`가 `ALTER SYSTEM`을 이기기 때문).
+- **OSIV 비활성화**(`open-in-view: false`) — 뷰 렌더링까지 커넥션을 붙들지 않도록 껐습니다. 커넥션 점유 시간에 직접 영향을 줍니다.
+
+### 메트릭 · 로그
 
 배포한 백엔드가 잘 돌고 있는지 보려고 **Prometheus + Grafana + Loki** 를 붙였습니다.
 기존 스택은 그대로 두고 `docker-compose.monitoring.yml` 오버레이로만 얹습니다.
@@ -287,3 +325,5 @@ ott-project/
 - [운영 가이드](docs/operations.md) — 환경 변수, 모니터링, 백업과 복구
 - [보안 설계](docs/security.md) — 망분리, 이미지 공급망, 인증·최소권한, 애플리케이션 방어
 - [비동기 메시징](docs/messaging.md) — 결제 이벤트 파이프라인(Outbox+Kafka), 정기결제 재시도(RabbitMQ TTL+DLX), 다중 인스턴스 중복 발행과 분산락
+- [부하 테스트 결과](loadtest/RESULTS.md) — 포화점 측정, 병목(DB 커넥션 풀) 규명, write-back 개선 후 재측정, 측정 방법의 함정과 남은 한계
+- [부하 테스트 실행법](loadtest/README.md) — 시나리오(`slo` · `knee` · `stress`), SLO 임계값, 실행 옵션
