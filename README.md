@@ -40,10 +40,15 @@
 ![Spring Security](https://img.shields.io/badge/Spring%20Security-6.5-green?style=flat-square&logo=spring)
 ![JPA](https://img.shields.io/badge/JPA-3.5-blue?style=flat-square&logo=hibernate)
 ![MyBatis](https://img.shields.io/badge/MyBatis-3.0-red?style=flat-square&logo=mybatis)
+![QueryDSL](https://img.shields.io/badge/QueryDSL-jakarta-blue?style=flat-square)
 ![Flyway](https://img.shields.io/badge/Flyway-migration-red?style=flat-square&logo=flyway)
 
-- **Spring Data JPA** (쓰기/도메인) + **MyBatis** (복잡 조회/통계) 혼용
-- **Flyway** 스키마 마이그레이션, **springdoc** OpenAPI 문서화
+- **데이터 접근 3분할** — 일반 쓰기/도메인은 **JPA**, 사용자향 복잡 조회/통계는 **MyBatis**,
+  관리자 큐레이션의 동적 검색/벌크 수정은 **QueryDSL**(타입 안전 동적 쿼리)
+- **MapStruct** 엔티티↔DTO 매핑, **Flyway** 스키마 마이그레이션
+- **Spring Session (Redis)** — 재배포/다중 인스턴스에서도 세션 유지
+- **ShedLock** — `@Scheduled` 배치의 다중 인스턴스 중복 실행 방지(분산락, 저장소는 Redis)
+- 테스트: JUnit 5 + **Testcontainers**(운영과 같은 PostgreSQL로 방언 의존 동작 검증)
 
 ### Frontend
 ![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)
@@ -63,7 +68,7 @@
 - **Kafka** — 결제 성공 부수효과(영수증 등) 이벤트 스트림 (Outbox 패턴)
 - **RabbitMQ** — 정기결제 실패 재시도 지연 큐 (TTL + DLX)
 
-### Infra / DevOps
+### Infra
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=flat-square&logo=docker)
 ![Docker Hub](https://img.shields.io/badge/Docker%20Hub-Registry-blue?style=flat-square&logo=docker)
 ![Nginx](https://img.shields.io/badge/Nginx-reverse%20proxy-green?style=flat-square&logo=nginx)
@@ -113,11 +118,11 @@ com.ottproject.ottbackend
 ├── entity       JPA 엔티티
 ├── dto          요청/응답 DTO
 ├── enums        도메인 enum (결제/구독 상태 등)
-├── repository   Spring Data JPA 리포지토리
+├── repository   Spring Data JPA 리포지토리 (+ curation: QueryDSL 동적 쿼리)
 ├── mybatis      MyBatis 매퍼 (복잡 조회/통계)
 ├── mappers      매퍼 인터페이스
-├── event        도메인 이벤트
-├── config       Security · Redis · Kafka · Rabbit · OpenAPI 설정
+├── exception    예외 · 전역 핸들러
+├── config       Security · Redis · Kafka · Rabbit · QueryDSL · OpenAPI 설정
 ├── handler      OAuth2 성공/실패 핸들러
 ├── security     인증 필터/헬퍼
 ├── util         HLS 서명 · 보안 유틸
