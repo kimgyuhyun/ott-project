@@ -5,6 +5,10 @@
 --       ott_app 에 주지 않는다. 즉 뚫린 앱이 런타임에 스키마를 바꾸거나
 --       테이블을 드롭할 수 없다. 기존 테이블 소유권은 root 에 그대로 둔다.
 --
+-- [2026-07-28] 이 파일은 "이미 돌고 있는 DB"에 손으로 거는 용도로 유지한다.
+--   볼륨을 새로 만들 때는 security/initdb/20-least-privilege.sh 가 자동 실행되므로
+--   이 파일을 돌릴 필요가 없다. 권한 정책을 바꿀 땐 두 파일을 같이 고칠 것.
+--
 -- 실행 위치: prod DB(ott_project_db)에 root(슈퍼유저)로 접속해서 실행.
 --   docker exec -i ott-postgres psql -U root -d ott_project_db < security/postgres-least-privilege.sql
 --

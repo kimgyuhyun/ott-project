@@ -22,10 +22,36 @@ services:                         # 서비스 정의 시작
       POSTGRES_DB: ${DB_NAME}     # 데이터베이스 이름
       POSTGRES_USER: ${DB_USERNAME}             # 데이터베이스 사용자명
       POSTGRES_PASSWORD: ${DB_PASSWORD}         # 데이터베이스 비밀번호
+    # [2026-07-28] 쿼리 단위 관측 — Redis 라이트백 적용 전후 비교용.
+    # 1200 RPS 에서 Hikari 풀(20/20)이 고갈되는데, 어떤 쿼리가 커넥션을 얼마나
+    # 잡는지 볼 수단이 없었다. 순정 postgres:15 는 shared_preload_libraries 가
+    # 비어 있어 pg_stat_statements/auto_explain 둘 다 로드되지 않는다.
+    #
+    # 주의(-c 우선순위): 명령행 -c 는 postgresql.auto.conf 보다 우선한다.
+    # 즉 여기 적은 값은 ALTER SYSTEM + reload 로 못 바꾼다 — 이 파일을 고치고
+    # 재배포해야 한다. 반대로 auto_explain.log_min_duration 은 일부러 여기에
+    # 두지 않았다. 기본값 -1(=끔) 그대로 두면 라이브러리는 올라와 있으면서
+    # 동작만 꺼진 상태가 되고, 필요할 때 재시작 없이 켤 수 있다:
+    #   ALTER SYSTEM SET auto_explain.log_min_duration = '200';
+    #   SELECT pg_reload_conf();
+    # log_analyze / log_timing 은 켜지 말 것 — 임계값 미만 쿼리까지 전부
+    # 계측되어 오버헤드가 크다(부하시험 중에는 특히).
+    #
+    # shared_preload_libraries 변경은 재시작이 필요하다(reload 로 안 먹음).
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=pg_stat_statements,auto_explain
+      - -c
+      - log_min_duration_statement=500   # 500ms 이상 쿼리만 로그로. 로그는 기존 Loki 파이프라인으로 그대로 흘러간다.
     ports:                        # 포트 매핑
       - "127.0.0.1:5432:5432"     # 로컬호스트 전용 바인딩
     volumes:                      # 데이터 영속성 볼륨
       - postgres_data:/var/lib/postgresql/data  # PostgreSQL 데이터 저장 경로
+      # [2026-07-28] 볼륨 초기화 시 1회 자동 실행되는 스크립트들(파일명 순).
+      # 데이터 디렉터리가 비어있을 때만 돈다 — 기존 볼륨에는 아무 일도 없다.
+      # 관측 확장 + 최소권한 앱 계정을 "기억해서 손으로 다시 실행" 대상에서 뺀다.
+      - ./security/initdb:/docker-entrypoint-initdb.d:ro
     networks:
       - data                      # [SECURITY 2026-07-18] 데이터 계층 전용망 — frontend/nginx에서 도달 불가
 
