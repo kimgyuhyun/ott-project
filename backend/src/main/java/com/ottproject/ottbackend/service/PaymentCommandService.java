@@ -70,6 +70,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final PaymentQueryMapper paymentQueryMapper; // 결제 조회 매퍼
 	private final PaymentMethodService paymentMethodService; // 결제수단 서비스
 	private final MembershipCommandService membershipCommandService; // 멤버십 구독 생성(동기 직접 호출)
+	private final RecurringBillingService recurringBillingService; // 재청구 결제의 대사 확정(구독 연장 로직이 체크아웃과 다름)
 	private final OutboxEventRepository outboxEventRepository; // 아웃박스 이벤트 리포지토리(부수효과 발행)
 	private final ObjectMapper objectMapper; // 이벤트 페이로드 JSON 직렬화
 
@@ -761,6 +762,12 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			return false; // 결제 시도 기록 없음(prepare만) → 유지
 		}
 		LocalDateTime now = LocalDateTime.now();
+		// 정기결제 재청구는 전용 확정 경로가 처리한다.
+		// 아래 markSucceededAndProvision 은 체크아웃 전제라 subscribe()로 '새 구독'을 만든다.
+		// 재청구 대상 구독은 연장돼야 하므로 그대로 태우면 고아 구독이 생기고 원래 구독은 해지된다.
+		if (RebillMerchantUid.isRebill(payment.getProviderSessionId())) {
+			return recurringBillingService.reconcileRebillPayment(payment, r, now);
+		}
 		switch (r.status) {
 			case "paid":
 				long expected = (payment.getPrice() != null ? payment.getPrice().getAmount() : 0L); // 서버 확정 금액(테스트 1원)

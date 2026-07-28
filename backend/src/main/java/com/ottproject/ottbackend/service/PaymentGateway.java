@@ -49,8 +49,10 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 	/**
 	 * 저장된 결제수단(빌링키)로 자동 청구 수행
 	 * - 성공 시 외부 결제 식별자/시각/영수증 URL 반환
+	 * - merchantUid 는 호출자가 결정한다. 게이트웨이가 매번 새로 만들면 같은 청구 시도를 두 번 불러도
+	 *   게이트웨이 쪽에서 구분할 수 없어, 중복 배달이 그대로 이중 청구가 된다.
 	 */
-	ChargeResult chargeWithSavedMethod(String providerCustomerId, String providerMethodId, long amount, String currency, String description);
+	ChargeResult chargeWithSavedMethod(String providerCustomerId, String providerMethodId, String merchantUid, long amount, String currency, String description);
 
 	final class ChargeResult {
 		public String providerPaymentId;
@@ -70,8 +72,10 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 	 * 결제 실패 유형
 	 * - HARD_DECLINE: 영구적 실패(재시도 불가)
 	 * - SOFT_DECLINE: 일시적 실패(재시도 가능)
+	 * - AMBIGUOUS: 승인 여부 불명(응답 타임아웃 등). 승인됐는데 실패로 단정하면 다음 시도가
+	 *   새 merchant_uid 로 다시 청구돼 이중 청구가 된다. 던닝을 진행시키지 말고 대사로 확인해야 한다.
 	 */
-	enum FailureType { HARD_DECLINE, SOFT_DECLINE }
+	enum FailureType { HARD_DECLINE, SOFT_DECLINE, AMBIGUOUS }
 
 	/**
 	 * 결제 예외(유형/코드/메시지 포함)

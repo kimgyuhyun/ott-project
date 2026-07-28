@@ -251,7 +251,7 @@ class ImportPaymentGatewayTest {
         }
 
         private PaymentGateway.ChargeResult charge() {
-            return gateway.chargeWithSavedMethod("cust_1", "billing_1", EXPECTED_AMOUNT, "KRW", "Subscription renewal");
+            return gateway.chargeWithSavedMethod("cust_1", "billing_1", "rebill_10_20260808_1_100", EXPECTED_AMOUNT, "KRW", "Subscription renewal");
         }
 
         /**

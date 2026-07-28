@@ -89,13 +89,22 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	}
 
 	@Override
-	public ChargeResult chargeWithSavedMethod(String providerCustomerId, String providerMethodId, long amount, String currency, String description) { // 저장수단 청구
-		String token = getAccessToken(); // 토큰
+	public ChargeResult chargeWithSavedMethod(String providerCustomerId, String providerMethodId, String merchantUid, long amount, String currency, String description) { // 저장수단 청구
+		String token = getAccessToken(); // 토큰(청구 요청 전이므로 여기서 실패하면 승인은 일어나지 않았다)
 		HttpHeaders h = bearer(token); // 헤더
 		h.setContentType(MediaType.APPLICATION_JSON); // JSON
-		String merchantUid = "rebill_" + System.currentTimeMillis(); // 고유 주문번호
 		String body = String.format("{\"customer_uid\":\"%s\",\"merchant_uid\":\"%s\",\"amount\":%d,\"name\":\"%s\"}", providerMethodId, merchantUid, amount, description == null ? "Subscription" : description); // 바디
-		ResponseEntity<String> res = rest.exchange(apiBase + "/subscribe/payments/again", HttpMethod.POST, new HttpEntity<>(body, h), String.class); // 호출
+		ResponseEntity<String> res;
+		try {
+			res = rest.exchange(apiBase + "/subscribe/payments/again", HttpMethod.POST, new HttpEntity<>(body, h), String.class); // 호출
+		} catch (org.springframework.web.client.HttpClientErrorException e) {
+			// 4xx: 아임포트가 요청 자체를 거부했다. 승인은 일어나지 않았으므로 확정 실패로 취급해도 된다.
+			throw new ChargeException(FailureType.SOFT_DECLINE, "HTTP_" + e.getStatusCode().value(), e.getMessage());
+		} catch (org.springframework.web.client.RestClientException e) {
+			// 타임아웃/커넥션 리셋/5xx: 요청은 나갔는데 결과를 모른다. 승인됐을 수도 있다.
+			// 확정 실패로 단정하면 호출자가 다음 시도를 예약하고, 그 시도는 새 merchant_uid 라 그대로 또 청구된다.
+			throw new ChargeException(FailureType.AMBIGUOUS, "NO_RESPONSE", "재청구 응답 확인 불가 - merchant_uid: " + merchantUid + ", " + e.getMessage());
+		}
 
 		String resBody = (res != null ? res.getBody() : null); // 바디 추출
 		java.util.Map<String, Object> bodyMap = parseJsonToMap(resBody); // 응답 바디 맵
