@@ -5,7 +5,6 @@ import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
-import com.ottproject.ottbackend.mappers.UserMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -53,7 +52,6 @@ class EmailAuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AuthenticationManager authenticationManager;
     @Mock private VerificationEmailService verificationEmailService;
-    @Mock private UserMapper userMapper;
 
     @InjectMocks
     private EmailAuthService service;
@@ -174,7 +172,8 @@ class EmailAuthServiceTest {
                 .hasMessageContaining("이메일 또는 비밀번호가 올바르지 않습니다")
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
-        verifyNoInteractions(userMapper);
+        // 인증에서 막혔으므로 사용자 조회까지 가지 않는다(응답 DTO 를 만들 일도 없다)
+        verify(userService, never()).findByEmail(any());
     }
 
     @Test
@@ -191,11 +190,14 @@ class EmailAuthServiceTest {
     @DisplayName("로그인 성공 - 인증 통과 후 사용자 정보를 DTO 로 반환한다")
     void loginSucceeds() {
         User user = localUser();
-        UserResponseDto dto = new UserResponseDto();
         given(userService.findByEmail("user@test.com")).willReturn(Optional.of(user));
-        given(userMapper.toUserResponseDto(user)).willReturn(dto);
 
-        assertThat(service.login("user@test.com", "raw-pw")).isSameAs(dto);
+        UserResponseDto dto = service.login("user@test.com", "raw-pw");
+
+        // 목이 아니라 실제 변환 결과를 본다 — 민감 필드가 새지 않는지도 DTO 필드 구성으로 보장된다
+        assertThat(dto.getId()).isEqualTo(user.getId());
+        assertThat(dto.getEmail()).isEqualTo("user@test.com");
+        assertThat(dto.getName()).isEqualTo("홍길동");
         verify(authenticationManager).authenticate(any());
     }
 

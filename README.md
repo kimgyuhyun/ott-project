@@ -45,7 +45,9 @@
 
 - **데이터 접근 3분할** — 일반 쓰기/도메인은 **JPA**, 사용자향 복잡 조회/통계는 **MyBatis**,
   관리자 큐레이션의 동적 검색/벌크 수정은 **QueryDSL**(타입 안전 동적 쿼리)
-- **MapStruct** 엔티티↔DTO 매핑, **Flyway** 스키마 마이그레이션
+- **엔티티→DTO 변환은 매핑 라이브러리 없이** — 조회가 MyBatis로 DTO에 직접 채워져 변환 지점 자체가
+  적고, 남은 곳은 DTO의 정적 팩토리(`Dto.from(entity)`)로 처리한다
+- **Flyway** 스키마 마이그레이션
 - **Spring Session (Redis)** — 재배포/다중 인스턴스에서도 세션 유지
 - **ShedLock** — `@Scheduled` 배치의 다중 인스턴스 중복 실행 방지(분산락, 저장소는 Redis)
 - 테스트: JUnit 5 + **Testcontainers**(운영과 같은 PostgreSQL로 방언 의존 동작 검증)

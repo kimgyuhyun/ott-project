@@ -56,23 +56,21 @@ dependencies {
 	implementation 'net.javacrumbs.shedlock:shedlock-spring:5.16.0'
 	implementation 'net.javacrumbs.shedlock:shedlock-provider-redis-spring:5.16.0'
 
-	// MapStruct
-	implementation 'org.mapstruct:mapstruct:1.6.3'
-	annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+	// 엔티티→DTO 매핑 라이브러리는 쓰지 않는다.
+	// 읽기는 MyBatis 가 SQL 결과를 DTO 로 바로 채우므로 변환 지점이 애초에 거의 없고,
+	// 남은 몇 개는 DTO 의 정적 팩토리(Dto.from(entity))로 처리한다.
+	// (과거 MapStruct 를 썼으나 매퍼 1개·호출 2곳뿐이라 애노테이션 프로세서 비용만 남아 제거했다)
 
 	// Lombok
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
-
-	// Lombok + MapStruct 함께 사용할 때 필요한 설정
-	annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
 	// QueryDSL (jakarta) — 관리자 애니 큐레이션의 동적 검색/벌크 수정에만 사용한다.
 	// 사용자향 읽기는 MyBatis, 일반 쓰기는 JPA 를 그대로 유지한다(경계는 CLAUDE 문서 참고).
 	// 버전을 비운 것은 의도적이다: Boot 3.5.4 의 dependency-management 가 querydsl.version 을 관리한다.
 	// ':: jakarta' 표기는 "버전 생략 + classifier=jakarta" 를 뜻한다(jakarta.persistence 기반 Q 클래스 생성).
 	// Q 클래스는 build/generated/sources/annotationProcessor/java/main 에 생성된다
-	// (MapStruct 가 이미 쓰는 Boot 기본 경로라 별도 sourceSets 설정이 필요 없고, clean 으로 함께 지워진다).
+	// (Boot 기본 경로라 별도 sourceSets 설정이 필요 없고, clean 으로 함께 지워진다).
 	implementation 'com.querydsl:querydsl-jpa::jakarta'
 	annotationProcessor 'com.querydsl:querydsl-apt::jakarta'
 	annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
@@ -100,7 +98,7 @@ dependencies {
 	testImplementation 'org.testcontainers:postgresql'
 }
 
-// Lombok과 MapStruct 함께 사용할 때 필요한 설정
+// Lombok 을 컴파일 전용 의존성으로도 잡아주는 설정
 configurations {
 	compileOnly {
 		extendsFrom annotationProcessor

@@ -39,8 +39,7 @@ public class EmailAuthService {
 	// SPring Security 에서 제공하는 암호화 인터페이스임
 	private final AuthenticationManager authenticationManager; // 표준 인증 위임(로컬 로그인)
 	private final VerificationEmailService verificationEmailService; // 이메일 인증 티켓 확인/소비(가입 전제조건)
-	private final com.ottproject.ottbackend.mappers.UserMapper userMapper; // 사용자 매퍼 주입
-	// User 엔티티를 UserResponseDto로 변환해줌 MapStruct로 자동 매핑 코드 생성
+	// 엔티티→DTO 변환은 UserResponseDto.from 이 담당한다(다른 DTO 들과 같은 정적 팩토리 방식).
 	// User 엔티티에는 비밀번호 등 민감 정보가 포함되기 때문에 UserResponseDto로 바꿔서 비밀번호를 제외한 안전한 정보만 포함함
 	public UserResponseDto  register(AuthRegisterRequestDto requestDto) { // 회원가입 메서드
 		// 회원가입 처리하는 메서드고 파라미터로 요청Dto를 받고 UserResponseDto로 반환해줌
@@ -76,9 +75,8 @@ public class EmailAuthService {
 		// 티켓 소비는 저장 성공 뒤에 한다(저장이 실패했는데 티켓만 날리면 재시도 시 인증을 다시 받아야 한다).
 		// 하나의 인증으로 여러 계정을 만들지 못하게 한다.
 		verificationEmailService.consumeVerification(requestDto.getEmail());
-		return userMapper.toUserResponseDto(saveUser);
-		// userMapper에 toUserResponseDto 메서드에 Db에 저장한 user를태워보내면
-		// User 객체가 userResponseDto로 변환되서 반환되고 그 값을 바로 리턴해줌
+		return UserResponseDto.from(saveUser);
+		// Db에 저장한 user를 태워보내면 비밀번호 등 민감 정보를 뺀 응답 DTO로 변환되어 그대로 리턴된다
 	}
 
 	public UserResponseDto login(String email, String password) { // 로그인 메서드
@@ -99,7 +97,7 @@ public class EmailAuthService {
 		// 인증 성공 → 응답용 사용자 정보 조회 후 DTO 변환
 		User user = userService.findByEmail(email)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."));
-		return userMapper.toUserResponseDto(user);
+		return UserResponseDto.from(user);
 	}
 
 	public boolean checkEmailDuplicate(String email) {
