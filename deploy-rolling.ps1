@@ -111,10 +111,20 @@ foreach ($name in $Instances.Keys) {
     Write-Host "  $name egress: $dns"
 }
 
+# --- 4. Apply any nginx config change -----------------------------------------
+# The conf is a single-file bind mount, so compose sees no change when only its
+# CONTENTS change and step 1 leaves nginx running the config it parsed at startup.
+# A reload makes it re-read the file without dropping connections - unlike a
+# recreate, which costs a ~1s connection refusal.
+# cd.yml runs these same two lines after calling this script; having them here too
+# means a MANUAL deploy applies conf changes as well. Reloading twice is harmless.
+Write-Host '=== Reloading nginx config ==='
+docker exec ott-nginx nginx -t
+if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed - config NOT reloaded, nginx still serving the previous one' }
+docker exec ott-nginx nginx -s reload
+if ($LASTEXITCODE -ne 0) { throw 'nginx -s reload failed' }
+
 Write-Host '=== ROLLING DEPLOY OK ==='
-Write-Host 'Note: if the nginx config itself changed, nginx was recreated above and'
-Write-Host '      that is a brief connection refusal no rolling can avoid.'
-Write-Host '      Backend-only deploys (the normal case) leave nginx untouched.'
 
 # FIRST RUN (switching from 1 instance to 2):
 #   Just run this script. Tested 2026-07-20: nginx starts fine with the upstream

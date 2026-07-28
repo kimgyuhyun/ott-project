@@ -53,4 +53,16 @@ Write-Host '=== VERIFY frontend cannot reach data tier (expected: BLOCKED) ==='
 $lateral = docker exec ott-frontend node -e "const s=require('net').connect({host:'ott-postgres',port:5432,timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
 if ("$lateral" -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend can reach postgres (data tier not isolated)' }
 Write-Host "frontend -> postgres: $lateral"
+
+# Apply any nginx config change.
+# The conf is a single-file bind mount, so the `up -d` above does not recreate
+# nginx when only its CONTENTS change, and the running process keeps the config it
+# parsed at startup. A reload re-reads the file with no dropped connections.
+# (Same two lines as deploy-rolling.ps1 and cd.yml.)
+Write-Host '=== Reloading nginx config ==='
+docker exec ott-nginx nginx -t
+if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed - config NOT reloaded, nginx still serving the previous one' }
+docker exec ott-nginx nginx -s reload
+if ($LASTEXITCODE -ne 0) { throw 'nginx -s reload failed' }
+
 Write-Host '=== DEPLOY OK ==='
