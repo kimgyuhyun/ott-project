@@ -14,6 +14,7 @@ import com.ottproject.ottbackend.mybatis.MembershipSubscriptionQueryMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,10 +85,24 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 	 * MQ 지연 메시지 기반 건별 재시도 진입점
 	 * - 대기 큐 TTL 만료 후 도착한 메시지로 해당 구독만 재청구한다(전체 폴링 없음).
 	 * - 소비 시점 정합성 가드: 이미 복구/해지됐거나 스윕이 먼저 처리한 스테일 메시지는 건너뛴다.
+	 *
+	 * 잠금 트레이드오프
+	 * - 이 트랜잭션은 구독 행을 잠근 채로 billSubscription 안에서 외부 결제 API 를 호출한다.
+	 *   즉 락 보유 시간이 PG 응답 시간에 묶인다. 그럼에도 락을 안쪽에 두는 이유는, 청구 여부 판단(가드)과
+	 *   실제 청구 사이가 벌어지면 그 틈으로 이중 청구가 나기 때문이다. 저빈도 경로라 점유 비용보다 이쪽이 싸다.
+	 * - 대신 락은 NOWAIT 이라 경합 시 대기하지 않고 즉시 실패한다(리포지토리 주석 참고).
 	 */
 	@Transactional // 청구/연장 원자성 보장
 	public void retryBilling(Long subscriptionId, int attempt) {
-		MembershipSubscription sub = subscriptionRepository.findById(subscriptionId).orElse(null); // 구독 조회
+		MembershipSubscription sub;
+		try {
+			sub = subscriptionRepository.findByIdForUpdate(subscriptionId).orElse(null); // 구독 조회(비관적 쓰기 락으로 중복 배달 직렬화)
+		} catch (PessimisticLockingFailureException e) { // NOWAIT: 다른 트랜잭션이 같은 구독을 처리 중
+			// 실패가 아니라 중복/경합이다. 기다렸어도 가드에 걸려 버려질 메시지이므로 조용히 종료하고,
+			// 혹시 정상 건이었다면 스윕 배치가 다음 주기에 복구한다. ERROR 로 올리면 오탐 알림이 된다.
+			log.info("재시도 메시지 경합 skip(다른 트랜잭션이 처리 중) - subscriptionId: {}, attempt: {}", subscriptionId, attempt);
+			return;
+		}
 		if (sub == null) { // 삭제된 구독
 			log.warn("재시도 대상 구독 없음 - subscriptionId: {}", subscriptionId);
 			return;

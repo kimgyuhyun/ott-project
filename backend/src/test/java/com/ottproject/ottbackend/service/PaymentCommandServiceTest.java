@@ -12,6 +12,7 @@ import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
+import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
 import com.ottproject.ottbackend.enums.PaymentMethodType;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -132,7 +134,8 @@ class PaymentCommandServiceTest {
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("amount mismatch");
         // 거부된 웹훅은 멱등키를 남기지 않아야 결제사 재전송을 다시 검증할 수 있다
-        verify(idempotencyKeyRepository, never()).save(any());
+        // (선삽입은 금액·통화 검증 뒤에 있으므로 위조 웹훅은 삽입에 닿기 전에 튕긴다)
+        verify(idempotencyKeyRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -146,7 +149,7 @@ class PaymentCommandServiceTest {
         assertThatThrownBy(() -> service.applyWebhookEvent(1L, e))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("currency mismatch");
-        verify(idempotencyKeyRepository, never()).save(any());
+        verify(idempotencyKeyRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -187,7 +190,23 @@ class PaymentCommandServiceTest {
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
         assertThat(payment.getFailedAt()).isEqualTo(NOW);
         assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.PAST_DUE);
-        verify(idempotencyKeyRepository).save(any()); // 처리 완료 후 멱등키 기록
+        verify(idempotencyKeyRepository).saveAndFlush(any()); // 처리 전 멱등키 선삽입
+    }
+
+    @Test
+    @DisplayName("멱등키 선삽입이 유니크 제약에 걸리면 전용 예외로 좁혀 던진다 - 컨트롤러가 200 으로 흡수할 대상")
+    void concurrentWebhookLosesRaceOnIdempotencyKey() {
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty()); // 빠른 경로는 통과
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(pendingPayment()));
+        // 같은 eventId 를 다른 요청이 먼저 넣어 커밋한 상황
+        given(idempotencyKeyRepository.saveAndFlush(any()))
+                .willThrow(new DataIntegrityViolationException("ux_idempotency_key"));
+
+        assertThatThrownBy(() -> service.applyWebhookEvent(1L, event(PaymentStatus.FAILED)))
+                .isInstanceOf(DuplicateWebhookEventException.class); // DataIntegrityViolationException 그대로 새면 안 된다
+
+        // 선삽입이 실패했으므로 상태 전이는 시작조차 하지 않는다
+        verify(subscriptionRepository, never()).findActiveEffectiveByUser(anyLong(), any(), any());
     }
 
     @Test

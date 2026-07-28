@@ -2,8 +2,12 @@ package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -43,6 +47,22 @@ public interface MembershipSubscriptionRepository extends JpaRepository<Membersh
 	);
 	
 	Optional<MembershipSubscription> findTopByUser_IdOrderByStartAtDesc(Long userId); // 최근 구독(상태 무관)
+
+	// 재청구 경로 동시 실행 직렬화용 비관적 쓰기 락 조회.
+	// retryCount 가드는 커밋 후에만 유효해서, MQ 중복 배달 시 첫 처리 커밋 전에 두 번째가
+	// 들어오면 둘 다 가드를 통과해 결제 API 가 두 번 호출된다.
+	//
+	// NOWAIT 인 이유(lock.timeout = 0)
+	// - 락을 잡은 트랜잭션은 그 안에서 외부 결제 API 를 호출한다. 즉 락 보유 시간이 PG 응답 시간에 묶인다.
+	//   대기로 두면 중복 메시지를 받은 컨슈머 스레드가 그동안 통째로 점유된다.
+	// - 어차피 기다려봐야 retryCount 가드에 걸려 버려질 메시지이므로, 기다리지 않고 즉시 실패시키는 편이 낫다.
+	//   폐기된 건은 스윕 배치(nextBillingAt)가 다음 주기에 복구한다.
+	// - PostgreSQL 은 문장 수준에서 NOWAIT/SKIP LOCKED 만 지원한다. 임의의 대기 시간(예: 10초)을 주면
+	//   Hibernate 방언이 그냥 FOR UPDATE 로 떨어뜨려 조용히 무시되므로, 여기서 쓸 수 있는 값은 0 뿐이다.
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "0"))
+	@Query("select s from MembershipSubscription s where s.id = :id")
+	Optional<MembershipSubscription> findByIdForUpdate(@Param("id") Long id);
 }
 
 

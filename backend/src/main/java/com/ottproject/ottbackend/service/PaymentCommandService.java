@@ -8,6 +8,7 @@ import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
 import com.ottproject.ottbackend.dto.PaymentSucceededEventDto;
 import com.ottproject.ottbackend.entity.IdempotencyKey;
+import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.OutboxEvent;
@@ -32,6 +33,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -495,6 +497,23 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 
 		LocalDateTime ts = event.occurredAt != null ? event.occurredAt : LocalDateTime.now(); // 타임스탬프
 
+		// 멱등키 선삽입: 위쪽 findByKeyValue 는 빠른 경로일 뿐 경합을 못 막는다(확인과 저장 사이가 벌어짐).
+		// 처리 시작 전에 먼저 넣어 유니크 제약이 동시 웹훅을 판정하게 한다.
+		// saveAndFlush 로 INSERT 를 여기서 확정시켜, 제약 위반을 이 자리에서 잡아 전용 예외로 좁힌다.
+		// (트랜잭션은 어차피 롤백되지만, 뒤쪽 처리에서 나는 다른 제약 위반과 구분되어야 한다 —
+		//  컨트롤러가 200 으로 흡수하는 것은 이 예외뿐이다.)
+		if (event.eventId != null && !event.eventId.isBlank()) { // 이벤트 멱등 저장
+			try {
+				idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
+						event.eventId, // 키
+						"payment.webhook", // 용도
+						null // 응답
+				));
+			} catch (DataIntegrityViolationException e) { // 동시 웹훅 경합에서 진 쪽
+				throw new DuplicateWebhookEventException(event.eventId, e);
+			}
+		}
+
 		if (event.status == PaymentStatus.SUCCEEDED) { // 성공
 			// 공통 확정 로직으로 수렴(웹훅·클라이언트 확정·대사 배치가 동일 경로 사용, 멱등)
 			markSucceededAndProvision(payment, event.providerPaymentId, event.receiptUrl, ts);
@@ -533,14 +552,6 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 
 		} else { // 방어
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 이벤트 상태입니다."); // 400
-		}
-
-		if (event.eventId != null && !event.eventId.isBlank()) { // 이벤트 멱등 저장
-			idempotencyKeyRepository.save(IdempotencyKey.createIdempotencyKey(
-					event.eventId, // 키
-					"payment.webhook", // 용도
-					null // 응답
-			));
 		}
 	}
 

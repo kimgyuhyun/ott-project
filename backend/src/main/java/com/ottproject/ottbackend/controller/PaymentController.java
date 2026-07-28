@@ -13,6 +13,7 @@ import com.ottproject.ottbackend.service.PaymentCommandService;
 import com.ottproject.ottbackend.service.PaymentReadService;
 import com.ottproject.ottbackend.service.PaymentMethodService;
 import com.ottproject.ottbackend.service.ImportPaymentGateway;
+import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -160,7 +161,18 @@ public class PaymentController { // 결제 컨트롤러 시작
 	@ApiResponse(responseCode = "200", description = "반영 완료") // 200 문서화
 	@PostMapping("/payments/webhook") // HTTP POST 매핑: 통합된 웹훅 엔드포인트
 	public ResponseEntity<Void> webhook(@RequestBody String rawBody, @RequestHeader HttpHeaders headers) { // 원문/헤더 수신
-		paymentCommandService.processWebhook(headers, rawBody); // 통합된 웹훅 처리 메서드 호출
+		try {
+			paymentCommandService.processWebhook(headers, rawBody); // 통합된 웹훅 처리 메서드 호출
+		} catch (DuplicateWebhookEventException e) {
+			// 멱등키 선삽입이 유니크 제약에 걸렸다 = 같은 이벤트를 다른 요청이 이미 처리 중/완료했다.
+			// 이쪽 트랜잭션은 롤백되지만 잃을 게 없으므로 200 으로 응답한다.
+			// 500 을 주면 PG 가 실패로 알고 재전송을 반복한다.
+			//
+			// 흡수 대상을 이 예외로 좁힌 이유: 웹훅 처리 중에는 멤버십/구독 행 생성 등에서도 제약 위반이 날 수 있는데,
+			// 그것까지 200 으로 삼키면 PG 가 성공으로 알고 재전송하지 않아 조용한 유실이 된다.
+			// 멱등키 경합이 아닌 제약 위반은 그대로 500 으로 올려보내 재전송으로 복구되게 둔다.
+			log.info("웹훅 중복 수신(멱등키 경합) - 200 처리: {}", e.getMessage());
+		}
 		return ResponseEntity.ok().build(); // 200 OK 반환
 	}
 

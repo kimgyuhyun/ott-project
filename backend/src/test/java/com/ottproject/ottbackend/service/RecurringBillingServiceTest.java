@@ -18,6 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.CannotAcquireLockException;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -92,9 +93,34 @@ class RecurringBillingServiceTest {
     }
 
     @Test
+    @DisplayName("재청구는 비관적 쓰기 락으로 구독을 선점한다 - MQ 중복 배달 직렬화")
+    void retryBillingLocksSubscriptionRow() {
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
+        given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
+                .willReturn(List.of());
+
+        service.retryBilling(SUB_ID, 1);
+
+        // 락 없는 findById 로 읽으면 첫 처리 커밋 전 두 번째 메시지가 가드를 통과해 이중 청구된다
+        verify(subscriptionRepository).findByIdForUpdate(SUB_ID);
+        verify(subscriptionRepository, never()).findById(anyLong());
+    }
+
+    @Test
+    @DisplayName("락 경합(NOWAIT 실패)은 예외를 올리지 않고 skip - 스윕 배치가 복구한다")
+    void lockContentionIsSkippedQuietly() {
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID))
+                .willThrow(new CannotAcquireLockException("could not obtain lock on row"));
+
+        service.retryBilling(SUB_ID, 1); // 예외가 새어나가면 컨슈머가 ERROR 로 남긴다
+
+        verifyNoInteractions(paymentMethodRepository, paymentGateway); // 청구 시도 자체가 없어야 한다
+    }
+
+    @Test
     @DisplayName("구독이 없으면 조용히 종료 - 청구 시도 없음")
     void missingSubscriptionIsSkipped() {
-        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.empty());
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.empty());
 
         service.retryBilling(SUB_ID, 1);
 
@@ -105,7 +131,7 @@ class RecurringBillingServiceTest {
     @DisplayName("이미 복구된(ACTIVE) 구독은 재청구하지 않는다")
     void recoveredSubscriptionIsSkipped() {
         sub.setStatus(MembershipSubscriptionStatus.ACTIVE);
-        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
 
         service.retryBilling(SUB_ID, 1);
 
@@ -116,7 +142,7 @@ class RecurringBillingServiceTest {
     @DisplayName("스테일 메시지(attempt ≠ retryCount)는 건너뛴다 - 중복 청구 방지")
     void staleRetryMessageIsSkipped() {
         sub.setRetryCount(2); // 스윕이 먼저 재시도해서 카운트가 이미 올라감
-        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
 
         service.retryBilling(SUB_ID, 1); // 뒤늦게 도착한 1차 재시도 메시지
 
@@ -126,7 +152,7 @@ class RecurringBillingServiceTest {
     @Test
     @DisplayName("청구 실패(2차) - retryCount 증가 + 다음 지연 재시도 예약")
     void failedChargeSchedulesNextRetry() {
-        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
         PaymentMethod card = savedCard(); // given 밖에서 먼저 생성(중첩 스터빙 방지)
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
                 .willReturn(List.of(card));
@@ -147,7 +173,7 @@ class RecurringBillingServiceTest {
     @DisplayName("3회 소진 - 구독 해지 + 자동갱신 중단 + 안내 메일, 더 이상 재시도 예약 없음")
     void thirdFailureCancelsAndNotifies() {
         sub.setRetryCount(2); // 이번이 3번째 시도
-        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
         PaymentMethod card = savedCard(); // given 밖에서 먼저 생성(중첩 스터빙 방지)
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
                 .willReturn(List.of(card));
@@ -171,7 +197,7 @@ class RecurringBillingServiceTest {
         cr.providerPaymentId = "imp_retry_1";
         cr.paidAt = LocalDateTime.now();
         cr.receiptUrl = "https://receipt.example/1";
-        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
         PaymentMethod card = savedCard(); // given 밖에서 먼저 생성(중첩 스터빙 방지)
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
                 .willReturn(List.of(card));
@@ -198,7 +224,7 @@ class RecurringBillingServiceTest {
         cr.providerPaymentId = "imp_backup_1";
         cr.paidAt = LocalDateTime.now();
 
-        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
                 .willReturn(List.of(primary, backup)); // 기본 → 보조 순서
         given(paymentGateway.chargeWithSavedMethod(anyString(), eq("pm_primary"), anyLong(), anyString(), anyString()))
@@ -218,7 +244,7 @@ class RecurringBillingServiceTest {
     @Test
     @DisplayName("결제수단이 없으면 PAST_DUE 유지, 재시도 카운트/예약 없음")
     void noPaymentMethodKeepsPastDueWithoutCounting() {
-        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
                 .willReturn(List.of());
 
