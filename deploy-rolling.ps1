@@ -79,37 +79,6 @@ Write-Host '=== Updating non-backend services (incl. monitoring) ==='
 docker compose @ComposeFiles up -d --remove-orphans --no-deps postgres redis kafka rabbitmq frontend nginx loki prometheus grafana alloy
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up (non-backend) failed' }
 
-# --- 1b. nginx config change -> force-recreate --------------------------------
-# The nginx conf is a single-file bind mount. Compose only recreates a container
-# when its DEFINITION changes (image, env, mount declaration) - a change to the
-# mounted file's CONTENTS is invisible to it. So step 1 above leaves nginx running
-# with whatever config it parsed at startup, and a conf-only deploy silently does
-# nothing. That is exactly what happened on the 2026-07-28 deploy.
-#
-# nginx reads its config once at startup, so the fix is a recreate, not a reload
-# of the file. Compare the conf's mtime against the container's start time and
-# recreate only when the file is actually newer - a backend-only deploy must not
-# pay the ~1s connection refusal.
-$NginxConf = 'nginx\nginx.prod.ha.conf'   # mounted by docker-compose.ha.yml
-$nginxExists = docker ps -a --filter 'name=^ott-nginx$' --format '{{.Names}}'
-if (-not $nginxExists) {
-    $nginxStale = $true
-} else {
-    # StartedAt is RFC3339 UTC with nanoseconds; .NET cannot parse 9 fractional
-    # digits, so cut to whole seconds. Second precision is plenty here.
-    $startedAt  = docker inspect ott-nginx --format '{{.State.StartedAt}}'
-    $started    = [datetime]::ParseExact($startedAt.Substring(0, 19), 'yyyy-MM-ddTHH:mm:ss', $null)
-    $nginxStale = (Get-Item $NginxConf).LastWriteTimeUtc -gt $started
-}
-
-if ($nginxStale) {
-    Write-Host '=== nginx config is newer than the running container - recreating nginx ==='
-    docker compose @ComposeFiles up -d --no-deps --force-recreate nginx
-    if ($LASTEXITCODE -ne 0) { throw 'docker compose up (nginx recreate) failed' }
-} else {
-    Write-Host '=== nginx config unchanged - leaving nginx untouched ==='
-}
-
 # --- 2. Backend instances, one at a time --------------------------------------
 foreach ($name in $Instances.Keys) {
     $port = $Instances[$name]
@@ -143,9 +112,9 @@ foreach ($name in $Instances.Keys) {
 }
 
 Write-Host '=== ROLLING DEPLOY OK ==='
-Write-Host 'Note: nginx is recreated only when its conf file is newer than the running'
-Write-Host '      container (step 1b) - that is a brief connection refusal no rolling'
-Write-Host '      can avoid. Backend-only deploys leave nginx untouched.'
+Write-Host 'Note: if the nginx config itself changed, nginx was recreated above and'
+Write-Host '      that is a brief connection refusal no rolling can avoid.'
+Write-Host '      Backend-only deploys (the normal case) leave nginx untouched.'
 
 # FIRST RUN (switching from 1 instance to 2):
 #   Just run this script. Tested 2026-07-20: nginx starts fine with the upstream
