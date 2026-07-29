@@ -11,7 +11,7 @@
 - `frontend/` Next.js App Router, `src/lib/api/*` 도메인별 API 클라이언트
 - `edge/` Cloudflare Worker (HLS 스트림 서명)
 - `nginx/`, `monitoring/`, `pgadmin/`, `security/` 각 설정
-- `docs/` deployment.md · messaging.md · operations.md · security.md (아래 참고, 내용 옮겨적지 말 것)
+- `docs/` deployment.md · messaging.md · operations.md · security.md · streaming.md · incident-2026-06.md (아래 참고, 내용 옮겨적지 말 것)
 - `.deploy/`, `_incident_2026-06-20/` 과거 침해 사고 기록 — 참고용, 손대지 말 것
 
 ## 실행/배포
@@ -37,7 +37,7 @@
 - 롤링 배포 중 컬럼 DROP/RENAME 마이그레이션은 구버전 인스턴스를 깨뜨림 — expand/contract 패턴 사용, 테이블 추가·nullable 컬럼·DEFAULT 있는 NOT NULL은 안전
 - postgres/redis는 `data` 네트워크에 격리되어 프론트에서 도달 불가해야 함 — 배포 스크립트가 자동 검증
 - 카프카는 의도적으로 무인증(내부망 전용 결정, 문서화됨)
-- `docs/` 4개 문서는 최근 최신화됨 — 배포 절차 상세는 `docs/deployment.md`, 운영 체크리스트는 `docs/operations.md`, 보안 설계는 `docs/security.md`, 메시징(Kafka/RabbitMQ)은 `docs/messaging.md` 참고
+- `docs/` 문서는 최근 최신화됨 — 배포 절차 상세는 `docs/deployment.md`, 운영 체크리스트는 `docs/operations.md`, 보안 설계는 `docs/security.md`, 메시징(Kafka/RabbitMQ)은 `docs/messaging.md`, HLS 서명 재생은 `docs/streaming.md` 참고
 
 ## 탐색 제외
 `node_modules/`, `.gradle/`, `build/`, `dist/`, `.next/`, `logs/`, 테스트 코드 전체

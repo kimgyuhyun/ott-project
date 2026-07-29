@@ -27,11 +27,15 @@ wrangler deploy
 
 배포 후 주소: `https://ott-hls-edge.<계정>.workers.dev` (커스텀 도메인 불필요).
 
-## 배포 후 남은 작업 (레포 밖)
+## 레포 밖 전제 (적용 완료, 깨지면 안 되는 것)
 
-- R2 버킷 **공개 접근(r2.dev / Public URL) 차단** — Worker 경유만 허용.
-- DB `episodes.video_url` 베이스를 Worker 주소로 전환(신규 Flyway 마이그레이션).
-- 프론트 재생 E2E 확인(로그인/노멤버십/멤버십, 만료·위조 토큰 403).
+- R2 버킷 **공개 접근(r2.dev / Public URL) 차단** — Worker 가 유일한 경로.
+  이게 다시 켜지면 서명 전체가 무력화된다.
+- DB `episodes.video_url` 베이스가 Worker 주소를 가리킨다.
+- `SECURE_LINK_SECRET` 이 백엔드 `.env.enc` 와 Worker secret 양쪽에 동일 값으로 존재.
+  한쪽만 바꾸면 전 재생이 403 이 된다.
+
+설계 배경과 캐스케이드를 택한 이유는 `docs/streaming.md`.
 
 ## 로컬 확인
 
