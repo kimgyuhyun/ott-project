@@ -7,3 +7,8 @@ spring:
     # 지연 로딩이 컨트롤러/직렬화 단계에서 조용히 쿼리를 날린다(로딩 경계가 코드에 안 드러남).
     # 끄면 엔티티를 어디까지 로딩해 넘길지 서비스에서 명시하게 된다.
     open-in-view: false
+    properties:
+      hibernate:
+        # 지연 로딩 N+1 완화. 연관 엔티티를 건별로 조회하지 않고 최대 100건씩 IN 절로 묶는다.
+        # prod 의 jdbc.batch_size(쓰기 배치)와는 다른 설정 — 이건 읽기 쪽이다.
+        default_batch_fetch_size: 100
