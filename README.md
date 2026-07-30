@@ -335,5 +335,7 @@ ott-project/
 - [운영 가이드](docs/operations.md) — 환경 변수, 모니터링, 백업과 복구
 - [보안 설계](docs/security.md) — 망분리, 이미지 공급망, 인증·최소권한, 애플리케이션 방어
 - [비동기 메시징](docs/messaging.md) — 결제 이벤트 파이프라인(Outbox+Kafka), 정기결제 재시도(RabbitMQ TTL+DLX), 다중 인스턴스 중복 발행과 분산락
+- [스트리밍](docs/streaming.md) — HLS 서명 재생, 발급 게이트와 엣지 검증, 캐스케이드 서명
 - [부하 테스트 결과](loadtest/RESULTS.md) — 포화점 측정, 병목(DB 커넥션 풀) 규명, write-back 개선 후 재측정, 측정 방법의 함정과 남은 한계
 - [부하 테스트 실행법](loadtest/README.md) — 시나리오(`slo` · `knee` · `stress`), SLO 임계값, 실행 옵션
+- [장애 회고 2026-06](docs/incident-2026-06.md) — 프론트엔드 컨테이너 크립토재킹, 초기 판단의 오류와 재해석, 방어 구조 변경
