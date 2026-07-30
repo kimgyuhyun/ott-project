@@ -30,6 +30,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -290,8 +291,8 @@ class PaymentCommandServiceTest {
     @DisplayName("멱등 - 이미 SUCCEEDED 인 결제는 멤버십을 재지급하지 않는다(중복 지급 방지)")
     void alreadySucceededPaymentIsNotProvisionedAgain() {
         Payment payment = pendingPayment();
-        payment.setStatus(PaymentStatus.SUCCEEDED); // 클라 확정/이전 웹훅으로 이미 확정됨
-        payment.setPaidAt(NOW.minusMinutes(5));
+        // 클라 확정/이전 웹훅으로 이미 확정됨
+        payment.applyGatewaySuccess(payment.getProviderPaymentId(), null, NOW.minusMinutes(5));
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
         given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
 
@@ -380,7 +381,7 @@ class PaymentCommandServiceTest {
     @DisplayName("정상 failed 웹훅 - 아임포트 실제 상태와 일치하면 전이된다(재검증이 정상 흐름을 막지 않음)")
     void genuineFailedWebhookIsApplied() {
         Payment payment = pendingPayment();
-        payment.setId(1L);
+        ReflectionTestUtils.setField(payment, "id", 1L); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
         MembershipSubscription sub = activeSubscription();
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
         given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(true, "failed"));
@@ -425,7 +426,6 @@ class PaymentCommandServiceTest {
         plan.setPrice(new Money(9900L, "KRW"));
         Payment payment = Payment.createSucceededPayment(userWithId(1L), plan, PaymentProvider.IMPORT,
                 "imp_1", new Money(9900L, "KRW"), LocalDateTime.now().minusDays(daysAgo));
-        payment.setPaidAt(LocalDateTime.now().minusDays(daysAgo));
         return payment;
     }
 
@@ -489,7 +489,7 @@ class PaymentCommandServiceTest {
     @DisplayName("이미 환불된 결제는 다시 환불할 수 없다 - 중복 환불 방지")
     void cannotRefundTwice() {
         Payment payment = succeededPaymentPaidDaysAgo(1);
-        payment.setStatus(PaymentStatus.REFUNDED); // 이미 환불됨
+        payment.applyGatewayRefund(9900L, LocalDateTime.now()); // 이미 환불됨
         given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
 
         assertThatThrownBy(() -> service.refundIfEligible(1L, 1L))
