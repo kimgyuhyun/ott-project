@@ -159,7 +159,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 		}
 		ChargePlan plan = planFor(sub);
 		if (plan == null) { // 결제수단 없음
-			sub.setStatus(MembershipSubscriptionStatus.PAST_DUE); // 연체 유지
+			sub.markPastDue(); // 연체 유지(시도가 없었으므로 카운트는 그대로)
 		}
 		return plan;
 	}
@@ -189,7 +189,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 	private void billSubscription(MembershipSubscription sub, LocalDateTime now) {
 		ChargePlan plan = planFor(sub);
 		if (plan == null) { // 결제수단 없음 / 주기 앵커 없음
-			sub.setStatus(MembershipSubscriptionStatus.PAST_DUE); // 연체 전환
+			sub.markPastDue(); // 연체 전환(시도가 없었으므로 카운트는 그대로)
 			return; // 다음 구독 처리
 		}
 		ChargeOutcome outcome = attemptCharge(plan);
@@ -313,20 +313,11 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 				extendAfterSuccess(sub, now);
 			}
 			case DECLINED -> {
-				sub.setStatus(MembershipSubscriptionStatus.PAST_DUE); // 연체 전환
-				sub.setLastRetryAt(now); // 마지막 시도 시각
-				sub.setLastErrorCode(outcome.lastErrorCode()); // 오류 코드 기록
-				sub.setLastErrorMessage(outcome.lastErrorMessage()); // 오류 메시지 기록
-
-				int nextRetry = sub.getRetryCount() + 1; // 다음 재시도 횟수
-				sub.setRetryCount(nextRetry); // 횟수 반영
-				sub.setMaxRetry(3); // 정책 고정(3회)
+				// 연체 전환 + 실패 기록 + 재시도 카운트 증가를 한 번에(엔티티가 짝을 보장)
+				int nextRetry = sub.recordDeclinedCharge(now, outcome.lastErrorCode(), outcome.lastErrorMessage());
 
 				if (nextRetry >= 3) { // 최대 재시도 소진
-					sub.setAutoRenew(false); // 자동갱신 중단
-					sub.setCancelAtPeriodEnd(true); // 말일 해지 예약
-					sub.setStatus(MembershipSubscriptionStatus.CANCELED); // 비활성화 처리(개발단계에서는 즉시 전환)
-					sub.setCanceledAt(now); // 해지 확정 시각 기록
+					sub.cancelAfterDunningExhausted(now); // 해지 + 해지 시각 + 자동갱신 중단 + 말일 해지 예약
 					// 알림: 결제 실패 누적 해지 안내 메일 발송
 					notificationService.sendCanceledDueToDunning(sub.getUser(), sub);
 				} else {
@@ -334,7 +325,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 					boolean scheduled = billingRetryPublisher.scheduleRetry(sub.getId(), nextRetry);
 					// 안전망: 메시지 유실 대비 스윕이 +3일 후 잡도록 예약(성공 시 nextBillingAt이 갱신돼 중복 없음).
 					// 발행 실패(브로커 장애) 시에는 기존 스윕 방식(+1일)으로 폴백한다.
-					sub.setNextBillingAt(scheduled ? now.plusDays(3) : now.plusDays(1));
+					sub.scheduleNextBillingAt(scheduled ? now.plusDays(3) : now.plusDays(1));
 				}
 			}
 		}
@@ -346,13 +337,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 	private void extendAfterSuccess(MembershipSubscription sub, LocalDateTime now) {
 		LocalDateTime start = sub.getEndAt() != null && sub.getEndAt().isAfter(now) ? sub.getEndAt() : now; // 연장 시작점 계산
 		LocalDateTime newEnd = start.plusMonths(sub.getMembershipPlan().getPeriodMonths()); // 새 종료 시각 계산
-		sub.setEndAt(newEnd); // 종료 시각 갱신
-		sub.setNextBillingAt(newEnd); // 다음 청구 시각 갱신
-		sub.setStatus(MembershipSubscriptionStatus.ACTIVE); // 상태 유지/복구
-		sub.setRetryCount(0); // 재시도 카운트 리셋
-		sub.setLastRetryAt(now); // 마지막 시도 시각 기록
-		sub.setLastErrorCode(null); // 에러 정보 초기화
-		sub.setLastErrorMessage(null); // 에러 정보 초기화
+		sub.renewUntil(newEnd, now); // 기간/청구일 갱신 + 상태 복구 + 던닝 기록 초기화
 	}
 
 	/**
@@ -423,11 +408,8 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 
 		for (MembershipSubscription subscription : scheduledPlanChanges) {
 			try {
-				// 플랜 변경 적용
-				subscription.setMembershipPlan(subscription.getNextPlan());
-				subscription.setNextPlan(null);
-				subscription.setPlanChangeScheduledAt(null);
-				subscription.setChangeType(null);
+				// 플랜 변경 적용(교체와 예약 해제를 함께 — 예약이 남으면 다음 배치가 또 적용한다)
+				subscription.changePlanTo(subscription.getNextPlan());
 
 				// 구독 정보 저장
 				subscriptionRepository.save(subscription);

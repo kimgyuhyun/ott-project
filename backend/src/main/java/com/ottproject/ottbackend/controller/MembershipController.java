@@ -6,6 +6,7 @@ import com.ottproject.ottbackend.dto.MembershipCancelMembershipRequestDto;
 import com.ottproject.ottbackend.dto.MembershipPlanChangeRequestDto;
 import com.ottproject.ottbackend.dto.MembershipPlanChangeResponseDto;
 import com.ottproject.ottbackend.dto.UserMembershipDto;
+import com.ottproject.ottbackend.exception.DuplicateIdempotentRequestException;
 import com.ottproject.ottbackend.service.MembershipCommandService;
 import com.ottproject.ottbackend.service.MembershipReadService;
 import com.ottproject.ottbackend.util.SecurityUtil;
@@ -13,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +36,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping
+@Slf4j
 public class MembershipController {
     private final MembershipReadService readService; // 읽기 전용 서비스 주입
     private final MembershipCommandService commandService; // 쓰기(변경) 서비스 주입
@@ -68,7 +71,15 @@ public class MembershipController {
     @PostMapping("/api/memberships/cancel")
     public ResponseEntity<UserMembershipDto> cancel(@RequestBody MembershipCancelMembershipRequestDto dto, HttpSession session) { // 말일 해지 예약(멱등키로 중복 방지)
         Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 현재 사용자 ID 확인(401 가능)
-        commandService.cancel(userId, dto); // 쓰기 서비스로 말일 해지 예약 수행(멱등키가 있으면 중복 방지)
+        try {
+            commandService.cancel(userId, dto); // 쓰기 서비스로 말일 해지 예약 수행(멱등키가 있으면 중복 방지)
+        } catch (DuplicateIdempotentRequestException e) {
+            // 멱등키 선삽입이 유니크 제약에 걸렸다 = 같은 키의 요청을 다른 요청이 이미 처리 중/완료했다.
+            // 이쪽 트랜잭션은 롤백되지만 첫 요청이 이미 반영해 뒀으므로 잃을 게 없다.
+            // 흡수 대상을 이 예외로 좁힌 이유는 PaymentController.webhook 과 같다 —
+            // 멱등키 경합이 아닌 제약 위반까지 성공으로 삼키면 실패가 조용히 묻힌다.
+            log.info("구독 해지 중복 요청(멱등키 경합) - 성공 처리: {}", e.getMessage());
+        }
         return ResponseEntity.ok(readService.getMyMembership(userId)); // 변경 직후 최신 멤버십 상태 반환
     }
 

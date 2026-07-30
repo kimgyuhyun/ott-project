@@ -179,11 +179,8 @@ public class ProrationPaymentService {
                 userId, MembershipSubscriptionStatus.ACTIVE, now
         ).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
 
-        // 플랜 즉시 변경
-        currentSubscription.setMembershipPlan(targetPlan);
-        currentSubscription.setNextPlan(null);
-        currentSubscription.setPlanChangeScheduledAt(null);
-        currentSubscription.setChangeType(null);
+        // 플랜 즉시 변경(교체와 예약 해제를 함께 — 예약이 남으면 배치가 같은 변경을 또 적용한다)
+        currentSubscription.changePlanTo(targetPlan);
         subscriptionRepository.save(currentSubscription);
 
         // [Kafka/Outbox] 영수증 메일 등 부수효과를 일반 결제와 동일하게 아웃박스 경유로 발행한다.

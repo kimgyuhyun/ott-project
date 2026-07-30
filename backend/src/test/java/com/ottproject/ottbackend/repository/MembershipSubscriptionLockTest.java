@@ -4,7 +4,6 @@ import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.User;
-import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -107,9 +106,7 @@ class MembershipSubscriptionLockTest {
         LocalDateTime now = LocalDateTime.now();
         MembershipSubscription sub = MembershipSubscription.createSubscription(
                 user, plan, now.minusDays(30), now.plusDays(10));
-        sub.setStatus(MembershipSubscriptionStatus.PAST_DUE); // 1차 청구 실패 상태
-        sub.setAutoRenew(true);
-        sub.setRetryCount(1);
+        sub.recordDeclinedCharge(now, "CARD_DECLINED", "1차 청구 실패"); // → PAST_DUE, retryCount=1
         subscriptionId = subscriptionRepository.save(sub).getId();
     }
 

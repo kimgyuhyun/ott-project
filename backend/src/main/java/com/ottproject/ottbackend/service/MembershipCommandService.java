@@ -8,10 +8,12 @@ import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PlanChangeType;
+import com.ottproject.ottbackend.exception.DuplicateIdempotentRequestException;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -69,7 +71,7 @@ public class MembershipCommandService {
                 start, // 시작
                 end // 종료
         );
-        sub.setNextBillingAt(end); // 다음 청구 앵커 // 빌드
+        sub.scheduleNextBillingAt(end); // 다음 청구 앵커
 
         subscriptionRepository.save(sub); // 저장
     }
@@ -88,9 +90,7 @@ public class MembershipCommandService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "예약된 플랜 변경이 없습니다.");
         }
 
-        currentSubscription.setNextPlan(null);
-        currentSubscription.setPlanChangeScheduledAt(null);
-        currentSubscription.setChangeType(null);
+        currentSubscription.clearScheduledPlanChange();
     }
 
     /**
@@ -98,35 +98,43 @@ public class MembershipCommandService {
      * - 말일 해지만 지원: 다음 결제만 중단, 만료일까지 혜택 유지
      */
     public void cancel(Long userId, com.ottproject.ottbackend.dto.MembershipCancelMembershipRequestDto req) {
-        // 멱등 키 검증(선택 입력)
-        if (req != null && req.idempotencyKey != null && !req.idempotencyKey.isBlank()) {
-            var exists = idempotencyKeyRepository.findByKeyValue(req.idempotencyKey);
-            if (exists.isPresent()) {
+        String idempotencyKey = (req != null && req.idempotencyKey != null && !req.idempotencyKey.isBlank())
+                ? req.idempotencyKey.trim() : null; // 멱등 키(선택 입력)
+
+        if (idempotencyKey != null) {
+            // 빠른 경로: 한참 전에 처리된 키면 여기서 걸러 예외/롤백 없이 끝낸다.
+            // 경합은 막지 못한다(확인과 저장 사이가 벌어진다) — 실제 판정은 아래 선삽입이 한다.
+            if (idempotencyKeyRepository.findByKeyValue(idempotencyKey).isPresent()) {
                 return; // 이미 처리됨: 멱등 보장
             }
+            // 멱등키 선삽입: 처리를 시작하기 전에 먼저 넣어 유니크 제약이 동시 요청을 판정하게 한다.
+            // saveAndFlush 로 INSERT 를 여기서 확정시켜, 제약 위반을 이 자리에서 잡아 전용 예외로 좁힌다.
+            //
+            // 순서가 핵심이다. 예전에는 조회로 분기한 뒤 맨 끝에서 키를 저장했다(select-then-insert).
+            // 동시 요청 둘 다 조회를 통과해 각자 해지 처리를 하고 안내 메일을 보낸 다음,
+            // 뒤늦게 한쪽이 커밋 시점의 제약 위반으로 500 을 받고 롤백됐다.
+            // 메일은 트랜잭션을 따르지 않으므로 사용자에게는 해지 안내가 두 번 도착했다.
+            try {
+                idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
+                        idempotencyKey,
+                        "membership.cancel",
+                        null
+                ));
+            } catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
+                throw new DuplicateIdempotentRequestException("membership.cancel", idempotencyKey, e);
+            }
         }
+
         LocalDateTime now = LocalDateTime.now(); // 기준 시각
         MembershipSubscription sub = subscriptionRepository.findActiveEffectiveByUser( // 유효 구독 단건
                 userId, MembershipSubscriptionStatus.ACTIVE, now
         ).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다.")); // 400
 
-        sub.setAutoRenew(false); // 자동갱신 중단
-
-        // 말일 해지 예약만 수행 (상태 ACTIVE 유지, 만료일까지 혜택 유지)
-        sub.setCancelAtPeriodEnd(true);
+        // 자동갱신 중단 + 말일 해지 예약 (상태 ACTIVE 유지, 만료일까지 혜택 유지)
+        sub.scheduleCancellationAtPeriodEnd();
 
         // 알림: 말일 해지 예약 안내 메일 발송
         notificationService.sendCancelAtPeriodEnd(sub.getUser(), sub);
-
-        // 멱등 키 저장
-        if (req != null && req.idempotencyKey != null && !req.idempotencyKey.isBlank()) {
-            var key = IdempotencyKey.createIdempotencyKey(
-                    req.idempotencyKey,
-                    "membership.cancel",
-                    null
-            );
-            idempotencyKeyRepository.save(key);
-        }
     }
 
     /**
@@ -145,8 +153,7 @@ public class MembershipCommandService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "해지 예약된 멤버십이 아닙니다.");
         }
 
-        sub.setAutoRenew(true); // 자동갱신 재시작
-        sub.setCancelAtPeriodEnd(false); // 말일 해지 예약 해제
+        sub.resumeAutoRenewal(); // 자동갱신 재시작 + 말일 해지 예약 해제
 
         // 알림: 정기결제 재시작 안내 메일 발송
         notificationService.sendResumeNotification(sub.getUser(), sub);
@@ -193,10 +200,9 @@ public class MembershipCommandService {
      */
     private MembershipPlanChangeResponseDto handleDowngrade(MembershipSubscription subscription, MembershipPlan newPlan) {
         // 다음 결제일부터 적용하도록 예약
-        subscription.setNextPlan(newPlan);
-        subscription.setPlanChangeScheduledAt(subscription.getNextBillingAt());
-        subscription.setChangeType(PlanChangeType.DOWNGRADE);
-        
+        subscription.schedulePlanChange(newPlan, subscription.getNextBillingAt(), PlanChangeType.DOWNGRADE);
+
+
         return MembershipPlanChangeResponseDto.builder()
                 .changeType(PlanChangeType.DOWNGRADE)
                 .effectiveDate(subscription.getNextBillingAt())

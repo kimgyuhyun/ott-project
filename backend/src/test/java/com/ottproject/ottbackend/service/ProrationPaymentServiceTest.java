@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.Money;
+import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
@@ -52,10 +53,7 @@ class ProrationPaymentServiceTest {
     }
 
     private MembershipSubscription subscriptionOf(MembershipPlan currentPlan, LocalDateTime endAt) {
-        MembershipSubscription sub = new MembershipSubscription();
-        sub.setMembershipPlan(currentPlan);
-        sub.setEndAt(endAt);
-        return sub;
+        return MembershipSubscription.createSubscription(new User(), currentPlan, NOW.minusDays(15), endAt);
     }
 
     @Test
