@@ -53,6 +53,10 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # 리소스 상한 근거는 docker-compose.prod.yml 상단 주석 참고(봉쇄 목적, 넉넉한 천장).
+    # 현재 27MB. 메모리에 있는 건 TSDB 헤드 블록뿐이고 스크레이프 타깃이 2개라 시계열이 적다.
+    mem_limit: 512m
+    cpus: 1.0
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -72,6 +76,9 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # 현재 48MB. 인제스터가 청크를 잠깐 물고 있다가 디스크로 내린다.
+    mem_limit: 512m
+    cpus: 1.0
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
       - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
@@ -92,6 +99,9 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # 현재 48MB. 대시보드를 열어볼 때만 늘어나고 상주분은 거의 고정이다.
+    mem_limit: 512m
+    cpus: 0.5
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin1234}
       GF_ANALYTICS_REPORTING_ENABLED: "false"   # 사용통계 전송 차단
@@ -142,6 +152,7 @@ services:
     security_opt:
       - no-new-privileges:true
     mem_limit: 256m
+    cpus: 0.5   # [2026-07-31] 메모리 상한만 있고 CPU 가 비어 있었다. 2절은 둘 다 요구한다.
     logging: *default-logging
     depends_on:
       - loki

@@ -1,5 +1,24 @@
 # 프로덕션용 오버라이드 - docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
 
+# [SECURITY 2026-07-31] 리소스 상한 — PLATFORM 2절 "컨테이너 리소스 상한(CPU, 메모리)을
+# 설정한다. 상한이 없으면 하나의 침해나 폭주가 호스트 전체를 멈춘다."
+# 그동안 app/frontend/alloy 에만 있었다. 나머지는 docker stats 가 "/ 15.53GiB" 로 찍혔다 —
+# 각자 호스트 메모리 전체를 자기 몫으로 보고 있었다는 뜻이다.
+#
+# 목적은 밀집 배치가 아니라 봉쇄다. 즉 "한 컨테이너가 호스트 전체를 먹지 못하게" 하는 것이
+# 목표이므로, 정밀한 사이징 대신 평상시 사용량보다 훨씬 위에 천장을 둔다. 아래 값은 전부
+# 현재 사용량의 6~150배라 정상 운영 중에는 닿지 않는다.
+#
+# 메모리와 CPU 는 성격이 다르므로 배분 방식도 다르다:
+#   - mem_limit 초과 = 커널이 프로세스를 SIGKILL. 그래서 합계가 호스트 용량(15.53GiB)을
+#     넘지 않게 잡는다. 넘게 잡으면 전부 천장까지 갔을 때 호스트가 죽어 상한이 무의미해진다.
+#     합계 13.5g / 15.53g (여유 약 2g).
+#   - cpus 초과 = 스로틀링(느려질 뿐 죽지 않음). 예약이 아니라 상한이고 전부 동시에 천장을
+#     치지도 않으므로 합계가 코어 수를 넘어도 된다. 합계 16.0 / 12코어(1.33배 오버커밋).
+#     중요한 건 총합이 아니라 단일 컨테이너 최대치가 2.0(호스트의 17%)이라는 것이다.
+#
+# 숫자를 조일 근거가 필요해지면 loadtest 의 TEST=stress 를 돌리면서 docker stats 를 같이
+# 샘플링하면 된다. 봉쇄가 목적인 지금은 필요 없다(loadtest/RESULTS.md 는 CPU·DB 만 기록).
 services:
   app: # Spring Boot 애플리케이션 서비스
     image: ${APP_IMAGE:-ott-backend:clean}  # CD가 APP_IMAGE=ghcr digest 로 덮어씀. 수동 배포 기본값=로컬 클린 이미지
@@ -165,6 +184,12 @@ services:
       - CHOWN
       - SETUID
       - SETGID
+    # 현재 3.4MB. 영속화가 꺼져 있고(--save "" --appendonly no) 진행률 write-back 버퍼는
+    # 10초마다 비워진다. 512m 은 현재의 150배로, 사실상 폭주 감지용 천장이다.
+    # 주의: redis 자체 maxmemory 는 걸지 않는다. 지금 이 안에 아직 DB 로 안 내려간 시청
+    # 진행률이 들어 있어서, evict 가 곧 데이터 유실이다. 컨테이너 상한만으로 봉쇄한다.
+    mem_limit: 512m
+    cpus: 1.0   # 명령 처리는 단일 스레드라 1.0 이면 충분
 
   postgres: # PostgreSQL 데이터베이스 서비스
     environment:
@@ -188,6 +213,11 @@ services:
       - FOWNER
       - SETUID
       - SETGID
+    # 현재 63MB. 커넥션은 최대 40개(Hikari 20 × 인스턴스 2)이고 shared_buffers 는 기본 128MB.
+    # 파일 캐시도 cgroup 사용량에 잡히지만 압박이 오면 커널이 먼저 회수하므로 OOM 원인이
+    # 되지 않는다 — postgres 에 상한을 거는 걸 겁낼 이유가 여기에 없다.
+    mem_limit: 2g
+    cpus: 2.0   # autovacuum·체크포인터 몫 포함. 부하시험에서 DB 는 병목이 아니었다(커넥션 1~2/20)
 
   kafka: # Kafka 브로커(KRaft 단일 노드)
     # [SECURITY 2026-07-31] apache/kafka:3.7.0 은 이미지가 이미 USER appuser(비root)로
@@ -197,6 +227,11 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # 현재 468MB 로 이 파일에서 여유 배수가 가장 낮다(6.6배). JVM 이라 힙 밖(메타스페이스·
+    # 다이렉트 버퍼)이 같이 붙기 때문이다. 로그 세그먼트 페이지 캐시는 회수 가능해서 상한을
+    # 밀어올리지 않는다. 나중에 상한 관련 문제가 난다면 여기가 1순위다.
+    mem_limit: 3g
+    cpus: 2.0
 
   rabbitmq: # RabbitMQ 브로커
     # [SECURITY 2026-07-31] rabbitmq:3.13-management entrypoint 가 root 로 하는 일:
@@ -213,6 +248,14 @@ services:
       - DAC_OVERRIDE
       - SETUID
       - SETGID
+    # 현재 152MB. 던닝 지연 큐라 적재량 자체가 작다.
+    mem_limit: 1g
+    cpus: 1.0
+    # 위 mem_limit 과 한 쌍이다. 이 브로커는 cgroup 상한을 못 읽고 호스트 메모리를 기준으로
+    # 워터마크를 잡아서(실측: 6.21GiB) 상한 1g 를 훨씬 넘긴 지점에서야 자기 보호가 작동한다.
+    # 그대로 두면 flow control 로 버티는 대신 OOM 으로 죽는다. 근거와 확인법은 파일 안에 있다.
+    volumes:
+      - ./rabbitmq/10-memory.conf:/etc/rabbitmq/conf.d/10-memory.conf:ro
 
   nginx: # Nginx 리버스 프록시
     # 프로덕션용 nginx 설정 (필요시 별도 설정 파일 사용)
@@ -245,6 +288,12 @@ services:
       - DAC_OVERRIDE
       - SETUID
       - SETGID
+    # 현재 16MB. 프록시라 상주 메모리가 거의 늘지 않는다.
+    # CPU 를 1.5 로 다른 인프라보다 넉넉히 준 이유: 실제 비용은 TLS 종료인데 부하시험이
+    # nginx 를 우회한 경로(BACKENDS 직결)로 측정돼서 이 구간만 실측이 없다. 공개 진입점이라
+    # 여기서 스로틀이 걸리면 전체가 느려지므로 미실측 구간은 넉넉한 쪽으로 잡는다.
+    mem_limit: 256m
+    cpus: 1.5
 
 volumes:
   certbot-etc:
