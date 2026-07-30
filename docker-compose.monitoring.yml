@@ -37,12 +37,22 @@ x-logging: &default-logging
     max-size: "20m"
     max-file: "3"
 
+# [SECURITY 2026-07-31] 이 파일의 서비스도 PLATFORM 2절 "모든 컨테이너" 대상이다.
+# alloy 에만 걸려 있던 no-new-privileges/cap_drop 을 나머지 셋에도 넣는다.
+# 셋 다 이미지가 비root 로 뜨고(prometheus=nobody:65534, grafana=472, loki=10001)
+# 듣는 포트가 전부 1024 이상이라(9090/3000/3100) 되돌릴 capability 가 없다 → 순수 cap_drop: ALL.
+# pull_policy: missing 근거는 docker-compose.yml 상단 주석 참고.
 services:
   prometheus:
     image: prom/prometheus:v2.54.1
+    pull_policy: missing
     container_name: ott-prometheus
     restart: unless-stopped
     logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -54,9 +64,14 @@ services:
 
   loki:
     image: grafana/loki:3.1.1
+    pull_policy: missing
     container_name: ott-loki
     restart: unless-stopped
     logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
       - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
@@ -69,9 +84,14 @@ services:
 
   grafana:
     image: grafana/grafana:11.2.0
+    pull_policy: missing
     container_name: ott-grafana
     restart: unless-stopped
     logging: *default-logging
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     environment:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin1234}
       GF_ANALYTICS_REPORTING_ENABLED: "false"   # 사용통계 전송 차단
@@ -91,6 +111,7 @@ services:
 
   alloy:
     image: grafana/alloy:v1.5.1
+    pull_policy: missing
     container_name: ott-alloy
     restart: unless-stopped
     # --disable-reporting: 그라파나로 나가는 사용통계 전송 차단(어차피 egress 없음, 명시).

@@ -10,9 +10,18 @@ x-logging: &default-logging
     max-size: "20m"
     max-file: "3"
 
+# [SECURITY 2026-07-31] pull_policy: missing — 인프라 이미지 공통.
+# postgres:15 / redis:7-alpine / nginx:alpine 같은 태그는 고정된 이름일 뿐
+# 고정된 이미지가 아니다. 업스트림이 같은 태그를 다시 밀면 배포 때마다 조용히
+# 다른 이미지가 뜬다(실측: dpage/pgadmin4:latest 는 로컬에 받아둔 6주 사이에
+# 이미 다른 다이제스트로 이동해 있었다).
+# missing = 로컬에 없을 때만 받는다. 최초 기동은 되면서 이후 배포는 처음 받은
+# 이미지를 계속 쓴다. 갱신은 명시적으로 docker pull 을 실행할 때만 일어난다.
+# (app/frontend 는 netlock.yml 에서 ${APP_PULL_POLICY:-never} 로 이미 고정돼 있다)
 services:                         # 서비스 정의 시작
   postgres:                       # PostgreSQL 데이터베이스 서비스
     image: postgres:15            # PostgreSQL 15 버전 이미지
+    pull_policy: missing
     container_name: ott-postgres  # 컨테이너 이름
     restart: unless-stopped
     logging: *default-logging
@@ -57,6 +66,7 @@ services:                         # 서비스 정의 시작
 
   redis: # Redis 캐시 서비스
     image: redis:7-alpine
+    pull_policy: missing
     container_name: ott-redis
     restart: unless-stopped
     logging: *default-logging
@@ -68,6 +78,7 @@ services:                         # 서비스 정의 시작
 
   kafka: # Kafka 브로커(KRaft 단일 노드) - 결제 부수효과 이벤트 스트림
     image: apache/kafka:3.7.0 # 공식 ASF 이미지(KRaft 내장, 스토리지 자동 포맷)
+    pull_policy: missing
     container_name: ott-kafka
     restart: unless-stopped
     logging: *default-logging
@@ -98,6 +109,7 @@ services:                         # 서비스 정의 시작
   rabbitmq: # RabbitMQ 브로커 - 정기결제 실패 재시도 지연 큐(TTL+DLX)
     # alpine 변형은 이 호스트에서 .erlang.cookie 권한 오류(eacces)로 기동 실패 → debian 기반 사용
     image: rabbitmq:3.13-management # management UI 포함(로컬 시연용)
+    pull_policy: missing
     container_name: ott-rabbitmq
     restart: unless-stopped
     logging: *default-logging
@@ -208,6 +220,7 @@ services:                         # 서비스 정의 시작
 
   nginx: # Nginx 리버스 프록시
     image: nginx:alpine
+    pull_policy: missing
     container_name: ott-nginx
     restart: unless-stopped
     logging: *default-logging

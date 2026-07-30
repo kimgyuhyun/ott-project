@@ -75,13 +75,45 @@ services:
       # CORS 허용 오리진 (프로덕션 도메인 명시)
       APP_CORS_ALLOWED_ORIGINS: ${APP_CORS_ALLOWED_ORIGINS:-https://laputa.kozow.com}
     # 보안 하드닝(재침해 방어): 능력 제거 + 권한상승 차단 + /tmp만 쓰기 + 리소스 상한
-    # (비root는 이미지의 USER 1001로 적용됨. JVM 호환 위해 read_only는 미적용)
+    # (비root는 이미지의 USER 1001로 적용됨)
+    #
+    # [2026-07-31] read_only 미적용 — 사유를 실측으로 다시 확인하고 정정한다.
+    # 기존 주석은 "JVM 호환 위해"라고 적혀 있었지만 JVM 은 걸림돌이 아니다.
+    # 6시간 기동한 ott-app 에서 `docker diff` 로 이미지 대비 쓰기를 전수 확인한 결과:
+    #     C /app
+    #     A /app/logs/ott-backend.log
+    #     A /app/logs/auth-audit.log
+    # 이게 전부다. JVM 이 쓰는 것들(hsperfdata_spring, tomcat.8090.*,
+    # tomcat-docbase.8090.*)은 이미 아래 /tmp tmpfs 안에서 해결되고 있다.
+    # 즉 실제 유일한 블로커는 logback-spring.xml 의 RollingFileAppender 두 개
+    # (FILE=logs/ott-backend.log, AUTH_AUDIT=logs/auth-audit.log)가 작업 디렉터리
+    # /app 밑에 쓴다는 것뿐이다.
+    #
+    # 따라서 read_only: true 는 /app/logs 하나만 열면 기술적으로 가능하다. 그런데
+    # 그 경로를 tmpfs 로 열면 로그 파일이 컨테이너 정지와 함께 사라지므로, 켜는 것은
+    # 로그 보존(PLATFORM 9절) 결정과 같이 판단할 문제지 이 파일에서 단독으로
+    # 뒤집을 문제가 아니다. 켤 때 필요한 것만 적어둔다:
+    #   - tmpfs 에 /app/logs:noexec,nosuid,nodev,size=64m,mode=1777
+    #     (mode 필수 — tmpfs 기본은 root:root 0755 라 uid 1001 spring 이 못 쓴다.
+    #      frontend 의 /app/.next/cache 에서 이미 같은 문제를 겪었다)
+    #   - 또는 보존이 필요하면 tmpfs 대신 명명 볼륨.
+    #   - 어느 쪽이든 Loki(loki4j LOKI appender)에 이미 원격 사본이 있어 파일 사본의
+    #     소실 자체는 관측 손실로 이어지지 않는다. 컨테이너 쓰기 레이어에 있는
+    #     지금도 배포마다 재생성되며 사라지고 있다.
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
     tmpfs:
-      - /tmp:nosuid,nodev,size=256m
+      # [SECURITY 2026-07-31] noexec 추가. 원래 nosuid,nodev 뿐이라 /tmp 에서 실행이
+      # 가능했다 — PLATFORM 2절 "tmpfs로 여는 경로에는 noexec와 nosuid와 nodev를 건다"
+      # 위반이자, 2026-06 XMRig 가 실제로 투입된 경로가 바로 /tmp 다(frontend 는 이미
+      # noexec 가 걸려 있었고 app 만 빠져 있었다).
+      # 안전한지 추측하지 않고 확인함: 실행 중 ott-app 의 /tmp 에는 네이티브 라이브러리가
+      # 하나도 없고(find /tmp -name "*.so" → 없음), 백엔드 설정에 snappy/lz4/zstd 등
+      # .so 를 /tmp 에 풀어 dlopen 하는 코덱 설정이 없다. hsperfdata 와 tomcat 작업
+      # 디렉터리는 실행 권한이 필요 없다.
+      - /tmp:noexec,nosuid,nodev,size=256m
     mem_limit: 2g
     cpus: 2.0
 
@@ -115,6 +147,24 @@ services:
     # ${REDIS_PASSWORD:-} 는 .env 에 값이 있으면 인증 강제, 비어있으면 --requirepass ""
     # 로 인증 비활성(기존 동작 보존). Spring 은 application-prod.yml 의 REDIS_PASSWORD 로 접속.
     command: ["redis-server", "--save", "", "--appendonly", "no", "--requirepass", "${REDIS_PASSWORD:-}"]
+    # [SECURITY 2026-07-31] 아래 하드닝은 app/frontend 에만 걸려 있었다(PLATFORM 2절은
+    # "모든 컨테이너"를 요구). cap_add 는 추측이 아니라 각 이미지의 실제 entrypoint 를
+    # 읽고 필요한 것만 되돌린 것이다.
+    #
+    # redis:7-alpine entrypoint (/usr/local/bin/docker-entrypoint.sh):
+    #   find . \! -user redis -exec chown redis '{}' +   → CHOWN
+    #   exec gosu redis "$0" "$@"                        → SETUID, SETGID
+    # 그 외에는 없다. 포트 6379 는 1024 이상이라 NET_BIND_SERVICE 불필요.
+    # no-new-privileges 와 gosu 는 충돌하지 않는다 — gosu 는 setuid 바이너리가 아니라
+    # setuid(2) 를 직접 호출해 권한을 "내리기"만 하므로 NNP 의 금지 대상이 아니다.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
 
   postgres: # PostgreSQL 데이터베이스 서비스
     environment:
@@ -122,6 +172,47 @@ services:
       POSTGRES_DB: ott_project_db
       POSTGRES_USER: root
       POSTGRES_PASSWORD: ${DB_PASSWORD}  # 환경변수 사용 권장
+    # [SECURITY 2026-07-31] postgres:15 entrypoint 가 root 로 하는 일:
+    #   chmod 00700 "$PGDATA" / chmod 03775 /var/run/postgresql  → FOWNER (남의 소유 파일 chmod)
+    #   find "$PGDATA" \! -user postgres -exec chown postgres    → CHOWN
+    #   위 경로들은 postgres 소유라 root 가 접근하려면                → DAC_OVERRIDE
+    #   exec gosu postgres "$BASH_SOURCE"                        → SETUID, SETGID
+    # initdb(빈 볼륨) 경로까지 커버하는 집합이다. 기존 볼륨으로 뜰 때는 이보다 덜 쓴다.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
+
+  kafka: # Kafka 브로커(KRaft 단일 노드)
+    # [SECURITY 2026-07-31] apache/kafka:3.7.0 은 이미지가 이미 USER appuser(비root)로
+    # 뜨고(docker inspect .Config.User=appuser), 리스너 포트 9092/9093/9094 가 전부
+    # 1024 이상이라 되돌릴 capability 가 하나도 없다. 순수 cap_drop: ALL.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  rabbitmq: # RabbitMQ 브로커
+    # [SECURITY 2026-07-31] rabbitmq:3.13-management entrypoint 가 root 로 하는 일:
+    #   find /var/lib/rabbitmq \! -user rabbitmq -exec chown rabbitmq  → CHOWN (+DAC_OVERRIDE:
+    #     /var/lib/rabbitmq 는 rabbitmq 소유 볼륨이라 root 가 탐색·수정하려면 필요)
+    #   exec gosu rabbitmq "$BASH_SOURCE"                              → SETUID, SETGID
+    # AMQP 5672 / management 15672 둘 다 1024 이상 → NET_BIND_SERVICE 불필요.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
 
   nginx: # Nginx 리버스 프록시
     # 프로덕션용 nginx 설정 (필요시 별도 설정 파일 사용)
@@ -132,6 +223,28 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    # [SECURITY 2026-07-31] nginx 는 root 마스터로 뜨는 쪽을 유지한다.
+    # PLATFORM 2절 [상황] "리버스 프록시를 비root로 실행한다"의 미적용 조건에 해당:
+    # 컨테이너 내부에서 80/443 을 직접 듣고 있고 certbot 볼륨(/etc/letsencrypt)을 읽어야 해서
+    # unprivileged 이미지로 옮기는 비용이 크다. 규칙이 지시하는 대체 수단(capability 제거 +
+    # no-new-privileges)을 적용하고 그 판단을 여기 기록한다.
+    #
+    # 되돌리는 capability 와 근거:
+    #   NET_BIND_SERVICE — listen 80/443 (nginx.prod.conf). cap_drop:ALL 을 하면 root 라도
+    #                      1024 미만 바인딩이 막혀 "bind() to 0.0.0.0:80 failed (13)" 로 죽는다.
+    #   SETUID, SETGID   — 마스터가 워커를 nginx 유저로 내려서 띄운다(빌드 옵션 --user=nginx).
+    #   CHOWN            — 기동 시 ngx_create_paths() 가 /var/cache/nginx/* 를 워커 유저 소유로 맞춘다.
+    #   DAC_OVERRIDE     — 위 캐시 경로가 nginx 소유라 root 마스터가 접근하려면 필요.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
 
 volumes:
   certbot-etc:
