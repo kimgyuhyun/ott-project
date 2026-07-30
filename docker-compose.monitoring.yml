@@ -146,7 +146,16 @@ services:
       - alloy_data:/alloy-data
     read_only: true          # 루트FS 읽기전용 (쓰기는 alloy_data 볼륨과 아래 tmpfs 뿐)
     tmpfs:
-      - /tmp
+      # [2026-07-31] 세 플래그를 명시로 바꾼다. 동작은 전과 완전히 같다 —
+      # 옵션을 적지 않으면 도커가 기본으로 nosuid,nodev,noexec 를 걸어주기 때문에
+      # 이 컨테이너는 이미 규칙을 만족하고 있었다(실측: /proc/mounts 에 셋 다 있음).
+      #
+      # 그런데 옵션을 하나라도 적는 순간 기본값 "전체"가 대체된다. 즉 나중에 크기 제한이
+      # 필요해서 `- /tmp:size=64m` 로 고치면 세 플래그가 한꺼번에 조용히 사라진다.
+      # app 의 /tmp 가 nosuid,nodev 만 남고 noexec 를 잃었던 게 정확히 이 경로다
+      # (그리고 /tmp 는 2026-06 XMRig 가 투입된 그 경로다).
+      # 암묵적 기본값에 기대지 않고 적어둬서 그 사고를 막는다.
+      - /tmp:noexec,nosuid,nodev
     cap_drop:
       - ALL
     security_opt:
