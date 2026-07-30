@@ -30,7 +30,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor // 기본 생성자
-@AllArgsConstructor // 모든 필드 생성자
 @EntityListeners(AuditingEntityListener.class)
 public class User {
 

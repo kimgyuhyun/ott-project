@@ -25,7 +25,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class) // 생성일시 수정일시 자동 관리
 public class Review {
 

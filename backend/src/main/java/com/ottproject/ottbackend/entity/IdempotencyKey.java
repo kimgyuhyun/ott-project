@@ -21,7 +21,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class IdempotencyKey {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // PK

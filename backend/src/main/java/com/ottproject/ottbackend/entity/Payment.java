@@ -32,7 +32,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor // 기본 생성자
-@AllArgsConstructor // 모든 필드 생성자
 @EntityListeners(AuditingEntityListener.class) // 생성/수정 일시 자동 기록(Auditing)
 public class Payment { // 엔티티 시작
     @Id

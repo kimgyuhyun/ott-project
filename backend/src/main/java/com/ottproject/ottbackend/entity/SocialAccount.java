@@ -29,7 +29,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class) // 생성 시각 자동 기록
 public class SocialAccount { // 소셜 계정 연동 엔티티
 

@@ -26,7 +26,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class) // 생성일시 자동 주입
 public class ReviewLike {
     @Id // 기본키 지정
