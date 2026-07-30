@@ -72,12 +72,15 @@
 
 ### Infra
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=flat-square&logo=docker)
-![Docker Hub](https://img.shields.io/badge/Docker%20Hub-Registry-blue?style=flat-square&logo=docker)
+![Docker Hub](https://img.shields.io/badge/Docker%20Hub-previous-lightgrey?style=flat-square&logo=docker)
+![GHCR](https://img.shields.io/badge/GHCR-private%20registry-181717?style=flat-square&logo=github)
 ![Nginx](https://img.shields.io/badge/Nginx-reverse%20proxy-green?style=flat-square&logo=nginx)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CD-black?style=flat-square&logo=github-actions)
 
 - **nginx** 리버스 프록시(HTTPS · secure_link), **Docker Compose** 단일 호스트 구성
-- **GitHub Actions** → **Docker Hub** 이미지 빌드/푸시 후 서버 배포
+- **GitHub Actions** → **GHCR**(비공개 레지스트리) 이미지 빌드/푸시 후 서버 배포 — 커밋 SHA 태깅 + digest 고정
+- 레지스트리 이전(**Docker Hub → GHCR**)과 장기 자격증명 대신 `GITHUB_TOKEN` 단기 토큰을 쓰는 건
+  **2026-06 크립토재킹 사고**의 재발 방지 조치다 — [사고 회고](docs/incident-2026-06.md)
 - 보안 하드닝: 앱/프론트/브로커는 **루프백 전용 바인딩**, 외부 진입점은 nginx(80/443)뿐
 - **Prometheus + Grafana + Loki** 관측성 (별도 오버레이 — 아래 [성능과 관측성](#성능과-관측성) 참고)
 
@@ -302,7 +305,7 @@ ott-project/
   - 인증 흐름 · 댓글/리뷰/별점 · 마이페이지/알림 · 결제/멤버십 관리 UI
   - 검색/필터/정렬 · 주간 편성 · 작품 상세/모달 UX
 - **인프라**
-  - nginx 리버스 프록시, Cloudflare Worker 엣지(HLS secure_link 서명 검증), Docker Compose, Docker Hub, GitHub Actions CD
+  - nginx 리버스 프록시, Cloudflare Worker 엣지(HLS secure_link 서명 검증), Docker Compose, GHCR(Docker Hub 에서 이전), GitHub Actions CD
   - 환경변수/비밀키 관리(SOPS+age 암호화 `.env.enc` 단일 소스, CD가 `AGE_KEY`로 복호화), 루프백 바인딩 보안 하드닝
   - Prometheus + Grafana + Loki 관측성(인스턴스별 메트릭 · loki4j 로그 push, 별도 오버레이)
 
