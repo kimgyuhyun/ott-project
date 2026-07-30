@@ -451,7 +451,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				session.sessionId, // 실제 세션 ID
 				new Money(chargeAmount, plan.getPrice().getCurrency()) // Money VO 사용
 		);
-		payment.setPaymentMethod(paymentMethod); // 결제수단 연결
+		payment.attachPaymentMethod(paymentMethod); // 결제수단 연결
 		paymentRepository.save(payment); // 저장
 
 		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank()) { // 멱등키 저장
@@ -520,8 +520,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			markSucceededAndProvision(payment, event.providerPaymentId, event.receiptUrl, ts);
 
 		} else if (event.status == PaymentStatus.FAILED) { // 실패
-			payment.setStatus(PaymentStatus.FAILED); // 상태
-			payment.setFailedAt(ts); // 시각
+			payment.applyGatewayFailure(ts); // 상태 + 실패 시각
 			// 구독 전이: 활성 구독이 있으면 PAST_DUE로 표시(즉시 경고 상태), 재시도는 배치가 수행
 			subscriptionRepository.findActiveEffectiveByUser(payment.getUser().getId(), MembershipSubscriptionStatus.ACTIVE, ts)
 					.ifPresent(sub -> {
@@ -530,8 +529,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 					});
 
 		} else if (event.status == PaymentStatus.CANCELED) { // 취소
-			payment.setStatus(PaymentStatus.CANCELED); // 상태
-			payment.setCanceledAt(ts); // 시각
+			payment.applyGatewayCancellation(ts); // 상태 + 취소 시각
 			// 구독 전이: 자동갱신 중단 + 말일 해지 예약
 			subscriptionRepository.findActiveEffectiveByUser(payment.getUser().getId(), MembershipSubscriptionStatus.ACTIVE, ts)
 					.ifPresent(sub -> {
@@ -540,9 +538,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 					});
 
 		} else if (event.status == PaymentStatus.REFUNDED) { // 환불
-			payment.setStatus(PaymentStatus.REFUNDED); // 상태
-			payment.setRefundedAt(ts); // 시각
-			payment.setRefundedAmount(event.amount); // 금액
+			payment.applyGatewayRefund(event.amount, ts); // 상태 + 환불 시각 + 금액
 			// 구독 전이: 환불 시 즉시 해지 처리(정책)
 			subscriptionRepository.findActiveEffectiveByUser(payment.getUser().getId(), MembershipSubscriptionStatus.ACTIVE, ts)
 					.ifPresent(sub -> {
@@ -584,9 +580,10 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		// 게이트웨이 환불 실행(전액 환불)
 		try {
 			PaymentGateway.RefundResult rr = paymentGateway.issueRefund(payment.getProviderPaymentId(), payment.getPrice().getAmount()); // 환불 호출
-			payment.setStatus(PaymentStatus.REFUNDED); // 상태 전환
-			payment.setRefundedAmount(payment.getPrice().getAmount()); // 전액 환불
-			payment.setRefundedAt(rr.refundedAt != null ? rr.refundedAt : LocalDateTime.now()); // 환불 시각 기록
+			// 전액 환불: 상태 + 환불 금액 + 환불 시각을 함께 확정
+			payment.applyGatewayRefund(
+					payment.getPrice().getAmount(),
+					rr.refundedAt != null ? rr.refundedAt : LocalDateTime.now());
 			paymentRepository.save(payment); // 저장
 			
 			// 환불 시 멤버십 구독 즉시 해지
@@ -616,12 +613,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		if (payment.getStatus() == PaymentStatus.SUCCEEDED) { // 이미 확정됨(멱등)
 			return; // 재지급 방지
 		}
-		payment.setStatus(PaymentStatus.SUCCEEDED); // 상태 확정
-		payment.setPaidAt(paidAt); // 결제 시각
-		payment.setProviderPaymentId(providerPaymentId); // 외부 결제 ID(imp_uid)
-		if (receiptUrl != null) { // 영수증은 있을 때만 갱신(클라 경로는 null일 수 있음)
-			payment.setReceiptUrl(receiptUrl);
-		}
+		// 상태·결제시각·완료시각·외부 결제 ID 를 한 번에 확정(영수증은 있을 때만 갱신 — 클라 경로는 null일 수 있음)
+		payment.applyGatewaySuccess(providerPaymentId, receiptUrl, paidAt);
 		paymentRepository.save(payment); // 저장
 		log.info("결제 SUCCEEDED 확정 - paymentId: {}, imp_uid: {}", payment.getId(), providerPaymentId);
 
@@ -779,14 +772,12 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				log.info("대사 배치로 결제 확정 - paymentId: {}", paymentId);
 				return true;
 			case "failed":
-				payment.setStatus(PaymentStatus.FAILED);
-				payment.setFailedAt(now);
+				payment.applyGatewayFailure(now);
 				paymentRepository.save(payment);
 				return true;
 			case "cancelled":
 			case "canceled":
-				payment.setStatus(PaymentStatus.CANCELED);
-				payment.setCanceledAt(now);
+				payment.applyGatewayCancellation(now);
 				paymentRepository.save(payment);
 				return true;
 			default:

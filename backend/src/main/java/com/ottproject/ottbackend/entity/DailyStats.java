@@ -29,7 +29,6 @@ import java.time.ZoneId;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class DailyStats {
 
     @Id

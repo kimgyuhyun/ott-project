@@ -17,6 +17,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -118,8 +119,8 @@ class PaymentMerchantUidUniqueTest {
         Payment payment = Payment.createPendingPayment(
                 user, plan, PaymentProvider.IMPORT, merchantUid, new Money(9900L, "KRW"));
         LocalDateTime now = LocalDateTime.now();
-        payment.setCreatedAt(now); // 슬라이스에는 Auditing 이 없어 직접 채운다
-        payment.setUpdatedAt(now);
+        ReflectionTestUtils.setField(payment, "createdAt", now); // 슬라이스에는 Auditing 이 없어 직접 채운다
+        ReflectionTestUtils.setField(payment, "updatedAt", now);
         return payment;
     }
 
@@ -185,12 +186,12 @@ class PaymentMerchantUidUniqueTest {
         // createSucceededPayment 는 providerSessionId 를 채우지 않는다(과거 재청구 성공 경로가 만든 형태).
         Payment first = Payment.createSucceededPayment(
                 user, plan, PaymentProvider.IMPORT, "imp_1", new Money(9900L, "KRW"), now);
-        first.setCreatedAt(now);
-        first.setUpdatedAt(now);
+        ReflectionTestUtils.setField(first, "createdAt", now);
+        ReflectionTestUtils.setField(first, "updatedAt", now);
         Payment second = Payment.createSucceededPayment(
                 user, plan, PaymentProvider.IMPORT, "imp_2", new Money(9900L, "KRW"), now);
-        second.setCreatedAt(now);
-        second.setUpdatedAt(now);
+        ReflectionTestUtils.setField(second, "createdAt", now);
+        ReflectionTestUtils.setField(second, "updatedAt", now);
 
         paymentRepository.saveAndFlush(first);
         paymentRepository.saveAndFlush(second);

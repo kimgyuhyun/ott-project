@@ -25,7 +25,6 @@ import lombok.*;
 @Getter // 게터 생성
 @Setter // 세터 생성
 @NoArgsConstructor // 기본 생성자
-@AllArgsConstructor // 전체 필드 생성자
 public class MembershipPlan { // 멤버쉽 플랜
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY) // pk 자동 증가
     private Long id; // PK

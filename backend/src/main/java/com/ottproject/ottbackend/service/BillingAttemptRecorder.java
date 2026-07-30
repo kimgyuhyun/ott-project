@@ -63,8 +63,8 @@ public class BillingAttemptRecorder {
 				merchantUid,
 				price
 		);
-		payment.setPaymentMethod(paymentMethodRepository.getReferenceById(paymentMethodId));
-		payment.setDescription("Subscription renewal");
+		payment.attachPaymentMethod(paymentMethodRepository.getReferenceById(paymentMethodId));
+		payment.describeAs("Subscription renewal");
 		paymentRepository.saveAndFlush(payment); // 제약 위반을 커밋까지 미루지 않고 여기서 드러낸다
 		return payment.getId();
 	}

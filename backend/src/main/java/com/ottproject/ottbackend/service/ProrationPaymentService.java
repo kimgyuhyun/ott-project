@@ -101,8 +101,8 @@ public class ProrationPaymentService {
                 providerSessionId,
                 new com.ottproject.ottbackend.entity.Money(chargeAmount, "KRW")
         );
-        payment.setDescription("플랜 업그레이드 차액 결제");
-        payment.setMetadata("{\"type\":\"proration\",\"currentPlanCode\":\"" + 
+        payment.describeAs("플랜 업그레이드 차액 결제");
+        payment.attachMetadata("{\"type\":\"proration\",\"currentPlanCode\":\"" +
             currentSubscription.getMembershipPlan().getCode() + 
             "\",\"targetPlanCode\":\"" + targetPlan.getCode() + 
             "\",\"paymentService\":\"" + (request.getPaymentService() != null ? request.getPaymentService() : "kakaopay") + "\"}");
@@ -163,11 +163,8 @@ public class ProrationPaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다. (PG 재검증 불일치)");
         }
 
-        // 결제 성공 처리
-        payment.setStatus(PaymentStatus.SUCCEEDED);
-        payment.setPaidAt(LocalDateTime.now());
-        payment.setCompletedAt(LocalDateTime.now());
-        payment.setProviderPaymentId(impUid);
+        // 결제 성공 처리 (상태·결제시각·완료시각·외부 결제 ID 를 한 번에 확정)
+        payment.applyGatewaySuccess(impUid, null, LocalDateTime.now());
         paymentRepository.save(payment);
 
         // 플랜 변경 처리

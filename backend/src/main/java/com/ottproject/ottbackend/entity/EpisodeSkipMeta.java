@@ -24,7 +24,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class EpisodeSkipMeta { // 오프닝/엔딩 구간
 

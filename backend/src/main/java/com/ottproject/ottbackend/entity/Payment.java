@@ -30,9 +30,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "payments")
 @Getter
-@Setter
 @NoArgsConstructor // 기본 생성자
-@AllArgsConstructor // 모든 필드 생성자
 @EntityListeners(AuditingEntityListener.class) // 생성/수정 일시 자동 기록(Auditing)
 public class Payment { // 엔티티 시작
     @Id
@@ -87,7 +85,8 @@ public class Payment { // 엔티티 시작
     @Column
     private LocalDateTime failedAt; // 실패 시각
     
-    @Column LocalDateTime canceledAt; // 취소 시각
+    @Column
+    private LocalDateTime canceledAt; // 취소 시각
     
     @Column
     private Long refundedAmount; // 환불 금액(최소 화폐단위)
@@ -313,5 +312,84 @@ public class Payment { // 엔티티 시작
         this.refundedAmount = refundedAmount;
         this.refundedAt = refundedAt;
         this.status = PaymentStatus.REFUNDED;
+    }
+
+    // ===== 게이트웨이가 관측한 결과 반영 =====
+    // 위쪽 markAs*/processRefund 는 우리가 주도하는 전이라 PENDING 등 사전 상태를 요구한다.
+    // 아래 apply* 는 웹훅과 대사가 "이미 일어난 일"을 뒤늦게 반영하는 자리라 사전 상태를 요구하지 않는다.
+    // 순서가 뒤바뀌거나 늦게 도착한 이벤트에 예외를 던지면 웹훅이 200 을 못 돌려주고 재전송만 반복된다.
+
+    /**
+     * 게이트웨이 성공 반영
+     * - 상태·결제시각·완료시각·외부 결제 ID 를 한 번에 확정한다.
+     * - 영수증 URL 은 있을 때만 갱신한다(클라이언트 확정 경로는 null 로 들어온다).
+     */
+    public void applyGatewaySuccess(String providerPaymentId, String receiptUrl, LocalDateTime paidAt) {
+        if (paidAt == null) {
+            throw new IllegalArgumentException("결제 완료 시각은 필수입니다.");
+        }
+        this.status = PaymentStatus.SUCCEEDED;
+        this.providerPaymentId = providerPaymentId;
+        this.paidAt = paidAt;
+        this.completedAt = paidAt;
+        if (receiptUrl != null) {
+            this.receiptUrl = receiptUrl;
+        }
+    }
+
+    /**
+     * 게이트웨이 실패 반영 — 상태와 실패 시각은 반드시 함께 바뀐다.
+     */
+    public void applyGatewayFailure(LocalDateTime failedAt) {
+        if (failedAt == null) {
+            throw new IllegalArgumentException("실패 시각은 필수입니다.");
+        }
+        this.status = PaymentStatus.FAILED;
+        this.failedAt = failedAt;
+    }
+
+    /**
+     * 게이트웨이 취소 반영 — 상태와 취소 시각은 반드시 함께 바뀐다.
+     */
+    public void applyGatewayCancellation(LocalDateTime canceledAt) {
+        if (canceledAt == null) {
+            throw new IllegalArgumentException("취소 시각은 필수입니다.");
+        }
+        this.status = PaymentStatus.CANCELED;
+        this.canceledAt = canceledAt;
+    }
+
+    /**
+     * 게이트웨이 환불 반영 — 상태와 환불 시각과 환불 금액은 반드시 함께 바뀐다.
+     */
+    public void applyGatewayRefund(Long refundedAmount, LocalDateTime refundedAt) {
+        if (refundedAt == null) {
+            throw new IllegalArgumentException("환불 시각은 필수입니다.");
+        }
+        this.status = PaymentStatus.REFUNDED;
+        this.refundedAt = refundedAt;
+        this.refundedAmount = refundedAmount;
+    }
+
+    // ===== 생성 직후 부가 정보 부착 =====
+
+    /** 결제수단 연결 */
+    public void attachPaymentMethod(PaymentMethod paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
+
+    /** 결제 설명 부여 */
+    public void describeAs(String description) {
+        this.description = description;
+    }
+
+    /** 메타데이터(JSON) 부착 */
+    public void attachMetadata(String metadata) {
+        this.metadata = metadata;
+    }
+
+    /** 영수증 URL 부착 — 게이트웨이가 성공 확정 뒤에 따로 내려주는 경우가 있다. */
+    public void attachReceipt(String receiptUrl) {
+        this.receiptUrl = receiptUrl;
     }
 }

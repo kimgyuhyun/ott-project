@@ -34,7 +34,6 @@ import java.time.ZoneId;
 @Getter
 @Setter
 @NoArgsConstructor // 기본 생성자
-@AllArgsConstructor // 모든 필드 생성자
 public class AuthEvent {
 
     @Id

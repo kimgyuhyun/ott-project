@@ -32,7 +32,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class) // 생성 수정 일시 자동 기록
 public class PaymentMethod { // 엔티티 시작
     @Id

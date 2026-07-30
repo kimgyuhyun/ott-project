@@ -28,7 +28,6 @@ import java.time.LocalDateTime;
 @Getter // 게터
 @Setter // 세터
 @NoArgsConstructor // 기본 생성자
-@AllArgsConstructor // 전체 필드 생성자
 @EntityListeners(AuditingEntityListener.class) // 생성 시각 자동 기록
 public class AnimeFavorite { // 애니 보고싶다 엔티티
     @Id // 기본키

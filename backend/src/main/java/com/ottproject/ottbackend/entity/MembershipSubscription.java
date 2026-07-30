@@ -29,7 +29,6 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class MembershipSubscription { // 멤버쉽 구독
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // PK

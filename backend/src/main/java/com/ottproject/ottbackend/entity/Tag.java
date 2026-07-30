@@ -21,7 +21,6 @@ import java.util.HashSet;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class Tag { // 태그 마스터
 
     @Id

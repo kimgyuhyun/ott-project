@@ -306,7 +306,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 				paymentRepository.findById(outcome.paymentId()).ifPresent(payment -> {
 					if (payment.getStatus() == PaymentStatus.PENDING) {
 						payment.markAsSucceeded(outcome.providerPaymentId(), outcome.paidAt());
-						payment.setReceiptUrl(outcome.receiptUrl());
+						payment.attachReceipt(outcome.receiptUrl());
 						paymentRepository.save(payment);
 					}
 				});
@@ -384,7 +384,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 				}
 				payment.markAsSucceeded(r.impUid, now);
 				if (r.receiptUrl != null) {
-					payment.setReceiptUrl(r.receiptUrl);
+					payment.attachReceipt(r.receiptUrl);
 				}
 				paymentRepository.save(payment);
 				if (subscriptionId == null) {
@@ -400,8 +400,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 				return true;
 			case "cancelled":
 			case "canceled":
-				payment.setStatus(PaymentStatus.CANCELED);
-				payment.setCanceledAt(now);
+				payment.applyGatewayCancellation(now);
 				paymentRepository.save(payment);
 				return true;
 			default:
