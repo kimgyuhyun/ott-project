@@ -62,6 +62,7 @@ export async function subscribeMembership(planCode: string) {
 }
 
 // 멤버십 구독 취소
+// idempotencyKey 는 "해지 의도" 단위로 호출자가 만들어 넘긴다(여기서 만들면 재시도마다 값이 달라져 무의미).
 export async function cancelMembership(idempotencyKey?: string) {
   return apiCall<UserMembership>('/api/memberships/cancel', {
     method: 'POST',
