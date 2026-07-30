@@ -523,29 +523,19 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			payment.applyGatewayFailure(ts); // 상태 + 실패 시각
 			// 구독 전이: 활성 구독이 있으면 PAST_DUE로 표시(즉시 경고 상태), 재시도는 배치가 수행
 			subscriptionRepository.findActiveEffectiveByUser(payment.getUser().getId(), MembershipSubscriptionStatus.ACTIVE, ts)
-					.ifPresent(sub -> {
-						sub.setStatus(MembershipSubscriptionStatus.PAST_DUE); // 연체 상태 전환
-						sub.setLastRetryAt(ts); // 최근 실패 시각 기록
-					});
+					.ifPresent(sub -> sub.applyPaymentFailure(ts)); // 연체 전환 + 최근 실패 시각
 
 		} else if (event.status == PaymentStatus.CANCELED) { // 취소
 			payment.applyGatewayCancellation(ts); // 상태 + 취소 시각
 			// 구독 전이: 자동갱신 중단 + 말일 해지 예약
 			subscriptionRepository.findActiveEffectiveByUser(payment.getUser().getId(), MembershipSubscriptionStatus.ACTIVE, ts)
-					.ifPresent(sub -> {
-						sub.setAutoRenew(false); // 자동갱신 중단
-						sub.setCancelAtPeriodEnd(true); // 말일 해지 예약
-					});
+					.ifPresent(sub -> sub.scheduleCancellationAtPeriodEnd()); // 자동갱신 중단 + 말일 해지 예약
 
 		} else if (event.status == PaymentStatus.REFUNDED) { // 환불
 			payment.applyGatewayRefund(event.amount, ts); // 상태 + 환불 시각 + 금액
 			// 구독 전이: 환불 시 즉시 해지 처리(정책)
 			subscriptionRepository.findActiveEffectiveByUser(payment.getUser().getId(), MembershipSubscriptionStatus.ACTIVE, ts)
-					.ifPresent(sub -> {
-						sub.setStatus(MembershipSubscriptionStatus.CANCELED); // 즉시 해지
-						sub.setAutoRenew(false); // 자동갱신 중단
-						sub.setCanceledAt(ts); // 해지 확정 시각
-					});
+					.ifPresent(sub -> sub.applyImmediateCancellation(ts)); // 즉시 해지 + 해지 시각 + 자동갱신 중단
 
 		} else { // 방어
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "지원하지 않는 이벤트 상태입니다."); // 400
@@ -590,9 +580,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			LocalDateTime now = LocalDateTime.now();
 			subscriptionRepository.findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
 					.ifPresent(sub -> {
-						sub.setStatus(MembershipSubscriptionStatus.CANCELED); // 즉시 해지
-						sub.setAutoRenew(false); // 자동갱신 중단
-						sub.setCanceledAt(now); // 해지 확정 시각
+						sub.applyImmediateCancellation(now); // 즉시 해지 + 해지 시각 + 자동갱신 중단
 						subscriptionRepository.save(sub);
 						log.info("환불로 인한 멤버십 구독 해지 - userId: {}, subscriptionId: {}", userId, sub.getId());
 					});

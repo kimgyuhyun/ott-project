@@ -11,6 +11,7 @@ import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PlanChangeType;
+import com.ottproject.ottbackend.exception.DuplicateIdempotentRequestException;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
@@ -19,9 +20,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -32,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -63,11 +67,9 @@ class MembershipCommandServiceTest {
     void setUp() {
         User user = new User();
         user.setId(1L);
-        sub = new MembershipSubscription();
-        sub.setUser(user);
-        sub.setStatus(MembershipSubscriptionStatus.ACTIVE);
-        sub.setAutoRenew(true);
-        sub.setCancelAtPeriodEnd(false);
+        // 팩토리가 ACTIVE + autoRenew=true + cancelAtPeriodEnd=false 로 만든다(해지 전 정상 상태)
+        sub = MembershipSubscription.createSubscription(
+                user, plan("BASIC", 9900L, 1), LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
     }
 
     private MembershipCancelMembershipRequestDto cancelReq(String idempotencyKey) {
@@ -105,15 +107,32 @@ class MembershipCommandServiceTest {
     }
 
     @Test
-    @DisplayName("해지 - 멱등키가 있으면 처리 후 키를 저장해 재요청을 막는다")
-    void cancelStoresIdempotencyKey() {
+    @DisplayName("해지 - 멱등키를 처리 '전에' 선삽입한다(제약이 동시 요청을 판정해야 하므로)")
+    void cancelInsertsIdempotencyKeyBeforeProcessing() {
         given(idempotencyKeyRepository.findByKeyValue("key-1")).willReturn(Optional.empty());
         given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
                 .willReturn(Optional.of(sub));
 
         service.cancel(1L, cancelReq("key-1"));
 
-        verify(idempotencyKeyRepository).save(any(IdempotencyKey.class));
+        // 맨 끝에서 save 하면 동시 요청 둘 다 해지 처리와 메일 발송을 마친 뒤에야 충돌한다.
+        // flush 까지 해야 제약 위반이 이 자리에서 잡힌다.
+        InOrder order = inOrder(idempotencyKeyRepository, notificationService);
+        order.verify(idempotencyKeyRepository).saveAndFlush(any(IdempotencyKey.class));
+        order.verify(notificationService).sendCancelAtPeriodEnd(any(), any());
+    }
+
+    @Test
+    @DisplayName("해지 - 멱등키 선삽입이 제약에 걸리면 중복 요청으로 보고 중단한다(메일 재발송 없음)")
+    void cancelStopsWhenIdempotencyKeyAlreadyClaimed() {
+        given(idempotencyKeyRepository.findByKeyValue("key-1")).willReturn(Optional.empty()); // 빠른 경로는 통과
+        given(idempotencyKeyRepository.saveAndFlush(any(IdempotencyKey.class)))
+                .willThrow(new DataIntegrityViolationException("ux_idempotency_key")); // 경합에서 진 쪽
+
+        assertThatThrownBy(() -> service.cancel(1L, cancelReq("key-1")))
+                .isInstanceOf(DuplicateIdempotentRequestException.class);
+
+        verifyNoInteractions(subscriptionRepository, notificationService);
     }
 
     @Test
@@ -133,8 +152,7 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("재개 - 해지 예약된 구독의 자동갱신을 되살린다")
     void resumeRestoresAutoRenew() {
-        sub.setAutoRenew(false);
-        sub.setCancelAtPeriodEnd(true); // 해지 예약 상태
+        sub.scheduleCancellationAtPeriodEnd(); // 해지 예약 상태
         given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
                 .willReturn(Optional.of(sub));
 
@@ -148,7 +166,7 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("해지 예약이 아닌 구독은 재개할 수 없다 - 400")
     void resumeOnNonCanceledSubscriptionIsRejected() {
-        sub.setCancelAtPeriodEnd(false); // 예약된 적 없음
+        // setUp 의 구독은 해지 예약된 적이 없다(팩토리 기본값 cancelAtPeriodEnd=false)
         given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
                 .willReturn(Optional.of(sub));
 
@@ -229,9 +247,8 @@ class MembershipCommandServiceTest {
     @DisplayName("구독 - 잔여기간이 남은 활성 구독이 있으면 그 종료일 직후부터 이어붙인다(기간 소실 방지)")
     void subscribeExtendsFromRemainingPeriod() {
         LocalDateTime latestEnd = LocalDateTime.now().plusDays(10);
-        MembershipSubscription latest = new MembershipSubscription();
-        latest.setStatus(MembershipSubscriptionStatus.ACTIVE);
-        latest.setEndAt(latestEnd);
+        MembershipSubscription latest = MembershipSubscription.createSubscription(
+                new User(), plan("BASIC", 9900L, 1), LocalDateTime.now().minusDays(20), latestEnd); // ACTIVE + 잔여기간
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(latest));
 
@@ -246,9 +263,9 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("구독 - 이미 만료된 구독은 이어붙이지 않고 지금부터 시작한다")
     void subscribeDoesNotExtendFromExpiredSubscription() {
-        MembershipSubscription expired = new MembershipSubscription();
-        expired.setStatus(MembershipSubscriptionStatus.ACTIVE);
-        expired.setEndAt(LocalDateTime.now().minusDays(1)); // 이미 지남
+        MembershipSubscription expired = MembershipSubscription.createSubscription(
+                new User(), plan("BASIC", 9900L, 1),
+                LocalDateTime.now().minusMonths(2), LocalDateTime.now().minusDays(1)); // ACTIVE 지만 이미 지남
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(expired));
 
@@ -262,9 +279,10 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("구독 - 잔여기간이 남아도 활성 상태가 아니면 이어붙이지 않는다")
     void subscribeDoesNotExtendFromInactiveSubscription() {
-        MembershipSubscription canceled = new MembershipSubscription();
-        canceled.setStatus(MembershipSubscriptionStatus.CANCELED); // 환불 등으로 해지됨
-        canceled.setEndAt(LocalDateTime.now().plusDays(10)); // 날짜상으론 잔여기간이 있음
+        MembershipSubscription canceled = MembershipSubscription.createSubscription(
+                new User(), plan("BASIC", 9900L, 1),
+                LocalDateTime.now().minusDays(20), LocalDateTime.now().plusDays(10)); // 날짜상으론 잔여기간이 있음
+        canceled.applyImmediateCancellation(LocalDateTime.now()); // 환불 등으로 해지됨
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(canceled));
 
@@ -278,14 +296,16 @@ class MembershipCommandServiceTest {
     // ===== 플랜 변경 =====
 
     private MembershipSubscription subscriptionOnPlan(MembershipPlan current) {
-        MembershipSubscription s = new MembershipSubscription();
+        return subscriptionOnPlan(current, LocalDateTime.now().plusDays(15));
+    }
+
+    /** endAt 을 지정할 수 있는 변형(무기한 구독 = endAt null) */
+    private MembershipSubscription subscriptionOnPlan(MembershipPlan current, LocalDateTime endAt) {
         User user = new User();
         user.setId(1L);
-        s.setUser(user);
-        s.setStatus(MembershipSubscriptionStatus.ACTIVE);
-        s.setMembershipPlan(current);
-        s.setEndAt(LocalDateTime.now().plusDays(15));
-        s.setNextBillingAt(LocalDateTime.now().plusDays(15));
+        MembershipSubscription s = MembershipSubscription.createSubscription(
+                user, current, LocalDateTime.now(), endAt);
+        s.scheduleNextBillingAt(LocalDateTime.now().plusDays(15));
         return s;
     }
 
@@ -379,8 +399,8 @@ class MembershipCommandServiceTest {
     void upgradeOnOpenEndedSubscriptionIsRejected() {
         MembershipPlan basic = plan("BASIC", 9900L, 1);
         MembershipPlan premium = plan("PREMIUM", 19900L, 1);
-        MembershipSubscription sub = subscriptionOnPlan(basic);
-        sub.setEndAt(null); // 무기한: 조회 쿼리가 "s.endAt is null" 을 유효 구독으로 취급한다
+        // 무기한: 조회 쿼리가 "s.endAt is null" 을 유효 구독으로 취급한다
+        MembershipSubscription sub = subscriptionOnPlan(basic, null);
         given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
                 .willReturn(Optional.of(sub));
         given(planRepository.findByCode("PREMIUM")).willReturn(Optional.of(premium));
@@ -407,8 +427,7 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("예약 취소 - 예약된 플랜 변경이 없으면 400")
     void cancelScheduledPlanChangeWithoutScheduleIsRejected() {
-        MembershipSubscription sub = subscriptionOnPlan(plan("BASIC", 9900L, 1));
-        sub.setNextPlan(null); // 예약 없음
+        MembershipSubscription sub = subscriptionOnPlan(plan("BASIC", 9900L, 1)); // 예약 없음(팩토리 기본값)
         given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
                 .willReturn(Optional.of(sub));
 
@@ -421,9 +440,7 @@ class MembershipCommandServiceTest {
     @DisplayName("예약 취소 - 예약 정보 3개를 모두 지운다(잔여 예약으로 배치가 오작동하지 않도록)")
     void cancelScheduledPlanChangeClearsSchedule() {
         MembershipSubscription sub = subscriptionOnPlan(plan("PREMIUM", 19900L, 1));
-        sub.setNextPlan(plan("BASIC", 9900L, 1));
-        sub.setPlanChangeScheduledAt(LocalDateTime.now().plusDays(15));
-        sub.setChangeType(PlanChangeType.DOWNGRADE);
+        sub.schedulePlanChange(plan("BASIC", 9900L, 1), LocalDateTime.now().plusDays(15), PlanChangeType.DOWNGRADE);
         given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
                 .willReturn(Optional.of(sub));
 

@@ -84,14 +84,10 @@ class RecurringBillingServiceTest {
         plan.setPeriodMonths(1);
 
         // PAST_DUE + 자동갱신 + 1차 실패 상태(retryCount=1)의 구독
-        sub = new MembershipSubscription();
-        sub.setId(SUB_ID);
-        sub.setUser(user);
-        sub.setMembershipPlan(plan);
-        sub.setStatus(MembershipSubscriptionStatus.PAST_DUE);
-        sub.setAutoRenew(true);
-        sub.setRetryCount(1);
-        sub.setEndAt(LocalDateTime.now().plusDays(10));
+        sub = MembershipSubscription.createSubscription(
+                user, plan, LocalDateTime.now().minusDays(20), LocalDateTime.now().plusDays(10));
+        ReflectionTestUtils.setField(sub, "id", SUB_ID); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
+        sub.recordDeclinedCharge(LocalDateTime.now(), "CARD_DECLINED", "1차 청구 실패"); // → PAST_DUE, retryCount=1
 
         // retryBilling 은 단계마다 트랜잭션 경계를 만들려고 자기 자신을 프록시로 호출한다.
         // 단위 테스트에는 프록시가 없으므로 자기 참조를 직접 꽂아준다(트랜잭션은 어차피 no-op).
@@ -153,7 +149,7 @@ class RecurringBillingServiceTest {
     @Test
     @DisplayName("이미 복구된(ACTIVE) 구독은 재청구하지 않는다")
     void recoveredSubscriptionIsSkipped() {
-        sub.setStatus(MembershipSubscriptionStatus.ACTIVE);
+        sub.renewUntil(sub.getEndAt(), LocalDateTime.now()); // 다른 경로가 이미 복구시킴 → ACTIVE
         given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
 
         service.retryBilling(SUB_ID, 1);
@@ -164,7 +160,7 @@ class RecurringBillingServiceTest {
     @Test
     @DisplayName("스테일 메시지(attempt ≠ retryCount)는 건너뛴다 - 중복 청구 방지")
     void staleRetryMessageIsSkipped() {
-        sub.setRetryCount(2); // 스윕이 먼저 재시도해서 카운트가 이미 올라감
+        sub.recordDeclinedCharge(LocalDateTime.now(), "CARD_DECLINED", "2차 실패"); // 스윕이 먼저 재시도해서 카운트가 이미 올라감(=2)
         given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
 
         service.retryBilling(SUB_ID, 1); // 뒤늦게 도착한 1차 재시도 메시지
@@ -198,7 +194,7 @@ class RecurringBillingServiceTest {
     @Test
     @DisplayName("3회 소진 - 구독 해지 + 자동갱신 중단 + 안내 메일, 더 이상 재시도 예약 없음")
     void thirdFailureCancelsAndNotifies() {
-        sub.setRetryCount(2); // 이번이 3번째 시도
+        sub.recordDeclinedCharge(LocalDateTime.now(), "CARD_DECLINED", "2차 실패"); // retryCount=2, 이번이 3번째 시도
         given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
         PaymentMethod card = savedCard(); // given 밖에서 먼저 생성(중첩 스터빙 방지)
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))

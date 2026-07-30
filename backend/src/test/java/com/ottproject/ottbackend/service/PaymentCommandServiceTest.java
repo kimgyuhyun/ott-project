@@ -106,10 +106,11 @@ class PaymentCommandServiceTest {
     }
 
     private MembershipSubscription activeSubscription() {
-        MembershipSubscription sub = new MembershipSubscription();
-        sub.setStatus(MembershipSubscriptionStatus.ACTIVE);
-        sub.setAutoRenew(true);
-        return sub;
+        MembershipPlan plan = new MembershipPlan();
+        plan.setPrice(new Money(9900L, "KRW"));
+        // 팩토리가 ACTIVE + autoRenew=true 로 만든다
+        return MembershipSubscription.createSubscription(
+                userWithId(1L), plan, NOW.minusDays(10), NOW.plusDays(20));
     }
 
     @Test

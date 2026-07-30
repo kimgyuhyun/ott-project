@@ -12,6 +12,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -58,14 +59,16 @@ class MembershipSubscriptionRepositoryTest {
     }
 
     /**
-     * 구독을 저장한다. 정적 팩토리는 status 를 ACTIVE 로 고정하므로 다른 상태가 필요하면 세터로 덮어쓴다.
+     * 구독을 저장한다. 정적 팩토리는 status 를 ACTIVE 로 고정하는데, 이 테스트는 조회 쿼리가 상태로
+     * 거르는지를 보는 것이라 임의 상태가 필요하다. 도메인 전이 메서드는 상태마다 부수 필드(해지 시각,
+     * 재시도 카운트)를 함께 바꿔 조회 조건과 무관한 값까지 끌고 들어오므로, 여기서는 필드만 주입한다.
      */
     private MembershipSubscription persistSubscription(User user, MembershipPlan plan,
                                                        LocalDateTime startAt, LocalDateTime endAt,
                                                        MembershipSubscriptionStatus status) {
         MembershipSubscription subscription =
                 MembershipSubscription.createSubscription(user, plan, startAt, endAt);
-        subscription.setStatus(status);
+        ReflectionTestUtils.setField(subscription, "status", status);
         return entityManager.persist(subscription);
     }
 

@@ -51,10 +51,8 @@ public class AdminController {
             // 해당 사용자의 활성 구독 조회
             subscriptionRepository.findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
                     .ifPresent(subscription -> {
-                        // 구독 해지 처리
-                        subscription.setStatus(MembershipSubscriptionStatus.CANCELED);
-                        subscription.setAutoRenew(false);
-                        subscription.setCanceledAt(now);
+                        // 구독 해지 처리(상태 + 해지 시각 + 자동갱신 중단)
+                        subscription.applyImmediateCancellation(now);
                         subscriptionRepository.save(subscription);
                         
                         log.info("구독 해지 완료 - userId: {}, subscriptionId: {}, paymentId: {}", 
