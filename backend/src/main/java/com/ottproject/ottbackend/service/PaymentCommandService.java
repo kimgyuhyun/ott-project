@@ -54,7 +54,7 @@ import java.util.UUID;
  * 메서드 개요
  * - verifyWebhook: 웹훅 기본 검증
  * - parseWebhookPayload: 웹훅 페이로드 파싱
- * - checkout: 체크아웃 세션 생성(멱등키 저장 포함 가능)
+ * - checkout: 체크아웃 세션 생성(멱등키 선삽입으로 중복 차단)
  * - applyWebhookEvent: SUCCEEDED/FAILED/CANCELED/REFUNDED 상태 전이 및 구독 반영
  * - refundIfEligible: 24시간·시청<300초 정책 검증 후 환불 실행
  *
@@ -392,9 +392,33 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		// 대가: 같은 키의 두 번째 요청은 첫 요청이 끝날 때까지 유니크 인덱스에서 대기한다.
 		// checkout 은 트랜잭션 안에서 PG 세션을 만들므로 그 대기가 PG 응답 시간만큼이다.
 		// 중복 요청이 결과를 알려면 기다리는 수밖에 없으므로 이는 정상 동작이다(해지 경로도 동일).
-		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank() // 멱등키 전달 시
-				&& idempotencyKeyRepository.findByKeyValue(req.idempotencyKey).isPresent()) { // 중복 확인
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다."); // 409
+		// 멱등키 선삽입: 처리를 시작하기 전에 먼저 넣어 유니크 제약이 동시 요청을 판정하게 한다.
+		//
+		// 예전에는 여기서 findByKeyValue 로 확인만 하고(select-then-insert), 플랜 조회·결제수단 등록·
+		// PG 세션 생성·Payment 생성을 다 끝낸 뒤 맨 마지막에 키를 저장했다. 확인과 저장 사이가
+		// 그만큼 벌어져 있어 동시 요청 둘 다 확인을 통과했고, PENDING 결제와 PG 세션이 두 개 생겼다
+		// (막아줄 제약이 payments.provider_session_id 뿐인데 세션 ID 는 요청마다 다르게 발급된다).
+		//
+		// saveAndFlush 로 INSERT 를 여기서 확정시켜, 제약 위반을 이 자리에서 잡는다. 중복은 기존과 똑같이
+		// 409 다 — 해지(membership.cancel)처럼 성공으로 흡수하지 않는다. 체크아웃의 응답은 결제 ID 와
+		// PG 세션이라 첫 요청의 결과를 뒤늦게 재현해 줄 수 없고, 원래 계약도 409 였다.
+		//
+		// 대가: 같은 키의 두 번째 요청은 첫 요청이 끝날 때까지 유니크 인덱스에서 대기한다.
+		// checkout 은 트랜잭션 안에서 PG 세션을 만들므로 그 대기가 PG 응답 시간만큼이다.
+		// 중복 요청이 결과를 알려면 기다리는 수밖에 없으므로 이는 정상 동작이다(해지 경로도 동일).
+		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank()) { // 멱등키 전달 시
+			if (idempotencyKeyRepository.findByKeyValue(req.idempotencyKey).isPresent()) { // 빠른 경로: 한참 전에 처리된 키
+				throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다."); // 409
+			}
+			try {
+				idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
+						req.idempotencyKey, // 키
+						"payment.checkout", // 용도
+						"" // 응답 데이터 (빈 값)
+				));
+			} catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
+				throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다.", e); // 409(빠른 경로와 같은 응답)
+			}
 		}
 		MembershipPlan plan = membershipPlanRepository.findByCode(req.planCode) // 플랜 조회
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "플랜이 존재하지 않습니다.")); // 400
@@ -490,14 +514,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		);
 		payment.attachPaymentMethod(paymentMethod); // 결제수단 연결
 		paymentRepository.save(payment); // 저장
-
-		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank()) { // 멱등키 저장
-			idempotencyKeyRepository.save(IdempotencyKey.createIdempotencyKey(
-					req.idempotencyKey, // 키
-					"payment.checkout", // 용도
-					"" // 응답 데이터 (빈 값)
-			)); // 멱등 엔티티 생성
-		}
+		// 멱등키는 위에서 이미 선삽입했다(처리 전에 선점해야 동시 요청을 판정할 수 있다).
 
 		PaymentCheckoutCreateSuccessResponseDto res = new PaymentCheckoutCreateSuccessResponseDto(); // 응답 DTO
 		res.redirectUrl = session.redirectUrl; // prepare-only 전환 이후 null (프론트 SDK가 결제창 호출)
