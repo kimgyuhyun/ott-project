@@ -24,15 +24,36 @@
 # ============================================================================
 services:
   pgadmin:
-    image: dpage/pgadmin4:latest
+    # [SECURITY 2026-07-31] latest → 다이제스트 고정 (PLATFORM 2절 "latest를 쓰지 않는다").
+    # 이 다이제스트는 지금까지 실제로 쓰던 그 이미지다(로컬 RepoDigest 그대로).
+    # latest 가 이미 움직였다는 건 추측이 아니라 확인된 사실이다: 로컬에 받아둔 이미지는
+    # 6주 전 것인데, 지금 레지스트리의 dpage/pgadmin4:latest 매니페스트는 다른 다이제스트를
+    # 가리킨다. latest 로 두면 다음에 pgadmin 을 올리는 순간 조용히 다른 이미지가 떴을 것이다.
+    # 갱신할 때: docker pull dpage/pgadmin4:<새태그> 후 아래 다이제스트를 바꾼다.
+    image: dpage/pgadmin4@sha256:40fa840c5bb7c8463957f1255b01283732c2d8c9396a956d180f8e6c296753b3
+    pull_policy: missing
     container_name: ott-pgadmin
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@ott-project.com}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin1234}
-      PGADMIN_LISTEN_PORT: 80
+      # [SECURITY 2026-07-31] 80 → 5050 (컨테이너 내부 리슨 포트).
+      # 이 이미지는 USER 5050(비root)으로 뜨는데, 그 상태로 80 을 들을 수 있는 이유는
+      # 이미지가 파일 capability 를 심어두기 때문이다(이미지 히스토리에서 확인):
+      #     setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/python3-cap
+      # 파일 capability 는 no-new-privileges 가 켜지면 커널이 무시하고, cap_drop: ALL 은
+      # 바운딩 셋에서 NET_BIND_SERVICE 를 빼버린다. 즉 아래 하드닝을 이 포트 그대로
+      # 붙이면 pgadmin 은 기동에 실패한다. 내부 포트를 1024 이상으로 올리면 특권 바인딩
+      # 자체가 필요 없어져서, capability 를 하나도 되돌리지 않고 하드닝할 수 있다.
+      # (호스트 쪽 접속 주소는 http://127.0.0.1:5050 그대로 — 아래 매핑 참고)
+      PGADMIN_LISTEN_PORT: 5050
+    # 비root(USER 5050) + 1024 이상 포트 → 되돌릴 capability 없음. 순수 cap_drop: ALL.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
     ports:
-      - "127.0.0.1:5050:80"   # 루프백 전용 노출 (외부 X)
+      - "127.0.0.1:5050:5050"   # 루프백 전용 노출 (외부 X). 접속 주소는 종전과 동일.
     volumes:
       - pgadmin_data:/var/lib/pgadmin
       - ./pgadmin/servers.json:/pgadmin4/servers.json:ro   # postgres 연결 사전 등록
