@@ -16,7 +16,6 @@ import java.util.List;
  *
  * 메서드 개요
  * - listHistory: 사용자 결제 이력 목록(기간 필터 선택)
- * - sumWatchedSecondsSincePaidEpisodes: 결제시각 이후 4화 이상 누적 시청 초 합
  */
 @Mapper // MyBatis 매퍼로 등록
 public interface PaymentQueryMapper { // 결제 조회 매퍼 인터페이스 시작
@@ -27,12 +26,6 @@ public interface PaymentQueryMapper { // 결제 조회 매퍼 인터페이스 �
 		@Param("end") LocalDateTime end // 조회 종료 시각(선택 가능)
 	);
 
-	/** 누적 시청 초 합(결제시각 이후 & 4화 이상만) */
-	Integer sumWatchedSecondsSincePaidEpisodes(
-		@Param("userId") Long userId,
-		@Param("since") LocalDateTime since
-	);
-	
 	/** providerSessionId로 결제 정보 조회 */
 	Payment findByProviderSessionId(@Param("providerSessionId") String providerSessionId);
 	

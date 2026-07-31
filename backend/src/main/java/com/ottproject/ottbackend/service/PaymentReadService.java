@@ -21,7 +21,6 @@ import java.util.List;
  *
  * 메서드 개요
  * - listHistory: 사용자 결제 이력 목록(기간 필터)
- * - sumWatchedSecondsSincePaidEpisodes: 결제시각 이후 4화 이상 누적 시청 초 합
  */
 @Service // 빈 등록
 @RequiredArgsConstructor // 생성자 주입
@@ -33,11 +32,6 @@ public class PaymentReadService { // 읽기 서비스
 		return paymentQueryMapper.listHistory(userId, start, end); // 매퍼 호출
 	}
 
-	public int sumWatchedSecondsSincePaidEpisodes(Long userId, LocalDateTime since) { // 4화 이상 누적 시청 합
-		Integer v = paymentQueryMapper.sumWatchedSecondsSincePaidEpisodes(userId, since); // 매퍼 호출
-		return v == null ? 0 : v; // null 방어
-	}
-	
 	/**
 	 * 결제 상태 조회
 	 * - 결제 ID로 결제 상태를 조회하여 DTO로 반환
