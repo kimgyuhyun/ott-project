@@ -19,6 +19,9 @@ export default function MembershipManagePage() {
   const [showCancelChangeModal, setShowCancelChangeModal] = useState(false);
   const [isCancellingChange, setIsCancellingChange] = useState(false);
   const [showCancelMembershipModal, setShowCancelMembershipModal] = useState(false);
+  // 해지 요청의 멱등 키. 모달을 여는 시점(= 해지 의도 1회)에 한 번만 만들고 재시도에도 같은 값을 보낸다.
+  // 요청할 때마다 새로 만들면 재시도가 서로 다른 키가 돼 서버 멱등 판정이 아무것도 막지 못한다.
+  const [cancelIdempotencyKey, setCancelIdempotencyKey] = useState<string | null>(null);
   const [isResuming, setIsResuming] = useState(false);
   const [notice, setNotice] = useState<{ type: 'success' | 'error', title: string, message: string } | null>(null);
   
@@ -113,7 +116,7 @@ export default function MembershipManagePage() {
 
     setIsCancelling(true);
     try {
-      await cancelMembership();
+      await cancelMembership(cancelIdempotencyKey ?? undefined);
       await reloadUserMembership();
       setShowCancelMembershipModal(false);
       setNotice({ type: 'success', title: '해지 완료', message: '멤버십 해지에 성공했습니다.' });
@@ -558,7 +561,10 @@ export default function MembershipManagePage() {
         <div className={styles.cancelSection}>
           <button 
             className={styles.cancelMembershipButton}
-            onClick={() => setShowCancelMembershipModal(true)}
+            onClick={() => {
+              setCancelIdempotencyKey(crypto.randomUUID()); // 이 해지 의도에 대한 키를 여기서 한 번만 만든다
+              setShowCancelMembershipModal(true);
+            }}
             disabled={isCancelling}
           >
             {isCancelling ? '처리 중...' : '멤버십 해지'}

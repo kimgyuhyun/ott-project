@@ -22,6 +22,7 @@ import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -82,6 +83,13 @@ class PaymentCommandServiceTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 16, 12, 0);
 
+    @BeforeEach
+    void setUp() {
+        // 확정 경로는 단계마다 트랜잭션 경계를 만들려고 자기 자신을 프록시로 호출한다.
+        // 단위 테스트에는 프록시가 없으므로 자기 참조를 직접 꽂아준다(트랜잭션은 어차피 no-op).
+        ReflectionTestUtils.setField(service, "self", service);
+    }
+
     private User userWithId(long id) {
         User user = new User();
         user.setId(id);
@@ -121,14 +129,14 @@ class PaymentCommandServiceTest {
 
         service.applyWebhookEvent(1L, event(PaymentStatus.FAILED));
 
-        verify(paymentRepository, never()).findById(anyLong());
+        verify(paymentRepository, never()).findByIdForUpdate(anyLong());
     }
 
     @Test
     @DisplayName("금액이 결제 레코드와 다르면 400 거부 - 위조 웹훅 방어(멱등키도 저장 안 함)")
     void amountMismatchIsRejected() {
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(pendingPayment()));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(pendingPayment()));
         PaymentWebhookEventDto e = event(PaymentStatus.FAILED);
         e.amount = 5000L; // 실제 결제는 9900원
 
@@ -144,7 +152,7 @@ class PaymentCommandServiceTest {
     @DisplayName("통화가 다르면 400 거부 - 통화 바꿔치기 방어")
     void currencyMismatchIsRejected() {
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(pendingPayment()));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(pendingPayment()));
         PaymentWebhookEventDto e = event(PaymentStatus.FAILED);
         e.currency = "USD"; // 실제 결제는 KRW
 
@@ -158,7 +166,7 @@ class PaymentCommandServiceTest {
     @DisplayName("세션ID가 다르면 400 거부 - 다른 결제건의 웹훅 오적용 방어")
     void sessionMismatchIsRejected() {
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(pendingPayment()));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(pendingPayment()));
         PaymentWebhookEventDto e = event(PaymentStatus.FAILED);
         e.providerSessionId = "sess_other"; // 실제 결제 세션은 sess_1
 
@@ -171,7 +179,7 @@ class PaymentCommandServiceTest {
     @DisplayName("존재하지 않는 결제면 400 거부")
     void unknownPaymentIsRejected() {
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(999L)).willReturn(Optional.empty());
+        given(paymentRepository.findByIdForUpdate(999L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.applyWebhookEvent(999L, event(PaymentStatus.FAILED)))
                 .isInstanceOf(ResponseStatusException.class);
@@ -183,7 +191,7 @@ class PaymentCommandServiceTest {
         Payment payment = pendingPayment();
         MembershipSubscription sub = activeSubscription();
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
         given(subscriptionRepository.findActiveEffectiveByUser(1L, MembershipSubscriptionStatus.ACTIVE, NOW))
                 .willReturn(Optional.of(sub));
 
@@ -199,7 +207,7 @@ class PaymentCommandServiceTest {
     @DisplayName("멱등키 선삽입이 유니크 제약에 걸리면 전용 예외로 좁혀 던진다 - 컨트롤러가 200 으로 흡수할 대상")
     void concurrentWebhookLosesRaceOnIdempotencyKey() {
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty()); // 빠른 경로는 통과
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(pendingPayment()));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(pendingPayment()));
         // 같은 eventId 를 다른 요청이 먼저 넣어 커밋한 상황
         given(idempotencyKeyRepository.saveAndFlush(any()))
                 .willThrow(new DataIntegrityViolationException("ux_idempotency_key"));
@@ -217,7 +225,7 @@ class PaymentCommandServiceTest {
         Payment payment = pendingPayment();
         MembershipSubscription sub = activeSubscription();
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
         given(subscriptionRepository.findActiveEffectiveByUser(1L, MembershipSubscriptionStatus.ACTIVE, NOW))
                 .willReturn(Optional.of(sub));
 
@@ -236,7 +244,7 @@ class PaymentCommandServiceTest {
         Payment payment = pendingPayment();
         MembershipSubscription sub = activeSubscription();
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
         given(subscriptionRepository.findActiveEffectiveByUser(1L, MembershipSubscriptionStatus.ACTIVE, NOW))
                 .willReturn(Optional.of(sub));
         PaymentWebhookEventDto e = event(PaymentStatus.REFUNDED);
@@ -255,7 +263,7 @@ class PaymentCommandServiceTest {
     @DisplayName("지원하지 않는 상태(PENDING)는 400 거부")
     void unsupportedStatusIsRejected() {
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(pendingPayment()));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(pendingPayment()));
 
         assertThatThrownBy(() -> service.applyWebhookEvent(1L, event(PaymentStatus.PENDING)))
                 .isInstanceOf(ResponseStatusException.class);
@@ -276,7 +284,7 @@ class PaymentCommandServiceTest {
     void succeededConfirmsPaymentAndProvisionsMembership() {
         Payment payment = pendingPayment();
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
 
         service.applyWebhookEvent(1L, succeededEvent());
 
@@ -295,7 +303,7 @@ class PaymentCommandServiceTest {
         // 클라 확정/이전 웹훅으로 이미 확정됨
         payment.applyGatewaySuccess(payment.getProviderPaymentId(), null, NOW.minusMinutes(5));
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
 
         // eventId 가 다른(=멱등키로 못 거르는) 재전송 웹훅도 여기서 막혀야 한다
         service.applyWebhookEvent(1L, succeededEvent());
@@ -312,7 +320,7 @@ class PaymentCommandServiceTest {
     void provisioningFailurePropagatesSoPaymentRollsBack() {
         Payment payment = pendingPayment();
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
         org.mockito.BDDMockito.willThrow(new RuntimeException("subscribe boom"))
                 .given(membershipCommandService).subscribe(anyLong(), any());
 
@@ -328,7 +336,7 @@ class PaymentCommandServiceTest {
     void outboxFailurePropagates() {
         Payment payment = pendingPayment();
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
         given(outboxEventRepository.save(any())).willThrow(new RuntimeException("db down"));
 
         assertThatThrownBy(() -> service.applyWebhookEvent(1L, succeededEvent()))
@@ -388,7 +396,7 @@ class PaymentCommandServiceTest {
         given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(true, "failed"));
         given(paymentQueryMapper.findByProviderSessionId("sess_1")).willReturn(payment);
         given(idempotencyKeyRepository.findByKeyValue("imp_1:FAILED")).willReturn(Optional.empty());
-        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
         given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
                 .willReturn(Optional.of(sub));
 

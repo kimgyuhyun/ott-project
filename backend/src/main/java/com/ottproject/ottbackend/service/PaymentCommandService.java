@@ -32,9 +32,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -51,9 +54,17 @@ import java.util.UUID;
  * 메서드 개요
  * - verifyWebhook: 웹훅 기본 검증
  * - parseWebhookPayload: 웹훅 페이로드 파싱
- * - checkout: 체크아웃 세션 생성(멱등키 저장 포함 가능)
+ * - checkout: 체크아웃 세션 생성(멱등키 선삽입으로 중복 차단)
  * - applyWebhookEvent: SUCCEEDED/FAILED/CANCELED/REFUNDED 상태 전이 및 구독 반영
  * - refundIfEligible: 24시간·시청<300초 정책 검증 후 환불 실행
+ *
+ * 결제 확정의 이중 지급 방어 구조
+ * - 확정 경로는 셋이다: 클라 확정(completePayment) / 웹훅(applyWebhookEvent) / 대사 배치(reconcilePending).
+ *   셋 다 markSucceededAndProvision 으로 수렴하고, 그 멱등 가드는 "이미 SUCCEEDED 면 return" 이다.
+ * - 이 가드가 유효하려면 상태를 "잠그고" 읽어야 한다. 락 없이 읽으면 클라 확정과 웹훅이
+ *   (설계상 동시에 일어나는 정상 흐름이다) 둘 다 가드를 통과해 멤버십을 두 번 지급한다.
+ * - 그래서 세 경로 모두 "PG 재검증(트랜잭션 밖) → 락+상태 재확인+지급(짧은 트랜잭션)" 으로 쪼갠다.
+ *   락 구간에 외부 API 호출을 넣지 않기 위한 분리다(9절). RecurringBillingService.retryBilling 과 같은 형태.
  */
 @Slf4j // 로깅
 @Service // 스프링 빈 등록
@@ -74,6 +85,13 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final OutboxEventRepository outboxEventRepository; // 아웃박스 이벤트 리포지토리(부수효과 발행)
 	private final ObjectMapper objectMapper; // 이벤트 페이로드 JSON 직렬화
 
+	// 단계별 트랜잭션을 프록시에 태우기 위한 자기 참조(RecurringBillingService 와 같은 이유).
+	// 확정 경로는 "PG 재검증 / 락+재확인+지급" 을 서로 다른 트랜잭션 경계로 나눠야 하는데,
+	// 같은 빈 안에서 그냥 호출하면 프록시를 안 타서 @Transactional 이 무시된다.
+	@Autowired
+	@Lazy
+	private PaymentCommandService self;
+
 	// 테스트 결제 금액(원). 0이면 실제 플랜 금액으로 결제
 	@Value("${payments.test-amount:0}")
 	private long testAmount;
@@ -81,7 +99,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	/**
 	 * 웹훅 메인 처리 로직
 	 * - 아임포트로부터 수신된 웹훅을 처리하는 메인 진입점
+	 * - 트랜잭션을 열지 않는다: 아래 4단계의 API 선재검증이 외부 HTTP 호출이라 트랜잭션 안에 두면
+	 *   PG 응답 시간만큼 트랜잭션이 늘어진다(4·5절). 실제 상태 변경은 applyWebhookEvent 가
+	 *   자기 트랜잭션 안에서 락을 잡고 수행한다.
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED)
 	public void processWebhook(HttpHeaders headers, String rawBody) {
 		log.info("웹훅 처리 시작");
 		
@@ -225,7 +247,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private void handlePaymentSuccess(Payment payment, PaymentWebhookEventDto event) {
 		log.info("결제 성공 웹훅 처리 - paymentId: {}", payment.getId());
 		// processPaymentSuccess 대신 applyWebhookEvent를 직접 호출하여 일관성 보장
-		applyWebhookEvent(payment.getId(), event);
+		// self 경유: processWebhook 에는 트랜잭션이 없으므로 여기서 프록시를 타야 경계가 생긴다.
+		self.applyWebhookEvent(payment.getId(), event);
 	}
 	
 	/**
@@ -233,7 +256,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 */
 	private void handlePaymentFailure(Payment payment, PaymentWebhookEventDto event) {
 		log.info("결제 실패 웹훅 처리 - paymentId: {}", payment.getId());
-		applyWebhookEvent(payment.getId(), event);
+		self.applyWebhookEvent(payment.getId(), event);
 	}
 	
 	/**
@@ -241,7 +264,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 */
 	private void handlePaymentCancel(Payment payment, PaymentWebhookEventDto event) {
 		log.info("결제 취소 웹훅 처리 - paymentId: {}", payment.getId());
-		applyWebhookEvent(payment.getId(), event);
+		self.applyWebhookEvent(payment.getId(), event);
 	}
 	
 	/**
@@ -249,7 +272,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 */
 	private void handlePaymentRefund(Payment payment, PaymentWebhookEventDto event) {
 		log.info("결제 환불 웹훅 처리 - paymentId: {}", payment.getId());
-		applyWebhookEvent(payment.getId(), event);
+		self.applyWebhookEvent(payment.getId(), event);
 	}
 
 	/**
@@ -355,9 +378,47 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		}
 		
 		log.info("결제 서비스 매핑 - input: {}, mapped: {}", req.paymentService, mappedPg);
-		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank() // 멱등키 전달 시
-				&& idempotencyKeyRepository.findByKeyValue(req.idempotencyKey).isPresent()) { // 중복 확인
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다."); // 409
+		// 멱등키 선삽입: 처리를 시작하기 전에 먼저 넣어 유니크 제약이 동시 요청을 판정하게 한다.
+		//
+		// 예전에는 여기서 findByKeyValue 로 확인만 하고(select-then-insert), 플랜 조회·결제수단 등록·
+		// PG 세션 생성·Payment 생성을 다 끝낸 뒤 맨 마지막에 키를 저장했다. 확인과 저장 사이가
+		// 그만큼 벌어져 있어 동시 요청 둘 다 확인을 통과했고, PENDING 결제와 PG 세션이 두 개 생겼다
+		// (막아줄 제약이 payments.provider_session_id 뿐인데 세션 ID 는 서로 다르게 발급된다).
+		//
+		// saveAndFlush 로 INSERT 를 여기서 확정시켜, 제약 위반을 이 자리에서 잡는다. 중복은 기존과 똑같이
+		// 409 다 — 해지(membership.cancel)처럼 성공으로 흡수하지 않는다. 체크아웃의 응답은 결제 ID 와
+		// PG 세션이라 첫 요청의 결과를 뒤늦게 재현해 줄 수 없고, 원래 계약도 409 였다.
+		//
+		// 대가: 같은 키의 두 번째 요청은 첫 요청이 끝날 때까지 유니크 인덱스에서 대기한다.
+		// checkout 은 트랜잭션 안에서 PG 세션을 만들므로 그 대기가 PG 응답 시간만큼이다.
+		// 중복 요청이 결과를 알려면 기다리는 수밖에 없으므로 이는 정상 동작이다(해지 경로도 동일).
+		// 멱등키 선삽입: 처리를 시작하기 전에 먼저 넣어 유니크 제약이 동시 요청을 판정하게 한다.
+		//
+		// 예전에는 여기서 findByKeyValue 로 확인만 하고(select-then-insert), 플랜 조회·결제수단 등록·
+		// PG 세션 생성·Payment 생성을 다 끝낸 뒤 맨 마지막에 키를 저장했다. 확인과 저장 사이가
+		// 그만큼 벌어져 있어 동시 요청 둘 다 확인을 통과했고, PENDING 결제와 PG 세션이 두 개 생겼다
+		// (막아줄 제약이 payments.provider_session_id 뿐인데 세션 ID 는 요청마다 다르게 발급된다).
+		//
+		// saveAndFlush 로 INSERT 를 여기서 확정시켜, 제약 위반을 이 자리에서 잡는다. 중복은 기존과 똑같이
+		// 409 다 — 해지(membership.cancel)처럼 성공으로 흡수하지 않는다. 체크아웃의 응답은 결제 ID 와
+		// PG 세션이라 첫 요청의 결과를 뒤늦게 재현해 줄 수 없고, 원래 계약도 409 였다.
+		//
+		// 대가: 같은 키의 두 번째 요청은 첫 요청이 끝날 때까지 유니크 인덱스에서 대기한다.
+		// checkout 은 트랜잭션 안에서 PG 세션을 만들므로 그 대기가 PG 응답 시간만큼이다.
+		// 중복 요청이 결과를 알려면 기다리는 수밖에 없으므로 이는 정상 동작이다(해지 경로도 동일).
+		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank()) { // 멱등키 전달 시
+			if (idempotencyKeyRepository.findByKeyValue(req.idempotencyKey).isPresent()) { // 빠른 경로: 한참 전에 처리된 키
+				throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다."); // 409
+			}
+			try {
+				idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
+						req.idempotencyKey, // 키
+						"payment.checkout", // 용도
+						"" // 응답 데이터 (빈 값)
+				));
+			} catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
+				throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다.", e); // 409(빠른 경로와 같은 응답)
+			}
 		}
 		MembershipPlan plan = membershipPlanRepository.findByCode(req.planCode) // 플랜 조회
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "플랜이 존재하지 않습니다.")); // 400
@@ -453,14 +514,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		);
 		payment.attachPaymentMethod(paymentMethod); // 결제수단 연결
 		paymentRepository.save(payment); // 저장
-
-		if (req.idempotencyKey != null && !req.idempotencyKey.isBlank()) { // 멱등키 저장
-			idempotencyKeyRepository.save(IdempotencyKey.createIdempotencyKey(
-					req.idempotencyKey, // 키
-					"payment.checkout", // 용도
-					"" // 응답 데이터 (빈 값)
-			)); // 멱등 엔티티 생성
-		}
+		// 멱등키는 위에서 이미 선삽입했다(처리 전에 선점해야 동시 요청을 판정할 수 있다).
 
 		PaymentCheckoutCreateSuccessResponseDto res = new PaymentCheckoutCreateSuccessResponseDto(); // 응답 DTO
 		res.redirectUrl = session.redirectUrl; // prepare-only 전환 이후 null (프론트 SDK가 결제창 호출)
@@ -473,7 +527,10 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 
 	/**
 	 * 웹훅 반영(멱등)
+	 * - 자기 트랜잭션 안에서 실행된다(processWebhook 은 트랜잭션을 열지 않는다).
+	 *   여기 도달하기 전에 PG 선재검증이 끝나 있으므로, 이 트랜잭션 안에는 외부 호출이 없다.
 	 */
+	@Transactional
 	public void applyWebhookEvent(Long paymentId, PaymentWebhookEventDto event) { // 웹훅 반영
 		if (paymentId == null || event == null) { // 유효성 검사
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "잘못된 요청입니다."); // 400
@@ -482,7 +539,10 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				&& idempotencyKeyRepository.findByKeyValue(event.eventId).isPresent()) { // 중복 확인
 			return; // 이미 처리됨
 		}
-		Payment payment = paymentRepository.findById(paymentId) // 결제 단건 조회
+		// 락을 잡고 읽는다. eventId 멱등키는 "같은 웹훅의 재전송"만 막을 뿐,
+		// 웹훅과 클라 확정처럼 서로 다른 경로가 같은 결제를 동시에 확정하는 것은 막지 못한다.
+		// 그 판정은 이 락과 markSucceededAndProvision 의 상태 재확인이 한다.
+		Payment payment = paymentRepository.findByIdForUpdate(paymentId) // 결제 단건 조회(비관적 쓰기 락)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제가 존재하지 않습니다.")); // 400
 
 		// 페이로드 재검증: 금액/통화/세션ID(가능 시) 대조
@@ -596,9 +656,13 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 * 결제 성공 확정 + 멤버십 지급 (공통 확정 로직)
 	 * - 웹훅 / 클라이언트 확정 / 대사 배치가 모두 이 메서드로 수렴한다.
 	 * - 멱등: 이미 SUCCEEDED면 아무 것도 하지 않아 중복 지급을 방지한다.
+	 *
+	 * ⚠ 호출자는 반드시 payments 행을 잠근 채로 들어와야 한다(findByIdForUpdate).
+	 * - 아래 가드는 "조회 후 분기"라, 잠그지 않고 읽은 상태로 판정하면 동시 요청 둘 다 통과한다.
+	 *   락이 없으면 이 메서드는 멱등하지 않다. 락을 잡는 자리는 confirmSucceeded 와 applyWebhookEvent 다.
 	 */
 	private void markSucceededAndProvision(Payment payment, String providerPaymentId, String receiptUrl, LocalDateTime paidAt) {
-		if (payment.getStatus() == PaymentStatus.SUCCEEDED) { // 이미 확정됨(멱등)
+		if (payment.getStatus() == PaymentStatus.SUCCEEDED) { // 이미 확정됨(멱등, 락 아래에서 재확인된 상태)
 			return; // 재지급 방지
 		}
 		// 상태·결제시각·완료시각·외부 결제 ID 를 한 번에 확정(영수증은 있을 때만 갱신 — 클라 경로는 null일 수 있음)
@@ -692,30 +756,72 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 * - 결제창 성공 콜백에서 imp_uid를 받아 아임포트 API로 재검증한 뒤 즉시 확정/지급한다.
 	 * - 웹훅이 도달하지 않아도 멤버십이 활성화되도록 하는 주 경로(웹훅/배치는 백업 안전망).
 	 * - 멱등: 이미 SUCCEEDED면 재검증 없이 성공으로 간주한다.
+	 *
+	 * 3단계로 쪼갠 이유
+	 * - 예전에는 이 메서드 전체가 한 트랜잭션이었고, 락 없이 읽은 상태로 멱등 가드를 통과한 뒤
+	 *   PG 재검증을 부르고 확정했다. 가드를 통과한 시점과 확정하는 시점 사이가 PortOne 응답 시간만큼
+	 *   벌어져 있어서, 그 사이에 웹훅이 먼저 확정을 끝내도 이 경로는 자기가 아까 내린 결론대로 또 지급했다.
+	 *   결제 1건에 구독 2건·아웃박스 2건이 생기고 영수증 메일이 2통 나갔다.
+	 * - 그렇다고 처음부터 락을 잡으면 PG 응답을 기다리는 내내 payments 행 락을 쥐게 된다(9절이 금지).
+	 *   그래서 재검증은 트랜잭션 밖에서 끝내고, 확정만 짧은 트랜잭션 안에서 락을 잡고 한다.
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED) // PG 재검증이 트랜잭션 안에 들어가지 않게 한다
 	public void completePayment(Long userId, Long paymentId, String impUid) {
-		Payment payment = paymentRepository.findById(paymentId) // 결제 단건 조회
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "결제가 존재하지 않습니다.")); // 404
-		if (!payment.getUser().getId().equals(userId)) { // 소유자 검증
-			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 결제만 확정할 수 있습니다."); // 403
-		}
-		if (payment.getStatus() == PaymentStatus.SUCCEEDED) { // 이미 확정됨(멱등)
+		CompletionTarget target = self.prepareCompletion(userId, paymentId); // 1단계: 소유자 검증 + 빠른 가드
+		if (target == null) { // 이미 확정됨(멱등)
 			return;
 		}
 		if (impUid == null || impUid.isBlank()) { // imp_uid 필수
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "imp_uid가 필요합니다."); // 400
 		}
-		long expectedAmount = (payment.getPrice() != null ? payment.getPrice().getAmount() : 0L); // 기대 금액(서버 확정, 테스트 1원)
 		boolean valid = false;
-		if (paymentGateway instanceof ImportPaymentGateway) { // 아임포트 API로 재검증(클라 응답 자체는 신뢰하지 않음)
+		if (paymentGateway instanceof ImportPaymentGateway) { // 2단계: 트랜잭션 밖에서 아임포트 API 재검증(클라 응답 자체는 신뢰하지 않음)
 			valid = ((ImportPaymentGateway) paymentGateway)
-					.verifyPaymentStatus(impUid, payment.getProviderSessionId(), expectedAmount);
+					.verifyPaymentStatus(impUid, target.providerSessionId(), target.expectedAmount());
 		}
 		if (!valid) { // 재검증 실패
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다. (PG 재검증 불일치)"); // 400
 		}
-		markSucceededAndProvision(payment, impUid, null, LocalDateTime.now()); // 공통 확정 로직으로 수렴
+		self.confirmSucceeded(paymentId, impUid, null, LocalDateTime.now()); // 3단계: 락 + 상태 재확인 + 지급
 	}
+
+	/**
+	 * 클라이언트 확정 1단계 — 소유자를 확인하고 재검증에 필요한 값을 뽑는다.
+	 * - 여기서 보는 상태는 빠른 경로일 뿐이다. 실제 중복 판정은 3단계가 락을 잡고 다시 한다.
+	 * @return 확정 대상, 이미 확정돼 할 일이 없으면 null
+	 */
+	@Transactional(readOnly = true)
+	public CompletionTarget prepareCompletion(Long userId, Long paymentId) {
+		Payment payment = paymentRepository.findById(paymentId) // 결제 단건 조회(락 없는 빠른 경로)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "결제가 존재하지 않습니다.")); // 404
+		if (!payment.getUser().getId().equals(userId)) { // 소유자 검증
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 결제만 확정할 수 있습니다."); // 403
+		}
+		if (payment.getStatus() == PaymentStatus.SUCCEEDED) { // 이미 확정됨(멱등)
+			return null;
+		}
+		return new CompletionTarget(
+				payment.getProviderSessionId(), // merchant_uid(재검증 대조용)
+				payment.getPrice() != null ? payment.getPrice().getAmount() : 0L); // 기대 금액(서버 확정, 테스트 1원)
+	}
+
+	/**
+	 * 확정 단계 — 결제 행을 잠그고 상태를 다시 확인한 뒤 지급한다.
+	 * - 클라 확정과 대사 배치가 공유하는 마지막 단계다(웹훅은 applyWebhookEvent 가 이미 락을 잡고 들어온다).
+	 * - 이 트랜잭션 안에는 외부 호출이 없다. PG 재검증은 호출자가 트랜잭션 밖에서 끝내고 들어온다(9절).
+	 */
+	@Transactional
+	public void confirmSucceeded(Long paymentId, String providerPaymentId, String receiptUrl, LocalDateTime paidAt) {
+		Payment payment = paymentRepository.findByIdForUpdate(paymentId) // 락을 잡고 최신 상태로 다시 읽는다
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제가 존재하지 않습니다.")); // 400
+		markSucceededAndProvision(payment, providerPaymentId, receiptUrl, paidAt); // 공통 확정 로직으로 수렴
+	}
+
+	/**
+	 * 클라이언트 확정 대상 — 트랜잭션 밖에서 PG 재검증을 하기 위해 결제에서 뽑아둔 값들.
+	 * - 트랜잭션이 닫힌 뒤에 쓰이므로 엔티티를 그대로 들고 나가지 않는다(지연 로딩 필드 접근 방지).
+	 */
+	public record CompletionTarget(String providerSessionId, long expectedAmount) {}
 
 	/**
 	 * 대사(reconciliation) — 오래된 미확정(PENDING) 결제를 아임포트 실제 상태로 정리
@@ -724,25 +830,53 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 * - paid면 확정/지급(공통 로직 수렴), failed/cancelled면 상태 전이, 아직 미결이면 건너뜀.
 	 * @return 상태가 확정적으로 정리되면 true
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED) // 아임포트 역조회가 트랜잭션 안에 들어가지 않게 한다
 	public boolean reconcilePending(Long paymentId) {
-		Payment payment = paymentRepository.findById(paymentId).orElse(null); // 결제 조회
+		String merchantUid = self.prepareReconcile(paymentId); // 1단계: 대사 대상 여부 판정
+		if (merchantUid == null) {
+			return false; // 대상 아님(이미 확정/취소됨, 차액 결제, 아임포트 구현 아님)
+		}
+		ImportPaymentGateway.ReconcileResult r =
+				((ImportPaymentGateway) paymentGateway).findByMerchantUid(merchantUid); // 2단계: 트랜잭션 밖에서 merchant_uid 역조회
+		if (!r.found || r.status == null) {
+			return false; // 결제 시도 기록 없음(prepare만) → 유지
+		}
+		return self.applyReconcileResult(paymentId, r, LocalDateTime.now()); // 3단계: 락 + 상태 재확인 + 반영
+	}
+
+	/**
+	 * 대사 1단계 — 대사 대상인지 판정하고 역조회 키만 뽑는다.
+	 * - 여기서 본 PENDING 은 빠른 경로일 뿐이다. 실제 판정은 3단계가 락을 잡고 다시 한다.
+	 * @return 역조회할 merchant_uid, 대상이 아니면 null
+	 */
+	@Transactional(readOnly = true)
+	public String prepareReconcile(Long paymentId) {
+		Payment payment = paymentRepository.findById(paymentId).orElse(null); // 결제 조회(락 없는 빠른 경로)
 		if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
-			return false; // 대상 아님(이미 확정/취소됨)
+			return null; // 대상 아님(이미 확정/취소됨)
 		}
 		// 차액(proration) 결제는 자체 complete 경로가 플랜 변경을 처리한다.
 		// 여기서 확정하면 markSucceededAndProvision이 '새 구독'을 만들어 오처리되므로 건너뛴다.
 		if (payment.getProviderSessionId() != null && payment.getProviderSessionId().startsWith("proration_")) {
-			return false;
+			return null;
 		}
 		if (!(paymentGateway instanceof ImportPaymentGateway)) {
-			return false; // 아임포트 구현이 아니면 스킵
+			return null; // 아임포트 구현이 아니면 스킵
 		}
-		ImportPaymentGateway.ReconcileResult r =
-				((ImportPaymentGateway) paymentGateway).findByMerchantUid(payment.getProviderSessionId()); // merchant_uid 역조회
-		if (!r.found || r.status == null) {
-			return false; // 결제 시도 기록 없음(prepare만) → 유지
+		return payment.getProviderSessionId();
+	}
+
+	/**
+	 * 대사 3단계 — 결제 행을 잠그고 상태를 다시 확인한 뒤 아임포트 실제 상태를 반영한다.
+	 * - 1단계에서 본 PENDING 은 낡았을 수 있다. 아임포트에 물어보는 동안 클라 확정이나 웹훅이
+	 *   먼저 확정을 끝냈다면 여기서 물러나야 한다. 그러지 않으면 같은 결제로 구독이 하나 더 생긴다.
+	 */
+	@Transactional
+	public boolean applyReconcileResult(Long paymentId, ImportPaymentGateway.ReconcileResult r, LocalDateTime now) {
+		Payment payment = paymentRepository.findByIdForUpdate(paymentId).orElse(null); // 락을 잡고 최신 상태로 다시 읽는다
+		if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
+			return false; // 대사 중에 다른 확정 경로가 먼저 정리함
 		}
-		LocalDateTime now = LocalDateTime.now();
 		// 정기결제 재청구는 전용 확정 경로가 처리한다.
 		// 아래 markSucceededAndProvision 은 체크아웃 전제라 subscribe()로 '새 구독'을 만든다.
 		// 재청구 대상 구독은 연장돼야 하므로 그대로 태우면 고아 구독이 생기고 원래 구독은 해지된다.

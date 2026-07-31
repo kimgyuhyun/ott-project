@@ -17,9 +17,12 @@ import com.ottproject.ottbackend.repository.PaymentRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -40,6 +43,14 @@ import java.util.UUID;
  * - createProrationCheckout: 차액 결제 세션 생성
  * - completeProrationPayment: 차액 결제 완료 처리
  * - calculateProrationAmount: 차액 계산
+ *
+ * 이중 확정 방어 구조
+ * - 이 경로에는 백업 안전망이 없다. 웹훅(PaymentCommandService.processWebhook)과 대사 배치는
+ *   merchant_uid 의 "proration_" 접두사를 보고 의도적으로 건너뛴다. 클라이언트 확정이 유일한 경로다.
+ * - 그래서 "PENDING 인가" 판정은 반드시 잠근 상태에서 해야 한다. 락 없이 읽고 분기하면 동시 요청
+ *   둘 다 통과해 아웃박스가 2건 적재되고 영수증 메일이 2통 나간다.
+ * - PaymentCommandService 의 확정 경로와 같은 3단계 구성이다:
+ *   prepare(readOnly) → PG 재검증(트랜잭션 밖) → 락+재확인+확정(짧은 트랜잭션).
  */
 @Service
 @RequiredArgsConstructor
@@ -52,6 +63,12 @@ public class ProrationPaymentService {
     private final PaymentGateway paymentGateway; // 아임포트 재검증(무단 업그레이드 차단)
     private final OutboxEventRepository outboxEventRepository; // 아웃박스 이벤트 리포지토리(영수증 메일 등 부수효과 발행)
     private final ObjectMapper objectMapper; // 이벤트 페이로드 JSON 직렬화
+
+    // 단계별 트랜잭션을 프록시에 태우기 위한 자기 참조(PaymentCommandService 와 같은 이유).
+    // 같은 빈 안에서 그냥 호출하면 프록시를 안 타서 @Transactional 이 무시된다.
+    @Autowired
+    @Lazy
+    private ProrationPaymentService self;
 
     // 테스트 결제 금액(원). 0이면 실제 차액으로 결제(메인 결제와 동일 규칙 → 재검증 통과)
     @Value("${payments.test-amount:0}")
@@ -133,10 +150,43 @@ public class ProrationPaymentService {
     /**
      * 차액 결제 완료 처리
      * - 결제 성공 시 플랜을 즉시 변경하고 구독을 업데이트한다.
+     *
+     * 3단계로 쪼갠 이유
+     * - 예전에는 이 메서드 전체가 한 트랜잭션이었고, 락 없이 읽은 상태로 "PENDING 인가"를 판정한 뒤
+     *   PG 재검증을 부르고 확정했다. 판정과 확정 사이가 PortOne 응답 시간만큼 벌어져 있어서
+     *   동시 요청(더블클릭 등) 둘 다 판정을 통과했다. 플랜은 같은 값으로 두 번 바뀌어 결과가 같지만,
+     *   아웃박스가 2건 적재돼 영수증 메일이 2통 나갔다.
+     * - 락을 먼저 잡으면 PG 응답을 기다리는 내내 payments 행 락을 쥐게 된다(ARCHITECTURE 9절 금지).
+     *   그래서 재검증은 트랜잭션 밖에서 끝내고, 확정만 짧은 트랜잭션 안에서 락을 잡고 한다.
      */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED) // PG 재검증이 트랜잭션 안에 들어가지 않게 한다
     public Map<String, Object> completeProrationPayment(Long userId, Long paymentId, String impUid) {
+        ProrationCompletionTarget target = self.prepareProrationCompletion(userId, paymentId); // 1단계: 소유자 검증 + 빠른 가드
+
+        // 아임포트 API로 결제 재검증(클라 호출 자체를 신뢰하지 않음 → 결제 없이 무단 업그레이드 차단)
+        if (impUid == null || impUid.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "imp_uid가 필요합니다.");
+        }
+        boolean valid = false;
+        if (paymentGateway instanceof ImportPaymentGateway) { // 2단계: 트랜잭션 밖에서 재검증
+            valid = ((ImportPaymentGateway) paymentGateway)
+                    .verifyPaymentStatus(impUid, target.providerSessionId(), target.expectedAmount());
+        }
+        if (!valid) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다. (PG 재검증 불일치)");
+        }
+
+        return self.confirmProrationPayment(userId, paymentId, impUid); // 3단계: 락 + 상태 재확인 + 확정
+    }
+
+    /**
+     * 차액 결제 확정 1단계 — 소유자를 확인하고 재검증에 필요한 값을 뽑는다.
+     * - 여기서 보는 상태는 빠른 경로일 뿐이다. 실제 중복 판정은 3단계가 락을 잡고 다시 한다.
+     */
+    @Transactional(readOnly = true)
+    public ProrationCompletionTarget prepareProrationCompletion(Long userId, Long paymentId) {
         // 결제 조회
-        Payment payment = paymentRepository.findById(paymentId)
+        Payment payment = paymentRepository.findById(paymentId) // 락 없는 빠른 경로
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "결제를 찾을 수 없습니다."));
 
         // 사용자 확인
@@ -149,18 +199,27 @@ public class ProrationPaymentService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 처리된 결제입니다.");
         }
 
-        // 아임포트 API로 결제 재검증(클라 호출 자체를 신뢰하지 않음 → 결제 없이 무단 업그레이드 차단)
-        if (impUid == null || impUid.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "imp_uid가 필요합니다.");
-        }
-        long expectedAmount = (payment.getPrice() != null ? payment.getPrice().getAmount() : 0L);
-        boolean valid = false;
-        if (paymentGateway instanceof ImportPaymentGateway) {
-            valid = ((ImportPaymentGateway) paymentGateway)
-                    .verifyPaymentStatus(impUid, payment.getProviderSessionId(), expectedAmount);
-        }
-        if (!valid) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다. (PG 재검증 불일치)");
+        return new ProrationCompletionTarget(
+                payment.getProviderSessionId(), // merchant_uid(재검증 대조용)
+                payment.getPrice() != null ? payment.getPrice().getAmount() : 0L);
+    }
+
+    /**
+     * 차액 결제 확정 3단계 — 결제 행을 잠그고 상태를 다시 확인한 뒤 플랜을 변경한다.
+     * - 1단계에서 본 PENDING 은 낡았을 수 있다. 재검증하는 동안 같은 결제의 다른 요청이 먼저
+     *   확정했다면 여기서 물러나야 한다. 그러지 않으면 영수증 메일이 두 번 나간다.
+     * - 경합에서 진 쪽은 순차 재요청과 똑같이 400 이다(기존 계약 유지).
+     *   해지처럼 성공으로 흡수하지 않는 이유는 응답에 플랜 변경 결과가 실려 나가기 때문이다.
+     * - 이 트랜잭션 안에는 외부 호출이 없다. PG 재검증은 호출자가 트랜잭션 밖에서 끝내고 들어온다(9절).
+     * - 락 순서는 payments → subscriptions 다(정본 순서).
+     */
+    @Transactional
+    public Map<String, Object> confirmProrationPayment(Long userId, Long paymentId, String impUid) {
+        Payment payment = paymentRepository.findByIdForUpdate(paymentId) // 락을 잡고 최신 상태로 다시 읽는다
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "결제를 찾을 수 없습니다."));
+
+        if (payment.getStatus() != PaymentStatus.PENDING) { // 재검증 중에 다른 요청이 먼저 확정함
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 처리된 결제입니다.");
         }
 
         // 결제 성공 처리 (상태·결제시각·완료시각·외부 결제 ID 를 한 번에 확정)
@@ -303,4 +362,10 @@ public class ProrationPaymentService {
                 return "kakaopay.TC0ONETIME";
         }
     }
+
+    /**
+     * 차액 결제 확정 대상 — 트랜잭션 밖에서 PG 재검증을 하기 위해 결제에서 뽑아둔 값들.
+     * - 트랜잭션이 닫힌 뒤에 쓰이므로 엔티티를 그대로 들고 나가지 않는다(지연 로딩 필드 접근 방지).
+     */
+    public record ProrationCompletionTarget(String providerSessionId, long expectedAmount) {}
 }
