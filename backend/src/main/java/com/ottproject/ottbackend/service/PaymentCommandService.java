@@ -605,9 +605,53 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	/**
 	 * 환불 정책 검증 후 환불 실행
 	 * - 조건: 결제일로부터 7일 이내 AND 전혀 시청하지 않음
+	 *
+	 * 3단계로 쪼갠 이유 (completePayment 와 같은 형태)
+	 * - 예전에는 이 메서드 전체가 클래스 레벨 @Transactional 안에서 돌았다. 락 없이 findById 로 읽은 상태로
+	 *   "SUCCEEDED 인가"를 판정하고 곧바로 issueRefund 를 불렀으므로, 동시 요청 둘이 모두 가드를 통과하면
+	 *   환불 API 가 두 번 나간다. 실제로 이중 환불까지 가는지는 아임포트가 두 번째를 거절해 주느냐에 달려
+	 *   있어 미확인이지만, 남의 판정에 기대는 구조라는 것 자체가 결함이다.
+	 * - 게다가 그 PG 호출이 트랜잭션 안에 있었다(5절 위반). DB 쓰기와 외부 결제 호출이 한 트랜잭션이었다.
+	 * - 그래서 락만 추가하는 것은 답이 아니다. 그러면 아임포트 응답 시간 내내 payments 행 락을 쥐게 되는데
+	 *   9절이 "락 구간에 외부 API 호출이 들어가면 비관적 락을 쓰지 않는다"고 한다. 분리가 락의 전제다.
+	 *
+	 * 왜 클라이언트 멱등키가 아니라 결정적 키인가
+	 * - 클라이언트가 만든 키는 같은 문자열일 때만 충돌한다. 탭이 둘이거나 클릭마다 새 UUID 를 만드는
+	 *   클라이언트는 서로 다른 키를 들고 오므로 둘 다 통과해 환불 API 가 그대로 두 번 나간다.
+	 *   막아야 할 대상이 "같은 요청의 재전송"이 아니라 "같은 결제에 대한 두 번째 환불"이기 때문이다.
+	 * - 그래서 키를 paymentId 에서 결정적으로 파생한다(6절: 결제 재시도 키는 주문 식별자에서 파생한다).
+	 *   클라이언트가 무엇을 보내든 결제 1건당 키는 하나뿐이라 유니크 제약이 항상 판정에 걸린다.
+	 *   API 계약은 그대로다 — 클라이언트가 새로 보낼 것이 없다.
+	 * - 판정을 락이 아니라 유니크 제약에 맡기는 이유가 여기 있다. 락은 3단계의 DB 쓰기만 직렬화할 뿐,
+	 *   그 앞에서 이미 나가버린 issueRefund 두 번을 되돌리지 못한다. 돈이 나가는 호출을 한 번으로 묶으려면
+	 *   호출 전에 선점이 끝나 있어야 한다(5절: 외부 호출 전에 그 시도를 DB 에 남긴다).
 	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED) // 환불 호출이 트랜잭션 안에 들어가지 않게 한다
 	public void refundIfEligible(Long userId, Long paymentId) { // 환불 엔드포인트 진입점
-		Payment payment = paymentRepository.findById(paymentId) // 결제 단건 조회
+		RefundTarget target = self.claimRefund(userId, paymentId); // 1단계: 정책 검증 + 환불권 선점(커밋됨)
+		try {
+			// 2단계: 트랜잭션 밖에서 환불 호출(전액 환불). 여기서 실패해도 1단계의 선점은 남는다 — 5절이
+			// 요구하는 "기록 없는 호출 금지"의 대가다. 타임아웃은 실패가 아니므로 자동 재시도하지 않는다.
+			PaymentGateway.RefundResult rr = paymentGateway.issueRefund(target.providerPaymentId(), target.amount());
+			// 3단계: 락 + 상태 재확인 + 확정
+			self.confirmRefunded(paymentId, target.amount(), rr.refundedAt != null ? rr.refundedAt : LocalDateTime.now());
+		} catch (ResponseStatusException e) {
+			throw e; // 이미 상태/사유가 있는 예외는 그대로 전파(markSucceededAndProvision 과 같은 처리)
+		} catch (Exception e) {
+			log.error("환불 실패 - paymentId: {}, imp_uid: {}", paymentId, target.providerPaymentId(), e);
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "환불 처리 중 오류가 발생했습니다: " + e.getMessage());
+		}
+	}
+
+	/**
+	 * 환불 1단계 — 정책을 검증하고 이 결제의 환불권을 선점한다.
+	 * - 여기서 보는 상태는 락 없는 빠른 경로다. 중복을 실제로 판정하는 것은 아래 멱등키 선삽입이고,
+	 *   3단계가 락을 잡고 한 번 더 확인한다.
+	 * @return 환불 대상(트랜잭션 밖에서 환불 API 를 부르는 데 필요한 값)
+	 */
+	@Transactional
+	public RefundTarget claimRefund(Long userId, Long paymentId) {
+		Payment payment = paymentRepository.findById(paymentId) // 결제 단건 조회(락 없는 빠른 경로)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제가 존재하지 않습니다.")); // 400
 		if (!payment.getUser().getId().equals(userId)) { // 소유자 검증
 			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 결제만 환불할 수 있습니다."); // 403
@@ -627,31 +671,77 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		if (totalWatched > 0) { // 시청 이력이 있으면 환불 불가
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "콘텐츠를 시청한 경우 환불이 불가합니다."); // 400
 		}
-		// 게이트웨이 환불 실행(전액 환불)
-		try {
-			PaymentGateway.RefundResult rr = paymentGateway.issueRefund(payment.getProviderPaymentId(), payment.getPrice().getAmount()); // 환불 호출
-			// 전액 환불: 상태 + 환불 금액 + 환불 시각을 함께 확정
-			payment.applyGatewayRefund(
-					payment.getPrice().getAmount(),
-					rr.refundedAt != null ? rr.refundedAt : LocalDateTime.now());
-			paymentRepository.save(payment); // 저장
-			
-			// 환불 시 멤버십 구독 즉시 해지
-			LocalDateTime now = LocalDateTime.now();
-			subscriptionRepository.findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
-					.ifPresent(sub -> {
-						sub.applyImmediateCancellation(now); // 즉시 해지 + 해지 시각 + 자동갱신 중단
-						subscriptionRepository.save(sub);
-						log.info("환불로 인한 멤버십 구독 해지 - userId: {}, subscriptionId: {}", userId, sub.getId());
-					});
-			
-			log.info("환불 성공 - paymentId: {}, imp_uid: {}", payment.getId(), payment.getProviderPaymentId());
-		} catch (Exception e) {
-			log.error("환불 실패 - paymentId: {}, imp_uid: {}", payment.getId(), payment.getProviderPaymentId(), e);
-			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "환불 처리 중 오류가 발생했습니다: " + e.getMessage());
+		// 환불권 선점: 정책 검증을 모두 통과한 뒤에 잡는다. 순서가 중요하다 — 정책으로 거절당한 요청까지
+		// 키를 태우면 그 결제는 나중의 정당한 환불도 영구히 막힌다(키는 결제당 하나뿐이고 반납 수단이 없다).
+		String refundKey = refundIdempotencyKey(paymentId);
+		if (idempotencyKeyRepository.findByKeyValue(refundKey).isPresent()) { // 빠른 경로: 이미 선점된 환불
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리 중이거나 처리된 환불 요청입니다."); // 409
 		}
+		try {
+			// saveAndFlush 로 INSERT 를 여기서 확정시켜, 제약 위반을 이 자리에서 잡는다(checkout 과 같은 형태).
+			idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
+					refundKey, // 키(paymentId 파생)
+					"payment.refund", // 용도
+					null // 응답 데이터(이 엔티티에는 응답 컬럼이 없다)
+			));
+		} catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리 중이거나 처리된 환불 요청입니다.", e); // 409(빠른 경로와 같은 응답)
+		}
+		return new RefundTarget(payment.getProviderPaymentId(), payment.getPrice().getAmount());
 	}
-	
+
+	/**
+	 * 환불 3단계 — 결제 행을 잠그고 상태를 다시 확인한 뒤 환불을 확정한다.
+	 * - 이 트랜잭션 안에는 외부 호출이 없다. 환불 API 는 호출자가 트랜잭션 밖에서 끝내고 들어온다(9절).
+	 *
+	 * 이 락이 무엇을 막고 무엇을 막지 않는지
+	 * - 환불 API 경로의 중복은 이 락이 아니라 1단계의 결정적 멱등키가 막는다. 락은 PG 호출 뒤에 걸리므로
+	 *   이미 나간 호출을 되돌리지 못한다. 여기 락의 몫은 확정 순서를 잡는 것뿐이다.
+	 * - 남는 경쟁 상대는 REFUNDED 웹훅(applyWebhookEvent)이다. 그쪽은 환불 멱등키를 지나지 않고
+	 *   같은 행에 같은 전이를 쓰므로, 두 경로를 직렬화하는 것은 payments 행 락뿐이다.
+	 * - 다만 웹훅 경로는 상태 가드 없이 덮어쓰기 때문에 락이 있으나 없으나 최종 값이 같다. 그래서
+	 *   이 락은 RefundIdempotencyTest 로 검증되지 않는다(제거해도 테스트가 통과한다). 정본 확정 형태와의
+	 *   일관성, 그리고 위 "이미 REFUNDED 면 return" 가드가 의미를 갖게 하려고 남긴다.
+	 */
+	@Transactional
+	public void confirmRefunded(Long paymentId, long refundedAmount, LocalDateTime refundedAt) {
+		Payment payment = paymentRepository.findByIdForUpdate(paymentId) // 락을 잡고 최신 상태로 다시 읽는다
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제가 존재하지 않습니다.")); // 400
+		if (payment.getStatus() == PaymentStatus.REFUNDED) { // 이미 반영됨(멱등, 락 아래에서 재확인된 상태)
+			return;
+		}
+		// 전액 환불: 상태 + 환불 금액 + 환불 시각을 함께 확정
+		payment.applyGatewayRefund(refundedAmount, refundedAt);
+		paymentRepository.save(payment); // 저장
+
+		// 환불 시 멤버십 구독 즉시 해지
+		Long ownerId = payment.getUser().getId();
+		LocalDateTime now = LocalDateTime.now();
+		subscriptionRepository.findActiveEffectiveByUser(ownerId, MembershipSubscriptionStatus.ACTIVE, now)
+				.ifPresent(sub -> {
+					sub.applyImmediateCancellation(now); // 즉시 해지 + 해지 시각 + 자동갱신 중단
+					subscriptionRepository.save(sub);
+					log.info("환불로 인한 멤버십 구독 해지 - userId: {}, subscriptionId: {}", ownerId, sub.getId());
+				});
+
+		log.info("환불 성공 - paymentId: {}, imp_uid: {}", payment.getId(), payment.getProviderPaymentId());
+	}
+
+	/**
+	 * 환불 대상 — 트랜잭션 밖에서 환불 API 를 부르기 위해 결제에서 뽑아둔 값들.
+	 * - 트랜잭션이 닫힌 뒤에 쓰이므로 엔티티를 그대로 들고 나가지 않는다(지연 로딩 필드 접근 방지).
+	 */
+	public record RefundTarget(String providerPaymentId, long amount) {}
+
+	/**
+	 * 환불 멱등키 — 결제 1건당 정확히 하나.
+	 * - 클라이언트 입력이 아니라 paymentId 에서 결정적으로 파생한다. 재시도할 때마다 새 UUID 를 만들면
+	 *   충돌하지 않아 아무것도 막지 못한다(6절).
+	 */
+	private static String refundIdempotencyKey(Long paymentId) {
+		return "payment.refund:" + paymentId;
+	}
+
 	/**
 	 * 결제 성공 확정 + 멤버십 지급 (공통 확정 로직)
 	 * - 웹훅 / 클라이언트 확정 / 대사 배치가 모두 이 메서드로 수렴한다.

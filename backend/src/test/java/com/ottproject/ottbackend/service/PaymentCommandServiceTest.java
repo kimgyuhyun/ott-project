@@ -446,6 +446,9 @@ class PaymentCommandServiceTest {
         PaymentGateway.RefundResult rr = new PaymentGateway.RefundResult();
         rr.refundedAt = LocalDateTime.now();
         given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        // 3단계가 락을 잡고 다시 읽는다(1단계의 findById 와 별개다)
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
+        given(idempotencyKeyRepository.findByKeyValue("payment.refund:1")).willReturn(Optional.empty());
         given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(1L), any())).willReturn(0);
         given(paymentGateway.issueRefund("imp_1", 9900L)).willReturn(rr);
         given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
