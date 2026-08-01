@@ -1,3 +1,17 @@
+// Flyway 10 은 DB 지원이 모듈로 분리돼 있다. Flyway Gradle 플러그인은 자기 buildscript
+// 클래스패스에서 드라이버와 DB 모듈을 찾으므로, 여기 없으면 접속을 시도하지도 못하고
+// "No database found to handle jdbc:postgresql://..." 로 실패한다.
+// (프로젝트의 runtimeOnly 나 flyway.configurations 로는 플러그인 클래스패스에 닿지 않는다)
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath 'org.flywaydb:flyway-database-postgresql:10.22.0'
+		classpath 'org.postgresql:postgresql:42.7.4'
+	}
+}
+
 plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.5.16'
@@ -116,14 +130,6 @@ configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
 	}
-	// Flyway Gradle 플러그인이 쓸 드라이버·DB 모듈 전용 구성.
-	// 애플리케이션 런타임 클래스패스와 섞지 않는다.
-	flywayMigration
-}
-
-dependencies {
-	flywayMigration 'org.postgresql:postgresql:42.7.4'
-	flywayMigration 'org.flywaydb:flyway-database-postgresql:10.22.0'
 }
 
 // 마이그레이션 검증.
@@ -132,7 +138,6 @@ dependencies {
 // CI 가 빈 Postgres 에 전량 적용(flywayMigrate)한 뒤 체크섬·순서를 검증(flywayValidate)한다.
 // 접속 정보는 CI 잡이 환경변수로 준다. 기본값은 로컬에서 손으로 돌릴 때를 위한 것이다.
 flyway {
-	configurations = ['flywayMigration']
 	url = System.getenv('FLYWAY_URL') ?: 'jdbc:postgresql://localhost:5432/ott_ci'
 	user = System.getenv('FLYWAY_USER') ?: 'ci'
 	password = System.getenv('FLYWAY_PASSWORD') ?: 'ci'
