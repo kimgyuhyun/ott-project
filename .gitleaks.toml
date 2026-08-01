@@ -1,0 +1,21 @@
+# gitleaks 설정 — 기본 룰셋에 이 저장소의 예외만 더한다.
+#
+# 다른 프로젝트로 옮길 때: [extend] 와 아래 두 allowlist 는 언어·프레임워크에 무관하므로
+# 그대로 가져간다. 프로젝트 고유 예외(과거 커밋의 알려진 탐지)는 이 파일이 아니라
+# .gitleaksignore 에 지문으로 두었으니 그 파일만 비우고 시작하면 된다.
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "빌드 산출물·로컬 전용 경로. 저장소에 커밋되지 않지만 로컬 스캔에서는 걸린다"
+paths = [
+  '''(^|/)\.next/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)build/''',
+  '''(^|/)\.gradle/''',
+]
+
+[[allowlists]]
+description = "SOPS+age 로 암호화된 파일. 값이 전부 ENC[AES256_GCM,...] 라 평문 시크릿이 아니다"
+paths = ['''(^|/)\.env\.enc$''']
