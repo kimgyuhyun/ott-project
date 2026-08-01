@@ -26,9 +26,10 @@ jobs:
       - uses: actions/checkout@v7
         with:
           lfs: true
+      # 래퍼 JAR 해시 불일치는 공급망 침해 신호이므로 차단한다.
+      # (continue-on-error 로 두면 침해를 탐지하고도 그대로 빌드가 진행된다)
       - name: Validate Gradle wrapper
         uses: gradle/wrapper-validation-action@v3
-        continue-on-error: true
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
