@@ -2,6 +2,7 @@ plugins {
 	id 'java'
 	id 'org.springframework.boot' version '3.5.16'
 	id 'io.spring.dependency-management' version '1.1.7'
+	id 'com.github.spotbugs' version '6.5.9'
 }
 
 group = 'com.ottproject'
@@ -103,6 +104,27 @@ configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
 	}
+}
+
+// 정적 분석(SpotBugs).
+// 스타일·성능류 지적은 리포트만 남기고 빌드를 막지 않는다 — PLATFORM.md 7절 [상황]이
+// 코드 스타일을 경고로 두라고 한다. 여기서 전부 차단으로 두면 지적 하나에 파이프라인이
+// 멈추고, 그러면 결국 게이트를 통째로 끄게 된다.
+// 보안 범주만 차단한다. 판정은 CI 의 check-spotbugs-security.sh 가 XML 리포트를 읽어서 한다.
+spotbugs {
+	ignoreFailures = true
+}
+
+spotbugsMain {
+	reports {
+		xml.required = true
+		html.required = true
+	}
+}
+
+// 테스트 코드는 운영 산출물이 아니므로 분석 대상에서 뺀다.
+spotbugsTest {
+	enabled = false
 }
 
 // JUnit 5(Jupiter) 실행 설정

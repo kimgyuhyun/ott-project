@@ -90,6 +90,14 @@ jobs:
             EmailAuthServiceTest OAuth2UserServiceTest
         run: bash .github/scripts/check-test-count.sh
 
+      # 정적 분석은 clean build 의 check 단계에서 함께 돌았다. 여기서는 그 리포트를 읽어
+      # 보안 범주만 차단한다. 스타일 지적은 리포트에 남지만 빌드를 막지 않는다.
+      - name: Gate on SpotBugs security findings
+        env:
+          SPOTBUGS_REPORT: backend/build/reports/spotbugs/main.xml
+          BLOCK_CATEGORIES: SECURITY MALICIOUS_CODE
+        run: bash .github/scripts/check-spotbugs-security.sh
+
       - name: Compute lowercase image ref
         id: img
         run: echo "ref=${REGISTRY}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/ott-backend" >> "$GITHUB_OUTPUT"
