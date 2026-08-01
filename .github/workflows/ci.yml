@@ -72,6 +72,24 @@ jobs:
           cd backend
           chmod +x gradlew || true
           ./gradlew clean build
+
+      # 빌드 성공은 테스트가 실행됐다는 뜻이 아니다. 결과 XML 의 실행 건수로 판정한다.
+      # MIN_TESTS 는 이 커밋 시점의 실측치다. 테스트를 의도적으로 줄일 때만 함께 낮춘다.
+      # REQUIRED_CLASSES 는 Testcontainers 를 쓰는 결제·인증 경로다. 이 8개는 도커가 없으면
+      # 통째로 skip 되는데 전체 420건 중 24건뿐이라 총량 하한만으로는 놓칠 수 있다.
+      - name: Gate on executed test count
+        env:
+          RESULTS_DIR: backend/build/test-results/test
+          MIN_TESTS: '420'
+          REQUIRED_CLASSES: >-
+            PaymentCheckoutIdempotencyTest PaymentConfirmIdempotencyTest
+            ProrationConfirmIdempotencyTest RefundIdempotencyTest
+            MembershipCancelIdempotencyTest PaymentMerchantUidUniqueTest
+            RecurringBillingServiceTest RebillMerchantUidTest
+            OriginValidationFilterTest LoginAttemptServiceTest
+            EmailAuthServiceTest OAuth2UserServiceTest
+        run: bash .github/scripts/check-test-count.sh
+
       - name: Compute lowercase image ref
         id: img
         run: echo "ref=${REGISTRY}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/ott-backend" >> "$GITHUB_OUTPUT"
