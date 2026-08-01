@@ -1,3 +1,8 @@
+# .env.enc 전용 수신자.
+# 2026-08-02 이전에는 이 키가 R2 DB 백업(security/db-backup.ps1, cd.yml 배포중 덤프)의
+# 수신자와 같았다. 그래서 러너가 매 배포마다 쥐는 AGE_KEY 하나로 .env 와 백업이 함께 열렸다.
+# 백업 수신자는 옛 키(age1nzksl...a2zc)로 그대로 두고, .env 쪽만 이 새 키로 옮겼다.
+# 옛 키의 개인키는 Bitwarden "ott backup key" 에만 있고 GitHub Secret 에는 넣지 않는다.
 creation_rules:
   - path_regex: \.env(\.enc)?$
-    age: age1nzkslmrgdcec2a3v45ttydmzptfmnrt6774qp3we933csmd9a5rqlsa2zc
+    age: age1tp3eqwc2sjef002hn4d5990eh7lapmv9sryx92pntpnh9aumn96sp2aaqq
