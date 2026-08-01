@@ -3,6 +3,8 @@ plugins {
 	id 'org.springframework.boot' version '3.5.16'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'com.github.spotbugs' version '6.5.9'
+	// 마이그레이션 검증 전용. 애플리케이션 런타임과는 무관하며 CI 잡에서만 쓴다.
+	id 'org.flywaydb.flyway' version '10.22.0'
 }
 
 group = 'com.ottproject'
@@ -104,6 +106,27 @@ configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
 	}
+	// Flyway Gradle 플러그인이 쓸 드라이버·DB 모듈 전용 구성.
+	// 애플리케이션 런타임 클래스패스와 섞지 않는다.
+	flywayMigration
+}
+
+dependencies {
+	flywayMigration 'org.postgresql:postgresql:42.7.4'
+	flywayMigration 'org.flywaydb:flyway-database-postgresql:10.22.0'
+}
+
+// 마이그레이션 검증.
+// 모든 테스트가 flyway.enabled=false 로 돌기 때문에, Flyway 가 실제로 처음 실행되는 곳이
+// CD 의 운영 DB 였다. 마이그레이션이 깨져 있어도 배포 시점에야 알게 된다는 뜻이다.
+// CI 가 빈 Postgres 에 전량 적용(flywayMigrate)한 뒤 체크섬·순서를 검증(flywayValidate)한다.
+// 접속 정보는 CI 잡이 환경변수로 준다. 기본값은 로컬에서 손으로 돌릴 때를 위한 것이다.
+flyway {
+	configurations = ['flywayMigration']
+	url = System.getenv('FLYWAY_URL') ?: 'jdbc:postgresql://localhost:5432/ott_ci'
+	user = System.getenv('FLYWAY_USER') ?: 'ci'
+	password = System.getenv('FLYWAY_PASSWORD') ?: 'ci'
+	locations = ['filesystem:src/main/resources/db/migration']
 }
 
 // 정적 분석(SpotBugs).
