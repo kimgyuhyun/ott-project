@@ -27,6 +27,16 @@ repositories {
 	mavenCentral()
 }
 
+// 의존성 락.
+// 버전을 비워둔 선언(Boot 의 dependency-management 가 관리)과 동적 버전이 섞여 있어,
+// 락이 없으면 같은 커밋이 빌드 시점에 따라 다른 의존성으로 해석된다.
+// 락 파일(gradle.lockfile)은 커밋하고, CI 는 --write-locks 없이 실행한다.
+// 해석 결과가 락과 다르면 빌드가 실패한다 — 그게 이 설정의 목적이다.
+// 버전을 올릴 때만 로컬에서 ./gradlew dependencies --write-locks 로 갱신한다.
+dependencyLocking {
+	lockAllConfigurations()
+}
+
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
