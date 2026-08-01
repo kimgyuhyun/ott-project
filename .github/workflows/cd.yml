@@ -25,7 +25,10 @@ permissions:
 jobs:
   deploy:
     runs-on: self-hosted
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push') }}
+    # 두 경로 모두 main 으로 제한한다.
+    # dispatch 분기에 ref 조건이 없으면 임의 브랜치를 골라 Run workflow 하는 것만으로
+    # 그 브랜치의 cd.yml 이 self-hosted 러너에서 실행돼 프로덕션에 배포된다.
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
