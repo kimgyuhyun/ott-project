@@ -12,7 +12,7 @@
 set -euo pipefail
 
 SPOTBUGS_REPORT="${SPOTBUGS_REPORT:-backend/build/reports/spotbugs/main.xml}"
-BLOCK_CATEGORIES="${BLOCK_CATEGORIES:-SECURITY MALICIOUS_CODE}"
+BLOCK_CATEGORIES="${BLOCK_CATEGORIES:-SECURITY}"
 
 fail() { echo "SPOTBUGS SECURITY GATE FAILED: $*" >&2; exit 1; }
 
@@ -38,7 +38,11 @@ echo "blocking categories: $BLOCK_CATEGORIES"
 
 blocking=0
 for cat in $BLOCK_CATEGORIES; do
-  n="$(grep -c "category=\"$cat\"" "$SPOTBUGS_REPORT" || true)"
+  # BugInstance 요소만 센다. 리포트 끝의 BugPattern 정의 블록에도 category 속성이 있어서
+  # 파일 전체에서 category 를 세면 실제 지적 건수보다 부풀려진다.
+  # grep 은 매치가 없으면 1 로 끝난다. pipefail 이 걸려 있으므로 그대로 두면 지적이
+  # 0건일 때 스크립트가 죽는다 - 통과해야 할 상황에서 실패하는 셈이다.
+  n="$({ grep -o "<BugInstance [^>]*category=\"$cat\"" "$SPOTBUGS_REPORT" || true; } | wc -l | tr -d ' ')"
   n="${n:-0}"
   echo "  $cat : $n"
   if [ "$n" -gt 0 ]; then

@@ -153,6 +153,22 @@ spotbugs {
 	ignoreFailures = true
 }
 
+// SpotBugs 도구 클래스패스는 Boot 의 dependency-management 관리에서 떼어낸다.
+// 관리 버전(3.17.0)이 spotbugs 구성까지 strictly 로 눌러서, SpotBugs 4.10 이 요구하는
+// org.apache.commons.lang3.Strings 가 없는 채로 실행됐다. 그러면 분석이 NoClassDefFoundError
+// 로 죽는데 SpotBugs 는 <Errors errors="0"> 짜리 빈 리포트를 그대로 남긴다.
+// 지적 0건과 구분이 안 되므로 게이트가 조용히 통과한다. 실제로 그렇게 통과하고 있었다.
+// force 로는 안 된다. dependency-management 는 해석 시점에 eachDependency 로 버전을 다시 쓰고,
+// 그게 force 보다 나중에 돌아 되돌려 놓는다. 같은 방식으로, 더 나중에 등록해 덮는다.
+configurations.named('spotbugs') {
+	resolutionStrategy.eachDependency { details ->
+		if (details.requested.group == 'org.apache.commons' && details.requested.name == 'commons-lang3') {
+			details.useVersion '3.20.0'
+			details.because 'SpotBugs 4.10 needs org.apache.commons.lang3.Strings (absent in the Boot-managed 3.17.0)'
+		}
+	}
+}
+
 spotbugsMain {
 	reports {
 		xml.required = true
