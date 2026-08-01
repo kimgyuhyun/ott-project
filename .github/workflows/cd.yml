@@ -186,10 +186,27 @@ jobs:
           }
           if (-not $healthy) { throw 'backend health check failed (timeout ~150s)' }
 
-          $egress = ''
-          try { $egress = docker exec ott-frontend node -e "const s=require('net').connect({host:'1.1.1.1',port:443,timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})" 2>$null } catch { $egress = 'BLOCKED(exec-error)' }
-          if ("$egress" -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend egress is NOT blocked' }
-          Write-Host "frontend egress: $egress (expected BLOCKED)"
+          # egress 차단 판정을 음성 결과로 하지 않는다.
+          # 예전 코드는 docker exec 실패나 빈 출력을 'BLOCKED' 로 읽어서, node 가 없거나
+          # 컨테이너 이름이 틀려도 보안 불변식을 통과시켰다. "찾은 것이 없다"는 차단됐다는
+          # 뜻과 확인 명령이 틀렸다는 뜻을 구분하지 못한다.
+          # 그래서 도달 가능해야 하는 목적지(ott-app:8090)로 같은 프로브를 먼저 쏴서
+          # REACHABLE 이 나오는지 확인하고(양성 대조), 그 뒤에야 외부 차단을 판정한다.
+          # 대조가 실패하면 프로브가 고장난 것이므로 배포를 실패로 처리한다.
+          $probe = "const s=require('net').connect({host:process.argv[1],port:Number(process.argv[2]),timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
+          function Invoke-EgressProbe([string]$targetHost, [int]$targetPort) {
+            try { return (docker exec ott-frontend node -e $probe $targetHost $targetPort 2>&1 | Out-String).Trim() }
+            catch { return "PROBE-ERROR: $($_.Exception.Message)" }
+          }
+
+          $control = Invoke-EgressProbe 'ott-app' 8090
+          if ($control -ne 'REACHABLE') { throw "egress probe control failed (ott-app:8090 -> '$control') - cannot judge egress blocking" }
+          Write-Host 'egress probe control: ott-app:8090 -> REACHABLE'
+
+          $egress = Invoke-EgressProbe '1.1.1.1' 443
+          if ($egress -eq 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend egress is NOT blocked' }
+          if ($egress -ne 'BLOCKED') { throw "egress probe returned an unexpected result ('$egress') - not treating it as blocked" }
+          Write-Host 'frontend egress: BLOCKED (verified against a working control)'
 
           try { docker image prune -f --filter "until=168h" 2>$null | Out-Null } catch {}
           Write-Host '=== CD END (secure) ==='
