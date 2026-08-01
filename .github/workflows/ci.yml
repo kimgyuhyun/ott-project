@@ -12,25 +12,93 @@ on:
     branches: [ main ]
   pull_request:
 
+# 워크플로 기본 토큰 권한은 읽기로 둔다. 쓰기가 필요한 잡에서만 개별로 올린다.
+# 여기에 packages:write 를 두면 앞으로 추가되는 모든 잡(스캔·검증 등)이 필요 없는
+# 레지스트리 쓰기 권한을 물려받는다.
 permissions:
   contents: read
-  packages: write          # ghcr push (GITHUB_TOKEN)
 
 env:
   REGISTRY: ghcr.io
 
 jobs:
-  backend:
+  # 시크릿 스캔은 훅과 CI 양쪽에서 돈다(PLATFORM.md 1절). 훅은 로컬에서 우회될 수 있고,
+  # CI 는 이미 커밋된 것만 본다. 한쪽만으로는 충족되지 않는다.
+  # 액션 대신 릴리스 바이너리를 버전 고정 + 체크섬 검증으로 받는다 — 원격 스크립트를
+  # 받아 바로 실행하지 않는다는 6절 조항을 지키면서 액션 의존성도 늘리지 않는다.
+  secret-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0   # 히스토리 전체를 봐야 과거 커밋에 들어간 값도 잡힌다
+      - name: Install gitleaks (pinned, checksum verified)
+        env:
+          GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+        run: |
+          curl -sSfL -o gitleaks.tar.gz \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz gitleaks
+          ./gitleaks version
+      # 탐지되면 비정상 종료해 배포로 진행되지 않는다.
+      # 알려진 과거 탐지는 .gitleaksignore 에 지문으로 적혀 있다(사유도 그 파일에).
+      - name: Scan history for secrets
+        run: ./gitleaks git . --no-banner --redact --config .gitleaks.toml
+
+  # 마이그레이션 검증 전용 잡.
+  # 슬라이스 테스트는 H2 로 돌고 전부 flyway.enabled=false 라, Flyway 가 실제로 처음
+  # 실행되는 곳이 CD 의 운영 DB 였다. 여기서 빈 Postgres 에 전량 적용해보고 검증한다.
+  # 이미지는 운영과 같은 메이저(15)로 맞춘다 — 다른 버전에서 통과하면 검증이 아니다.
+  migration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ott_ci
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d ott_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up JDK 21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Apply and validate migrations on an empty database
+        env:
+          FLYWAY_URL: jdbc:postgresql://localhost:5432/ott_ci
+          FLYWAY_USER: ci
+          FLYWAY_PASSWORD: ci
+        run: |
+          cd backend
+          chmod +x gradlew || true
+          ./gradlew flywayMigrate flywayValidate
+
+  backend:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write          # ghcr push (GITHUB_TOKEN)
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           lfs: true
+      # 래퍼 JAR 해시 불일치는 공급망 침해 신호이므로 차단한다.
+      # (continue-on-error 로 두면 침해를 탐지하고도 그대로 빌드가 진행된다)
       - name: Validate Gradle wrapper
-        uses: gradle/wrapper-validation-action@v3
-        continue-on-error: true
+        uses: gradle/wrapper-validation-action@f9c9c575b8b21b6485636a91ffecd10e558c62f6 # v3
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -41,12 +109,38 @@ jobs:
           cd backend
           chmod +x gradlew || true
           ./gradlew clean build
+
+      # 빌드 성공은 테스트가 실행됐다는 뜻이 아니다. 결과 XML 의 실행 건수로 판정한다.
+      # MIN_TESTS 는 이 커밋 시점의 실측치다. 테스트를 의도적으로 줄일 때만 함께 낮춘다.
+      # REQUIRED_CLASSES 는 Testcontainers 를 쓰는 결제·인증 경로다. 이 8개는 도커가 없으면
+      # 통째로 skip 되는데 전체 420건 중 24건뿐이라 총량 하한만으로는 놓칠 수 있다.
+      - name: Gate on executed test count
+        env:
+          RESULTS_DIR: backend/build/test-results/test
+          MIN_TESTS: '420'
+          REQUIRED_CLASSES: >-
+            PaymentCheckoutIdempotencyTest PaymentConfirmIdempotencyTest
+            ProrationConfirmIdempotencyTest RefundIdempotencyTest
+            MembershipCancelIdempotencyTest PaymentMerchantUidUniqueTest
+            RecurringBillingServiceTest RebillMerchantUidTest
+            OriginValidationFilterTest LoginAttemptServiceTest
+            EmailAuthServiceTest OAuth2UserServiceTest
+        run: bash .github/scripts/check-test-count.sh
+
+      # 정적 분석은 clean build 의 check 단계에서 함께 돌았다. 여기서는 그 리포트를 읽어
+      # 보안 범주만 차단한다. 스타일 지적은 리포트에 남지만 빌드를 막지 않는다.
+      - name: Gate on SpotBugs security findings
+        env:
+          SPOTBUGS_REPORT: backend/build/reports/spotbugs/main.xml
+          BLOCK_CATEGORIES: SECURITY MALICIOUS_CODE
+        run: bash .github/scripts/check-spotbugs-security.sh
+
       - name: Compute lowercase image ref
         id: img
         run: echo "ref=${REGISTRY}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/ott-backend" >> "$GITHUB_OUTPUT"
       - name: Login to ghcr
         if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -58,7 +152,7 @@ jobs:
           docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
       - name: Scan backend image (gate on fixable CRITICAL)
         if: github.ref == 'refs/heads/main'
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.img.outputs.ref }}:${{ github.sha }}
           severity: 'CRITICAL'
@@ -68,12 +162,15 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write          # ghcr push (GITHUB_TOKEN)
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           lfs: true
       - name: Use Node.js 18
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version: '18'
           cache: 'npm'
@@ -88,7 +185,7 @@ jobs:
         run: echo "ref=${REGISTRY}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/ott-frontend" >> "$GITHUB_OUTPUT"
       - name: Login to ghcr
         if: github.ref == 'refs/heads/main'
-        uses: docker/login-action@v4
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -100,7 +197,7 @@ jobs:
           docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
       - name: Scan frontend image (gate on fixable CRITICAL)
         if: github.ref == 'refs/heads/main'
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: ${{ steps.img.outputs.ref }}:${{ github.sha }}
           severity: 'CRITICAL'

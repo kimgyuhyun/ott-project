@@ -1,0 +1,14 @@
+# 알려진 과거 탐지의 지문. 이 저장소 고유이므로 다른 프로젝트로 옮길 때는 비우고 시작한다.
+#
+# 2025-08-01 커밋 d7bf59a("feat: complete auth system with dashboard and user management")의
+# backend/src/main/resources/application.yml 에 OAuth client-secret 2건(102, 108행)과
+# 80자 서명 시크릿 1건(244행)이 평문으로 들어갔다.
+# 현재 HEAD 는 세 값 모두 환경변수 참조(${GOOGLE_CLIENT_SECRET:} 등)로 바뀌어 있다.
+#
+# 히스토리 재작성 대신 값 무효화로 대응한다 — PLATFORM.md 1절:
+# "노출된 시크릿은 히스토리에서 지우는 것으로 대응이 끝나지 않는다. 반드시 값을 무효화한다."
+# 이 지문을 열어두지 않으면 게이트가 매 실행마다 같은 과거 커밋으로 실패한다.
+# 지문은 커밋+파일+룰+행 단위라, 새로 추가되는 시크릿은 지문이 달라 그대로 차단된다.
+d7bf59a44f335df4ecbbc6f1ed0130c79f72aa5d:backend/src/main/resources/application.yml:generic-api-key:102
+d7bf59a44f335df4ecbbc6f1ed0130c79f72aa5d:backend/src/main/resources/application.yml:generic-api-key:108
+d7bf59a44f335df4ecbbc6f1ed0130c79f72aa5d:backend/src/main/resources/application.yml:generic-api-key:244

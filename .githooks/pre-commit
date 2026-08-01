@@ -1,0 +1,24 @@
+#!/bin/sh
+# 커밋 전 시크릿 스캔. PLATFORM.md 1절은 커밋 전 훅과 CI 양쪽을 요구한다.
+# CI 는 이미 커밋된 것만 보고, 훅은 로컬에서 우회될 수 있다. 한쪽만으로는 충족되지 않는다.
+#
+# 활성화 (클론 후 한 번):
+#   git config core.hooksPath .githooks
+# git 은 저장소가 훅 경로를 스스로 지정하는 것을 허용하지 않는다(클론만으로 코드가 실행되는
+# 것을 막기 위한 설계다). 그래서 이 한 줄은 각자 실행해야 한다.
+#
+# 이식: 프로젝트 고유 값이 없다. .gitleaks.toml 과 함께 그대로 복사한다.
+
+set -e
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks 가 없어 시크릿 스캔을 할 수 없다." >&2
+  echo "  스캔하지 않은 커밋을 통과시키지 않는다. 아래 중 하나로 설치해라:" >&2
+  echo "    winget install gitleaks" >&2
+  echo "    brew install gitleaks" >&2
+  echo "    https://github.com/gitleaks/gitleaks/releases" >&2
+  exit 1
+fi
+
+# --staged: 스테이지된 변경만 본다. 탐지되면 0 이 아닌 코드로 끝나 커밋이 중단된다.
+gitleaks git --staged --no-banner --redact --config .gitleaks.toml
