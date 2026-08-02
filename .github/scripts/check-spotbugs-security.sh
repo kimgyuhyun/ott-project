@@ -9,10 +9,12 @@
 # 이식: 두 환경변수만 바꾸면 다른 Gradle 프로젝트에서 그대로 쓴다.
 #   SPOTBUGS_REPORT   SpotBugs XML 리포트 경로
 #   BLOCK_CATEGORIES  차단할 범주(공백 구분)
+#   SPOTBUGS_BASELINE 총 지적 건수 상한이 적힌 파일(없으면 그 검사는 건너뛴다)
 set -euo pipefail
 
 SPOTBUGS_REPORT="${SPOTBUGS_REPORT:-backend/build/reports/spotbugs/main.xml}"
 BLOCK_CATEGORIES="${BLOCK_CATEGORIES:-SECURITY}"
+SPOTBUGS_BASELINE="${SPOTBUGS_BASELINE:-.github/spotbugs-baseline}"
 
 fail() { echo "SPOTBUGS SECURITY GATE FAILED: $*" >&2; exit 1; }
 
@@ -61,5 +63,18 @@ for cat in $BLOCK_CATEGORIES; do
 done
 
 [ "$blocking" -eq 0 ] || fail "보안 범주 지적 ${blocking}건. 위 목록을 고치거나, 도달 불가 근거와 만료일을 적은 예외로 관리해라."
+
+# 보안 외 지적은 차단하지 않으니 아무도 보지 않고, 그래서 늘어나도 알 수 없다. 지금 건수를
+# 상한으로 동결해 기존 부채는 남기되 새로 늘어나는 것만 막는다. 범주별 세부 건수는 실행마다
+# 값이 흔들려 신뢰할 수 없으므로 총계만 본다. 상한 파일이 없으면(다른 저장소로 이식한 직후)
+# 이 검사는 건너뛴다.
+if [ -f "$SPOTBUGS_BASELINE" ]; then
+  baseline="$(tr -d ' \r\n' < "$SPOTBUGS_BASELINE")"
+  say "baseline (max)    : $baseline  <- $SPOTBUGS_BASELINE"
+  if [ "${total_bugs:-0}" -gt "$baseline" ]; then
+    over=$(( total_bugs - baseline ))
+    fail "총 지적 ${total_bugs}건으로 상한 ${baseline}건을 ${over}건 초과했다. 새로 생긴 지적을 고치거나, 근거를 남기고 $SPOTBUGS_BASELINE 을 갱신해라."
+  fi
+fi
 
 echo "spotbugs security gate passed"
