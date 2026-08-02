@@ -14,7 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.test.context.support.WithAnonymousUser;
@@ -58,17 +58,17 @@ class AdminAuthorizationTest {
     private MockMvc mvc;
 
     // 컨트롤러 의존성
-    @MockBean private DailyStatsRepository dailyStatsRepository;
-    @MockBean private AuthEventRepository authEventRepository;
-    @MockBean private StatsSnapshotService statsSnapshotService;
+    @MockitoBean private DailyStatsRepository dailyStatsRepository;
+    @MockitoBean private AuthEventRepository authEventRepository;
+    @MockitoBean private StatsSnapshotService statsSnapshotService;
 
     // SecurityConfig / 필터 의존성
-    @MockBean private LocalUserDetailsService localUserDetailsService;
-    @MockBean private OAuth2UserService oAuth2UserService;
-    @MockBean private OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
-    @MockBean private OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
-    @MockBean private UserRepository userRepository; // SessionAuthenticationFilter 가 사용
-    @MockBean private ClientRegistrationRepository clientRegistrationRepository; // oauth2Login 구성에 필요
+    @MockitoBean private LocalUserDetailsService localUserDetailsService;
+    @MockitoBean private OAuth2UserService oAuth2UserService;
+    @MockitoBean private OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
+    @MockitoBean private OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
+    @MockitoBean private UserRepository userRepository; // SessionAuthenticationFilter 가 사용
+    @MockitoBean private ClientRegistrationRepository clientRegistrationRepository; // oauth2Login 구성에 필요
 
     @Test
     @DisplayName("비로그인은 관리자 통계에 접근할 수 없다")

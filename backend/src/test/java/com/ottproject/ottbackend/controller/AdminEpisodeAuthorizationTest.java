@@ -13,7 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -59,15 +59,15 @@ class AdminEpisodeAuthorizationTest {
     @Autowired
     private MockMvc mvc;
 
-    @MockBean private AdminEpisodeService adminEpisodeService;
+    @MockitoBean private AdminEpisodeService adminEpisodeService;
 
     // SecurityConfig / 필터 의존성
-    @MockBean private LocalUserDetailsService localUserDetailsService;
-    @MockBean private OAuth2UserService oAuth2UserService;
-    @MockBean private OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
-    @MockBean private OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
-    @MockBean private UserRepository userRepository;
-    @MockBean private ClientRegistrationRepository clientRegistrationRepository;
+    @MockitoBean private LocalUserDetailsService localUserDetailsService;
+    @MockitoBean private OAuth2UserService oAuth2UserService;
+    @MockitoBean private OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
+    @MockitoBean private OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
+    @MockitoBean private UserRepository userRepository;
+    @MockitoBean private ClientRegistrationRepository clientRegistrationRepository;
 
     private static final String CREATE_BODY = """
             {"episodeNumber":1,"title":"1화","thumbnailUrl":"https://img/1.jpg","videoUrl":"https://v/1.m3u8","duration":1440}
