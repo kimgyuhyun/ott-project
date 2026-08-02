@@ -57,4 +57,4 @@ services:
     volumes:
       # 같은 마운트 지점을 덮어써서 upstream 이 있는 HA 설정을 쓴다.
       # 원본 nginx.prod.conf 는 수정하지 않으므로, 이 파일을 빼면 즉시 원상복구된다.
-      - ./nginx/nginx.prod.ha.conf:/etc/nginx/conf.d/default.conf:ro
+      - C:/ott-deploy/config/nginx/nginx.prod.ha.conf:/etc/nginx/conf.d/default.conf:ro

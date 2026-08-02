@@ -197,6 +197,13 @@ services:
       POSTGRES_DB: ott_project_db
       POSTGRES_USER: root
       POSTGRES_PASSWORD: ${DB_PASSWORD}  # 환경변수 사용 권장
+    volumes:
+      # 같은 컨테이너 경로를 덮어써서 initdb 스크립트를 러너 작업폴더 밖에서 읽는다.
+      # (도커 데스크톱의 bind mount 는 데스크톱 계정 권한으로 열리는데, 러너 작업폴더에는
+      #  평문 .env 가 있어 그 계정에 읽기를 줄 수 없다. 원본 docker-compose.yml 은 개발과
+      #  공용이라 수정하지 않으므로, 이 파일을 빼면 즉시 원상복구된다 — ha.yml 의 nginx 와 같은 방식)
+      # postgres_data 는 base 의 정의가 병합돼 그대로 남는다(컨테이너 경로가 달라 대체되지 않음).
+      - C:/ott-deploy/config/security/initdb:/docker-entrypoint-initdb.d:ro
     # [SECURITY 2026-07-31] postgres:15 entrypoint 가 root 로 하는 일:
     #   chmod 00700 "$PGDATA" / chmod 03775 /var/run/postgresql  → FOWNER (남의 소유 파일 chmod)
     #   find "$PGDATA" \! -user postgres -exec chown postgres    → CHOWN
@@ -255,12 +262,12 @@ services:
     # 워터마크를 잡아서(실측: 6.21GiB) 상한 1g 를 훨씬 넘긴 지점에서야 자기 보호가 작동한다.
     # 그대로 두면 flow control 로 버티는 대신 OOM 으로 죽는다. 근거와 확인법은 파일 안에 있다.
     volumes:
-      - ./rabbitmq/10-memory.conf:/etc/rabbitmq/conf.d/10-memory.conf:ro
+      - C:/ott-deploy/config/rabbitmq/10-memory.conf:/etc/rabbitmq/conf.d/10-memory.conf:ro
 
   nginx: # Nginx 리버스 프록시
     # 프로덕션용 nginx 설정 (필요시 별도 설정 파일 사용)
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
+      - C:/ott-deploy/config/nginx/nginx.prod.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot-etc:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot
     ports:

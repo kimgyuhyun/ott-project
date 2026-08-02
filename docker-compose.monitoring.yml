@@ -58,7 +58,7 @@ services:
     mem_limit: 512m
     cpus: 1.0
     volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - C:/ott-deploy/config/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"   # 루프백 전용 노출 (외부 X)
@@ -81,7 +81,7 @@ services:
     cpus: 1.0
     command: -config.file=/etc/loki/loki-config.yml
     volumes:
-      - ./monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - C:/ott-deploy/config/monitoring/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
       - loki_data:/loki
     ports:
       - "127.0.0.1:3100:3100"   # 루프백 전용 (디버깅용)
@@ -108,8 +108,8 @@ services:
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"   # 업데이트 확인 아웃바운드 차단
       GF_USERS_ALLOW_SIGN_UP: "false"           # 가입 비활성
     volumes:
-      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
-      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro   # provisioning 이 로드할 대시보드 JSON
+      - C:/ott-deploy/config/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - C:/ott-deploy/config/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro   # provisioning 이 로드할 대시보드 JSON
       - grafana_data:/var/lib/grafana
     ports:
       - "127.0.0.1:3001:3000"   # 루프백 전용 (3000 은 frontend 가 사용 중이라 3001)
@@ -139,7 +139,7 @@ services:
     # cap_drop ALL 상태이므로 root 라도 커널 권한은 없고, 파일 접근은 읽기 전용이다.
     user: root
     volumes:
-      - ./monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - C:/ott-deploy/config/monitoring/alloy/config.alloy:/etc/alloy/config.alloy:ro
       # [SECURITY] docker.sock 은 마운트하지 않는다. 소켓은 뚫리면 호스트 장악으로
       # 이어지고 :ro 로 붙여도 API 호출은 막히지 않는다. 로그 파일만 읽기 전용으로 붙인다.
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
