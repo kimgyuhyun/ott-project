@@ -16,7 +16,16 @@ SPOTBUGS_REPORT="${SPOTBUGS_REPORT:-backend/build/reports/spotbugs/main.xml}"
 BLOCK_CATEGORIES="${BLOCK_CATEGORIES:-SECURITY}"
 SPOTBUGS_BASELINE="${SPOTBUGS_BASELINE:-.github/spotbugs-baseline}"
 
-fail() { echo "SPOTBUGS SECURITY GATE FAILED: $*" >&2; exit 1; }
+# 실패 사유를 stderr 에만 남기면 액션 요약에는 숫자만 보여서 왜 걸렸는지 알 수 없다.
+# 요약을 보고 바로 원인을 알 수 있도록 사유도 같이 남긴다(로컬 실행에는 변수가 없다).
+fail() {
+  local msg="SPOTBUGS SECURITY GATE FAILED: $*"
+  echo "$msg" >&2
+  if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+    echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+  fi
+  exit 1
+}
 
 # 리포트가 없다는 것은 분석이 돌지 않았다는 뜻이다. 음성 결과를 통과 근거로 삼지 않는다.
 [ -f "$SPOTBUGS_REPORT" ] || fail "리포트가 없다: $SPOTBUGS_REPORT (SpotBugs 가 실행되지 않았다)"
@@ -77,4 +86,4 @@ if [ -f "$SPOTBUGS_BASELINE" ]; then
   fi
 fi
 
-echo "spotbugs security gate passed"
+say "spotbugs security gate passed"
