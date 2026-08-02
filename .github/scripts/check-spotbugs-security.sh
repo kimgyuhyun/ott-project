@@ -26,15 +26,22 @@ inputs="$(grep -c '<Jar>' "$SPOTBUGS_REPORT" || true)"
 inputs="${inputs:-0}"
 [ "$inputs" -gt 0 ] || fail "분석 대상이 0개다. 지적이 없는 것이 아니라 검사할 클래스가 넘어가지 않았다."
 
-# SpotBugs 가 요약에 적는 분석 클래스 수. 참고용으로만 출력한다.
-analyzed="$(grep -o 'total_classes="[0-9]*"' "$SPOTBUGS_REPORT" | head -1 | grep -o '[0-9]*' || true)"
-
+# 요약의 total_classes 는 정상 실행에서도 0 으로 나와서 신호가 되지 못한다. 예전에 이 값을
+# 분석이 죽은 증거로 오해한 적이 있어 아예 지웠다. 분석이 돌았는지는 위의 <Jar> 개수로 본다.
 total_bugs="$(grep -c '<BugInstance ' "$SPOTBUGS_REPORT" || true)"
-echo "spotbugs report   : $SPOTBUGS_REPORT"
-echo "analysis inputs   : $inputs"
-echo "summary total_classes: ${analyzed:-n/a}"
-echo "findings (all)    : ${total_bugs:-0}  <- 스타일·성능 포함, 차단하지 않음"
-echo "blocking categories: $BLOCK_CATEGORIES"
+
+# 요약을 잡 로그 안에만 두면 확인할 때마다 로그인해서 로그를 펼쳐야 한다. 액션 요약에도
+# 같은 내용을 남긴다. 로컬 실행에는 이 변수가 없으므로 그때는 stdout 만 쓴다.
+say() {
+  echo "$1"
+  [ -n "${GITHUB_STEP_SUMMARY:-}" ] && echo "$1" >> "$GITHUB_STEP_SUMMARY"
+  return 0
+}
+
+say "spotbugs report   : $SPOTBUGS_REPORT"
+say "analysis inputs   : $inputs"
+say "findings (all)    : ${total_bugs:-0}  <- 스타일·성능 포함, 차단하지 않음"
+say "blocking categories: $BLOCK_CATEGORIES"
 
 blocking=0
 for cat in $BLOCK_CATEGORIES; do
@@ -44,7 +51,7 @@ for cat in $BLOCK_CATEGORIES; do
   # 0건일 때 스크립트가 죽는다 - 통과해야 할 상황에서 실패하는 셈이다.
   n="$({ grep -o "<BugInstance [^>]*category=\"$cat\"" "$SPOTBUGS_REPORT" || true; } | wc -l | tr -d ' ')"
   n="${n:-0}"
-  echo "  $cat : $n"
+  say "  $cat : $n"
   if [ "$n" -gt 0 ]; then
     blocking=$(( blocking + n ))
     # 어떤 룰에 걸렸는지 남긴다. 개수만 있으면 고칠 수가 없다.
