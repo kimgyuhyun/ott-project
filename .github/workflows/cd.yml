@@ -161,10 +161,17 @@ jobs:
             $dst = Join-Path $cfgRoot $rel
             if (-not (Test-Path $src)) { throw "config source missing: $src" }
             New-Item -ItemType Directory -Path (Split-Path $dst -Parent) -Force | Out-Null
-            # 폴더는 먼저 지운다. 남겨두면 Copy-Item 이 그 "안으로" 복사해 한 단계 깊어지고,
-            # 저장소에서 삭제된 파일이 낡은 채로 남는다.
-            if (Test-Path $dst -PathType Container) { Remove-Item $dst -Recurse -Force }
-            Copy-Item $src $dst -Recurse -Force -ErrorAction Stop
+            if (Test-Path $src -PathType Container) {
+              # 폴더는 루트를 지우지 않고 내용만 미러링한다(/MIR 이 지워진 파일까지 반영).
+              # 통째 삭제 후 재복사는 실행 중 컨테이너가 붙든 마운트를 끊을 수 있고, 삭제만
+              # 성공하고 복사가 실패하면 설정 폴더가 없는 채로 배포가 멈춘다.
+              robocopy $src $dst /MIR /NJH /NJS /NFL /NDL | Out-Null
+              # robocopy 는 성공해도 0 이 아니다(1=복사함, 2·3=여분 삭제). 8 이상만 실패다.
+              if ($LASTEXITCODE -ge 8) { throw "robocopy failed (exit $LASTEXITCODE): $src -> $dst" }
+              $global:LASTEXITCODE = 0   # 뒤의 $LASTEXITCODE 검사들이 오판하지 않도록 되돌린다
+            } else {
+              Copy-Item $src $dst -Force -ErrorAction Stop
+            }
           }
           Write-Host "config copied to $cfgRoot ($((Get-ChildItem $cfgRoot -Recurse -File).Count) files)"
 
