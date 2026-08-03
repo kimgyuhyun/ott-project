@@ -12,6 +12,9 @@ COPY gradlew .
 COPY gradle gradle
 COPY build.gradle .
 COPY settings.gradle .
+# build.gradle 의 spotbugsMain 이 config/spotbugs-exclude.xml 을 입력으로 잡는다.
+# 빠지면 컨테이너 안 ./gradlew build 가 입력 파일 없음으로 죽는다.
+COPY config config
 
 # 의존성 다운로드 (소스 변경과 무관)
 RUN chmod +x ./gradlew
