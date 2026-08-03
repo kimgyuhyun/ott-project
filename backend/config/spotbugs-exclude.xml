@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+	<!-- DTO·엔티티에서 구조적으로 항상 나오는 오탐만 뺀다. 다른 패키지·패턴은 추가하지 말 것. -->
+
+	<!-- 미사용 public 필드 계열: JSON 직렬화가 리플렉션으로 읽고 쓰기 때문에
+	     SpotBugs 눈에는 아무도 안 쓰는 필드로 보인다. -->
+	<Match>
+		<Or>
+			<Package name="~com\.ottproject\.ottbackend\.dto(\..*)?"/>
+			<Package name="~com\.ottproject\.ottbackend\.entity(\..*)?"/>
+		</Or>
+		<Or>
+			<Bug pattern="UUF_UNUSED_PUBLIC_OR_PROTECTED_FIELD"/>
+			<Bug pattern="URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD"/>
+			<Bug pattern="UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD"/>
+		</Or>
+	</Match>
+
+	<!-- 내부 표현 노출: 롬복이 만든 게터·세터는 방어적 복사를 하지 않아서
+	     DTO·엔티티마다 예외 없이 걸린다. 개별 판단의 여지가 없어 범주째 뺀다. -->
+	<Match>
+		<Or>
+			<Package name="~com\.ottproject\.ottbackend\.dto(\..*)?"/>
+			<Package name="~com\.ottproject\.ottbackend\.entity(\..*)?"/>
+		</Or>
+		<Or>
+			<Bug pattern="EI_EXPOSE_REP"/>
+			<Bug pattern="EI_EXPOSE_REP2"/>
+		</Or>
+	</Match>
+</FindBugsFilter>

@@ -170,6 +170,7 @@ configurations.named('spotbugs') {
 }
 
 spotbugsMain {
+	excludeFilter = file('config/spotbugs-exclude.xml')
 	reports {
 		xml.required = true
 		html.required = true
