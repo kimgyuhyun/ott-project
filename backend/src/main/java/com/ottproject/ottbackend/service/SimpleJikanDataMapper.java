@@ -597,8 +597,7 @@ public class SimpleJikanDataMapper {
             "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
             "#F8BBD9", "#A8E6CF", "#FFD3A5", "#FD6C9E", "#4ECDC4"
         };
-        int hash = Math.abs(name.hashCode());
-        int colorIndex = hash % colors.length;
+        int colorIndex = Math.floorMod(name.hashCode(), colors.length);
         return colors[colorIndex];
     }
     
