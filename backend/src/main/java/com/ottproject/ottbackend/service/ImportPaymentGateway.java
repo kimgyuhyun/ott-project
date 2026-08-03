@@ -88,6 +88,50 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 		return result; // 반환
 	}
 
+	/**
+	 * 환불 여부 역조회 — GET /payments/{imp_uid}
+	 *
+	 * 왜 findByMerchantUid 를 재사용하지 않는가
+	 * - 그쪽은 catch (Exception) → found=false 로 모든 조회 실패를 삼킨다. 여기서 그렇게 하면
+	 *   네트워크 오류가 "환불 안 나감"으로 읽혀 선점이 풀리고 이중 환불이 난다.
+	 * - 그쪽은 imp_uid 가 없는 PENDING 결제용이라 merchant_uid 로 친다. 환불 경로는 imp_uid 를
+	 *   이미 들고 있으므로 단건 조회가 맞다.
+	 *
+	 * 아임포트는 환불을 status="cancelled" 로 표현한다. 판정할 수 없는 모든 경우가 UNKNOWN 이다.
+	 */
+	@Override
+	public RefundStatus findRefundStatus(String providerPaymentId) {
+		if (providerPaymentId == null || providerPaymentId.isBlank()) {
+			return RefundStatus.UNKNOWN; // 조회할 식별자가 없다
+		}
+		try {
+			String token = getAccessToken();
+			HttpHeaders headers = bearer(token);
+			ResponseEntity<java.util.Map> response = rest.exchange(
+				apiBase + "/payments/" + providerPaymentId,
+				HttpMethod.GET,
+				new HttpEntity<>(headers),
+				java.util.Map.class
+			);
+			if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+				log.warn("환불 역조회 응답 비정상 - imp_uid: {}, status: {}", providerPaymentId, response.getStatusCode());
+				return RefundStatus.UNKNOWN;
+			}
+			@SuppressWarnings("unchecked")
+			java.util.Map<String, Object> res = (java.util.Map<String, Object>) response.getBody().get("response");
+			String status = (res == null ? null : (String) res.get("status"));
+			if (status == null || !isValidStatus(status)) {
+				log.warn("환불 역조회 상태 판정 불가 - imp_uid: {}, status: {}", providerPaymentId, status);
+				return RefundStatus.UNKNOWN;
+			}
+			return "cancelled".equals(status) ? RefundStatus.REFUNDED : RefundStatus.NOT_REFUNDED;
+		} catch (Exception e) {
+			// 여기서 NOT_REFUNDED 로 떨어뜨리면 조회 실패가 곧 재환불 허용이 된다. 모르면 모른다고 답한다.
+			log.warn("환불 역조회 실패 - imp_uid: {}", providerPaymentId, e);
+			return RefundStatus.UNKNOWN;
+		}
+	}
+
 	@Override
 	public ChargeResult chargeWithSavedMethod(String providerCustomerId, String providerMethodId, String merchantUid, long amount, String currency, String description) { // 저장수단 청구
 		String token = getAccessToken(); // 토큰(청구 요청 전이므로 여기서 실패하면 승인은 일어나지 않았다)

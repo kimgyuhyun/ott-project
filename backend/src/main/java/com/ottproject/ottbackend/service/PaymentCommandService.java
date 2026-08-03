@@ -16,6 +16,7 @@ import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.PaymentMethod;
 import com.ottproject.ottbackend.entity.User;
 import java.util.List;
+import com.ottproject.ottbackend.enums.IdempotencyKeyStatus;
 import com.ottproject.ottbackend.enums.PaymentMethodType;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
@@ -679,10 +680,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		}
 		try {
 			// saveAndFlush 로 INSERT 를 여기서 확정시켜, 제약 위반을 이 자리에서 잡는다(checkout 과 같은 형태).
-			idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
+			// CLAIMED 로 넣는다: 이 키는 게이트웨이 호출 전에 커밋되므로 아직 환불이 나갔는지 모른다.
+			// 호출이 예외로 끝나 확정되지 못한 키는 대사 배치가 역조회해 풀거나 확정한다.
+			idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createClaimedIdempotencyKey(
 					refundKey, // 키(paymentId 파생)
-					"payment.refund", // 용도
-					null // 응답 데이터(이 엔티티에는 응답 컬럼이 없다)
+					REFUND_KEY_PURPOSE // 용도
 			));
 		} catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리 중이거나 처리된 환불 요청입니다.", e); // 409(빠른 경로와 같은 응답)
@@ -707,6 +709,10 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	public void confirmRefunded(Long paymentId, long refundedAmount, LocalDateTime refundedAt) {
 		Payment payment = paymentRepository.findByIdForUpdate(paymentId) // 락을 잡고 최신 상태로 다시 읽는다
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제가 존재하지 않습니다.")); // 400
+		// ⚠ 아래 "이미 REFUNDED 면 return" 가드보다 앞에서 전이해야 한다. 뒤에 두면 REFUNDED 웹훅이 먼저
+		// 도착한 결제의 키가 영원히 CLAIMED 로 남아 대사 배치가 매번 게이트웨이를 역조회한다.
+		idempotencyKeyRepository.findByKeyValue(refundIdempotencyKey(paymentId))
+				.ifPresent(IdempotencyKey::markConfirmed);
 		if (payment.getStatus() == PaymentStatus.REFUNDED) { // 이미 반영됨(멱등, 락 아래에서 재확인된 상태)
 			return;
 		}
@@ -739,7 +745,96 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 *   충돌하지 않아 아무것도 막지 못한다(6절).
 	 */
 	private static String refundIdempotencyKey(Long paymentId) {
-		return "payment.refund:" + paymentId;
+		return REFUND_KEY_PURPOSE + ":" + paymentId;
+	}
+
+	/** 환불 멱등키의 용도 값. 대사 배치가 이 값으로 대상을 좁힌다. */
+	public static final String REFUND_KEY_PURPOSE = "payment.refund";
+
+	/**
+	 * 환불 선점 대사 — 확정되지 못한 선점 1건을 게이트웨이에 역조회해 해제하거나 확정한다.
+	 *
+	 * 왜 이 경로가 필요한가
+	 * - 1단계의 선점은 커밋되고 2단계의 게이트웨이 호출은 트랜잭션 밖이라, 호출이 예외로 끝나면
+	 *   키만 남는다. 키에는 TTL 도 반납 경로도 없어 그 결제는 API 로 다시 환불할 수 없었다.
+	 * - 그렇다고 실패를 곧바로 "환불 안 나감"으로 볼 수는 없다. 타임아웃은 나갔을 수도 있어서,
+	 *   풀어주면 이중 환불이 된다. 그래서 푸는 판단을 게이트웨이 역조회에 맡긴다.
+	 *
+	 * @return 선점을 정리했으면 true(해제 또는 확정), 판정 불가로 그대로 두었으면 false
+	 */
+	@Transactional(propagation = Propagation.NOT_SUPPORTED) // 아래 역조회가 외부 호출이라 트랜잭션 밖에 둔다(9절)
+	public boolean reconcileRefundClaim(String refundKeyValue) {
+		Long paymentId = paymentIdFromRefundKey(refundKeyValue);
+		if (paymentId == null) {
+			log.warn("환불 선점 대사 건너뜀 - 키 형식 불일치: {}", refundKeyValue);
+			return false;
+		}
+		RefundTarget target = self.loadRefundTarget(paymentId); // 1단계: 역조회에 필요한 값만 뽑는다
+		if (target == null || target.providerPaymentId() == null) {
+			log.warn("환불 선점 대사 건너뜀 - 역조회할 imp_uid 없음, paymentId: {}", paymentId);
+			return false;
+		}
+		// 2단계: 트랜잭션 밖에서 환불 여부 역조회
+		PaymentGateway.RefundStatus status = paymentGateway.findRefundStatus(target.providerPaymentId());
+		switch (status) {
+			case NOT_REFUNDED -> {
+				// 환불이 나가지 않았음이 확인됐다 → 선점을 지워 재환불을 열어준다.
+				// 상태로 남기지 않고 행을 지우는 이유: key_value 유니크 제약과 claimRefund 의 빠른 경로가
+				// 상태를 보지 않으므로, 행이 남아 있으면 어떤 상태값이든 재환불이 그대로 막힌다.
+				self.releaseRefundClaim(refundKeyValue);
+				log.info("환불 선점 해제 - paymentId: {}, imp_uid: {}", paymentId, target.providerPaymentId());
+				return true;
+			}
+			case REFUNDED -> {
+				// 환불은 실제로 나갔는데 확정만 못 했다 → 정상 3단계와 같은 후처리로 수렴시킨다.
+				self.confirmRefunded(paymentId, target.amount(), LocalDateTime.now());
+				log.info("환불 선점 확정 - paymentId: {}, imp_uid: {}", paymentId, target.providerPaymentId());
+				return true;
+			}
+			default -> {
+				log.warn("환불 선점 판정 불가 - 선점 유지, paymentId: {}, imp_uid: {}", paymentId, target.providerPaymentId());
+				return false;
+			}
+		}
+	}
+
+	/**
+	 * 환불 선점 대사 1단계 — 역조회에 필요한 값만 뽑는다(트랜잭션 밖에서 쓰이므로 엔티티를 들고 나가지 않는다).
+	 * @return 결제가 없으면 null
+	 */
+	@Transactional(readOnly = true)
+	public RefundTarget loadRefundTarget(Long paymentId) {
+		return paymentRepository.findById(paymentId)
+				.map(p -> new RefundTarget(p.getProviderPaymentId(), p.getPrice().getAmount()))
+				.orElse(null);
+	}
+
+	/**
+	 * 환불 선점 해제 — 멱등키 행을 지운다.
+	 * - CLAIMED 인 동안에만 지운다. 역조회와 이 트랜잭션 사이에 웹훅이나 다른 경로가 확정을 끝냈다면
+	 *   그 키는 확정된 환불의 키이므로 지우면 안 된다.
+	 */
+	@Transactional
+	public void releaseRefundClaim(String refundKeyValue) {
+		idempotencyKeyRepository.findByKeyValue(refundKeyValue)
+				.filter(k -> k.getStatus() == IdempotencyKeyStatus.CLAIMED)
+				.ifPresent(idempotencyKeyRepository::delete);
+	}
+
+	/**
+	 * 환불 멱등키에서 결제 식별자를 되뽑는다.
+	 * @return 형식이 맞지 않으면 null
+	 */
+	private static Long paymentIdFromRefundKey(String refundKeyValue) {
+		String prefix = REFUND_KEY_PURPOSE + ":";
+		if (refundKeyValue == null || !refundKeyValue.startsWith(prefix)) {
+			return null;
+		}
+		try {
+			return Long.valueOf(refundKeyValue.substring(prefix.length()));
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 
 	/**

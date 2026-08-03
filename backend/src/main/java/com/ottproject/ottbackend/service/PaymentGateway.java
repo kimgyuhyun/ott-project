@@ -47,6 +47,22 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 	}
 
 	/**
+	 * 환불 역조회 결과
+	 * - REFUNDED: 환불이 실제로 나갔음이 확인됨
+	 * - NOT_REFUNDED: 환불이 나가지 않았음이 확인됨
+	 * - UNKNOWN: 판정 불가(조회 실패/비2xx/응답 파싱 실패). 모르는 것을 "안 나감"으로 읽으면
+	 *   선점이 풀려 이중 환불이 되므로, 조회 예외는 절대 NOT_REFUNDED 로 삼키지 않는다.
+	 */
+	enum RefundStatus { REFUNDED, NOT_REFUNDED, UNKNOWN }
+
+	/**
+	 * 환불 여부 역조회
+	 * - 게이트웨이 호출이 예외로 끝나 결과를 모르는 선점을 대사 배치가 판정하는 데 쓴다.
+	 * - 이 프로젝트의 환불은 항상 전액이므로 부분환불을 구분하지 않는다.
+	 */
+	RefundStatus findRefundStatus(String providerPaymentId);
+
+	/**
 	 * 저장된 결제수단(빌링키)로 자동 청구 수행
 	 * - 성공 시 외부 결제 식별자/시각/영수증 URL 반환
 	 * - merchantUid 는 호출자가 결정한다. 게이트웨이가 매번 새로 만들면 같은 청구 시도를 두 번 불러도

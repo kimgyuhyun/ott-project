@@ -1,11 +1,13 @@
 package com.ottproject.ottbackend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.User;
+import com.ottproject.ottbackend.enums.IdempotencyKeyStatus;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
@@ -54,6 +56,8 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -85,7 +89,7 @@ import static org.mockito.Mockito.verify;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
-@Import({JpaSliceTestSupport.class, PaymentCommandService.class})
+@Import({JpaSliceTestSupport.class, PaymentCommandService.class, PaymentReconciliationService.class})
 @Testcontainers(disabledWithoutDocker = true)
 @TestPropertySource(properties = {
         // 엔티티 기준으로 스키마를 만든다. IdempotencyKey.keyValue 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
@@ -123,6 +127,9 @@ class RefundIdempotencyTest {
 
     @Autowired
     private PaymentCommandService service;
+
+    @Autowired
+    private PaymentReconciliationService reconciliationService;
 
     @Autowired
     private PaymentRepository paymentRepository;
@@ -197,13 +204,16 @@ class RefundIdempotencyTest {
         eligibilityChecks = new AtomicInteger();
         refundCalls = new AtomicInteger();
 
-        given(paymentGateway.issueRefund(anyString(), anyLong())).willAnswer(invocation -> {
-            refundCalls.incrementAndGet();
-            PaymentGateway.RefundResult rr = new PaymentGateway.RefundResult();
-            rr.providerRefundId = invocation.getArgument(0);
-            rr.refundedAt = LocalDateTime.now();
-            return rr;
-        });
+        given(paymentGateway.issueRefund(anyString(), anyLong())).willAnswer(this::successfulRefund);
+    }
+
+    /** 환불 성공 응답. 몇 번 불렸는지(= 돈이 몇 번 나갔는지)를 함께 센다. */
+    private PaymentGateway.RefundResult successfulRefund(org.mockito.invocation.InvocationOnMock invocation) {
+        refundCalls.incrementAndGet();
+        PaymentGateway.RefundResult rr = new PaymentGateway.RefundResult();
+        rr.providerRefundId = invocation.getArgument(0);
+        rr.refundedAt = LocalDateTime.now();
+        return rr;
     }
 
     /**
@@ -355,5 +365,124 @@ class RefundIdempotencyTest {
         assertThat(refundCalls.get()).isEqualTo(1);
         assertThat(paymentRepository.findById(paymentId).orElseThrow().getStatus())
                 .isEqualTo(PaymentStatus.REFUNDED);
+    }
+
+    // ===== 확정되지 못한 선점의 대사 =====
+    //
+    // 선점은 게이트웨이 호출 전에 커밋되므로, 그 호출이 예외로 끝나면 키만 남아 그 결제는 영영 환불할 수
+    // 없었다. 그렇다고 실패를 곧바로 해제로 볼 수는 없다 — 타임아웃은 나갔을 수도 있어서 풀면 이중 환불이다.
+    // 그래서 푸는 판단을 게이트웨이 역조회에 맡긴다. 아래 셋은 그 세 갈래를 하나씩 못박는다.
+
+    /** 게이트웨이 호출을 실패시켜 "확정되지 못한 선점"을 만든다. */
+    private void failGatewayRefundOnce() {
+        // setUp 이 이미 스텁해 둔 메서드라 given(mock.issueRefund(...)) 형태로 덮으면 매처를 기록하는
+        // 그 호출이 기존 응답을 실행해 호출 수가 하나 늘어난다. 스터버를 앞세우는 형태여야 한다.
+        willThrow(new RuntimeException("read timed out"))
+                .given(paymentGateway).issueRefund(anyString(), anyLong());
+    }
+
+    /** 배치는 10분 이상 지난 선점만 본다. 슬라이스에는 시간을 앞당길 수단이 없어 키를 직접 과거로 민다. */
+    private IdempotencyKey backdateClaim() {
+        IdempotencyKey key = idempotencyKeyRepository.findByKeyValue("payment.refund:" + paymentId).orElseThrow();
+        assertThat(key.getStatus()).isEqualTo(IdempotencyKeyStatus.CLAIMED);
+        key.setCreatedAt(LocalDateTime.now().minusMinutes(30));
+        return idempotencyKeyRepository.saveAndFlush(key);
+    }
+
+    @Test
+    @DisplayName("게이트웨이 호출이 실패해 남은 선점은, 환불이 안 나갔음이 확인되면 배치가 풀어 재환불이 가능해진다")
+    void staleClaimIsReleasedWhenGatewaySaysNotRefunded() {
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any())).willReturn(0);
+        failGatewayRefundOnce();
+
+        assertThat(refundOutcome()).isEqualTo("rejected-500"); // 환불 실패
+        assertThat(idempotencyKeyRepository.count()).isEqualTo(1); // 선점은 커밋된 채 남는다
+        assertThat(refundOutcome()).isEqualTo("rejected-409"); // 배치 전에는 재환불이 막혀 있다
+
+        backdateClaim();
+        given(paymentGateway.findRefundStatus(IMP_UID)).willReturn(PaymentGateway.RefundStatus.NOT_REFUNDED);
+
+        reconciliationService.reconcileStaleRefundClaims();
+
+        // 해제는 행 DELETE 다. 상태만 바꿔 행을 남기면 유니크 제약과 선점 빠른 경로가 여전히 재환불을 막는다.
+        assertThat(idempotencyKeyRepository.count()).isZero();
+
+        // 이 테스트의 요지: 같은 결제를 다시 환불할 수 있다.
+        // 이미 예외로 스텁된 메서드라 given(mock.call(...)) 형태로 덮으면 스텁 도중 그 예외가 던져진다.
+        willAnswer(this::successfulRefund).given(paymentGateway).issueRefund(anyString(), anyLong());
+        assertThat(refundOutcome()).isEqualTo("refunded");
+        assertThat(refundCalls.get()).isEqualTo(1);
+        assertThat(paymentRepository.findById(paymentId).orElseThrow().getStatus())
+                .isEqualTo(PaymentStatus.REFUNDED);
+    }
+
+    @Test
+    @DisplayName("환불이 실제로 나갔다면 배치는 선점을 풀지 않고 확정한다 - 결제 REFUNDED, 구독 즉시 해지")
+    void staleClaimIsConfirmedWhenGatewaySaysRefunded() {
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any())).willReturn(0);
+        failGatewayRefundOnce(); // 응답만 못 받았을 뿐 환불은 나갔던 경우
+
+        assertThat(refundOutcome()).isEqualTo("rejected-500");
+
+        backdateClaim();
+        given(paymentGateway.findRefundStatus(IMP_UID)).willReturn(PaymentGateway.RefundStatus.REFUNDED);
+
+        reconciliationService.reconcileStaleRefundClaims();
+
+        // 선점은 남되 확정으로 전이된다 — 풀었다면 재환불이 열려 이중 환불이 됐을 자리다.
+        assertThat(idempotencyKeyRepository.count()).isEqualTo(1);
+        assertThat(idempotencyKeyRepository.findByKeyValue("payment.refund:" + paymentId).orElseThrow().getStatus())
+                .isEqualTo(IdempotencyKeyStatus.CONFIRMED);
+
+        Payment refunded = paymentRepository.findById(paymentId).orElseThrow();
+        assertThat(refunded.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
+        assertThat(refunded.getRefundedAmount()).isEqualTo(PRICE); // 전액
+
+        assertThat(subscriptionRepository.findAll())
+                .singleElement()
+                .satisfies(sub -> {
+                    assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
+                    assertThat(sub.isAutoRenew()).isFalse();
+                });
+
+        // 확정된 뒤에는 다시 돌아도 역조회를 하지 않는다(배치 대상은 CLAIMED 뿐이다).
+        reconciliationService.reconcileStaleRefundClaims();
+        verify(paymentGateway).findRefundStatus(IMP_UID);
+    }
+
+    @Test
+    @DisplayName("역조회가 판정 불가면 선점을 그대로 둔다 - 해제도 확정도 하지 않는다")
+    void unknownRefundStatusLeavesTheClaimUntouched() {
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any())).willReturn(0);
+        failGatewayRefundOnce();
+
+        assertThat(refundOutcome()).isEqualTo("rejected-500");
+
+        backdateClaim();
+        given(paymentGateway.findRefundStatus(IMP_UID)).willReturn(PaymentGateway.RefundStatus.UNKNOWN);
+
+        reconciliationService.reconcileStaleRefundClaims();
+
+        // 모르는 것을 "안 나감"으로 읽어 풀면 이중 환불이고, "나감"으로 읽어 확정하면 나가지 않은 환불이
+        // REFUNDED 로 찍힌다. 둘 다 하지 않고 다음 회차에 다시 묻는다.
+        IdempotencyKey key = idempotencyKeyRepository.findByKeyValue("payment.refund:" + paymentId).orElseThrow();
+        assertThat(key.getStatus()).isEqualTo(IdempotencyKeyStatus.CLAIMED);
+        assertThat(paymentRepository.findById(paymentId).orElseThrow().getStatus())
+                .isEqualTo(PaymentStatus.SUCCEEDED); // 결제 상태도 그대로
+        assertThat(refundOutcome()).isEqualTo("rejected-409"); // 여전히 동결
+    }
+
+    @Test
+    @DisplayName("배치는 10분이 지나지 않은 선점을 건드리지 않는다 - 진행 중인 정상 환불 보호")
+    void freshClaimIsNotReconciled() {
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any())).willReturn(0);
+        failGatewayRefundOnce();
+
+        assertThat(refundOutcome()).isEqualTo("rejected-500"); // 방금 생긴 선점
+
+        reconciliationService.reconcileStaleRefundClaims();
+
+        verify(paymentGateway, never()).findRefundStatus(anyString());
+        assertThat(idempotencyKeyRepository.count()).isEqualTo(1);
     }
 }
