@@ -81,6 +81,16 @@
 - **GitHub Actions** → **GHCR**(비공개 레지스트리) 이미지 빌드/푸시 후 서버 배포 — 커밋 SHA 태깅 + digest 고정
 - 레지스트리 이전(**Docker Hub → GHCR**)과 장기 자격증명 대신 `GITHUB_TOKEN` 단기 토큰을 쓰는 건
   **2026-06 크립토재킹 사고**의 재발 방지 조치다 — [사고 회고](docs/incident-2026-06.md)
+- **CI 품질 게이트** — main 으로 가는 모든 커밋이 통과해야 하는 검사를 파이프라인에 고정했다.
+  시크릿 스캔(히스토리 전량) · 빈 DB 에 Flyway 전량 적용+검증 · 빌드 도구(Gradle wrapper) 무결성 검증 ·
+  테스트 *실행 건수* 판정 · SpotBugs 보안 범주 차단 · 이미지 취약점 스캔. 쓰는 액션은 전부 커밋 SHA 로
+  고정하고, 워크플로 기본 토큰 권한은 읽기로 두고 필요한 잡에서만 올린다
+- 게이트 설계의 핵심은 **차단과 경고를 나눈 것**이다. 스타일·성능 지적까지 차단하면 코드 변경 없이
+  파이프라인이 멈추고 결국 게이트를 꺼버리게 되므로, 보안 범주만 차단하고 나머지는 총량을 동결해
+  **새로 늘어나는 것만** 막는다. 이미지 스캔도 같은 이유로 **수정 가능한** 취약점만 막는다(패치 없는
+  CVE 로 무한 실패하지 않도록). "빌드 성공 = 테스트가 실행됐다" 도 성립하지 않으므로 결과 XML 의
+  실행 건수로 따로 판정하고, 리포트가 없거나 분석 대상이 0개면 통과가 아니라 실패로 본다 —
+  게이트별 통과 기준은 [배포 가이드](docs/deployment.md)
 - 보안 하드닝: 앱/프론트/브로커는 **루프백 전용 바인딩**, 외부 진입점은 nginx(80/443)뿐
 - **Prometheus + Grafana + Loki** 관측성 (별도 오버레이 — 아래 [성능과 관측성](#성능과-관측성) 참고)
 
@@ -256,9 +266,15 @@ ott-project/
 │       │                     · player · reviews · search · layout · ui
 │       ├── hooks/            useAuth · usePayment · useProrationPayment
 │       └── lib/              api/* · AuthContext · config
+├── edge/hls-worker/          Cloudflare Worker (HLS 서명 검증 · 캐스케이드 서명)
 ├── nginx/                    리버스 프록시 설정(HTTPS · secure_link)
-├── docs/                     배포 · 운영 문서
-├── docker-compose.yml        postgres · redis · kafka · rabbitmq · app · frontend · nginx
+├── monitoring/               Prometheus · Grafana · Loki · Alloy 설정
+├── security/                 백업 · 감시 · 하드닝 스크립트, DB 최소권한 SQL
+├── loadtest/                 k6 시나리오와 측정 기록
+├── .github/                  CI/CD 워크플로 · 게이트 스크립트 · Dependabot
+├── docs/                     배포 · 운영 · 보안 · 메시징 · 스트리밍 · 회고
+├── docker-compose.yml        기본 정의 (+ prod · netlock · ha · monitoring 오버레이)
+├── deploy-rolling.ps1        무중단 배포(운영 경로) — 단일 인스턴스는 deploy.ps1
 └── env.example               환경 변수 예시
 ```
 
@@ -306,6 +322,7 @@ ott-project/
   - 검색/필터/정렬 · 주간 편성 · 작품 상세/모달 UX
 - **인프라**
   - nginx 리버스 프록시, Cloudflare Worker 엣지(HLS secure_link 서명 검증), Docker Compose, GHCR(Docker Hub 에서 이전), GitHub Actions CD
+  - CI 품질 게이트(시크릿 스캔 · 마이그레이션 검증 · 테스트 실행 판정 · 정적 분석 · 이미지 취약점 스캔)와 무중단 배포 스크립트
   - 환경변수/비밀키 관리(SOPS+age 암호화 `.env.enc` 단일 소스, CD가 `AGE_KEY`로 복호화), 루프백 바인딩 보안 하드닝
   - Prometheus + Grafana + Loki 관측성(인스턴스별 메트릭 · loki4j 로그 push, 별도 오버레이)
 
@@ -331,7 +348,7 @@ ott-project/
 
 ## 문서
 
-- [배포 가이드](docs/deployment.md) — Docker 배포, 무중단 배포, CI/CD, SSL 설정
+- [배포 가이드](docs/deployment.md) — Docker 배포, 무중단 배포, CI/CD 품질 게이트, SSL 설정
 - [운영 가이드](docs/operations.md) — 환경 변수, 모니터링, 백업과 복구
 - [보안 설계](docs/security.md) — 망분리, 이미지 공급망, 인증·최소권한, 애플리케이션 방어
 - [비동기 메시징](docs/messaging.md) — 결제 이벤트 파이프라인(Outbox+Kafka), 정기결제 재시도(RabbitMQ TTL+DLX), 다중 인스턴스 중복 발행과 분산락

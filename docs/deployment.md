@@ -46,11 +46,45 @@
 
 ## CI/CD
 
-### GitHub Actions
+### 파이프라인
+- **CI** (`.github/workflows/ci.yml`) — PR 과 main push 마다 실행. 아래 게이트를 모두 통과해야 이미지가 push 된다
+- **CD** (`.github/workflows/cd.yml`) — main push 시 self-hosted 러너에서 `deploy-rolling.ps1` 을 실행
 - **배포 방식**: Self-hosted runner 사용
 - **보안**: SSH(22) 포트는 닫고 GitHub Actions로만 배포
 - **레지스트리**: GitHub Container Registry(ghcr.io, 비공개). CD가 커밋 이미지를 digest로 고정해 배포
   (구 Docker Hub `para98` 는 침해 이력으로 폐기)
+
+### 품질 게이트
+| 검사 | 막으려는 것 | 통과 기준 |
+|---|---|---|
+| 시크릿 스캔 (gitleaks) | 커밋에 들어간 자격증명 | 히스토리 전량 무탐지. 알려진 과거 탐지는 `.gitleaksignore` 에 사유와 함께 지문으로 등록 |
+| 마이그레이션 검증 | 운영 DB 에서 처음 터지는 Flyway | 빈 PostgreSQL 15(운영과 같은 메이저)에 전량 적용 후 `flywayValidate` |
+| 빌드 도구 무결성 | Gradle wrapper JAR 교체(공급망) | 배포 해시와 일치 |
+| 테스트 실행 건수 | "빌드 성공"이 테스트 실행을 보장하지 않는 문제 | 결과 XML 의 실행 건수가 하한 이상 + Testcontainers 필수 클래스가 전부 실행됨 |
+| 정적 분석 (SpotBugs) | 보안 결함, 그리고 나머지 지적의 증가 | 보안 범주 0건 + 총 지적이 베이스라인 이하 |
+| 이미지 취약점 (Trivy) | 수정 가능한 CRITICAL | 백엔드·프론트 이미지 각각 무탐지 |
+| 액션 고정 | 서드파티 액션의 태그 이동 | 모든 `uses:` 가 커밋 SHA |
+
+- 판정 스크립트는 `.github/scripts/` (`check-test-count.sh`, `check-spotbugs-security.sh`).
+  하한값은 워크플로 env 와 `.github/spotbugs-baseline` 에 두고 코드에는 박지 않는다
+- 워크플로 기본 토큰 권한은 `contents: read`. ghcr push 가 필요한 잡에서만 `packages: write` 로 올린다
+- gitleaks 는 액션 대신 릴리스 바이너리를 **버전 고정 + SHA256 검증**으로 받는다 —
+  원격 스크립트를 받아 바로 실행하지 않으면서 액션 의존성도 늘리지 않기 위해서다
+- 시크릿 스캔은 커밋 훅(`.githooks/`)과 CI 양쪽에서 돈다. 훅은 로컬에서 우회될 수 있고
+  CI 는 이미 커밋된 것만 보므로 한쪽만으로는 부족하다
+- 의존성 업데이트는 Dependabot(`.github/dependabot.yml`)이 PR 로 올린다
+
+### 차단과 경고를 나눈 이유
+스타일·성능 지적까지 차단으로 두면 코드를 고치지 않았는데도 파이프라인이 멈추고, 그러면 결국
+게이트 자체를 꺼버리게 된다. 그래서 차단 범위를 좁게 잡았다.
+
+- **SpotBugs**: 보안 범주만 차단한다. MALICIOUS_CODE(대부분 가변 객체를 그대로 반환/보관하는
+  캡슐화 지적)는 익스플로잇 가능한 결함이 아니라서 차단하지 않는다. 대신 총 지적 건수를
+  베이스라인으로 동결해 **새로 늘어나는 것만** 막는다 — 기존 부채는 리포트에 남으니 줄여나갈 근거는 유지된다
+- **Trivy**: `ignore-unfixed` 로 **고칠 수 있는** 취약점만 막는다. 패치가 없는 CVE 로 매번 실패하면 같은 결말이 된다
+- **음성 결과를 통과 근거로 삼지 않는다**: SpotBugs 리포트가 없거나 분석 대상이 0개면 통과가 아니라 실패다.
+  분석이 조용히 건너뛰어진 채 "지적 0건" 으로 통과한 적이 있어 넣은 검사다
+- 베이스라인이나 테스트 하한을 올릴 때는 이유를 커밋 메시지에 남긴다
 
 ## SSL/TLS 설정
 
