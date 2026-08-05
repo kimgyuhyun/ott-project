@@ -6,6 +6,41 @@
 + Next.js 15(App Router, React Query) + PostgreSQL/Redis/Kafka(아웃박스)/RabbitMQ(던닝) + nginx.
 단일 호스트 Docker Compose, GitHub Actions CI(ghcr push+Trivy)→CD(self-hosted 러너, 자동배포).
 
+## 프로젝트 규칙
+- 코드와 데이터 구조 규칙은 `standards/ARCHITECTURE.md` 를 따른다.
+- 배포, 보안, 파이프라인, 관측 규칙은 `standards/PLATFORM.md` 를 따른다.
+- 각 규칙은 [절대]와 [상황]으로 표시돼 있다. [절대]는 예외 없음. [상황]은 적용 조건과 미적용 조건이 함께 있으니, 미적용 조건에 해당하면 규칙을 어기는 것이 맞다.
+- [상황] 규칙의 미적용 조건을 근거로 규칙을 어길 때는 그 이유를 코드 주석이나 커밋 메시지에 한 줄 남긴다.
+- 규칙끼리 충돌하거나 판단이 서지 않으면 임의로 정하지 말고 물어본다.
+- `standards/` 는 .gitignore 대상이다. 이 저장소는 공개이므로 규칙 문서 내용을 커밋하거나 README에 옮겨 적지 않는다.
+- 이 프로젝트는 규칙 문서보다 먼저 만들어졌다. 기존 코드가 규칙과 다른 곳이 남아 있으므로, 주변 코드를 근거로 규칙을 판단하지 않는다.
+
+### 언제 무엇을 읽는가
+아래 작업을 시작하기 전에 해당 절을 먼저 읽는다. 기억에 의존해 규칙을 적용하지 않는다. `RATIONALE.md` 는 통독하지 않고 표에 적힌 절만 읽는다.
+
+| 시작하는 작업 | 먼저 읽을 절 |
+|---|---|
+| 엔티티, DTO, Controller, Service 새로 만들기 | ARCHITECTURE 1, 2, 7 |
+| 트랜잭션 경계 잡기, 데이터 접근 수단 고르기 | ARCHITECTURE 3, 4 |
+| 인덱스 추가·삭제 | ARCHITECTURE 8, RATIONALE 3-1 — 실행 계획과 실측 시간을 전후로 캡처해야 한다. 나중에 만들 수 없으니 착수 전에 읽는다 |
+| 재고·잔액·좌석·쿠폰 차감, 같은 행 동시 갱신 | ARCHITECTURE 9, RATIONALE 3-2 |
+| 결제·주문, 외부 API 호출이 끼는 상태 전이 | ARCHITECTURE 5, 6, RATIONALE 3-3 |
+| 목록·상세 조회 성능, 페이징, N+1, 커넥션 풀 | ARCHITECTURE 11, 12 |
+| 캐시 추가 | ARCHITECTURE 10 |
+| 메시지 발행·소비, 브로커 선택 | ARCHITECTURE 13 |
+| 소비자를 별도 서비스로 분리, 데이터 망에 컨테이너 추가 | PLATFORM 3 — 브로커 인증을 걸 시점인지 판단한다 |
+| 예외 처리와 에러 응답 | ARCHITECTURE 14 |
+| 테스트 작성 | ARCHITECTURE 15, RATIONALE 3-6 — 계층이 아니라 로직으로 대상을 정한다. 짠 뒤에는 일부러 깨뜨려 빨간불이 나는지 확인한다 |
+| 로그인, 인가, 쿠키, CORS, DB 계정 권한 | PLATFORM 4 |
+| 사용자 입력 검증, 파일 업로드, 서버가 보내는 외부 요청 | PLATFORM 5 |
+| compose, Dockerfile, nginx 설정 수정 | PLATFORM 2, 3 |
+| 워크플로 수정, 의존성 추가 | PLATFORM 6, 7 |
+| 마이그레이션 작성과 배포 | PLATFORM 8 — 파괴적 변경은 애플리케이션 배포와 같은 릴리스에 넣지 않는다 |
+| 시크릿 추가·변경, 유출 대응 | PLATFORM 1 |
+| 지표, 로그, 경보 추가 | PLATFORM 9 |
+| 부하 테스트 | PLATFORM 10, RATIONALE 3-4 — 기준선을 먼저 측정하고 합격 기준을 테스트 전에 적는다 |
+| 배포 후 보안 점검 | RATIONALE 3-5 |
+
 ## 폴더
 - `backend/` Spring Boot (config/controller/dto/entity/repository/security/service 등 표준 레이어드)
 - `frontend/` Next.js App Router, `src/lib/api/*` 도메인별 API 클라이언트

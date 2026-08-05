@@ -315,3 +315,4 @@ security/firewall-*-rollback-*.txt
 security/discord-webhook.txt
 security/uptime.log
 security/uptime.state
+standards/
