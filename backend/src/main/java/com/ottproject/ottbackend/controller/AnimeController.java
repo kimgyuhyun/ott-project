@@ -144,7 +144,9 @@ public class AnimeController {
     @GetMapping("/trending-24h")
     public List<AnimeListDto> getTrending24h(@RequestParam(defaultValue = "10") int limit) {
         ZSetOperations<String, Object> zset = redisTemplate.opsForZSet();
-        var tuples = zset.reverseRangeWithScores("trend:24h", 0, Math.max(0, limit - 1));
+        // 상한 강제. limit 이 Redis ZSet 범위의 끝 인덱스로 그대로 들어간다
+        int safeLimit = com.ottproject.ottbackend.util.PageLimitUtil.clampSize(limit);
+        var tuples = zset.reverseRangeWithScores("trend:24h", 0, Math.max(0, safeLimit - 1));
         if (tuples == null || tuples.isEmpty()) {
             return List.of();
         }

@@ -38,6 +38,8 @@ public class PersonalizedRecommendationService {
      * 사용자 개인화 추천 목록 조회
      */
     public List<AnimeListDto> getPersonalizedRecommendations(Long userId, int size) {
+        // 상한 강제. 개인화 경로는 아래에서 20으로 다시 좁히지만, 폴백 경로는 size 를 그대로 LIMIT 으로 쓴다
+        size = com.ottproject.ottbackend.util.PageLimitUtil.clampSize(size);
         try {
             // 1. Redis에서 캐시된 추천 확인
             String cacheKey = String.format(USER_RECOMMENDATIONS, userId);

@@ -9,6 +9,7 @@ import com.ottproject.ottbackend.mybatis.FavoriteQueryMapper;
 import com.ottproject.ottbackend.repository.AnimeFavoriteRepository;
 import com.ottproject.ottbackend.repository.AnimeRepository; // NEW
 import com.ottproject.ottbackend.repository.UserRepository;
+import com.ottproject.ottbackend.util.PageLimitUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +55,7 @@ public class FavoriteAnimeService { // 보고싶다 도메인 서비스
         System.out.println("🔧 [SERVICE] FavoriteAnimeService.list 시작");
         System.out.println("🔧 [SERVICE] 파라미터 - userId: " + userId + ", page: " + page + ", size: " + size + ", sort: " + sort);
         
+        size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
         int limit = size; // limit 계산
         int offset = Math.max(page, 0) * size; // offset 계산
         System.out.println("🔧 [SERVICE] 계산된 limit: " + limit + ", offset: " + offset);

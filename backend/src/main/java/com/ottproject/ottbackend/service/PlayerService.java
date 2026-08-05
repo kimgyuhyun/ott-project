@@ -238,6 +238,7 @@ public class PlayerService {
      * 사용자의 시청 기록 조회 (페이지네이션, 90일 제한)
      */
     public Map<String, Object> getWatchHistory(Long userId, int page, int size) {
+        size = com.ottproject.ottbackend.util.PageLimitUtil.clampSize(size); // 상한 강제. 아래 PageRequest 가 이 값을 쓴다
         // 90일 전 날짜 계산
         LocalDateTime ninetyDaysAgo = LocalDateTime.now().minus(90, ChronoUnit.DAYS);
         
@@ -271,6 +272,7 @@ public class PlayerService {
     public Map<String, Object> getRecentAnimeHistory(Long userId, int page, int size,
                                                      java.time.LocalDateTime cursorUpdatedAt,
                                                      Long cursorAnimeId) {
+        size = com.ottproject.ottbackend.util.PageLimitUtil.clampSize(size); // 상한 강제. 매퍼 LIMIT·offset·응답 size 가 모두 이 값에서 나온다
         List<RecentAnimeWatchDto> items = playerQueryMapper.findRecentAnimeByUser(
                 userId, size, page * size, cursorUpdatedAt, cursorAnimeId);
         Map<String, Object> result = new HashMap<>();

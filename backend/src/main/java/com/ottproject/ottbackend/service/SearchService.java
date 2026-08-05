@@ -4,6 +4,7 @@ import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.SearchSuggestTitleDto;
 import com.ottproject.ottbackend.mybatis.SearchQueryMapper;
+import com.ottproject.ottbackend.util.PageLimitUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,6 +43,7 @@ public class SearchService {
         List<Long> distinctGenres = (genreIds == null) ? null : genreIds.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()); // 장르 정제
         Integer genreCount = (distinctGenres == null) ? 0 : distinctGenres.size(); // AND 개수
         List<Long> distinctTags = (tagIds == null) ? null : tagIds.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList()); // 태그 정제
+        size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
         int limit = size; // LIMIT 계산
         int offset = Math.max(page, 0) * size; // OFFSET 계산
 

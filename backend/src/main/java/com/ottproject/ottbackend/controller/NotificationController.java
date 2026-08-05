@@ -47,7 +47,7 @@ public class NotificationController {
             HttpSession session) {
         
         Long userId = securityUtil.requireCurrentUserId(session);
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(page, size); // 크기 상한은 NotificationService 가 강제한다
         
         Page<NotificationDto> notifications = notificationService.getNotifications(userId, pageable);
         return ResponseEntity.ok(notifications);

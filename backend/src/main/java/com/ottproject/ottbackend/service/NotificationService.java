@@ -12,7 +12,9 @@ import com.ottproject.ottbackend.repository.NotificationRepository;
 import com.ottproject.ottbackend.repository.UserSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import com.ottproject.ottbackend.util.PageLimitUtil;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -129,8 +131,13 @@ public class NotificationService {
      */
     @Transactional(readOnly = true)
     public Page<NotificationDto> getNotifications(Long userId, Pageable pageable) {
-        Page<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
-        
+        // 상한 강제. 호출자가 만들어 넘긴 Pageable 이라도 여기서 다시 자른다 —
+        // 나머지 목록 API 와 같이 서비스 계층 한 곳에서만 판단하기 위해서다.
+        Pageable capped = PageRequest.of(
+                pageable.getPageNumber(), PageLimitUtil.clampSize(pageable.getPageSize()), pageable.getSort());
+
+        Page<Notification> notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, capped);
+
         return notifications.map(this::convertToDto);
     }
 

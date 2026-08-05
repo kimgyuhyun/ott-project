@@ -6,6 +6,7 @@ import com.ottproject.ottbackend.dto.MyReviewItemDto;
 import com.ottproject.ottbackend.dto.MyCommentItemDto;
 import com.ottproject.ottbackend.mybatis.MypageStatsQueryMapper;
 import com.ottproject.ottbackend.mybatis.MypageActivityQueryMapper;
+import com.ottproject.ottbackend.util.PageLimitUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,18 +25,21 @@ public class MypageService {
 
     @Transactional(readOnly = true)
     public java.util.List<MyRatingItemDto> getMyRatings(Long userId, int page, int size) {
+        size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 offset 과 매퍼 LIMIT 이 모두 이 값에서 나온다
         int offset = page * size;
         return mypageActivityQueryMapper.findMyRatings(userId, offset, size);
     }
 
     @Transactional(readOnly = true)
     public java.util.List<MyReviewItemDto> getMyReviews(Long userId, int page, int size) {
+        size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 offset 과 매퍼 LIMIT 이 모두 이 값에서 나온다
         int offset = page * size;
         return mypageActivityQueryMapper.findMyReviews(userId, offset, size);
     }
 
     @Transactional(readOnly = true)
     public java.util.List<MyCommentItemDto> getMyComments(Long userId, int page, int size) {
+        size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 offset 과 매퍼 LIMIT 이 모두 이 값에서 나온다
         int offset = page * size;
         return mypageActivityQueryMapper.findMyComments(userId, offset, size);
     }

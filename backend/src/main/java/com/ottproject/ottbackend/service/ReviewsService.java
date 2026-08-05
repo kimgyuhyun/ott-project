@@ -14,6 +14,7 @@ import com.ottproject.ottbackend.repository.ReviewLikeRepository;
 import com.ottproject.ottbackend.repository.ReviewReportRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import com.ottproject.ottbackend.util.PageLimitUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,7 @@ public class ReviewsService {
     private static final int REPORT_HIDE_THRESHOLD = 5; // 서로 다른 사용자 신고가 이 수 이상이면 숨김(REPORTED)
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<ReviewResponseDto> list(Long aniId, Long currentUserId, String sort, int page, int size) {
+        size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
         int limit = size; // LIMIT 계산
         int offset = Math.max(page, 0) * size; /// OFFSET 계산(0 미만 보호)
         List<ReviewResponseDto> items = reviewQueryMapper // 목록 데이터 조회

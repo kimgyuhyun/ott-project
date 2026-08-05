@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.mybatis.AnimeQueryMapper;
+import com.ottproject.ottbackend.util.PageLimitUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,7 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 											 Boolean isNew, Boolean isPopular, String sort, int page, int size, // 정렬/페이지 파라미터
 											 List<Long> tagIds // 태그 OR 필터
 	) { // 목록 메서드 시작
+		size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
 		int limit = size; // LIMIT 값 계산(페이지 크기)
 		int offset = Math.max(page, 0) * size; // OFFSET 계산(0 미만 방지)
 
@@ -130,7 +132,7 @@ public class AnimeQueryService { // 애니 조회 관련 비즈니스 로직 제
 	}
 
 	public java.util.List<AnimeListDto> getWeeklyByDay(String day, int limit) {
-		return mapper.findWeeklyByDay(day, limit);
+		return mapper.findWeeklyByDay(day, PageLimitUtil.clampSize(limit)); // 상한 강제
 	}
 
 	public java.util.List<com.ottproject.ottbackend.dto.GenreSimpleDto> getAllGenres() {

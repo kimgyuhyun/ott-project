@@ -15,6 +15,7 @@ import com.ottproject.ottbackend.repository.CommentRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.service.NotificationTriggerService;
+import com.ottproject.ottbackend.util.PageLimitUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -55,6 +56,7 @@ public class ReviewCommentsService {
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<ReviewCommentsResponseDto> listByReview(Long reviewId, Long currentUserId, int page, int size) {
+        size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
         int limit = size; // LIMIT 계산
         int offset = Math.max(page, 0) * size; // OFFSET 계산(0 미만 보호)
         List<ReviewCommentsResponseDto> items = commentQueryMapper
@@ -70,6 +72,7 @@ public class ReviewCommentsService {
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<ReviewCommentsResponseDto> listByReview(Long reviewId, Long currentUserId, int page, int size, String sort) { // [NEW]
+        size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
         int limit = size; // LIMIT 계산
         int offset = Math.max(page, 0) * size; // OFFSET 계산(0 미만 보호)
         List<ReviewCommentsResponseDto> items = commentQueryMapper

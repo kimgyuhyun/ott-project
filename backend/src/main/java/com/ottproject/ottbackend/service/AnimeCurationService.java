@@ -56,6 +56,7 @@ public class AnimeCurationService {
      */
     @Transactional(readOnly = true)
     public PagedResponse<AdminAnimeListItemDto> search(AnimeCurationSearchCondition condition, int page, int size) {
+        size = com.ottproject.ottbackend.util.PageLimitUtil.clampSize(size); // 상한 강제. 조회와 응답의 size 가 모두 이 값에서 나온다
         List<AdminAnimeListItemDto> items = curationQueryRepository.search(condition, page, size)
                 .stream()
                 .map(AdminAnimeListItemDto::from)
