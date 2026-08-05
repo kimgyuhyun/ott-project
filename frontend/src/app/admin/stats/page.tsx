@@ -189,7 +189,7 @@ export default function AdminStatsPage() {
                 <tr><td colSpan={6} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>집계된 통계가 없습니다.</td></tr>
               ) : (
                 [...daily].reverse().map((s) => (
-                  <tr key={s.id}>
+                  <tr key={s.statDate}>
                     <td>{s.statDate}</td>
                     <td>{s.loginSuccessCount.toLocaleString()}</td>
                     <td>{s.loginFailCount.toLocaleString()}</td>

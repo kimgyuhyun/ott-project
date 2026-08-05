@@ -1,7 +1,7 @@
 package com.ottproject.ottbackend.controller;
 
-import com.ottproject.ottbackend.entity.User;
-import com.ottproject.ottbackend.repository.UserRepository;
+import com.ottproject.ottbackend.dto.UserProfileDto;
+import com.ottproject.ottbackend.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,7 +39,7 @@ import java.util.Map;
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성
 public class SocialAuthController {
 
-    private final UserRepository userRepository; // 사용자 데이터베이스 접근
+    private final UserProfileService userProfileService; // 사용자 프로필 조회/변경
 
     /**
      * 소셜 로그인 상태 확인 API
@@ -70,7 +69,7 @@ public class SocialAuthController {
             response.put("message", "소셜 로그인이 완료되었습니다.");
 
             String authEmail = authentication.getName();
-            User dbUserOrNull = userRepository.findByEmail(authEmail).orElse(null);
+            UserProfileDto dbUserOrNull = userProfileService.findProfileByEmail(authEmail).orElse(null);
             if (dbUserOrNull != null) {
                 response.put("username", dbUserOrNull.getName());
                 response.put("email", dbUserOrNull.getEmail());
@@ -165,7 +164,7 @@ public class SocialAuthController {
             userInfo.put("principal", authentication.getPrincipal());
 
             String authEmail = authentication.getName();
-            User dbUserOrNull = userRepository.findByEmail(authEmail).orElse(null);
+            UserProfileDto dbUserOrNull = userProfileService.findProfileByEmail(authEmail).orElse(null);
             if (dbUserOrNull != null) {
                 userInfo.put("username", dbUserOrNull.getName());
                 userInfo.put("email", dbUserOrNull.getEmail());
@@ -198,7 +197,7 @@ public class SocialAuthController {
                         Object userIdObj = attrs.get("userId");
                         if (userIdObj instanceof Number) {
                             Long uid = ((Number) userIdObj).longValue();
-                            userRepository.findById(uid).ifPresent(u -> {
+                            userProfileService.findProfile(uid).ifPresent(u -> {
                                 if (u.getName() != null && !u.getName().isBlank()) {
                                     attrs.put("userName", u.getName());
                                     attrs.put("name", u.getName());
@@ -209,7 +208,11 @@ public class SocialAuthController {
                             attrs.put("name", dbUserOrNull.getName());
                         }
                     }
-                } catch (Exception ignore) { }
+                } catch (Exception ignore) {
+                    // 삼켜도 무해: 표시명 보강에 실패해도 attrs 는 OAuth2 원본 속성을 그대로 들고 있어
+                    // 응답은 유효하다. 최신 닉네임 대신 제공자가 준 이름이 잠시 보일 뿐이고,
+                    // 다음 user-info 호출에서 다시 보정된다.
+                }
                 userInfo.put("attributes", attrs); // OAuth2 속성 정보 설정 (소셜 로그인 제공자에서 받은 정보)
 
                 // 신규 사용자 플래그를 attributes 에 보강 (세션/속성 어디서든 읽을 수 있게)
@@ -252,7 +255,10 @@ public class SocialAuthController {
             if (session != null) {
                 session.invalidate(); // 세션 무효화
             }
-        } catch (Exception ignore) { }
+        } catch (Exception ignore) {
+            // 삼켜도 무해: 현실적인 실패는 이미 무효화된 세션의 IllegalStateException 뿐이고,
+            // 그 상태가 곧 로그아웃이 원하는 결과다. 아래 clearContext() 는 어차피 실행된다.
+        }
         SecurityContextHolder.clearContext(); // 인증 정보 삭제
 
         // 로그아웃 결과를 담을 Map 객체 생성
@@ -277,7 +283,6 @@ public class SocialAuthController {
     @ApiResponse(responseCode = "401", description = "인증 필요")
     @ApiResponse(responseCode = "400", description = "잘못된 요청")
     @PutMapping("/nickname") // PUT 요청 처리 - /api/oauth2/nickname 경로로 접근
-    @Transactional // 트랜잭션 처리
     public ResponseEntity<Map<String, Object>> updateNickname(@RequestBody Map<String, String> nicknameRequest) { // HTTP 응답을 위한 ResponseEntity 반환
         log.info("닉네임 업데이트 요청 수신"); // 로그 출력 - 요청 시작을 알림
 
@@ -328,18 +333,12 @@ public class SocialAuthController {
                 return ResponseEntity.badRequest().body(response); // 400 Bad Request 상태코드와 함께 응답 데이터 반환
             }
 
-            // 사용자 조회 및 닉네임 업데이트
-            User user = userRepository.findById(userId).orElse(null);
-            if (user == null) {
+            // 닉네임 업데이트(트랜잭션 경계와 변경 로그는 서비스가 갖는다)
+            if (userProfileService.updateNickname(userId, newNickname).isEmpty()) {
                 response.put("success", false); // 실패 상태 설정
                 response.put("message", "사용자를 찾을 수 없습니다."); // 안내 메시지 설정
                 return ResponseEntity.badRequest().body(response); // 400 Bad Request 상태코드와 함께 응답 데이터 반환
             }
-
-            // 닉네임 업데이트
-            String oldNickname = user.getName();
-            user.setName(newNickname);
-            userRepository.save(user);
 
             // 세션/시큐리티 컨텍스트의 OAuth2 attributes도 최신화(프론트 즉시 반영)
             try {
@@ -369,9 +368,10 @@ public class SocialAuthController {
                         org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(refreshed);
                     }
                 }
-            } catch (Exception ignore) { }
-
-            log.info("닉네임 업데이트 완료 - 사용자ID: {}, 기존: {}, 신규: {}", userId, oldNickname, newNickname);
+            } catch (Exception ignore) {
+                // 삼켜도 무해: 닉네임은 위에서 이미 저장·커밋됐고 이 블록은 즉시 반영용 보조 경로다.
+                // 실패하면 프론트가 이번 응답으로 갱신을 못 볼 뿐, user-info 가 DB 값을 다시 읽어 보정한다.
+            }
 
             // 성공 응답 데이터 설정
             response.put("success", true); // 성공 상태 설정

@@ -3,13 +3,11 @@ package com.ottproject.ottbackend.controller;
 import com.ottproject.ottbackend.config.SecurityConfig;
 import com.ottproject.ottbackend.handler.OAuth2AuthFailureHandler;
 import com.ottproject.ottbackend.handler.OAuth2AuthSuccessHandler;
-import com.ottproject.ottbackend.repository.AuthEventRepository;
-import com.ottproject.ottbackend.repository.DailyStatsRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.security.SessionAuthenticationFilter;
+import com.ottproject.ottbackend.service.AdminStatsService;
 import com.ottproject.ottbackend.service.LocalUserDetailsService;
 import com.ottproject.ottbackend.service.OAuth2UserService;
-import com.ottproject.ottbackend.service.StatsSnapshotService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,9 +56,7 @@ class AdminAuthorizationTest {
     private MockMvc mvc;
 
     // 컨트롤러 의존성
-    @MockitoBean private DailyStatsRepository dailyStatsRepository;
-    @MockitoBean private AuthEventRepository authEventRepository;
-    @MockitoBean private StatsSnapshotService statsSnapshotService;
+    @MockitoBean private AdminStatsService adminStatsService;
 
     // SecurityConfig / 필터 의존성
     @MockitoBean private LocalUserDetailsService localUserDetailsService;

@@ -284,16 +284,15 @@ export async function updateEpisodeForAdmin(
 // ===== 통계 / 감사 로그 =====
 // 백엔드: AdminStatsController (/api/admin/stats/**), ROLE_ADMIN 전용
 
-// 일일 통계 스냅샷 (DailyStats)
+// 일일 통계 스냅샷 (백엔드 DailyStatsDto)
+// statDate 가 유니크라 행의 식별자 역할을 한다(내부 PK 는 응답에 담지 않는다).
 export interface DailyStats {
-  id: number;
   statDate: string; // yyyy-MM-dd
   loginSuccessCount: number;
   loginFailCount: number;
   logoutCount: number;
   signupCount: number;
   activeUserCount: number; // DAU
-  createdAt: string;
   updatedAt: string;
 }
 
@@ -306,7 +305,7 @@ export interface AuthEvent {
   provider: "LOCAL" | "GOOGLE" | "NAVER" | "KAKAO" | null;
   ipAddress: string | null;
   userAgent: string | null;
-  sessionId: string | null;
+  sessionIdPrefix: string | null; // 세션 식별자 앞 8자만 내려온다(원문은 노출하지 않는다)
   failReason: string | null;
   occurredAt: string;
 }
