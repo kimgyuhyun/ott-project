@@ -148,7 +148,7 @@ public class AdminAnimeController {
      */
     @Operation(summary = "단일 애니메이션 동기화", description = "특정 MAL ID의 애니메이션을 Jikan API에서 수집하여 DB에 저장합니다.")
     @ApiResponse(responseCode = "200", description = "동기화 성공")
-    @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    @ApiResponse(responseCode = "500", description = "수집 실패(외부 API/DB 오류)")
     @PostMapping("/sync/{malId}")
     public ResponseEntity<SyncResult> syncAnime(
             @Parameter(description = "MyAnimeList 애니메이션 ID", required = true)
@@ -156,21 +156,16 @@ public class AdminAnimeController {
 
         log.info("단일 애니메이션 동기화 요청: MAL ID {}", malId);
 
-        try {
-            boolean success = collectorService.collectAnime(malId);
+        // 수집이 예외로 끝나면 GlobalExceptionHandler 가 500/INTERNAL_ERROR 로 바꾼다.
+        // 여기서 잡아 바디에 담으면 Jikan 응답이나 SQL 오류 원문이 관리자 화면까지 흘러간다.
+        boolean success = collectorService.collectAnime(malId);
 
-            if (success) {
-                log.info("애니메이션 동기화 성공: MAL ID {}", malId);
-                return ResponseEntity.ok(new SyncResult(true, "동기화 성공", malId));
-            } else {
-                log.warn("애니메이션 동기화 실패: MAL ID {}", malId);
-                return ResponseEntity.ok(new SyncResult(false, "동기화 실패 (이미 존재하거나 19금 콘텐츠)", malId));
-            }
-
-        } catch (Exception e) {
-            log.error("애니메이션 동기화 중 오류 발생: MAL ID {}", malId, e);
-            return ResponseEntity.badRequest()
-                    .body(new SyncResult(false, "동기화 중 오류 발생: " + e.getMessage(), malId));
+        if (success) {
+            log.info("애니메이션 동기화 성공: MAL ID {}", malId);
+            return ResponseEntity.ok(new SyncResult(true, "동기화 성공", malId));
+        } else {
+            log.warn("애니메이션 동기화 실패: MAL ID {}", malId);
+            return ResponseEntity.ok(new SyncResult(false, "동기화 실패 (이미 존재하거나 19금 콘텐츠)", malId));
         }
     }
 
@@ -179,7 +174,7 @@ public class AdminAnimeController {
      */
     @Operation(summary = "인기 애니메이션 일괄 동기화", description = "Jikan API의 인기 애니메이션 목록을 수집하여 DB에 저장합니다.")
     @ApiResponse(responseCode = "200", description = "동기화 성공")
-    @ApiResponse(responseCode = "400", description = "잘못된 요청")
+    @ApiResponse(responseCode = "500", description = "수집 실패(외부 API/DB 오류)")
     @PostMapping("/sync-popular")
     public ResponseEntity<BulkSyncResult> syncPopularAnime(
             @Parameter(description = "수집할 개수 (기본값: 50, 최대: 5000)")
@@ -187,24 +182,17 @@ public class AdminAnimeController {
 
         log.info("인기 애니메이션 일괄 동기화 요청: {}개", limit);
 
-        try {
-            // 최대 5000개로 제한 (Jikan API는 수천 개까지 가능)
-            int actualLimit = Math.min(limit, 5000);
+        // 최대 5000개로 제한 (Jikan API는 수천 개까지 가능)
+        int actualLimit = Math.min(limit, 5000);
 
-            if (actualLimit != limit) {
-                log.warn("요청된 개수 {}개가 최대 제한을 초과하여 {}개로 조정", limit, actualLimit);
-            }
-
-            CollectionResult result = collectorService.collectPopularAnime(actualLimit);
-
-            log.info("인기 애니메이션 동기화 완료: {}", result);
-            return ResponseEntity.ok(new BulkSyncResult(true, "인기 애니메이션 동기화 완료", result));
-
-        } catch (Exception e) {
-            log.error("인기 애니메이션 동기화 중 오류 발생", e);
-            return ResponseEntity.badRequest()
-                    .body(new BulkSyncResult(false, "동기화 중 오류 발생: " + e.getMessage(), null));
+        if (actualLimit != limit) {
+            log.warn("요청된 개수 {}개가 최대 제한을 초과하여 {}개로 조정", limit, actualLimit);
         }
+
+        CollectionResult result = collectorService.collectPopularAnime(actualLimit);
+
+        log.info("인기 애니메이션 동기화 완료: {}", result);
+        return ResponseEntity.ok(new BulkSyncResult(true, "인기 애니메이션 동기화 완료", result));
     }
 
     // ===== TMDB 보강 =====
@@ -215,18 +203,12 @@ public class AdminAnimeController {
     @Operation(summary = "전체 애니메이션 데이터 보강", description = "한국어 제목이 없는 애니메이션을 TMDB 데이터로 보강합니다(비동기).")
     @PostMapping("/enhance-all")
     public ResponseEntity<String> enhanceAllAnime() {
-        try {
-            log.info("애니메이션 데이터 보완 요청 받음");
+        log.info("애니메이션 데이터 보완 요청 받음");
 
-            // 비동기로 보완 작업 시작 — 즉시 반환하며 진행 상황은 서버 로그로만 확인 가능하다
-            animeEnhancementService.enhanceAllAnime();
+        // 비동기로 보완 작업 시작 — 즉시 반환하며 진행 상황은 서버 로그로만 확인 가능하다
+        animeEnhancementService.enhanceAllAnime();
 
-            return ResponseEntity.ok("애니메이션 데이터 보완 작업이 시작되었습니다. 로그를 확인하세요.");
-
-        } catch (Exception e) {
-            log.error("애니메이션 데이터 보완 시작 실패", e);
-            return ResponseEntity.status(500).body("보완 작업 시작 실패: " + e.getMessage());
-        }
+        return ResponseEntity.ok("애니메이션 데이터 보완 작업이 시작되었습니다. 로그를 확인하세요.");
     }
 
     /**
@@ -235,20 +217,14 @@ public class AdminAnimeController {
     @Operation(summary = "단건 애니메이션 데이터 보강", description = "특정 애니메이션을 TMDB 데이터로 보강합니다.")
     @PostMapping("/enhance/{animeId}")
     public ResponseEntity<String> enhanceAnimeById(@PathVariable Long animeId) {
-        try {
-            log.info("애니메이션 데이터 보완 요청: ID {}", animeId);
+        log.info("애니메이션 데이터 보완 요청: ID {}", animeId);
 
-            boolean success = animeEnhancementService.enhanceAnimeById(animeId);
+        boolean success = animeEnhancementService.enhanceAnimeById(animeId);
 
-            if (success) {
-                return ResponseEntity.ok("애니메이션 데이터 보완이 완료되었습니다. (ID: " + animeId + ")");
-            } else {
-                return ResponseEntity.status(404).body("애니메이션을 찾을 수 없거나 보완할 데이터가 없습니다. (ID: " + animeId + ")");
-            }
-
-        } catch (Exception e) {
-            log.error("애니메이션 데이터 보완 실패: ID {}", animeId, e);
-            return ResponseEntity.status(500).body("보완 작업 실패: " + e.getMessage());
+        if (success) {
+            return ResponseEntity.ok("애니메이션 데이터 보완이 완료되었습니다. (ID: " + animeId + ")");
+        } else {
+            return ResponseEntity.status(404).body("애니메이션을 찾을 수 없거나 보완할 데이터가 없습니다. (ID: " + animeId + ")");
         }
     }
 

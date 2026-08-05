@@ -13,7 +13,6 @@ import com.ottproject.ottbackend.service.PaymentCommandService;
 import com.ottproject.ottbackend.service.PaymentReadService;
 import com.ottproject.ottbackend.service.PaymentMethodService;
 import com.ottproject.ottbackend.service.ImportPaymentGateway;
-import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -66,27 +65,18 @@ public class PaymentController { // 결제 컨트롤러 시작
 	@GetMapping("/payments/test-iamport") // HTTP GET 매핑: 아임포트 연결 테스트
 	public ResponseEntity<Map<String, Object>> testIamportConnection() { // 아임포트 연결 테스트
 		Map<String, Object> result = new HashMap<>();
-		
-		try {
-			// 아임포트 API 연결 테스트
-			boolean isConnected = importPaymentGateway.testConnection();
-			
-			if (isConnected) {
-				result.put("status", "SUCCESS");
-				result.put("message", "아임포트 API 연결 성공");
-				return ResponseEntity.ok(result);
-			} else {
-				result.put("status", "FAILED");
-				result.put("message", "아임포트 API 연결 실패");
-				return ResponseEntity.status(500).body(result);
-			}
-			
-		} catch (Exception e) {
+
+		// 아임포트 API 연결 테스트
+		// 호출이 예외로 끝나면 GlobalExceptionHandler 가 500/INTERNAL_ERROR 로 바꾼다.
+		boolean isConnected = importPaymentGateway.testConnection();
+
+		if (isConnected) {
+			result.put("status", "SUCCESS");
+			result.put("message", "아임포트 API 연결 성공");
+			return ResponseEntity.ok(result);
+		} else {
 			result.put("status", "FAILED");
 			result.put("message", "아임포트 API 연결 실패");
-			result.put("error", e.getMessage());
-			result.put("errorType", e.getClass().getSimpleName());
-			
 			return ResponseEntity.status(500).body(result);
 		}
 	}
@@ -161,18 +151,9 @@ public class PaymentController { // 결제 컨트롤러 시작
 	@ApiResponse(responseCode = "200", description = "반영 완료") // 200 문서화
 	@PostMapping("/payments/webhook") // HTTP POST 매핑: 통합된 웹훅 엔드포인트
 	public ResponseEntity<Void> webhook(@RequestBody String rawBody, @RequestHeader HttpHeaders headers) { // 원문/헤더 수신
-		try {
-			paymentCommandService.processWebhook(headers, rawBody); // 통합된 웹훅 처리 메서드 호출
-		} catch (DuplicateWebhookEventException e) {
-			// 멱등키 선삽입이 유니크 제약에 걸렸다 = 같은 이벤트를 다른 요청이 이미 처리 중/완료했다.
-			// 이쪽 트랜잭션은 롤백되지만 잃을 게 없으므로 200 으로 응답한다.
-			// 500 을 주면 PG 가 실패로 알고 재전송을 반복한다.
-			//
-			// 흡수 대상을 이 예외로 좁힌 이유: 웹훅 처리 중에는 멤버십/구독 행 생성 등에서도 제약 위반이 날 수 있는데,
-			// 그것까지 200 으로 삼키면 PG 가 성공으로 알고 재전송하지 않아 조용한 유실이 된다.
-			// 멱등키 경합이 아닌 제약 위반은 그대로 500 으로 올려보내 재전송으로 복구되게 둔다.
-			log.info("웹훅 중복 수신(멱등키 경합) - 200 처리: {}", e.getMessage());
-		}
+		// 중복 수신(DuplicateWebhookEventException)도 200 이어야 PG 가 재전송을 멈춘다.
+		// 그 매핑은 GlobalExceptionHandler.handleDuplicateWebhookEvent 에 있다(이유도 거기에 적혀 있다).
+		paymentCommandService.processWebhook(headers, rawBody); // 통합된 웹훅 처리 메서드 호출
 		return ResponseEntity.ok().build(); // 200 OK 반환
 	}
 
@@ -185,14 +166,9 @@ public class PaymentController { // 결제 컨트롤러 시작
 			return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 		}
 		log.info("웹훅 테스트 시작");
-		try {
-			paymentCommandService.processWebhook(headers, rawBody);
-			log.info("웹훅 테스트 성공");
-			return ResponseEntity.ok().build();
-		} catch (Exception e) {
-			log.error("웹훅 테스트 실패", e);
-			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-		}
+		paymentCommandService.processWebhook(headers, rawBody);
+		log.info("웹훅 테스트 성공");
+		return ResponseEntity.ok().build();
 	}
 
 	@Operation(summary = "결제 이력 조회", description = "사용자의 결제/환불 이력을 최신순으로 반환합니다.") // Swagger 문서화
