@@ -81,6 +81,8 @@ spring:
     locations: classpath:db/migration # 마이그레이션 파일 위치
     baseline-on-migrate: true # 기존 스키마가 있을 때 자동 baseline 생성
     out-of-order: true # 과거 버전 누락분도 허용하여 적용
+    postgresql:
+      transactional-lock: false # CREATE INDEX CONCURRENTLY 마이그레이션이 이력 테이블 잠금과 서로를 기다려 멈추는 것을 막는다
 
   # Redis 연결 (도커 기본: ott-redis:6379)
   data:

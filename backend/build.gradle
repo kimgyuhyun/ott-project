@@ -137,6 +137,14 @@ configurations {
 // CD 의 운영 DB 였다. 마이그레이션이 깨져 있어도 배포 시점에야 알게 된다는 뜻이다.
 // CI 가 빈 Postgres 에 전량 적용(flywayMigrate)한 뒤 체크섬·순서를 검증(flywayValidate)한다.
 // 접속 정보는 CI 잡이 환경변수로 준다. 기본값은 로컬에서 손으로 돌릴 때를 위한 것이다.
+// CREATE INDEX CONCURRENTLY 를 쓰는 마이그레이션 때문에 필요하다.
+// Flyway 는 기본적으로 별도 커넥션에서 flyway_schema_history 를 SELECT ... FOR UPDATE 로
+// 잠그고 그 트랜잭션을 마이그레이션이 끝날 때까지 연다. CONCURRENTLY 는 열려 있는 모든
+// 트랜잭션이 끝나기를 기다리므로, 그 둘이 서로를 기다려 영원히 멈춘다(실측: 30분 무진행).
+// false 로 두면 트랜잭션 대신 세션 어드바이저리 락을 쓴다 — 인스턴스 간 배타는 그대로다.
+// Gradle 플러그인은 이 키를 DSL 로 받지 않아 시스템 프로퍼티로 넘긴다.
+System.setProperty('flyway.postgresql.transactional.lock', 'false')
+
 flyway {
 	url = System.getenv('FLYWAY_URL') ?: 'jdbc:postgresql://localhost:5432/ott_ci'
 	user = System.getenv('FLYWAY_USER') ?: 'ci'
