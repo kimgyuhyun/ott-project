@@ -59,6 +59,9 @@ services:
     cpus: 1.0
     volumes:
       - C:/ott-deploy/config/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # 경보 규칙(prometheus.yml 의 rule_files 가 이 경로를 가리킨다). 파일이 아니라
+      # 디렉터리 마운트라 규칙 파일을 추가·분리해도 이 줄을 고칠 필요가 없다.
+      - C:/ott-deploy/config/monitoring/rules:/etc/prometheus/rules:ro
       - prometheus_data:/prometheus
     ports:
       - "127.0.0.1:9090:9090"   # 루프백 전용 노출 (외부 X)

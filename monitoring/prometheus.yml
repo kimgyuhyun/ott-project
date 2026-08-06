@@ -6,6 +6,12 @@ global:
   scrape_interval: 15s        # 15초마다 수집
   evaluation_interval: 15s
 
+# 경보 규칙. 컨테이너에는 파일이 아니라 디렉터리로 마운트한다(docker-compose.monitoring.yml).
+# 규칙을 파일 단위로 나눠도 마운트를 건드릴 필요가 없게 하기 위함이다.
+# 규칙이 왜 두 개뿐인지는 rules/alerts.yml 머리말에 있다.
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
 scrape_configs:
   - job_name: 'ott-backend'
     metrics_path: /actuator/prometheus

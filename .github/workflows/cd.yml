@@ -155,6 +155,7 @@ jobs:
           $cfgRoot = 'C:\ott-deploy\config'
           foreach ($rel in @('nginx\nginx.prod.conf', 'nginx\nginx.prod.ha.conf', 'security\initdb',
                              'rabbitmq\10-memory.conf', 'monitoring\prometheus.yml',
+                             'monitoring\rules',
                              'monitoring\loki\loki-config.yml', 'monitoring\alloy\config.alloy',
                              'monitoring\grafana\provisioning', 'monitoring\grafana\dashboards')) {
             $src = Join-Path $PWD $rel

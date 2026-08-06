@@ -124,6 +124,22 @@ if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed - config NOT reloaded, nginx s
 docker exec ott-nginx nginx -s reload
 if ($LASTEXITCODE -ne 0) { throw 'nginx -s reload failed' }
 
+# --- 5. Apply any Prometheus alert-rule change --------------------------------
+# Same trap as nginx: monitoring/rules is a bind mount, so step 1 does not
+# recreate prometheus when only the rule FILES change, and the running process
+# keeps the rules it parsed at startup. SIGHUP makes it re-read them (it is a
+# signal, not a stop - the container keeps running and the TSDB is untouched).
+# Check before reloading: prometheus REJECTS a bad reload and silently keeps the
+# old rules, so a broken file would otherwise look like a successful deploy.
+# Note what the check cannot tell you: an empty rules directory is valid config,
+# so a passing check does not prove the rules were loaded. Confirm that with
+#   curl -s http://127.0.0.1:9090/api/v1/rules
+Write-Host '=== Reloading Prometheus alert rules ==='
+docker exec ott-prometheus promtool check config /etc/prometheus/prometheus.yml
+if ($LASTEXITCODE -ne 0) { throw 'promtool check config failed - rules NOT reloaded, prometheus still evaluating the previous ones' }
+docker kill -s HUP ott-prometheus | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'prometheus SIGHUP failed - alert rules were not reloaded' }
+
 Write-Host '=== ROLLING DEPLOY OK ==='
 
 # FIRST RUN (switching from 1 instance to 2):

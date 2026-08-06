@@ -65,4 +65,14 @@ if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed - config NOT reloaded, nginx s
 docker exec ott-nginx nginx -s reload
 if ($LASTEXITCODE -ne 0) { throw 'nginx -s reload failed' }
 
+# Apply any Prometheus alert-rule change (same two lines as deploy-rolling.ps1).
+# The rules are a bind mount, so the `up -d` above does not re-read them; SIGHUP
+# does, without stopping the container. Check first - a rejected reload leaves
+# the OLD rules running and says nothing.
+Write-Host '=== Reloading Prometheus alert rules ==='
+docker exec ott-prometheus promtool check config /etc/prometheus/prometheus.yml
+if ($LASTEXITCODE -ne 0) { throw 'promtool check config failed - rules NOT reloaded, prometheus still evaluating the previous ones' }
+docker kill -s HUP ott-prometheus | Out-Null
+if ($LASTEXITCODE -ne 0) { throw 'prometheus SIGHUP failed - alert rules were not reloaded' }
+
 Write-Host '=== DEPLOY OK ==='

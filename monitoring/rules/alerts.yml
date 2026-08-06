@@ -1,0 +1,73 @@
+# Prometheus 경보 규칙 — 기준선이 필요 없는 "절대값" 경보만 둔다.
+#
+# 왜 이 두 개뿐인가:
+#   경보 기준값은 정상 운영 구간을 관측해 얻은 기준선 위에서 정해야 한다. 이 스택은
+#   아직 그 관측 데이터가 없다. 지금 오류율·지연에 임의의 숫자를 박으면 오탐이 반복되고,
+#   반복되는 오탐은 결국 경보를 무시하게 만든다(= 없느니만 못하다).
+#   그래서 "정상값이 관측이 아니라 정의로 고정되는" 것만 여기 둔다:
+#     - DLQ 유입: 정상은 0 건이다. 기준선이 필요 없다.
+#     - 디스크 사용률: 기준이 트래픽이 아니라 100% 라는 물리적 상한이다.
+#   미룬 경보(오류율·지연·인증 실패 급증·배포 실패)와 거는 시점은
+#   docs/operations.md 의 "경보" 절에 적어뒀다.
+#
+# 알아둘 것 — 이 규칙들은 아직 아무에게도 발송되지 않는다:
+#   이 스택에는 Alertmanager 가 없다. firing 되어도 Prometheus 의 /alerts 화면과
+#   Grafana(Alerting > Alert rules, 데이터소스 관리 규칙)에만 뜬다. 전달 경로는
+#   docs/operations.md 의 "경보" 절에 남긴 후속 과제다.
+
+groups:
+  - name: ott-absolute-thresholds
+    # 15초 스크레이프이므로 평가 주기는 global.evaluation_interval(15s)을 따른다.
+    rules:
+      # --- DLQ ----------------------------------------------------------------
+      # 무엇을 보는가: 크기가 아니라 "유입"이다.
+      #   브로커측 큐 깊이를 주는 익스포터가 이 스택에 없다(Prometheus 는 백엔드
+      #   actuator 만 긁고, Kafka 는 JMX 익스포터가 없다). 대신 백엔드가 내보내는
+      #   프로듀서 클라이언트 지표에 topic 라벨이 있어서, DLT 토픽으로 발행된
+      #   레코드 수를 셀 수 있다. DLT 에는 소비자가 없으므로(KafkaConfig 참고)
+      #   한 번 들어간 메시지는 스스로 사라지지 않는다 → 유입 > 0 이면 적재 > 0 이다.
+      #
+      # 창을 24시간으로 잡은 이유: 발송 경로가 없어 사람이 화면을 볼 때까지 떠 있어야
+      #   한다. 짧은 창으로 두면 아무도 못 본 채 알아서 해소된다.
+      #   한계: 배포로 컨테이너가 교체되면 옛 시계열이 끊겨 경보도 함께 사라진다.
+      #   (그 시점 이후의 적재량은 화면에서 사라져도 DLT 에 그대로 남아 있다)
+      - alert: KafkaDlqInflow
+        expr: 'sum by (topic) (increase(kafka_producer_topic_record_send_total{topic=~".+\\.DLT"}[24h])) > 0'
+        labels:
+          severity: critical
+        annotations:
+          summary: 'DLQ 유입 — {{ $labels.topic }}'
+          description: '최근 24시간 동안 {{ $value | printf "%.0f" }}건이 DLT 로 넘어갔다. 소비자가 재시도(1초 × 3회)를 소진하고 포기한 메시지다. DLT 에는 소비자가 없어 자동 복구되지 않는다 — 원인을 고친 뒤 수동으로 재처리해야 한다.'
+
+      # --- 디스크 -------------------------------------------------------------
+      # 무엇을 보는가: 백엔드 컨테이너가 보는 파일시스템(disk_total_bytes 의 path 라벨)이다.
+      #   도커 볼륨(postgres/loki/prometheus 데이터)과 컨테이너 쓰기 레이어가 전부
+      #   같은 파일시스템에 있으므로 "도커 데이터가 차오르는 것"은 여기서 보인다.
+      #
+      # 보이지 않는 것(중요): 호스트 C: 드라이브의 여유다. Docker Desktop(WSL2)에서
+      #   컨테이너의 df 는 ext4 vhdx 의 "최대 크기"를 총량으로 보고한다. 실측(2026-08-06):
+      #     컨테이너 기준  1007GiB 중 16% 사용
+      #     호스트 C:      930GB 중 80% 사용(여유 185GB)
+      #   즉 호스트가 먼저 차면 vhdx 가 더 못 자라 쓰기가 실패하는데, 이 지표는 여전히
+      #   "여유 있음"으로 보인다. 호스트 디스크 감시는 이 파일로 대체되지 않는다 —
+      #   후속 과제로 docs/operations.md 에 적어뒀다.
+      #
+      # 인스턴스가 둘(ott-app / ott-app-2)이지만 같은 파일시스템을 보므로 max 로 접어
+      # 경보가 두 번 뜨지 않게 한다.
+      - alert: DiskSpaceLow
+        expr: 'max by (path) (1 - disk_free_bytes / disk_total_bytes) > 0.85'
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: '디스크 사용률 85% 초과 — {{ $labels.path }}'
+          description: '컨테이너 파일시스템 사용률 {{ $value | humanizePercentage }}. 도커 볼륨(postgres/loki/prometheus)과 이미지 캐시를 먼저 확인한다.'
+
+      - alert: DiskSpaceCritical
+        expr: 'max by (path) (1 - disk_free_bytes / disk_total_bytes) > 0.95'
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: '디스크 사용률 95% 초과 — {{ $labels.path }}'
+          description: '컨테이너 파일시스템 사용률 {{ $value | humanizePercentage }}. 이 선을 넘으면 postgres 쓰기와 Loki 인제스트가 곧 실패한다.'
