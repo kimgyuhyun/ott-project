@@ -20,7 +20,7 @@ import java.util.HashSet;
 @Table(name = "tags")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Tag { // 태그 마스터
 
     @Id

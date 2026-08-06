@@ -4,6 +4,7 @@ import com.ottproject.ottbackend.dto.admin.AdminEpisodeDetailDto;
 import com.ottproject.ottbackend.dto.admin.EpisodeCreateRequest;
 import com.ottproject.ottbackend.dto.admin.EpisodeUpdateRequest;
 import com.ottproject.ottbackend.entity.Anime;
+import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.entity.Episode;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
@@ -54,7 +55,7 @@ class AdminEpisodeServiceTest {
      */
     @BeforeEach
     void setUp() {
-        anime = new Anime();
+        anime = EntityTestFixtures.emptyAnime();
         anime.setId(1L);
         anime.setTitle("작품");
     }

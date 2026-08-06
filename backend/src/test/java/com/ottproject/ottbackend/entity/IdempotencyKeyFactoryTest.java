@@ -3,6 +3,8 @@ package com.ottproject.ottbackend.entity;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -18,47 +20,49 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  */
 class IdempotencyKeyFactoryTest {
 
+    private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 6, 12, 0);
+
     @Test
     @DisplayName("응답값이 null 이나 빈 문자열이어도 멱등키를 만든다 - 웹훅 재전송 폭주 회귀 방지")
     void doesNotValidateResponse() {
-        assertThatCode(() -> IdempotencyKey.createIdempotencyKey("evt_1", "payment.webhook", null))
+        assertThatCode(() -> IdempotencyKey.createIdempotencyKey("evt_1", "payment.webhook", null, NOW))
                 .doesNotThrowAnyException();
-        assertThatCode(() -> IdempotencyKey.createIdempotencyKey("evt_2", "payment.webhook", ""))
+        assertThatCode(() -> IdempotencyKey.createIdempotencyKey("evt_2", "payment.webhook", "", NOW))
                 .doesNotThrowAnyException();
     }
 
     @Test
     @DisplayName("키와 용도의 앞뒤 공백을 제거해 저장한다 - 키는 unique 조회 기준이다")
     void trimsKeyAndPurpose() {
-        IdempotencyKey key = IdempotencyKey.createIdempotencyKey("  evt_1  ", "  membership.cancel  ", null);
+        IdempotencyKey key = IdempotencyKey.createIdempotencyKey("  evt_1  ", "  membership.cancel  ", null, NOW);
 
         assertThat(key.getKeyValue()).isEqualTo("evt_1");
         assertThat(key.getPurpose()).isEqualTo("membership.cancel");
     }
 
     @Test
-    @DisplayName("생성 시각을 남긴다")
+    @DisplayName("호출자가 넘긴 생성 시각을 그대로 남긴다 - 엔티티는 현재 시각을 스스로 읽지 않는다")
     void recordsCreatedAt() {
-        IdempotencyKey key = IdempotencyKey.createIdempotencyKey("evt_1", "payment.webhook", null);
+        IdempotencyKey key = IdempotencyKey.createIdempotencyKey("evt_1", "payment.webhook", null, NOW);
 
-        assertThat(key.getCreatedAt()).isNotNull();
+        assertThat(key.getCreatedAt()).isEqualTo(NOW);
     }
 
     @Test
     @DisplayName("키가 없거나 공백뿐이면 거부한다 - 멱등성 보장이 불가능하다")
     void rejectsMissingKey() {
-        assertThatThrownBy(() -> IdempotencyKey.createIdempotencyKey(null, "payment.webhook", null))
+        assertThatThrownBy(() -> IdempotencyKey.createIdempotencyKey(null, "payment.webhook", null, NOW))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> IdempotencyKey.createIdempotencyKey("   ", "payment.webhook", null))
+        assertThatThrownBy(() -> IdempotencyKey.createIdempotencyKey("   ", "payment.webhook", null, NOW))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     @DisplayName("용도가 없거나 공백뿐이면 거부한다")
     void rejectsMissingPurpose() {
-        assertThatThrownBy(() -> IdempotencyKey.createIdempotencyKey("evt_1", null, null))
+        assertThatThrownBy(() -> IdempotencyKey.createIdempotencyKey("evt_1", null, null, NOW))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> IdempotencyKey.createIdempotencyKey("evt_1", "   ", null))
+        assertThatThrownBy(() -> IdempotencyKey.createIdempotencyKey("evt_1", "   ", null, NOW))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

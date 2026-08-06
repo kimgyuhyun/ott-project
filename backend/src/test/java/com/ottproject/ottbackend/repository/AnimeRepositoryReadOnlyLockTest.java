@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.Anime;
+import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -84,7 +85,7 @@ class AnimeRepositoryReadOnlyLockTest {
     @BeforeEach
     void setUp() {
         animeRepository.deleteAll();
-        Anime anime = new Anime();
+        Anime anime = EntityTestFixtures.emptyAnime();
         anime.setTitle("작품");
         anime.setStatus(AnimeStatus.ONGOING);
         anime.setYear(2026);

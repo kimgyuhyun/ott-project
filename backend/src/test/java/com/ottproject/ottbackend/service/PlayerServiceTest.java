@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.EpisodeProgressResponseDto;
+import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.entity.Episode;
 import com.ottproject.ottbackend.entity.EpisodeProgress;
 import com.ottproject.ottbackend.entity.User;
@@ -71,7 +72,7 @@ class PlayerServiceTest {
     void setUp() {
         user = User.createLocalUser("viewer@example.com", "password", "시청자");
         ReflectionTestUtils.setField(user, "id", USER_ID);
-        episode = new Episode();
+        episode = EntityTestFixtures.emptyEpisode();
         ReflectionTestUtils.setField(episode, "id", EPISODE_ID);
     }
 
@@ -240,7 +241,7 @@ class PlayerServiceTest {
         @Test
         @DisplayName("에피소드 ID 를 키로 진행률을 묶어 돌려준다")
         void keysResultByEpisodeId() {
-            Episode other = new Episode();
+            Episode other = EntityTestFixtures.emptyEpisode();
             ReflectionTestUtils.setField(other, "id", 20L);
             EpisodeProgress first = existingProgress(100, 1400);
             EpisodeProgress second = EpisodeProgress.createProgress(user, other, 200);

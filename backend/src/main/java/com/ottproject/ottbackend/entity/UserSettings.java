@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 @Table(name = "user_settings", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id"})) // 유니크
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class UserSettings { // 사용자 재생 설정
 

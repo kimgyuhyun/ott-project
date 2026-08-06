@@ -63,8 +63,7 @@ public class MembershipCommandService {
         }
         LocalDateTime end = start.plusMonths(plan.getPeriodMonths()); // 기간 산정
 
-        User user = new User();
-        user.setId(userId);
+        User user = User.reference(userId);
         MembershipSubscription sub = MembershipSubscription.createSubscription( // 엔티티 생성
                 user, // FK 바인딩(프록시)
                 plan, // 플랜 설정
@@ -118,7 +117,8 @@ public class MembershipCommandService {
                 idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
                         idempotencyKey,
                         "membership.cancel",
-                        null
+                        null,
+                        LocalDateTime.now()
                 ));
             } catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
                 throw new DuplicateIdempotentRequestException("membership.cancel", idempotencyKey, e);

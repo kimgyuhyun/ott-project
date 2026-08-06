@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.entity.Anime;
+import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +55,7 @@ class AnimeEnhancementServiceTest {
      * Anime.createAnime 은 인자가 32개라 테스트 픽스처로 쓰기 어렵고, 여기서는 몇 필드만 필요하다.
      */
     private Anime animeWithoutKoreanTitle(Long id) {
-        Anime anime = new Anime();
+        Anime anime = EntityTestFixtures.emptyAnime();
         ReflectionTestUtils.setField(anime, "id", id);
         anime.setTitleEn("Some Title");
         anime.setStatus(AnimeStatus.COMPLETED);

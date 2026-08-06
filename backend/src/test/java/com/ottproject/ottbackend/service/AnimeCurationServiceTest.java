@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
 import com.ottproject.ottbackend.entity.Anime;
+import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.curation.AnimeCurationQueryRepository;
@@ -57,7 +58,7 @@ class AnimeCurationServiceTest {
         // EntityManager 는 @PersistenceContext 필드 주입이라 @InjectMocks 가 채우지 못한다.
         ReflectionTestUtils.setField(animeCurationService, "entityManager", entityManager);
 
-        anime = new Anime();
+        anime = EntityTestFixtures.emptyAnime();
         ReflectionTestUtils.setField(anime, "id", ANIME_ID);
         anime.setTitle("기존 제목");
         anime.setPosterUrl("http://old/poster.jpg");

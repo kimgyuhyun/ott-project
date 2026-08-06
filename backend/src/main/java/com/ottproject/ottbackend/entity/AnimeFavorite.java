@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
 ) // 유니크 제약
 @Getter // 게터
 @Setter // 세터
-@NoArgsConstructor // 기본 생성자
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본 생성자
 @EntityListeners(AuditingEntityListener.class) // 생성 시각 자동 기록
 public class AnimeFavorite { // 애니 보고싶다 엔티티
     @Id // 기본키

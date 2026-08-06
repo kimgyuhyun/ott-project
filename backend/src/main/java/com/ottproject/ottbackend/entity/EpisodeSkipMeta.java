@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 @Table(name = "episode_skip_meta", uniqueConstraints = @UniqueConstraint(columnNames = {"episode_id"})) // 1:1
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class EpisodeSkipMeta { // 오프닝/엔딩 구간
 

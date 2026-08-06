@@ -28,7 +28,7 @@ import java.time.ZoneId;
 })
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DailyStats {
 
     @Id

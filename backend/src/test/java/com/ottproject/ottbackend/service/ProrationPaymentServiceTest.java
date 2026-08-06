@@ -47,13 +47,12 @@ class ProrationPaymentServiceTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 16, 0, 0);
 
     private MembershipPlan planWithMonthlyPrice(long amount) {
-        MembershipPlan plan = new MembershipPlan();
-        plan.setPrice(new Money(amount, "KRW"));
-        return plan;
+        // 이 테스트가 보는 값은 월 가격뿐이다. 나머지는 팩토리 기본값
+        return MembershipPlan.createBasicPlan("PLAN", "테스트 플랜", new Money(amount, "KRW"), 1);
     }
 
     private MembershipSubscription subscriptionOf(MembershipPlan currentPlan, LocalDateTime endAt) {
-        return MembershipSubscription.createSubscription(new User(), currentPlan, NOW.minusDays(15), endAt);
+        return MembershipSubscription.createSubscription(User.reference(1L), currentPlan, NOW.minusDays(15), endAt);
     }
 
     @Test

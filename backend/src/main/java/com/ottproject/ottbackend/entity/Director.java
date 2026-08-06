@@ -27,7 +27,7 @@ import java.util.Set;
 @Table(name = "directors")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class Director {
 

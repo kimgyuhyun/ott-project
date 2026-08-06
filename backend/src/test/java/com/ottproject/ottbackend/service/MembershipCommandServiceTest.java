@@ -25,6 +25,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -65,8 +66,7 @@ class MembershipCommandServiceTest {
 
     @BeforeEach
     void setUp() {
-        User user = new User();
-        user.setId(1L);
+        User user = User.reference(1L);
         // 팩토리가 ACTIVE + autoRenew=true + cancelAtPeriodEnd=false 로 만든다(해지 전 정상 상태)
         sub = MembershipSubscription.createSubscription(
                 user, plan("BASIC", 9900L, 1), LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
@@ -194,12 +194,10 @@ class MembershipCommandServiceTest {
     // 거절하면 돈은 받고 기간은 주지 않는 셈이 된다.
 
     private MembershipPlan plan(String code, long price, int periodMonths) {
-        MembershipPlan p = new MembershipPlan();
-        p.setId(price); // 가격을 id 로 재활용(플랜 동일성 비교용, 값 자체는 의미 없음)
-        p.setCode(code);
-        p.setName(code);
-        p.setPrice(new Money(price, "KRW"));
-        p.setPeriodMonths(periodMonths);
+        // createBasicPlan 이 code 를 이름에서 파생하므로 이름에 코드를 그대로 준다
+        MembershipPlan p = MembershipPlan.createBasicPlan(code, code + " 플랜", new Money(price, "KRW"), periodMonths);
+        // 가격을 id 로 재활용(플랜 동일성 비교용, 값 자체는 의미 없음). PK 는 영속화가 채우는 값이라 테스트에서만 주입
+        ReflectionTestUtils.setField(p, "id", price);
         return p;
     }
 
@@ -248,7 +246,7 @@ class MembershipCommandServiceTest {
     void subscribeExtendsFromRemainingPeriod() {
         LocalDateTime latestEnd = LocalDateTime.now().plusDays(10);
         MembershipSubscription latest = MembershipSubscription.createSubscription(
-                new User(), plan("BASIC", 9900L, 1), LocalDateTime.now().minusDays(20), latestEnd); // ACTIVE + 잔여기간
+                User.reference(1L), plan("BASIC", 9900L, 1), LocalDateTime.now().minusDays(20), latestEnd); // ACTIVE + 잔여기간
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(latest));
 
@@ -264,7 +262,7 @@ class MembershipCommandServiceTest {
     @DisplayName("구독 - 이미 만료된 구독은 이어붙이지 않고 지금부터 시작한다")
     void subscribeDoesNotExtendFromExpiredSubscription() {
         MembershipSubscription expired = MembershipSubscription.createSubscription(
-                new User(), plan("BASIC", 9900L, 1),
+                User.reference(1L), plan("BASIC", 9900L, 1),
                 LocalDateTime.now().minusMonths(2), LocalDateTime.now().minusDays(1)); // ACTIVE 지만 이미 지남
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(expired));
@@ -280,7 +278,7 @@ class MembershipCommandServiceTest {
     @DisplayName("구독 - 잔여기간이 남아도 활성 상태가 아니면 이어붙이지 않는다")
     void subscribeDoesNotExtendFromInactiveSubscription() {
         MembershipSubscription canceled = MembershipSubscription.createSubscription(
-                new User(), plan("BASIC", 9900L, 1),
+                User.reference(1L), plan("BASIC", 9900L, 1),
                 LocalDateTime.now().minusDays(20), LocalDateTime.now().plusDays(10)); // 날짜상으론 잔여기간이 있음
         canceled.applyImmediateCancellation(LocalDateTime.now()); // 환불 등으로 해지됨
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
@@ -301,8 +299,7 @@ class MembershipCommandServiceTest {
 
     /** endAt 을 지정할 수 있는 변형(무기한 구독 = endAt null) */
     private MembershipSubscription subscriptionOnPlan(MembershipPlan current, LocalDateTime endAt) {
-        User user = new User();
-        user.setId(1L);
+        User user = User.reference(1L);
         MembershipSubscription s = MembershipSubscription.createSubscription(
                 user, current, LocalDateTime.now(), endAt);
         s.scheduleNextBillingAt(LocalDateTime.now().plusDays(15));

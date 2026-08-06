@@ -415,7 +415,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
 						req.idempotencyKey, // 키
 						"payment.checkout", // 용도
-						"" // 응답 데이터 (빈 값)
+						"", // 응답 데이터 (빈 값)
+						LocalDateTime.now() // 적재 시각
 				));
 			} catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
 				throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다.", e); // 409(빠른 경로와 같은 응답)
@@ -487,14 +488,12 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			}
 
 			if (existingMethod != null) {
-				paymentMethod = new PaymentMethod();
-				paymentMethod.setId(existingMethod.id);
+				paymentMethod = PaymentMethod.reference(existingMethod.id);
 			}
 		}
 
 		// 먼저 게이트웨이에서 세션 생성
-		User user = new User();
-		user.setId(userId);
+		User user = User.reference(userId);
 		
 		PaymentGateway.CheckoutSession session = paymentGateway.createCheckoutSession( // 게이트웨이 세션 생성 (prepare-only)
 				user, // 사용자 정보
@@ -569,7 +568,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
 						event.eventId, // 키
 						"payment.webhook", // 용도
-						null // 응답
+						null, // 응답
+						LocalDateTime.now() // 적재 시각
 				));
 			} catch (DataIntegrityViolationException e) { // 동시 웹훅 경합에서 진 쪽
 				throw new DuplicateWebhookEventException(event.eventId, e);
@@ -684,7 +684,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			// 호출이 예외로 끝나 확정되지 못한 키는 대사 배치가 역조회해 풀거나 확정한다.
 			idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createClaimedIdempotencyKey(
 					refundKey, // 키(paymentId 파생)
-					REFUND_KEY_PURPOSE // 용도
+					REFUND_KEY_PURPOSE, // 용도
+					LocalDateTime.now() // 선점 시각
 			));
 		} catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리 중이거나 처리된 환불 요청입니다.", e); // 409(빠른 경로와 같은 응답)
@@ -862,31 +863,33 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				ImportPaymentGateway.PaymentDetails details = importGateway.fetchPaymentDetails(providerPaymentId);
 				PaymentMethod pm = payment.getPaymentMethod();
 				if (pm != null) {
-					pm.setProvider(PaymentProvider.IMPORT);
 					String payMethod = details.payMethod == null ? "" : details.payMethod.trim().toLowerCase();
+					PaymentMethodType type;
+					String brand;
 					switch (payMethod) { // pay_method와 1:1 매핑
 						case "card":
-							pm.setType(PaymentMethodType.CARD);
+							type = PaymentMethodType.CARD;
 							String cardName = details.cardName;
-							pm.setBrand(cardName != null && !cardName.isBlank() ? cardName.trim().toUpperCase() : "CARD");
+							brand = cardName != null && !cardName.isBlank() ? cardName.trim().toUpperCase() : "CARD";
 							break;
 						case "kakaopay":
-							pm.setType(PaymentMethodType.KAKAO_PAY);
-							pm.setBrand(null); // 간편결제는 brand 불필요
+							type = PaymentMethodType.KAKAO_PAY;
+							brand = null; // 간편결제는 brand 불필요
 							break;
 						case "tosspayments":
 						case "toss":
-							pm.setType(PaymentMethodType.TOSS_PAY);
-							pm.setBrand(null); // 간편결제는 brand 불필요
+							type = PaymentMethodType.TOSS_PAY;
+							brand = null; // 간편결제는 brand 불필요
 							break;
 						case "nice":
-							pm.setType(PaymentMethodType.NICE_PAY);
-							pm.setBrand(null); // 간편결제는 brand 불필요
+							type = PaymentMethodType.NICE_PAY;
+							brand = null; // 간편결제는 brand 불필요
 							break;
 						default:
-							pm.setType(PaymentMethodType.CARD); // 기본값
-							pm.setBrand("UNKNOWN");
+							type = PaymentMethodType.CARD; // 기본값
+							brand = "UNKNOWN";
 					}
+					pm.applyGatewayMethodDetails(PaymentProvider.IMPORT, type, brand);
 				}
 			}
 		} catch (Exception ex) {
@@ -925,7 +928,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 					"PaymentSucceeded", // eventType
 					"payment.succeeded", // topic
 					evt.getEventId(), // eventId
-					objectMapper.writeValueAsString(evt) // payload(JSON)
+					objectMapper.writeValueAsString(evt), // payload(JSON)
+					LocalDateTime.now() // 적재 시각
 			);
 			outboxEventRepository.save(outbox);
 			log.info("아웃박스 적재 완료 - eventId: {}, paymentId: {}", evt.getEventId(), payment.getId());

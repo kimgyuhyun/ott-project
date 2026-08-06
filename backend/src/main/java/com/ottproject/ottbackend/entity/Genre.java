@@ -27,7 +27,7 @@ import java.util.Set;
 @Table(name = "genres")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class Genre {
 

@@ -32,7 +32,7 @@ import java.time.LocalDateTime;
 @Table(name = "admin_contents")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class AdminContent { // 엔티티 시작
 

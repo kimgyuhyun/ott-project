@@ -30,8 +30,7 @@ import java.time.LocalDateTime;
         @Index(name = "idx_outbox_status_created", columnList = "status, created_at")
 })
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OutboxEvent {
 
     @Id
@@ -68,11 +67,15 @@ public class OutboxEvent {
 
     /**
      * 아웃박스 이벤트 생성(정적 팩토리)
-     * - 상태는 NEW, 적재 시각은 현재로 초기화한다.
+     * - 상태는 NEW 로 초기화한다. 적재 시각은 호출자가 넘긴다(엔티티는 현재 시각을 스스로 읽지 않는다).
      */
     public static OutboxEvent create(String aggregateType, String aggregateId,
                                      String eventType, String topic,
-                                     String eventId, String payload) {
+                                     String eventId, String payload,
+                                     LocalDateTime createdAt) {
+        if (createdAt == null) {
+            throw new IllegalArgumentException("적재 시각은 필수입니다.");
+        }
         OutboxEvent e = new OutboxEvent();
         e.eventId = eventId;
         e.aggregateType = aggregateType;
@@ -81,15 +84,19 @@ public class OutboxEvent {
         e.topic = topic;
         e.payload = payload;
         e.status = OutboxStatus.NEW;
-        e.createdAt = LocalDateTime.now();
+        e.createdAt = createdAt;
         return e;
     }
 
     /**
-     * 발행 완료 처리
+     * 발행 완료 처리 — 상태와 발행 시각은 반드시 함께 바뀐다.
+     * @param publishedAt 발행 시각
      */
-    public void markPublished() {
+    public void markPublished(LocalDateTime publishedAt) {
+        if (publishedAt == null) {
+            throw new IllegalArgumentException("발행 시각은 필수입니다.");
+        }
         this.status = OutboxStatus.PUBLISHED;
-        this.publishedAt = LocalDateTime.now();
+        this.publishedAt = publishedAt;
     }
 }

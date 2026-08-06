@@ -25,7 +25,7 @@ import java.time.LocalDateTime;
 ) // 엔티티 레벨에서 유니크 선언(중요)
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class) // 생성일시 자동 주입
 public class ReviewLike {
     @Id // 기본키 지정

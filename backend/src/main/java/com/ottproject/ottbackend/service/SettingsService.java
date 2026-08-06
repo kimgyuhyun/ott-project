@@ -49,8 +49,7 @@ public class SettingsService { // 사용자 재생 설정
     public void update(Long userId, UserSettingsDto dto) {
         UserSettings userSettings = userSettingsRepository.findByUserId(userId)
                 .orElseGet(() -> {
-                    User user = new User();
-                    user.setId(userId);
+                    User user = User.reference(userId);
                     return UserSettings.createDefaultSettings(user);
                 });
 

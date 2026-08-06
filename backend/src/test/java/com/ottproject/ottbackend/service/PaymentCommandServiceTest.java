@@ -91,16 +91,17 @@ class PaymentCommandServiceTest {
     }
 
     private User userWithId(long id) {
-        User user = new User();
-        user.setId(id);
-        return user;
+        return User.reference(id);
+    }
+
+    /** 9900원 월간 BASIC 플랜(테스트가 보는 값은 code 와 price 뿐이다) */
+    private MembershipPlan basicPlan() {
+        return MembershipPlan.createBasicPlan("BASIC", "기본 플랜", new Money(9900L, "KRW"), 1);
     }
 
     /** 9900원 PENDING 결제(세션 sess_1, 사용자 1) */
     private Payment pendingPayment() {
-        MembershipPlan plan = new MembershipPlan();
-        plan.setCode("BASIC");
-        plan.setPrice(new Money(9900L, "KRW"));
+        MembershipPlan plan = basicPlan();
         return Payment.createPendingPayment(userWithId(1L), plan, PaymentProvider.IMPORT,
                 "sess_1", new Money(9900L, "KRW"));
     }
@@ -114,8 +115,7 @@ class PaymentCommandServiceTest {
     }
 
     private MembershipSubscription activeSubscription() {
-        MembershipPlan plan = new MembershipPlan();
-        plan.setPrice(new Money(9900L, "KRW"));
+        MembershipPlan plan = basicPlan();
         // 팩토리가 ACTIVE + autoRenew=true 로 만든다
         return MembershipSubscription.createSubscription(
                 userWithId(1L), plan, NOW.minusDays(10), NOW.plusDays(20));
@@ -431,8 +431,7 @@ class PaymentCommandServiceTest {
 
     /** 결제일이 daysAgo 일 전인 SUCCEEDED 결제(사용자 1, 9900원) */
     private Payment succeededPaymentPaidDaysAgo(long daysAgo) {
-        MembershipPlan plan = new MembershipPlan();
-        plan.setPrice(new Money(9900L, "KRW"));
+        MembershipPlan plan = basicPlan();
         Payment payment = Payment.createSucceededPayment(userWithId(1L), plan, PaymentProvider.IMPORT,
                 "imp_1", new Money(9900L, "KRW"), LocalDateTime.now().minusDays(daysAgo));
         return payment;
@@ -527,9 +526,7 @@ class PaymentCommandServiceTest {
     }
 
     private void givenCheckoutDependencies() {
-        MembershipPlan plan = new MembershipPlan();
-        plan.setCode("BASIC");
-        plan.setPrice(new Money(9900L, "KRW"));
+        MembershipPlan plan = basicPlan();
         given(membershipPlanRepository.findByCode("BASIC")).willReturn(Optional.of(plan));
         PaymentGateway.CheckoutSession session = new PaymentGateway.CheckoutSession();
         session.sessionId = "sess_1";

@@ -27,7 +27,7 @@ import java.util.Set;
 @Table(name = "characters")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class Character {
 

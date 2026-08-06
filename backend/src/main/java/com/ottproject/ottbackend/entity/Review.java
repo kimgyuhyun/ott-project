@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 @Table(name = "reviews")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class) // 생성일시 수정일시 자동 관리
 public class Review {
 

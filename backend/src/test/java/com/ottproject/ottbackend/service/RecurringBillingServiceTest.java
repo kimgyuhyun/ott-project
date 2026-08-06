@@ -76,12 +76,9 @@ class RecurringBillingServiceTest {
 
     @BeforeEach
     void setUp() {
-        User user = new User();
-        user.setId(1L);
-        MembershipPlan plan = new MembershipPlan();
-        plan.setId(5L);
-        plan.setPrice(new Money(9900L, "KRW"));
-        plan.setPeriodMonths(1);
+        User user = User.reference(1L);
+        MembershipPlan plan = MembershipPlan.createBasicPlan("BASIC", "기본 플랜", new Money(9900L, "KRW"), 1);
+        ReflectionTestUtils.setField(plan, "id", 5L); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
 
         // PAST_DUE + 자동갱신 + 1차 실패 상태(retryCount=1)의 구독
         sub = MembershipSubscription.createSubscription(

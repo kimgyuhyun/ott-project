@@ -2,6 +2,7 @@ package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.SkipType;
 import jakarta.persistence.*;
+import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,7 +29,7 @@ import java.time.LocalDateTime;
 @Table(name = "skip_usage")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class SkipUsage { // 스킵 사용 로그
 

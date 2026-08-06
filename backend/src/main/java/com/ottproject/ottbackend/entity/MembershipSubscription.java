@@ -27,7 +27,7 @@ import java.time.LocalDateTime;
         @Index(name = "idx_subscription_user", columnList = "user_id") // 사용자 인덱스
 })
 @Getter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MembershipSubscription { // 멤버쉽 구독
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // PK

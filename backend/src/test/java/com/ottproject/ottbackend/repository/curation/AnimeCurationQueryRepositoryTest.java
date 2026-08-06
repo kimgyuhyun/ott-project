@@ -4,6 +4,7 @@ import com.ottproject.ottbackend.config.QuerydslConfig;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.entity.Anime;
+import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.enums.SyncOrigin;
 import com.ottproject.ottbackend.repository.JpaSliceTestSupport;
@@ -73,7 +74,7 @@ class AnimeCurationQueryRepositoryTest {
      * not-null 컬럼만 채운 최소 엔티티를 만들고, 각 테스트가 필요한 필드만 덮어쓴다.
      */
     private Anime anime(String title, AnimeStatus status, Integer year) {
-        Anime anime = new Anime();
+        Anime anime = EntityTestFixtures.emptyAnime();
         anime.setTitle(title);
         anime.setStatus(status);
         anime.setYear(year);

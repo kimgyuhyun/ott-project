@@ -11,6 +11,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -54,7 +55,7 @@ public class OutboxPublisher {
             try {
                 // 동기 발행(.get())으로 성공을 확인한 뒤에만 PUBLISHED 로 마킹한다.
                 kafkaTemplate.send(e.getTopic(), e.getAggregateId(), e.getPayload()).get();
-                e.markPublished();
+                e.markPublished(LocalDateTime.now());
                 outboxEventRepository.save(e);
                 log.debug("아웃박스 발행 완료 - eventId: {}, topic: {}", e.getEventId(), e.getTopic());
             } catch (Exception ex) {

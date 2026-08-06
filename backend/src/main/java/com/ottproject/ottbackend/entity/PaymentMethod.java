@@ -30,8 +30,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "payment_methods")
 @Getter
-@Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class) // 생성 수정 일시 자동 기록
 public class PaymentMethod { // 엔티티 시작
     @Id
@@ -88,6 +87,22 @@ public class PaymentMethod { // 엔티티 시작
     // ===== 정적 팩토리 메서드 =====
 
     /**
+     * FK 바인딩 전용 참조 — id 만 채운 비영속 인스턴스를 만든다.
+     * Payment 의 payment_method_id 를 채우려고 결제수단 행 전체를 읽어오는 것을 피하는 자리에만 쓴다.
+     * 나머지 필드는 비어 있으므로 이 인스턴스를 읽거나 저장 대상으로 삼지 않는다.
+     *
+     * @param id 결제수단 PK
+     */
+    public static PaymentMethod reference(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("결제수단 ID는 필수입니다.");
+        }
+        PaymentMethod paymentMethod = new PaymentMethod();
+        paymentMethod.id = id;
+        return paymentMethod;
+    }
+
+    /**
      * 결제수단 생성 (비즈니스 로직 캡슐화)
      * 
      * @param user 사용자
@@ -123,5 +138,92 @@ public class PaymentMethod { // 엔티티 시작
         paymentMethod.priority = 100; // 기본값
 
         return paymentMethod;
+    }
+
+    // ===== 등록 시 부가 정보 =====
+
+    /**
+     * 카드 표기 정보 부착 — 브랜드·끝 4자리·만료월·만료연도는 한 벌이다.
+     * - 만료월과 만료연도를 따로 바꾸면 "13월"이나 "지난 해 12월" 같은 반쪽 만료일이 남는다.
+     */
+    public void describeCard(String brand, String last4, Integer expiryMonth, Integer expiryYear) {
+        this.brand = brand;
+        this.last4 = last4;
+        this.expiryMonth = expiryMonth;
+        this.expiryYear = expiryYear;
+    }
+
+    /** 목록 노출 정책 지정 — 기본 수단 여부와 폴백 우선순위와 별칭. */
+    public void applyListingOptions(boolean isDefault, int priority, String label) {
+        this.isDefault = isDefault;
+        this.priority = priority;
+        this.label = label;
+    }
+
+    // ===== 수정 =====
+
+    /** 별칭 변경 */
+    public void rename(String label) {
+        this.label = label;
+    }
+
+    /** 폴백 우선순위 변경(낮을수록 우선) */
+    public void changePriority(int priority) {
+        this.priority = priority;
+    }
+
+    /** 만료일 변경 — 월과 연도는 함께 바뀐다(describeCard 와 같은 이유). */
+    public void changeExpiry(Integer expiryMonth, Integer expiryYear) {
+        this.expiryMonth = expiryMonth;
+        this.expiryYear = expiryYear;
+    }
+
+    // ===== 기본 수단 지정 =====
+    // "사용자당 기본 수단은 하나"는 여러 행에 걸친 규칙이라 Service 가 지킨다(PaymentMethodService.setDefault).
+    // 엔티티는 자기 행의 플래그만 책임진다.
+
+    /** 기본 수단으로 지정 */
+    public void markAsDefault() {
+        this.isDefault = true;
+    }
+
+    /** 기본 수단 해제 */
+    public void clearDefault() {
+        this.isDefault = false;
+    }
+
+    // ===== 삭제 =====
+
+    /**
+     * 소프트 삭제 — 삭제 시각 기록과 기본 수단 해제를 함께 한다.
+     * - 삭제된 행에 isDefault 가 남아 있으면 사용자에게 기본 수단이 둘로 보이는 데이터가 만들어진다.
+     *   호출자는 재지정이 필요한지 판단하려고 삭제 전에 isDefault 를 읽어야 한다.
+     * @param deletedAt 삭제 시각
+     */
+    public void softDelete(LocalDateTime deletedAt) {
+        if (deletedAt == null) {
+            throw new IllegalArgumentException("삭제 시각은 필수입니다.");
+        }
+        this.deletedAt = deletedAt;
+        this.isDefault = false;
+    }
+
+    // ===== 게이트웨이가 확인해 준 실제 수단 =====
+
+    /**
+     * 결제 성공 후 게이트웨이가 알려준 실제 결제수단 확정.
+     * - 제공자·유형·브랜드는 한 벌이다. 유형만 간편결제로 바꾸고 카드 브랜드를 남기면
+     *   "카카오페이 VISA" 같은 표기가 사용자에게 그대로 나간다.
+     */
+    public void applyGatewayMethodDetails(PaymentProvider provider, PaymentMethodType type, String brand) {
+        if (provider == null) {
+            throw new IllegalArgumentException("결제 제공자는 필수입니다.");
+        }
+        if (type == null) {
+            throw new IllegalArgumentException("결제수단 타입은 필수입니다.");
+        }
+        this.provider = provider;
+        this.type = type;
+        this.brand = brand;
     }
 }

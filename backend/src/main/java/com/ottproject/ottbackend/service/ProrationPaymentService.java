@@ -109,8 +109,7 @@ public class ProrationPaymentService {
         // merchant_uid는 아임포트 정책상 최대 40자 → "proration_"(10) + 하이픈 제거 UUID 30자 = 40자로 고정한다.
         // (초과 시 아임포트가 40자로 잘라 반환하여 webhook 조회/재검증에서 merchant_uid 불일치가 발생했음)
         String providerSessionId = "proration_" + UUID.randomUUID().toString().replace("-", "").substring(0, 30);
-        User user = new User();
-        user.setId(userId);
+        User user = User.reference(userId);
         Payment payment = Payment.createPendingPayment(
                 user,
                 targetPlan,
@@ -261,7 +260,8 @@ public class ProrationPaymentService {
                     "PaymentSucceeded", // eventType
                     "payment.succeeded", // topic
                     evt.getEventId(), // eventId
-                    objectMapper.writeValueAsString(evt) // payload(JSON)
+                    objectMapper.writeValueAsString(evt), // payload(JSON)
+                    LocalDateTime.now() // 적재 시각
             );
             outboxEventRepository.save(outbox);
             log.info("차액 결제 아웃박스 적재 완료 - eventId: {}, paymentId: {}", evt.getEventId(), payment.getId());

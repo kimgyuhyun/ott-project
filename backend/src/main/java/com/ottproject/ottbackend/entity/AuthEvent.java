@@ -33,7 +33,7 @@ import java.time.ZoneId;
 })
 @Getter
 @Setter
-@NoArgsConstructor // 기본 생성자
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본 생성자
 public class AuthEvent {
 
     @Id

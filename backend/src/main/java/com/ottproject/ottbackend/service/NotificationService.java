@@ -70,8 +70,7 @@ public class NotificationService {
             return;
         }
 
-        User user = new User();
-        user.setId(userId);
+        User user = User.reference(userId);
         
         Notification notification = Notification.createEpisodeUpdateNotification(
                 user, animeTitle, episodeNumber, animeId, episodeId);
@@ -115,8 +114,7 @@ public class NotificationService {
         }
         log.info("🔔 [NOTIFICATION] 중복 알림 없음 - 사용자: {}, 콘텐츠: {}", userId, contentId);
 
-        User user = new User();
-        user.setId(userId);
+        User user = User.reference(userId);
         
         Notification notification = Notification.createCommentActivityNotification(
                 user, actorName, activityType, contentType, contentId, animeId, episodeId, commentContent);

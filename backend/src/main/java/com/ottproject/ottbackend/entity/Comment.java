@@ -27,7 +27,7 @@ import java.util.List;
 @Table(name = "comments")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class Comment {
 

@@ -24,7 +24,7 @@ import java.time.LocalDateTime;
 @Table(name = "episode_progress", uniqueConstraints = @UniqueConstraint(columnNames = {"user_id","episode_id"})) // 유니크
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class EpisodeProgress { // 시청 진행률
 

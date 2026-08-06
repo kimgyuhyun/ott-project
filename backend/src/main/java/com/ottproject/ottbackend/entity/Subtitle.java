@@ -26,7 +26,7 @@ import java.time.LocalDateTime;
 @Table(name = "subtitles")
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class Subtitle {
     @Id

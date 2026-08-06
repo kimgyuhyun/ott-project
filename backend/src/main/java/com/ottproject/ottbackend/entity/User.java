@@ -29,7 +29,7 @@ import java.time.LocalDateTime;
 @Table(name = "users")
 @Getter
 @Setter
-@NoArgsConstructor // 기본 생성자
+@NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본 생성자
 @EntityListeners(AuditingEntityListener.class)
 public class User {
 
@@ -75,6 +75,22 @@ public class User {
     private LocalDateTime updatedAt; // 수정일시 (자동 업데이트)
 
     // ===== 정적 팩토리 메서드 =====
+    /**
+     * FK 바인딩 전용 참조 — id 만 채운 비영속 인스턴스를 만든다.
+     * 연관 컬럼에 사용자 id 를 넣으려고 행 전체를 읽어오는 것을 피하는 자리에만 쓴다.
+     * 나머지 필드는 비어 있으므로 이 인스턴스를 읽거나 저장 대상으로 삼지 않는다.
+     *
+     * @param id 사용자 PK
+     */
+    public static User reference(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("사용자 ID는 필수입니다.");
+        }
+        User user = new User();
+        user.id = id;
+        return user;
+    }
+
     /**
      * 로컬 사용자 생성 (이메일/비밀번호 기반)
      * 

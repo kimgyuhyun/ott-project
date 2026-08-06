@@ -385,7 +385,7 @@ class RefundIdempotencyTest {
     private IdempotencyKey backdateClaim() {
         IdempotencyKey key = idempotencyKeyRepository.findByKeyValue("payment.refund:" + paymentId).orElseThrow();
         assertThat(key.getStatus()).isEqualTo(IdempotencyKeyStatus.CLAIMED);
-        key.setCreatedAt(LocalDateTime.now().minusMinutes(30));
+        ReflectionTestUtils.setField(key, "createdAt", LocalDateTime.now().minusMinutes(30));
         return idempotencyKeyRepository.saveAndFlush(key);
     }
 

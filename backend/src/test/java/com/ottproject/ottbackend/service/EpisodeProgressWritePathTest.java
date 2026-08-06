@@ -3,6 +3,7 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.dto.EpisodeDto;
 import com.ottproject.ottbackend.dto.EpisodeProgressFlushDto;
 import com.ottproject.ottbackend.entity.Anime;
+import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.entity.Episode;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AnimeStatus;
@@ -156,7 +157,7 @@ class EpisodeProgressWritePathTest {
 
     /** Anime.createAnime 은 인자가 32개라 픽스처로 쓰기 어렵다. not-null 컬럼만 채운다. */
     private Anime anime(String title) {
-        Anime anime = new Anime();
+        Anime anime = EntityTestFixtures.emptyAnime();
         anime.setTitle(title);
         anime.setStatus(AnimeStatus.ONGOING);
         anime.setAgeRating("ALL");
@@ -177,7 +178,7 @@ class EpisodeProgressWritePathTest {
 
     /** 이 슬라이스는 Auditing 을 싣지 않으므로(JpaSliceTestSupport 주석) not-null 시각을 직접 채운다. */
     private Episode episode(Anime anime, int number) {
-        Episode episode = new Episode();
+        Episode episode = EntityTestFixtures.emptyEpisode();
         episode.setAnime(anime);
         episode.setEpisodeNumber(number);
         episode.setTitle(number + "화");

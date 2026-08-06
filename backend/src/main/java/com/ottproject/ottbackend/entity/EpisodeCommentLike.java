@@ -25,7 +25,7 @@ import java.time.LocalDateTime;
 ) // 유니크로 동일 사용자 중복 방지
 @Getter
 @Setter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
 public class EpisodeCommentLike  {
 
