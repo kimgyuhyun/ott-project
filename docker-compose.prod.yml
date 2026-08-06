@@ -96,29 +96,25 @@ services:
     # 보안 하드닝(재침해 방어): 능력 제거 + 권한상승 차단 + /tmp만 쓰기 + 리소스 상한
     # (비root는 이미지의 USER 1001로 적용됨)
     #
-    # [2026-07-31] read_only 미적용 — 사유를 실측으로 다시 확인하고 정정한다.
-    # 기존 주석은 "JVM 호환 위해"라고 적혀 있었지만 JVM 은 걸림돌이 아니다.
-    # 6시간 기동한 ott-app 에서 `docker diff` 로 이미지 대비 쓰기를 전수 확인한 결과:
-    #     C /app
-    #     A /app/logs/ott-backend.log
-    #     A /app/logs/auth-audit.log
-    # 이게 전부다. JVM 이 쓰는 것들(hsperfdata_spring, tomcat.8090.*,
-    # tomcat-docbase.8090.*)은 이미 아래 /tmp tmpfs 안에서 해결되고 있다.
-    # 즉 실제 유일한 블로커는 logback-spring.xml 의 RollingFileAppender 두 개
-    # (FILE=logs/ott-backend.log, AUTH_AUDIT=logs/auth-audit.log)가 작업 디렉터리
-    # /app 밑에 쓴다는 것뿐이다.
+    # [SECURITY 2026-08-06] read_only 적용. 2026-07-31 에 "켤 때 필요한 것"으로 남겨둔
+    # 조건을 그대로 실행한 것이다. 그때의 전수 확인을 이번에 다시 돌렸고(두 인스턴스
+    # 모두 `docker diff` → C /app, A /app/logs/ott-backend.log, A /app/logs/auth-audit.log)
+    # 결과가 같아서, 열어야 하는 경로는 여전히 /app/logs 하나뿐이다. JVM 이 쓰는
+    # 것들(hsperfdata_spring, tomcat.8090.*)은 아래 /tmp tmpfs 에서 이미 해결된다.
     #
-    # 따라서 read_only: true 는 /app/logs 하나만 열면 기술적으로 가능하다. 그런데
-    # 그 경로를 tmpfs 로 열면 로그 파일이 컨테이너 정지와 함께 사라지므로, 켜는 것은
-    # 로그 보존(PLATFORM 9절) 결정과 같이 판단할 문제지 이 파일에서 단독으로
-    # 뒤집을 문제가 아니다. 켤 때 필요한 것만 적어둔다:
-    #   - tmpfs 에 /app/logs:noexec,nosuid,nodev,size=64m,mode=1777
-    #     (mode 필수 — tmpfs 기본은 root:root 0755 라 uid 1001 spring 이 못 쓴다.
-    #      frontend 의 /app/.next/cache 에서 이미 같은 문제를 겪었다)
-    #   - 또는 보존이 필요하면 tmpfs 대신 명명 볼륨.
-    #   - 어느 쪽이든 Loki(loki4j LOKI appender)에 이미 원격 사본이 있어 파일 사본의
-    #     소실 자체는 관측 손실로 이어지지 않는다. 컨테이너 쓰기 레이어에 있는
-    #     지금도 배포마다 재생성되며 사라지고 있다.
+    # 명명 볼륨이 아니라 tmpfs 를 고른 근거(= 파일 사본을 포기해도 되는 이유):
+    #   1) 두 파일 다 호스트 밖 사본이 이미 있다. ott-backend.log 는 loki4j 가 Loki 로
+    #      직접 push 한다. auth-audit.log 는 Loki 로 가지 않지만(AUTH_AUDIT 로거는
+    #      additivity=false 에 CONSOLE+파일뿐) CONSOLE 로 stdout 에 나가고,
+    #      security/log-backup.ps1 이 매일 `docker logs` 를 통째로 암호화해 R2 에 올린다.
+    #   2) 명명 볼륨으로 열면 ha.yml 의 app2 가 extends 로 그 볼륨까지 상속해서 두 JVM 의
+    #      RollingFileAppender 가 같은 파일에 쓴다(로테이션 경합). 인스턴스별 볼륨을 따로
+    #      주면 피할 수 있지만, 사본이 이미 두 겹 있는 파일 때문에 질 복잡도가 아니다.
+    #   3) 이 파일들은 지금도 컨테이너 쓰기 레이어에 있어 배포마다 사라진다. tmpfs 는 그
+    #      동작을 바꾸지 않는다 — 보존을 잃는 변경이 아니다.
+    #   남는 한계: `docker logs` 는 컨테이너 교체 시 초기화되므로 일일 스냅샷 사이에
+    #   배포가 끼면 그 구간이 빈다. log-backup.ps1 이 이미 적어둔 기존 한계다.
+    read_only: true
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -133,6 +129,13 @@ services:
       # .so 를 /tmp 에 풀어 dlopen 하는 코덱 설정이 없다. hsperfdata 와 tomcat 작업
       # 디렉터리는 실행 권한이 필요 없다.
       - /tmp:noexec,nosuid,nodev,size=256m
+      # read_only 를 켜기 위해 여는 유일한 경로(위 근거 참고).
+      # mode=1777 필수 — tmpfs 기본은 root:root 0755 라 이미지의 uid 1001(spring)이 쓰지
+      # 못하고, 그러면 로그가 조용히 사라진다(frontend 의 /app/.next/cache 와 같은 함정).
+      # size=128m 근거: 현재 적재 속도가 25분에 52KB(≈3MB/일)다. 상한에 닿아도 실패하는
+      # 것은 파일 appender 뿐이고 Loki·stdout 경로는 살아 있다. tmpfs 페이지는
+      # mem_limit(2g)에 합산되므로 /tmp 256m 과 합쳐 384m 이 상한이다.
+      - /app/logs:noexec,nosuid,nodev,size=128m,mode=1777
     mem_limit: 2g
     cpus: 2.0
 
