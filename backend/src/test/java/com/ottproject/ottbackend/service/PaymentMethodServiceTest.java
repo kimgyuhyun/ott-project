@@ -151,15 +151,31 @@ class PaymentMethodServiceTest {
         PaymentMethod target = method(1L, true, 100);
         PaymentMethod survivor = method(2L, false, 50);
         given(paymentMethodRepository.findByIdAndUser_Id(1L, USER_ID)).willReturn(Optional.of(target));
-        // 삭제된 행은 이 쿼리에서 빠진다(deletedAt is null)
+        // 승격 후보는 삭제 전에 읽으므로 대상도 아직 목록에 있다(기본이라 맨 앞)
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(USER_ID))
-                .willReturn(List.of(survivor));
+                .willReturn(List.of(target, survivor));
 
         service.delete(USER_ID, 1L);
 
         assertThat(target.getDeletedAt()).isNotNull();
         assertThat(target.isDefault()).isFalse(); // 지워진 행에 기본 플래그가 남으면 기본이 둘이 된다
-        // 핵심: 아무도 기본이 아니면 정기결제 폴백이 집을 수단을 못 찾는다
+        // 핵심: 아무도 기본이 아니면 사용자에게 기본 수단이 없는 상태가 된다
+        assertThat(survivor.isDefault()).isTrue();
+    }
+
+    @Test
+    @DisplayName("삭제 - 지우는 대상 자신은 승격 후보에서 제외된다(flush 순서에 기대지 않는다)")
+    void deletedMethodIsNeverPromotedBackToDefault() {
+        PaymentMethod target = method(1L, true, 1); // priority 가 가장 낮아 정렬상 계속 맨 앞이다
+        PaymentMethod survivor = method(2L, false, 100);
+        given(paymentMethodRepository.findByIdAndUser_Id(1L, USER_ID)).willReturn(Optional.of(target));
+        // 삭제 전 목록이라 대상이 들어 있다. 자기 자신을 걸러내지 않으면 방금 지운 행을 다시 기본으로 올린다
+        given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(USER_ID))
+                .willReturn(List.of(target, survivor));
+
+        service.delete(USER_ID, 1L);
+
+        assertThat(target.isDefault()).isFalse();
         assertThat(survivor.isDefault()).isTrue();
     }
 
@@ -182,12 +198,14 @@ class PaymentMethodServiceTest {
     void deletingTheOnlyMethodDoesNotCrash() {
         PaymentMethod target = method(1L, true, 100);
         given(paymentMethodRepository.findByIdAndUser_Id(1L, USER_ID)).willReturn(Optional.of(target));
+        // 삭제 전 목록에 자기 자신뿐이므로 걸러내고 나면 승격 후보가 없다
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(USER_ID))
-                .willReturn(List.of()); // 승격시킬 대상이 없다
+                .willReturn(List.of(target));
 
         service.delete(USER_ID, 1L);
 
         assertThat(target.getDeletedAt()).isNotNull();
+        assertThat(target.isDefault()).isFalse();
     }
 
     @Test

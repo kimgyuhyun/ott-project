@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * PaymentMethodService
@@ -79,13 +80,18 @@ public class PaymentMethodService { // 결제수단 도메인 서비스
 	public void delete(Long userId, Long paymentMethodId) { // 소프트 삭제
 		PaymentMethod target = paymentMethodRepository.findByIdAndUser_Id(paymentMethodId, userId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-		boolean wasDefault = target.isDefault(); // softDelete 가 플래그를 내리므로 먼저 읽는다
+		// 승격 후보는 삭제 '전에' 고른다. 삭제 뒤에 목록을 읽으면 방금 지운 행이 결과에서 빠져 있기를
+		// 영속성 컨텍스트의 flush 타이밍에 기대게 된다. 그 기대가 어긋나면 지운 행이 목록 맨 앞으로
+		// 돌아와(is_default desc) 자기 자신을 다시 기본으로 올리고, 살아 있는 수단 중에는 기본이 없어진다.
+		// 삭제 전 목록에서 대상만 걸러내면 같은 결과를 순서에 기대지 않고 얻는다.
+		Optional<PaymentMethod> successor = target.isDefault()
+				? paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(userId)
+						.stream()
+						.filter(pm -> !pm.getId().equals(paymentMethodId))
+						.findFirst()
+				: Optional.empty(); // 기본이 아니었으면 재지정할 것이 없다
 		target.softDelete(java.time.LocalDateTime.now());
-		if (wasDefault) {
-			paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(userId)
-					.stream().findFirst()
-					.ifPresent(PaymentMethod::markAsDefault);
-		}
+		successor.ifPresent(PaymentMethod::markAsDefault);
 	}
 
 	@Transactional
