@@ -16,6 +16,7 @@ import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
 import com.ottproject.ottbackend.repository.EpisodeProgressRepository;
 import com.ottproject.ottbackend.mybatis.EpisodeMapper;
+import com.ottproject.ottbackend.mybatis.PlayerProgressQueryMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,6 +52,7 @@ public class PlayerService {
     private final EpisodeRepository episodeRepository;
     private final EpisodeProgressRepository progressRepository;
     private final EpisodeMapper episodeMapper;
+    private final PlayerProgressQueryMapper progressQueryMapper; // 진행률 쓰기는 전부 이 매퍼로 나간다
     private final com.ottproject.ottbackend.mybatis.PlayerQueryMapper playerQueryMapper;
     private final PlaybackAuthService playbackAuthService;
     private final ProgressBufferService progressBuffer;
@@ -156,7 +158,11 @@ public class PlayerService {
      * - 위치·길이가 모두 유효하면 이전 값을 볼 필요가 없으므로 Redis 버퍼에만 쓰고 끝낸다(DB 접근 없음).
      *   실트래픽은 컨트롤러가 두 값을 모두 필수로 검증하므로 항상 이 경로를 탄다.
      * - 값이 불완전할 때만 이전 값과 병합해야 하므로 기존 DB 경로로 내려간다.
+     *
+     * 클래스 기본값이 readOnly 라 쓰기 메서드에는 @Transactional 을 다시 붙인다.
+     * readOnly 트랜잭션은 커넥션까지 read-only 로 세팅되므로 아래 병합 upsert 가 DB 에서 거부된다.
      */
+    @Transactional
     public void saveProgress(Long userId, Long episodeId, Integer positionSec, Integer durationSec) {
         if (positionSec != null && positionSec >= 0 && durationSec != null && durationSec > 0) {
             progressBuffer.write(userId, episodeId, Math.min(positionSec, durationSec), durationSec);
@@ -168,34 +174,21 @@ public class PlayerService {
     /**
      * 위치·길이 중 하나가 비어 있을 때의 진행률 저장(이전 값과 병합해야 하므로 DB 경로)
      *
-     * 같은 빈 안에서 호출되어 프록시를 타지 않으므로 트랜잭션은 repository 각각이 연다.
-     * 원래도 Postgres 기본 격리수준(READ COMMITTED)이라 동작 차이는 없다.
+     * 왜 MyBatis 인가
+     * - episode_progress 를 쓰는 경로는 한 수단만 쓴다(ARCHITECTURE 3). 버퍼 flush 가 같은 테이블을
+     *   MyBatis 배치 upsert 로 반영하므로, 여기서 JPA 로 저장하면 한 테이블의 쓰기가 두 수단으로 갈린다.
+     * - 병합을 SQL 한 문장에서 끝내므로 조회 후 저장 사이에 끼어든 갱신이 유실되지 않는다.
+     * - 이 트랜잭션에는 JPA 쓰기가 없어 영속성 컨텍스트와 어긋날 여지도 없다.
+     * - 없는 사용자·에피소드는 존재 확인 대신 외래 키가 거른다. 예외 종류만 바뀌고 응답은 종전과 같다
+     *   (컨트롤러가 예외를 잡아 500 으로 답한다).
      */
     private void savePartialProgress(Long userId, Long episodeId, Integer positionSec, Integer durationSec) {
-        // 동시성 안전을 위해 먼저 조회(있으면 갱신, 없으면 생성)
-        EpisodeProgress entity = progressRepository.findByUser_IdAndEpisode_Id(userId, episodeId)
-                .orElseGet(() -> {
-                    var user = userRepository.findById(userId)
-                            .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userId));
-                    var episode = episodeRepository.findById(episodeId)
-                            .orElseThrow(() -> new IllegalArgumentException("에피소드를 찾을 수 없습니다: " + episodeId));
-                    return EpisodeProgress.createProgress(user, episode, 0);
-                });
-
-        // 값 검증 후 반영
-        if (positionSec != null && positionSec >= 0) {
-            entity.setPositionSec(positionSec);
-        }
-        if (durationSec != null && durationSec > 0) {
-            entity.setDurationSec(durationSec);
-        }
-
-        // 진행률이 총 길이를 초과하지 않도록 보정
-        if (entity.getPositionSec() > entity.getDurationSec()) {
-            entity.setPositionSec(entity.getDurationSec());
-        }
-
-        progressRepository.save(entity);
+        progressQueryMapper.mergeProgress(
+                userId,
+                episodeId,
+                (positionSec != null && positionSec >= 0) ? positionSec : null, // 음수는 무시 = 기존 위치 유지
+                (durationSec != null && durationSec > 0) ? durationSec : null,  // 0 이하는 무시 = 기존 길이 유지
+                LocalDateTime.now());
     }
     
     /**

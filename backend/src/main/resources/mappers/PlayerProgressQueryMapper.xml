@@ -14,10 +14,10 @@
 
 	<!-- 진행률 버퍼 배치 반영: 한 문장으로 여러 행을 upsert 한다 --> <!-- 비즈니스 요약 주석 -->
 	<insert id="upsertProgressBatch"> <!-- 파라미터: rows(List&lt;EpisodeProgressFlushDto&gt;) -->
-		insert into episode_progress (user_id, episode_id, position_sec, duration_sec, updated_at) <!-- hidden_in_recent 는 DB 기본값 사용 -->
+		insert into episode_progress (user_id, episode_id, position_sec, duration_sec, updated_at, hidden_in_recent) <!-- 숨김 여부는 신규 행 기본값 false -->
 		values
 		<foreach collection="rows" item="r" separator=","> <!-- 버퍼에서 꺼낸 행들을 values 목록으로 펼침 -->
-			(#{r.userId}, #{r.episodeId}, #{r.positionSec}, #{r.durationSec}, #{r.updatedAt})
+			(#{r.userId}, #{r.episodeId}, #{r.positionSec}, #{r.durationSec}, #{r.updatedAt}, false)
 		</foreach>
 		on conflict (user_id, episode_id) do update set <!-- 유니크 제약(user_id, episode_id) 기준 갱신 -->
 			position_sec = excluded.position_sec,
@@ -25,6 +25,40 @@
 			updated_at = excluded.updated_at
 		where episode_progress.updated_at &lt;= excluded.updated_at <!-- DB 값이 더 최신이면 덮어쓰지 않음(지연 반영분 역주행 방지) -->
 	</insert> <!-- insert 끝 -->
+
+	<!-- 값이 불완전한 진행률 한 건 반영: 빠진 값은 기존 행에서 가져와 한 문장으로 병합한다 --> <!-- 비즈니스 요약 주석 -->
+	<insert id="mergeProgress"> <!-- 파라미터: userId, episodeId, positionSec(null 가능), durationSec(null 가능), updatedAt -->
+		insert into episode_progress (user_id, episode_id, position_sec, duration_sec, updated_at, hidden_in_recent)
+		values (
+			#{userId}, #{episodeId},
+			least(coalesce(#{positionSec,jdbcType=INTEGER}, 0), coalesce(#{durationSec,jdbcType=INTEGER}, 0)), <!-- 새 행의 길이 기본값은 0 이라 위치도 0 이 된다(기존 동작) -->
+			coalesce(#{durationSec,jdbcType=INTEGER}, 0),
+			#{updatedAt}, false
+		)
+		on conflict (user_id, episode_id) do update set <!-- 기존 행이면 넘어온 값만 덮고 나머지는 유지 -->
+			position_sec = least(
+				coalesce(#{positionSec,jdbcType=INTEGER}, episode_progress.position_sec),
+				coalesce(#{durationSec,jdbcType=INTEGER}, episode_progress.duration_sec)), <!-- 위치가 길이를 넘지 않도록 보정 -->
+			duration_sec = coalesce(#{durationSec,jdbcType=INTEGER}, episode_progress.duration_sec),
+			updated_at = #{updatedAt}
+	</insert> <!-- insert 끝 -->
+
+	<!-- 최근본 목록 숨김 처리: 시청 기록은 남기고 표시 여부만 바꾼다 --> <!-- 비즈니스 요약 주석 -->
+	<update id="updateHiddenInRecent"> <!-- 파라미터: userId, episodeIds, hidden -->
+		update episode_progress
+		set hidden_in_recent = #{hidden} <!-- updated_at 은 건드리지 않는다 — 숨김은 시청 시각이 아니다 -->
+		where user_id = #{userId}
+		  and episode_id in
+		<foreach collection="episodeIds" item="episodeId" open="(" separator="," close=")">#{episodeId}</foreach>
+	</update> <!-- update 끝 -->
+
+	<!-- 정주행 목록에서 완전 삭제: 해당 회차들의 진행률 행을 지운다 --> <!-- 비즈니스 요약 주석 -->
+	<delete id="deleteProgressByUserAndEpisodes"> <!-- 파라미터: userId, episodeIds -->
+		delete from episode_progress
+		where user_id = #{userId}
+		  and episode_id in
+		<foreach collection="episodeIds" item="episodeId" open="(" separator="," close=")">#{episodeId}</foreach>
+	</delete> <!-- delete 끝 -->
 
 </mapper> <!-- 매퍼 끝 -->
 
