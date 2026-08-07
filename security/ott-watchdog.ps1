@@ -42,6 +42,59 @@ $targets    = @('ott-frontend','ott-app')
 $iocRegex   = 'xmrig|javae|minerd|cpuminer|kdevtmpfsi|kinsing|supportxmr|xRaPNJ'
 $detections = @()
 
+# === (0) 컨테이너 상태 점검 =================================================
+# PLATFORM 9절 [절대] "컨테이너 상태와 침해 지표를 주기적으로 점검하는 워치독을 둔다".
+# 2026-08-08: ott-smtp-proxy 가 설정 파일 줄바꿈(CRLF) 때문에 크래시 루프에 빠져
+# SMTP 아웃바운드가 통째로 멈췄는데, 다음 배포의 검증 단계가 잡을 때까지 아무도 몰랐다.
+# 이 스크립트는 침해만 보고 "떠 있는지"는 안 보고 있었다 — 아래 IOC 검사는 running 이
+# 아닌 컨테이너를 그냥 건너뛰므로(continue), 죽은 컨테이너는 오히려 더 조용했다.
+#
+# 프로메테우스로 하지 않는 이유: 컨테이너 상태를 지표로 만들려면 docker.sock 을 컨테이너에
+# 넣어야 하는데(cAdvisor 계열) 그건 docker-compose.monitoring.yml 에서 의도적으로 거절한
+# 결정이다. 게다가 이 스택엔 Alertmanager 가 없어 규칙이 firing 돼도 발송 경로가 없다.
+# 호스트에서 docker 를 직접 보고 디스코드로 쏘는 이 경로가 유일하게 사람에게 닿는다.
+$expected = @(
+  'ott-nginx','ott-frontend','ott-app','ott-app-2',        # 웹 계층
+  'ott-postgres','ott-redis','ott-kafka','ott-rabbitmq',   # 데이터 계층
+  'ott-egress-proxy','ott-smtp-proxy',                     # 아웃바운드 프록시
+  'ott-prometheus','ott-grafana','ott-loki','ott-alloy'    # 관측
+)
+# 단일 인스턴스로 롤백했다면(docker rm -f ott-app-2) 이 목록에서 ott-app-2 를 뺀다.
+# pgadmin/certbot 은 opt-in 유틸리티라 상시 대상이 아니다.
+$cstate = Join-Path $base 'containers.state'
+
+$down = @(foreach ($c in $expected) {
+  $st = (& docker inspect -f '{{.State.Status}}' $c 2>$null)
+  if (-not $st) { "$c=absent" } elseif ($st -ne 'running') { "$c=$st" }
+})
+$downNames = @($down | ForEach-Object { ($_ -split '=')[0] })
+
+# prev = 직전 점검의 다운 목록, alerted = 이미 알린 목록(복구될 때까지 재발송 안 함)
+$prev = @(); $alerted = @()
+if (Test-Path $cstate) {
+  try { $s = Get-Content $cstate -Raw | ConvertFrom-Json; $prev = @($s.prev); $alerted = @($s.alerted) } catch { }
+}
+
+# 2회 연속 다운일 때만 알린다. 무중단 배포는 컨테이너를 하나씩 지웠다 다시 만들고
+# 백엔드는 헬시까지 수십 초가 걸리므로, 한 번의 점검만 보고 알리면 배포마다 오탐이 난다
+# (ott-uptime.ps1 의 failThreshold=2 와 같은 취지). 대신 탐지가 한 주기 늦는다.
+$newDown   = @($downNames | Where-Object { $prev -contains $_ -and $alerted -notcontains $_ })
+$recovered = @($alerted   | Where-Object { $downNames -notcontains $_ })
+
+if ($newDown) {
+  $detail = (($down | Where-Object { $newDown -contains ($_ -split '=')[0] }) -join ', ')
+  Log "CONTAINER DOWN $detail"
+  Send-DiscordAlert (":warning: **OTT 컨테이너 다운** — $detail`n2회 연속 점검에서 running 이 아니다. 배포 중이었다면 곧 복구 알림이 온다.")
+}
+if ($recovered) {
+  Log "CONTAINER RECOVERED $($recovered -join ', ')"
+  Send-DiscordAlert (":white_check_mark: **OTT 컨테이너 복구** — $($recovered -join ', ')")
+}
+# 다음 점검을 위해 저장: prev 는 이번 다운 목록, alerted 는 아직 안 돌아온 것만 남긴다.
+$alerted = @(@($alerted | Where-Object { $downNames -contains $_ }) + $newDown | Select-Object -Unique)
+@{ prev = $downNames; alerted = $alerted } | ConvertTo-Json -Compress | Set-Content -Path $cstate -Encoding utf8
+if (-not $down) { Log "OK  all $($expected.Count) containers running" }
+
 foreach ($c in $targets) {
   $running = (& docker inspect -f '{{.State.Running}}' $c 2>$null)
   if ($running -ne 'true') { continue }

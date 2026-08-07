@@ -306,6 +306,7 @@ application-dev.properties
 *.ass
 # Security tooling runtime artifacts (do not commit)
 security/watchdog.log
+security/containers.state
 security/ALERT.txt
 # 호스트 방화벽 롤백 아티팩트(호스트 전용, 정책 덤프) — 커밋 금지
 security/*.wfw
