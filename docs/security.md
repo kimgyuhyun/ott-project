@@ -60,9 +60,17 @@
   쓰는 환경이라 SameSite 쿠키만으로는 보호가 약해지기 때문. 문제 시 끌 수 있는 설정을 둔다
 - **봇 방어**: 로그인 반복 실패 이후와 인증코드 발송에 Cloudflare Turnstile 검증
   (`TurnstileVerifier`). 정상 사용자는 대부분 마주치지 않는 위치에만 건다
-- **보안 헤더**: HSTS, CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy,
-  Permissions-Policy 를 `nginx/nginx.prod.conf` 에서 적용
+- **보안 헤더 (CSP)**: CSP 는 프론트엔드 `frontend/next.config.ts` 의 `headers()` 한 곳에서만
+  내려준다. nginx 에는 일부러 넣지 않는다 — 양쪽에서 만들면 한쪽이 다른 쪽을 통째로 덮어써서
+  무엇이 차단됐는지 추적하기 어려워진다
+- **보안 헤더 (나머지)**: HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy,
+  Permissions-Policy 는 nginx 에서 적용한다. 같은 블록이 `nginx/nginx.prod.conf` 와
+  `nginx/nginx.prod.ha.conf` 두 곳에 있으므로 **헤더를 바꿀 땐 반드시 둘을 같이 고친다**.
+  무중단 롤링 배포는 ha.conf 를 쓰기 때문에, 한쪽만 고치면 배포 경로에 따라 헤더가 달라진다
 - **레이트 리밋**: nginx `limit_req`
+- **버전 노출 억제**: nginx `server_tokens off`. 버전이 보이면 스캐너가 그 버전에 걸리는
+  알려진 취약점만 골라 시도할 수 있다. 패치를 대신하지는 못하고 표적 선정을 어렵게 하는
+  정도의 효과다. 위 두 nginx 파일에 함께 둔다
 - **스트리밍 보호**: HLS는 서명된 URL로만 접근 가능하며 서명 검증을 엣지에서 수행한다.
   원본 스토리지는 공개 접근을 차단해 우회 경로를 없앴다 (설계: `docs/streaming.md`)
 
