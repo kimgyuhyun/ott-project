@@ -13,6 +13,18 @@
 #     (2026-07-18 횡이동 차단: frontend가 뚫려도 데이터 계층(data망)에 도달 불가)
 #   - 공개 진입은 nginx의 published 포트(80/443)뿐 (published 포트는 internal과 무관하게 동작)
 #
+# [SECURITY 2026-08-07] 백엔드 아웃바운드 목적지 허용목록 (PLATFORM 3절 [상황] "아웃바운드
+# 통신을 제어한다"). 망분리는 아웃바운드가 필요 없는 서비스를 끊을 뿐, egress 망에 붙은
+# 서비스의 목적지는 제한하지 못한다 — 백엔드는 data 망에도 있어서 침해되면 DB를 읽어
+# 어디로든 보낼 수 있었다. 그래서 백엔드를 egress 에서 빼고 새 internal 망 proxy 에 두고,
+# 아웃바운드는 프록시 2개(squid=HTTP/HTTPS, sockd=SOCKS5 SMTP)를 통해서만 나가게 한다.
+#   - proxy 를 default 에 붙이지 않는 이유: frontend 가 default 에 있다. 붙이면 침해된
+#     프론트가 프록시를 통해 인터넷을 되찾는다. 그래서 전용 망을 새로 만든다.
+#   - 프록시는 data 망에 절대 붙이지 않는다.
+# 배선(프록시 서비스 정의 + app 의 망·환경변수)을 전부 이 파일에 두는 이유: 프록시와 망
+# 제약이 같은 파일에 있어야 항상 같이 붙고 같이 빠진다. 갈라두면 "프록시는 없는데 프록시로
+# 나가라는 설정만 켜진" 상태를 만들 수 있다.
+#
 # 적용(배포):
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.netlock.yml up -d
 #
@@ -30,7 +42,88 @@ services:
     networks:
       - default                         # 웹 계층: frontend/nginx와 통신
       - data                            # 데이터 계층: postgres/redis/kafka/rabbitmq (app 전용)
-      - egress                          # 외부: OAuth/메일/결제/TMDB 아웃바운드(백엔드만 허용)
+      - proxy                           # [SECURITY 2026-08-07] egress 제거 — 아웃바운드는 프록시 경유만
+    environment:
+      # JAVA_TOOL_OPTIONS 로 넣는 이유: backend/Dockerfile 의 ENTRYPOINT 가 exec 형식이라
+      # JAVA_OPTS 는 셸 확장이 일어나지 않아 무시된다.
+      #
+      # nonProxyHosts 를 빼면 loki4j 의 Loki 푸시(http://loki:3100)까지 프록시로 끌려가
+      # squid 가 거부하고 로그 파이프라인이 죽는다. https 전용 nonProxyHosts 프로퍼티는
+      # 존재하지 않는다 — http.nonProxyHosts 하나가 양쪽에 적용된다.
+      JAVA_TOOL_OPTIONS: "-Dhttp.proxyHost=ott-egress-proxy -Dhttp.proxyPort=3128 -Dhttps.proxyHost=ott-egress-proxy -Dhttps.proxyPort=3128 -Dhttp.nonProxyHosts=localhost|127.*|[::1]|loki|prometheus|grafana|ott-*"
+      # 메일만 SOCKS5 로 나간다(MailConfig.java 가 이 두 값을 읽는다).
+      # JVM 전역 -DsocksProxyHost 는 쓰지 않는다 — java.net.Socket 전체에 걸려
+      # JDBC·Kafka·Redis·RabbitMQ 연결까지 SOCKS 로 끌고 간다.
+      MAIL_SOCKS_HOST: ott-smtp-proxy
+      MAIL_SOCKS_PORT: "1080"
+
+  # --- 아웃바운드 프록시 2개 -------------------------------------------------
+  # 둘 다 networks 는 [proxy, egress] 뿐이다. data 망에는 붙이지 않는다.
+  # 설정은 nginx 와 같은 방식으로 러너 작업폴더 밖(C:/ott-deploy/config)에서 ro 마운트한다.
+  ott-egress-proxy:                     # squid — 허용목록 기반 HTTP/HTTPS 포워드 프록시
+    image: ${SQUID_IMAGE:-ott-egress-proxy:clean}
+    pull_policy: ${SQUID_PULL_POLICY:-never}
+    container_name: ott-egress-proxy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    volumes:
+      - C:/ott-deploy/config/proxy/squid.conf:/etc/squid/squid.conf:ro
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      - /var/run:noexec,nosuid,nodev,size=8m
+      - /var/cache/squid:noexec,nosuid,nodev,size=16m,mode=1777
+      - /var/log/squid:noexec,nosuid,nodev,size=16m,mode=1777
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      # priority: 부착 순서를 고정한다(높은 쪽이 먼저 = eth0). squid 는 라우팅에만 의존해서
+      # 순서를 타지 않지만, 옆의 sockd 와 같은 배선을 유지해 둘이 갈라지지 않게 한다.
+      egress:
+        priority: 100
+      proxy:
+        priority: 10
+
+  ott-smtp-proxy:                      # dante sockd — SMTP 제출 전용 SOCKS5
+    image: ${SOCKD_IMAGE:-ott-smtp-proxy:clean}
+    pull_policy: ${SOCKD_PULL_POLICY:-never}
+    container_name: ott-smtp-proxy
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    volumes:
+      - C:/ott-deploy/config/proxy/sockd.conf:/etc/sockd.conf:ro
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    tmpfs:
+      # mode=1777 — tmpfs 기본은 root:root 0755 라 uid 1001 이 pid 파일을 못 써서
+      # 기동할 때마다 permission denied 경고가 나온다(치명적이진 않지만 진짜 문제를 덮는다).
+      - /var/run:noexec,nosuid,nodev,size=8m,mode=1777
+      # sockd 는 기동 시 /tmp 에 공유메모리 잠금 파일을 만든다. 없으면
+      # "socks_mklock(): mkstemp(/tmp/.sockdshmem...) Read-only file system" 로 죽는다.
+      - /tmp:noexec,nosuid,nodev,size=8m,mode=1777
+    mem_limit: 256m
+    cpus: 0.5
+    networks:
+      # 이 순서가 sockd.conf 의 "external: eth0" 과 한 쌍이다. priority 가 높은 egress 가
+      # 먼저 붙어 eth0 이 된다. 뒤집히면 SMTP 가 proxy 망으로 나가려다 조용히 실패한다.
+      egress:
+        priority: 100
+      proxy:
+        priority: 10
 
   frontend:                             # Next.js 프론트엔드 (이번 감염 대상)
     image: ${FRONT_IMAGE:-ott-frontend:clean}   # 기본=로컬 클린(Next 15.5.19), CD=ghcr digest
@@ -53,5 +146,8 @@ networks:
   data:
     internal: true                      # [SECURITY 2026-07-18] 데이터 계층도 인터넷 차단
                                         # (base에서 일반 bridge로 두면 netlock 배포 시 DB/브로커가 egress를 되찾는 회귀 발생)
+  proxy:
+    internal: true                      # [SECURITY 2026-08-07] app ↔ 프록시 전용. 인터넷 불가.
+                                        # frontend 가 있는 default 와 분리해야 하는 이유는 헤더 주석 참고.
   egress:
-    driver: bridge                      # 인터넷 가능(backend 전용 아웃바운드 경로)
+    driver: bridge                      # 인터넷 가능(프록시 전용 아웃바운드 경로 + nginx 포트 publish)
