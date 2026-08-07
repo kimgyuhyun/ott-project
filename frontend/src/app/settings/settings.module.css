@@ -184,6 +184,30 @@
   color: #F7F7F7;
 }
 
+/* 회원탈퇴는 되돌릴 수 없어서 로그아웃 버튼들과 색으로 구분한다 */
+.withdrawButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #7f1d1d;
+  border-radius: 6px;
+  color: #ef4444;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.withdrawButton:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+.withdrawButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* 알림 그룹 */
 .notificationGroup {
   margin-bottom: 1.5rem;

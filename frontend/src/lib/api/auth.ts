@@ -162,6 +162,35 @@ export async function logout() {
   // 응답은 서버가 JSON 문자열로 보내고 그걸 response.json()으로 JavaScript 객체로 변환함
 }
 
+// 회원탈퇴 API
+// 성공하면 서버가 계정을 익명화하고 세션을 무효화한다(되돌릴 수 없음) — 호출부는 로그인 화면으로 보내야 한다.
+// logout 과 같은 모양으로 만든 이유: 응답이 JSON 이 아니라 텍스트라 apiCall(response.json())을 쓸 수 없다.
+export async function withdraw(): Promise<string> {
+  const response = await fetch('/api/auth/withdraw', {
+    method: 'DELETE', // 백엔드 엔드포인트가 DELETE /api/auth/withdraw
+    credentials: 'include', // 세션 쿠키 포함 — 세션의 이메일로 탈퇴 대상을 찾는다
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) { // 실패(활성 구독 400, 미로그인 400 등)
+    const errorText = await response.text(); // 응답 본문을 문자열로 읽음
+    // 400 본문은 두 형태로 온다: 전역 예외 처리기의 JSON({code, message})과 컨트롤러가 직접 만든 평문.
+    // 사용자에게 보여줄 수 있는 문구는 서버가 준 message 이므로 JSON 이면 거기서 꺼낸다.
+    let message = errorText;
+    try {
+      const body = JSON.parse(errorText);
+      if (body?.message) message = String(body.message);
+    } catch {
+      // 평문 본문이면 파싱이 실패한다 — 본문을 그대로 쓴다
+    }
+    throw new Error(message || `회원탈퇴 실패 (${response.status})`);
+  }
+
+  return response.text(); // 탈퇴 응답은 "회원탈퇴가 완료되었습니다." 같은 텍스트
+}
+
 // 현재 사용자 정보 가져오기
 export async function getCurrentUser(): Promise<CurrentUser | null> { // import 해서 사용 가능한 비동기 함수 호이스팅은 불가
   try { // 에외처리할려고 try catch문 사용

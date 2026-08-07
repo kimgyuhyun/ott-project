@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
+import com.ottproject.ottbackend.repository.SocialAccountRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,6 +38,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * - 로그인 실패 사유는 계정 존재 여부를 노출하지 않는다(계정 열거 공격 방어)
  * - 비활성(탈퇴) 계정은 401 이 아니라 403 으로 구분한다
  * - 비밀번호 변경은 현재 비밀번호를 반드시 확인한다(세션 탈취 시 계정 영구 탈취 방지)
+ * - 탈퇴는 되돌릴 수 없으므로 결제가 걸린 계정(유효 구독)은 막고, 통과하면 익명화와 소셜 연동
+ *   해제를 함께 한다(둘 중 하나만 되면 로그인 수단만 끊긴 채 이메일이 점유된 계정이 남는다)
  *
  * 경계 메모
  * - 비밀번호 암호화는 UserService.saveUser 안에서 일어난다. 여기서는 userService 가 목이라
@@ -52,6 +55,8 @@ class EmailAuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AuthenticationManager authenticationManager;
     @Mock private VerificationEmailService verificationEmailService;
+    @Mock private MembershipEligibilityService membershipEligibilityService;
+    @Mock private SocialAccountRepository socialAccountRepository;
 
     @InjectMocks
     private EmailAuthService service;
@@ -258,15 +263,49 @@ class EmailAuthServiceTest {
     // ===== 탈퇴 =====
 
     @Test
-    @DisplayName("탈퇴 - 데이터를 지우지 않고 비활성화만 한다(소프트 삭제)")
-    void withdrawDisablesAccountWithoutDeleting() {
+    @DisplayName("탈퇴 - 행을 지우지 않고 익명화한다(FK 20개 테이블 보존 + 이메일 점유 해제)")
+    void withdrawAnonymizesInsteadOfDeleting() {
         User user = localUser();
         given(userService.findByEmail("user@test.com")).willReturn(Optional.of(user));
 
         service.withdraw("user@test.com");
 
         assertThat(user.isEnabled()).isFalse();
+        // 익명화가 빠지면 enabled=false 만 남아 그 이메일이 영구 점유된다(재가입 불가)
+        assertThat(user.getEmail()).isNotEqualTo("user@test.com");
+        assertThat(user.getPassword()).isNull();
         verify(userService).saveUser(user);
+    }
+
+    @Test
+    @DisplayName("탈퇴 - 소셜 연동 행을 지운다(같은 소셜 계정으로 탈퇴 계정에 다시 로그인 방지)")
+    void withdrawUnlinksSocialAccounts() {
+        User user = localUser();
+        given(userService.findByEmail("user@test.com")).willReturn(Optional.of(user));
+
+        service.withdraw("user@test.com");
+
+        // 남겨두면 OAuth2UserService 가 (provider, providerId)로 이 계정을 먼저 찾아낸다
+        verify(socialAccountRepository).deleteByUser(user);
+    }
+
+    @Test
+    @DisplayName("탈퇴 - 유효 구독이 남아 있으면 400 이고 아무것도 바꾸지 않는다")
+    void withdrawWithActiveSubscriptionIsRejected() {
+        User user = localUser();
+        given(userService.findByEmail("user@test.com")).willReturn(Optional.of(user));
+        given(membershipEligibilityService.isMember(1L)).willReturn(true);
+
+        assertThatThrownBy(() -> service.withdraw("user@test.com"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("구독을 먼저 해지해주세요")
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        // 익명화는 되돌릴 수 없다. 결제가 걸린 계정이 여기서 지워지면 남은 기간과 청구 대상이 주인을 잃는다
+        assertThat(user.getEmail()).isEqualTo("user@test.com");
+        assertThat(user.isEnabled()).isTrue();
+        verify(userService, never()).saveUser(any());
+        verify(socialAccountRepository, never()).deleteByUser(any());
     }
 
     @Test
@@ -278,6 +317,7 @@ class EmailAuthServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("사용자를 찾을 수 없습니다");
         verify(userService, never()).saveUser(any());
+        verifyNoInteractions(socialAccountRepository);
     }
 
     // ===== 중복 확인 =====
