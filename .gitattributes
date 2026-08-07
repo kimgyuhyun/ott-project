@@ -6,3 +6,9 @@
 # '\r' 을 명령 일부로 읽어 깨진다. security/initdb/*.sh 는 postgres 컨테이너에
 # 그대로 바인드 마운트되므로 러너 체크아웃의 줄바꿈이 곧 실행 결과가 된다.
 *.sh text eol=lf
+
+# 리눅스 컨테이너 안에서 파싱되는 프록시 설정. 러너 checkout 이 CRLF 로 내려주면
+# dante sockd 가 첫 지시어에서 'near token "\r": syntax error' 로 죽고 재시작
+# 루프에 빠진다(2026-08-08 실측 — SMTP 아웃바운드 전체 정지). squid 는 CRLF 를
+# 견디지만 같은 마운트 경로라 둘을 갈라두지 않는다.
+proxy/*.conf text eol=lf
