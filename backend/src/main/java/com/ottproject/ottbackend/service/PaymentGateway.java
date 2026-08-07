@@ -11,9 +11,18 @@ import com.ottproject.ottbackend.entity.User;
  *
  * 메서드 개요
  * - createCheckoutSession: 체크아웃 세션 생성
+ * - prepare: 이미 발급한 세션 식별자에 청구 금액 고정
  * - issueRefund: 환불 처리
+ * - findRefundStatus: 환불 여부 역조회
  * - chargeWithSavedMethod: 저장수단 자동 청구
  * - verifyWebhookBasicValidation: 웹훅 기본 검증
+ * - verifyPayment: 결제 성공 주장 재검증
+ * - findPaymentBySessionId: 세션 식별자로 결제 상태 역조회(대사용)
+ * - fetchPaymentDetails: 확정된 결제의 수단 상세 조회
+ *
+ * 용어
+ * - providerSessionId: 결제 건마다 호출자가 만들어 게이트웨이에 등록하는 주문 식별자(아임포트의 merchant_uid).
+ * - providerPaymentId: 게이트웨이가 승인 후 부여하는 결제 식별자(아임포트의 imp_uid).
  */
 public interface PaymentGateway { // 게이트웨이 추상화 시작
 
@@ -34,6 +43,14 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 		public String sessionId; // 게이트웨이 세션 ID
 		public String redirectUrl; // 결제창 이동 URL
 	}
+
+	/**
+	 * 결제 사전 등록 — 호출자가 직접 만든 providerSessionId 에 청구 금액을 고정한다.
+	 * - 차액(proration) 결제처럼 세션 식별자를 호출자가 정하는 흐름에서 쓴다.
+	 *   createCheckoutSession 과 같은 등록을 거쳐야 verifyPayment 가 같은 기준으로 금액을 대조할 수 있다.
+	 * - 등록에 실패하면 예외를 던진다. 조용히 넘어가면 금액 고정 없이 결제창이 열린다.
+	 */
+	void prepare(String providerSessionId, long amount);
 
 	/**
 	 * 환불 요청
@@ -83,6 +100,54 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 	 */
 	boolean verifyWebhookBasicValidation(String rawBody, java.util.Map<String, String> headers);
 
+	/**
+	 * 결제 성공 주장 재검증
+	 * - 웹훅 페이로드나 결제창 콜백은 위조될 수 있으므로, 게이트웨이에 직접 물어 상태·금액·세션 식별자가
+	 *   모두 일치할 때만 true 를 돌려준다.
+	 * - 판정할 수 없는 경우(조회 실패, 응답 파싱 실패)는 false 다. 여기서는 fail-closed 가 맞다.
+	 *   확정을 막을 뿐이고, 실제로 결제된 건은 대사(findPaymentBySessionId)가 뒤에서 다시 집는다.
+	 */
+	boolean verifyPayment(String providerPaymentId, String providerSessionId, long expectedAmount);
+
+	/**
+	 * 세션 식별자로 결제 상태 역조회(대사용)
+	 * - 아직 승인 전인 PENDING 결제는 providerPaymentId 가 없으므로 세션 식별자로 친다.
+	 * - 조회 실패와 "결제 시도 기록 없음"을 모두 found=false 로 돌려준다. 예외를 던지지 않는다.
+	 *   대사 배치가 건별로 돌기 때문에, 한 건의 조회 실패가 배치 전체를 멈추면 안 된다.
+	 * - 환불 여부 판정에는 쓰지 않는다. 조회 실패를 "안 나감"으로 읽으면 이중 환불이 되므로
+	 *   그쪽은 UNKNOWN 을 구분하는 findRefundStatus 를 쓴다.
+	 */
+	ReconcileResult findPaymentBySessionId(String providerSessionId);
+
+	/**
+	 * 결제 상태 역조회 결과
+	 * - status 는 게이트웨이 구현이 ready/paid/failed/cancelled 넷 중 하나로 정규화해 채운다.
+	 *   found=false 면 나머지 필드는 의미가 없다.
+	 */
+	final class ReconcileResult {
+		public boolean found;             // 게이트웨이에 결제 시도 기록이 존재하는지
+		public String status;             // ready/paid/failed/cancelled
+		public String providerPaymentId;  // 게이트웨이가 부여한 결제 식별자
+		public long amount;               // 실제 결제 금액
+		public String receiptUrl;         // 영수증 URL
+	}
+
+	/**
+	 * 확정된 결제의 수단 상세 조회
+	 * - 결제수단 type/brand 를 결제창에서 실제로 고른 값으로 확정하는 데 쓴다.
+	 * - 조회에 실패하면 예외를 던진다. 빈 값을 돌려주면 호출자가 "카드"로 잘못 확정한다.
+	 */
+	PaymentDetails fetchPaymentDetails(String providerPaymentId);
+
+	/**
+	 * 결제 수단 상세
+	 * - 게이트웨이가 값을 주지 않으면 각 필드는 null 이다.
+	 */
+	final class PaymentDetails {
+		public String payMethod;   // ex) card, kakaopay, tosspayments, nice
+		public String pgProvider;  // ex) kakaopay, tosspayments, nice
+		public String cardName;    // ex) VISA, MasterCard, 삼성카드
+	}
 
 	/**
 	 * 결제 실패 유형

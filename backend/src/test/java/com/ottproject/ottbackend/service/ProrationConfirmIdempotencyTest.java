@@ -134,7 +134,7 @@ class ProrationConfirmIdempotencyTest {
     private MembershipPlanRepository planRepository;
 
     @MockitoBean
-    private ImportPaymentGateway paymentGateway; // 확정 경로가 instanceof 로 분기한다
+    private PaymentGateway paymentGateway;
 
     // 확정 트랜잭션 안(락 보유 중)에 붙잡을 지점. 실제 직렬화는 그대로 수행해야 아웃박스가 정상 적재된다.
     @MockitoSpyBean
@@ -184,7 +184,7 @@ class ProrationConfirmIdempotencyTest {
         outboxSerializations = new AtomicInteger();
 
         // PG 재검증은 통과시킨다(이 테스트의 관심사가 아니다).
-        given(paymentGateway.verifyPaymentStatus(anyString(), anyString(), anyLong())).willReturn(true);
+        given(paymentGateway.verifyPayment(anyString(), anyString(), anyLong())).willReturn(true);
 
         // 첫 확정을 아웃박스 적재 직전에 붙잡아 둔다.
         // 이 지점은 결제 행을 잠그고 SUCCEEDED 로 바꾼 뒤, 아직 커밋하기 전이다.

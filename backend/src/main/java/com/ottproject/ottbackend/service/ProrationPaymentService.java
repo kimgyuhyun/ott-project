@@ -125,10 +125,8 @@ public class ProrationPaymentService {
 
         paymentRepository.save(payment);
 
-        // 아임포트 사전 등록(prepare): merchant_uid에 청구 금액을 고정(메인 결제와 동일한 검증 경로 확보)
-        if (paymentGateway instanceof ImportPaymentGateway) {
-            ((ImportPaymentGateway) paymentGateway).prepare(providerSessionId, chargeAmount);
-        }
+        // 사전 등록(prepare): 세션 식별자에 청구 금액을 고정(메인 결제와 동일한 검증 경로 확보)
+        paymentGateway.prepare(providerSessionId, chargeAmount);
 
         // PG 설정
         String pg = getPgByPaymentService(request.getPaymentService());
@@ -166,11 +164,8 @@ public class ProrationPaymentService {
         if (impUid == null || impUid.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "imp_uid가 필요합니다.");
         }
-        boolean valid = false;
-        if (paymentGateway instanceof ImportPaymentGateway) { // 2단계: 트랜잭션 밖에서 재검증
-            valid = ((ImportPaymentGateway) paymentGateway)
-                    .verifyPaymentStatus(impUid, target.providerSessionId(), target.expectedAmount());
-        }
+        // 2단계: 트랜잭션 밖에서 재검증
+        boolean valid = paymentGateway.verifyPayment(impUid, target.providerSessionId(), target.expectedAmount());
         if (!valid) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다. (PG 재검증 불일치)");
         }

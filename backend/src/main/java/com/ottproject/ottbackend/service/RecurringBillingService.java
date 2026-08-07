@@ -354,7 +354,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 	 * 10분 뒤 다음 대사 주기에 다시 시도한다 — 반쯤 반영된 상태로 커밋되는 것보다 낫다.
 	 */
 	@Transactional
-	public boolean reconcileRebillPayment(Payment payment, ImportPaymentGateway.ReconcileResult r, LocalDateTime now) {
+	public boolean reconcileRebillPayment(Payment payment, PaymentGateway.ReconcileResult r, LocalDateTime now) {
 		if (payment.getStatus() != PaymentStatus.PENDING) {
 			return false; // 이미 정리됨
 		}
@@ -367,7 +367,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 					log.warn("재청구 대사 금액 불일치 - paymentId: {}, expected: {}, actual: {}", payment.getId(), expected, r.amount);
 					return false; // 금액 불일치는 자동 확정하지 않음(수동 확인 대상)
 				}
-				payment.markAsSucceeded(r.impUid, now);
+				payment.markAsSucceeded(r.providerPaymentId, now);
 				if (r.receiptUrl != null) {
 					payment.attachReceipt(r.receiptUrl);
 				}

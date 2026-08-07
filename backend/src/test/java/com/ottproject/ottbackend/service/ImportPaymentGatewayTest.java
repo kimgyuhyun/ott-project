@@ -32,7 +32,7 @@ import static org.mockito.BDDMockito.given;
  * ImportPaymentGateway 웹훅 검증/결제 재검증 테스트
  *
  * 왜 이 테스트가 필요한가
- * - 아임포트 웹훅에는 서명이 없다. 위조 웹훅을 막는 유일한 관문이 verifyPaymentStatus 의
+ * - 아임포트 웹훅에는 서명이 없다. 위조 웹훅을 막는 유일한 관문이 verifyPayment 의
  *   "아임포트 API 로 금액/주문번호 재조회 후 대조" 다. 이 대조가 무너지면 결제를 만들지 않고도
  *   구독을 받아낼 수 있다. 그런데 이 클래스에는 테스트가 하나도 없었다.
  * - verifyWebhookBasicValidation 은 dev/local 프로파일에서 검증을 통째로 우회한다.
@@ -111,7 +111,7 @@ class ImportPaymentGatewayTest {
     }
 
     @Nested
-    @DisplayName("verifyPaymentStatus - 위조 웹훅을 막는 유일한 관문")
+    @DisplayName("verifyPayment - 위조 웹훅을 막는 유일한 관문")
     class VerifyPaymentStatus {
 
         @Test
@@ -119,7 +119,7 @@ class ImportPaymentGatewayTest {
         void acceptsMatchingPaidPayment() throws Exception {
             givenIamportResponds(paidPayment(EXPECTED_AMOUNT, MERCHANT_UID));
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isTrue();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isTrue();
         }
 
         @Test
@@ -127,7 +127,7 @@ class ImportPaymentGatewayTest {
         void rejectsUnderpaidAmount() throws Exception {
             givenIamportResponds(paidPayment(1L, MERCHANT_UID));
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
         }
 
         @Test
@@ -135,7 +135,7 @@ class ImportPaymentGatewayTest {
         void rejectsAmountMismatchEvenIfHigher() throws Exception {
             givenIamportResponds(paidPayment(EXPECTED_AMOUNT + 1, MERCHANT_UID));
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
         }
 
         @Test
@@ -144,7 +144,7 @@ class ImportPaymentGatewayTest {
             givenIamportResponds(Map.of(
                     "status", "ready", "amount", EXPECTED_AMOUNT, "merchant_uid", MERCHANT_UID));
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
         }
 
         @Test
@@ -152,7 +152,7 @@ class ImportPaymentGatewayTest {
         void rejectsMerchantUidMismatch() throws Exception {
             givenIamportResponds(paidPayment(EXPECTED_AMOUNT, "order_someone_else"));
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
         }
 
         @Test
@@ -168,12 +168,12 @@ class ImportPaymentGatewayTest {
                         return ResponseEntity.ok(Map.of()); // response 키 없음
                     });
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
         }
     }
 
     @Nested
-    @DisplayName("verifyPaymentStatus - merchant_uid 폴백(카카오페이 sandbox)")
+    @DisplayName("verifyPayment - merchant_uid 폴백(카카오페이 sandbox)")
     class MerchantUidFallback {
 
         /**
@@ -199,7 +199,7 @@ class ImportPaymentGatewayTest {
         void fallsBackToMerchantUidLookup() throws Exception {
             givenSingleLookupFailsAndFindReturns(paidPayment(EXPECTED_AMOUNT, MERCHANT_UID));
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isTrue();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isTrue();
         }
 
         @Test
@@ -207,7 +207,7 @@ class ImportPaymentGatewayTest {
         void fallbackStillChecksAmount() throws Exception {
             givenSingleLookupFailsAndFindReturns(paidPayment(1L, MERCHANT_UID));
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
         }
 
         @Test
@@ -217,7 +217,7 @@ class ImportPaymentGatewayTest {
                     Map.of("status", "paid", "amount", EXPECTED_AMOUNT,
                             "merchant_uid", MERCHANT_UID, "imp_uid", "imp_someone_else"));
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
         }
 
         @Test
@@ -227,7 +227,7 @@ class ImportPaymentGatewayTest {
                     Map.of("status", "failed", "amount", EXPECTED_AMOUNT,
                             "merchant_uid", MERCHANT_UID, "imp_uid", IMP_UID));
 
-            assertThat(gateway.verifyPaymentStatus(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
         }
     }
 

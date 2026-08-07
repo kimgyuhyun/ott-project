@@ -69,7 +69,7 @@ class PaymentCommandServiceTest {
     @Mock private MembershipPlanRepository membershipPlanRepository;
     @Mock private PaymentRepository paymentRepository;
     @Mock private IdempotencyKeyRepository idempotencyKeyRepository;
-    @Mock private ImportPaymentGateway paymentGateway; // 재검증 경로가 IMPORT 구현에 의존(instanceof 분기)
+    @Mock private PaymentGateway paymentGateway; // 재검증 경로가 쓰는 계약
     @Mock private PlayerProgressReadService playerProgressReadService;
     @Mock private MembershipSubscriptionRepository subscriptionRepository;
     @Mock private PaymentQueryMapper paymentQueryMapper;
@@ -353,8 +353,8 @@ class PaymentCommandServiceTest {
         return "{\"imp_uid\":\"imp_1\",\"merchant_uid\":\"sess_1\",\"status\":\"" + status + "\"}";
     }
 
-    private ImportPaymentGateway.ReconcileResult reconcile(boolean found, String status) {
-        ImportPaymentGateway.ReconcileResult r = new ImportPaymentGateway.ReconcileResult();
+    private PaymentGateway.ReconcileResult reconcile(boolean found, String status) {
+        PaymentGateway.ReconcileResult r = new PaymentGateway.ReconcileResult();
         r.found = found;
         r.status = status;
         return r;
@@ -364,7 +364,7 @@ class PaymentCommandServiceTest {
     @DisplayName("위조 failed 웹훅 - 아임포트 실제 상태가 paid 면 400 거부(결제/구독 손대지 않음)")
     void forgedFailedWebhookIsRejected() {
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(true, "paid"));
+        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, "paid"));
 
         assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("failed")))
                 .isInstanceOf(ResponseStatusException.class)
@@ -377,7 +377,7 @@ class PaymentCommandServiceTest {
     @DisplayName("아임포트에 결제 기록이 없으면 failed 웹훅을 거부한다(fail-closed)")
     void unverifiableFailedWebhookIsRejected() {
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(false, null));
+        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(false, null));
 
         assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("failed")))
                 .isInstanceOf(ResponseStatusException.class)
@@ -393,7 +393,7 @@ class PaymentCommandServiceTest {
         ReflectionTestUtils.setField(payment, "id", 1L); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
         MembershipSubscription sub = activeSubscription();
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(true, "failed"));
+        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, "failed"));
         given(paymentQueryMapper.findByProviderSessionId("sess_1")).willReturn(payment);
         given(idempotencyKeyRepository.findByKeyValue("imp_1:FAILED")).willReturn(Optional.empty());
         given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
@@ -410,7 +410,7 @@ class PaymentCommandServiceTest {
     @DisplayName("위조 cancelled 웹훅 - 아임포트가 paid 라고 하면 400 거부(임의 해지 예약 방어)")
     void forgedCanceledWebhookIsRejected() {
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findByMerchantUid("sess_1")).willReturn(reconcile(true, "paid"));
+        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, "paid"));
 
         assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("cancelled")))
                 .isInstanceOf(ResponseStatusException.class)

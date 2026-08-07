@@ -28,7 +28,6 @@ import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.mybatis.PaymentQueryMapper;
-import com.ottproject.ottbackend.service.ImportPaymentGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -141,14 +140,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			long expectedAmount = (paymentForVerify.getPrice() != null ? paymentForVerify.getPrice().getAmount() : 0L);
 			boolean isValid = false;
 			try {
-				if (paymentGateway instanceof ImportPaymentGateway) {
-					ImportPaymentGateway importGateway = (ImportPaymentGateway) paymentGateway;
-					isValid = importGateway.verifyPaymentStatus(
-						event.providerPaymentId,
-						event.providerSessionId,
-						expectedAmount
-					);
-				}
+				isValid = paymentGateway.verifyPayment(
+					event.providerPaymentId,
+					event.providerSessionId,
+					expectedAmount
+				);
 			} catch (Exception ex) {
 				log.error("API 선재검증 중 예외 - imp_uid: {}, merchant_uid: {}", event.providerPaymentId, event.providerSessionId, ex);
 				isValid = false;
@@ -194,13 +190,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 *   여기서 거부해도 PAST_DUE 전이와 재시도(dunning)는 유실되지 않는다.
 	 */
 	private void verifyNonSuccessWebhook(PaymentWebhookEventDto event) {
-		ImportPaymentGateway.ReconcileResult r = null;
-		if (paymentGateway instanceof ImportPaymentGateway) {
-			r = ((ImportPaymentGateway) paymentGateway).findByMerchantUid(event.providerSessionId); // 내부에서 예외를 흡수하고 found=false 반환
-		}
-		if (r == null || !r.found || mapIamportStatus(r.status) != event.status) {
+		PaymentGateway.ReconcileResult r =
+				paymentGateway.findPaymentBySessionId(event.providerSessionId); // 내부에서 예외를 흡수하고 found=false 반환
+		if (!r.found || mapIamportStatus(r.status) != event.status) {
 			log.error("웹훅 재검증 실패 - merchant_uid: {}, 웹훅 주장: {}, 아임포트 실제: {}",
-				event.providerSessionId, event.status, (r == null ? null : r.status));
+				event.providerSessionId, event.status, r.status);
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "웹훅 재검증 실패");
 		}
 	}
@@ -858,39 +852,36 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 
 		// PG 응답으로 결제수단 type/brand 최종 확정 (아임포트 pay_method와 1:1 매핑)
 		try {
-			if (paymentGateway instanceof ImportPaymentGateway) {
-				ImportPaymentGateway importGateway = (ImportPaymentGateway) paymentGateway;
-				ImportPaymentGateway.PaymentDetails details = importGateway.fetchPaymentDetails(providerPaymentId);
-				PaymentMethod pm = payment.getPaymentMethod();
-				if (pm != null) {
-					String payMethod = details.payMethod == null ? "" : details.payMethod.trim().toLowerCase();
-					PaymentMethodType type;
-					String brand;
-					switch (payMethod) { // pay_method와 1:1 매핑
-						case "card":
-							type = PaymentMethodType.CARD;
-							String cardName = details.cardName;
-							brand = cardName != null && !cardName.isBlank() ? cardName.trim().toUpperCase() : "CARD";
-							break;
-						case "kakaopay":
-							type = PaymentMethodType.KAKAO_PAY;
-							brand = null; // 간편결제는 brand 불필요
-							break;
-						case "tosspayments":
-						case "toss":
-							type = PaymentMethodType.TOSS_PAY;
-							brand = null; // 간편결제는 brand 불필요
-							break;
-						case "nice":
-							type = PaymentMethodType.NICE_PAY;
-							brand = null; // 간편결제는 brand 불필요
-							break;
-						default:
-							type = PaymentMethodType.CARD; // 기본값
-							brand = "UNKNOWN";
-					}
-					pm.applyGatewayMethodDetails(PaymentProvider.IMPORT, type, brand);
+			PaymentGateway.PaymentDetails details = paymentGateway.fetchPaymentDetails(providerPaymentId);
+			PaymentMethod pm = payment.getPaymentMethod();
+			if (pm != null) {
+				String payMethod = details.payMethod == null ? "" : details.payMethod.trim().toLowerCase();
+				PaymentMethodType type;
+				String brand;
+				switch (payMethod) { // pay_method와 1:1 매핑
+					case "card":
+						type = PaymentMethodType.CARD;
+						String cardName = details.cardName;
+						brand = cardName != null && !cardName.isBlank() ? cardName.trim().toUpperCase() : "CARD";
+						break;
+					case "kakaopay":
+						type = PaymentMethodType.KAKAO_PAY;
+						brand = null; // 간편결제는 brand 불필요
+						break;
+					case "tosspayments":
+					case "toss":
+						type = PaymentMethodType.TOSS_PAY;
+						brand = null; // 간편결제는 brand 불필요
+						break;
+					case "nice":
+						type = PaymentMethodType.NICE_PAY;
+						brand = null; // 간편결제는 brand 불필요
+						break;
+					default:
+						type = PaymentMethodType.CARD; // 기본값
+						brand = "UNKNOWN";
 				}
+				pm.applyGatewayMethodDetails(PaymentProvider.IMPORT, type, brand);
 			}
 		} catch (Exception ex) {
 			log.warn("결제수단 확정 중 세부정보 조회 실패 - imp_uid: {}", providerPaymentId, ex);
@@ -963,11 +954,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		if (impUid == null || impUid.isBlank()) { // imp_uid 필수
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "imp_uid가 필요합니다."); // 400
 		}
-		boolean valid = false;
-		if (paymentGateway instanceof ImportPaymentGateway) { // 2단계: 트랜잭션 밖에서 아임포트 API 재검증(클라 응답 자체는 신뢰하지 않음)
-			valid = ((ImportPaymentGateway) paymentGateway)
-					.verifyPaymentStatus(impUid, target.providerSessionId(), target.expectedAmount());
-		}
+		// 2단계: 트랜잭션 밖에서 PG 재검증(클라 응답 자체는 신뢰하지 않음)
+		boolean valid = paymentGateway.verifyPayment(impUid, target.providerSessionId(), target.expectedAmount());
 		if (!valid) { // 재검증 실패
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다. (PG 재검증 불일치)"); // 400
 		}
@@ -1023,10 +1011,10 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	public boolean reconcilePending(Long paymentId) {
 		String merchantUid = self.prepareReconcile(paymentId); // 1단계: 대사 대상 여부 판정
 		if (merchantUid == null) {
-			return false; // 대상 아님(이미 확정/취소됨, 차액 결제, 아임포트 구현 아님)
+			return false; // 대상 아님(이미 확정/취소됨, 차액 결제)
 		}
-		ImportPaymentGateway.ReconcileResult r =
-				((ImportPaymentGateway) paymentGateway).findByMerchantUid(merchantUid); // 2단계: 트랜잭션 밖에서 merchant_uid 역조회
+		PaymentGateway.ReconcileResult r =
+				paymentGateway.findPaymentBySessionId(merchantUid); // 2단계: 트랜잭션 밖에서 세션 식별자 역조회
 		if (!r.found || r.status == null) {
 			return false; // 결제 시도 기록 없음(prepare만) → 유지
 		}
@@ -1049,9 +1037,6 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		if (payment.getProviderSessionId() != null && payment.getProviderSessionId().startsWith("proration_")) {
 			return null;
 		}
-		if (!(paymentGateway instanceof ImportPaymentGateway)) {
-			return null; // 아임포트 구현이 아니면 스킵
-		}
 		return payment.getProviderSessionId();
 	}
 
@@ -1061,7 +1046,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 *   먼저 확정을 끝냈다면 여기서 물러나야 한다. 그러지 않으면 같은 결제로 구독이 하나 더 생긴다.
 	 */
 	@Transactional
-	public boolean applyReconcileResult(Long paymentId, ImportPaymentGateway.ReconcileResult r, LocalDateTime now) {
+	public boolean applyReconcileResult(Long paymentId, PaymentGateway.ReconcileResult r, LocalDateTime now) {
 		Payment payment = paymentRepository.findByIdForUpdate(paymentId).orElse(null); // 락을 잡고 최신 상태로 다시 읽는다
 		if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
 			return false; // 대사 중에 다른 확정 경로가 먼저 정리함
@@ -1079,7 +1064,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 					log.warn("대사 금액 불일치 - paymentId: {}, expected: {}, actual: {}", paymentId, expected, r.amount);
 					return false; // 금액 불일치는 자동 확정하지 않음(수동 확인 대상)
 				}
-				markSucceededAndProvision(payment, r.impUid, r.receiptUrl, now); // 공통 확정 로직으로 수렴
+				markSucceededAndProvision(payment, r.providerPaymentId, r.receiptUrl, now); // 공통 확정 로직으로 수렴
 				log.info("대사 배치로 결제 확정 - paymentId: {}", paymentId);
 				return true;
 			case "failed":

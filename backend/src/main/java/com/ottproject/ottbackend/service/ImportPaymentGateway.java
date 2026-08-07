@@ -24,7 +24,10 @@ import lombok.extern.slf4j.Slf4j;
  * - chargeWithSavedMethod: 저장 결제수단 재청구
  * - verifyWebhookBasicValidation: 웹훅 데이터 기본 유효성 검증
  * - getAccessToken: 토큰 발급
- * - verifyPaymentStatus: 아임포트 API로 결제 상태 재검증
+ * - verifyPayment: 아임포트 API로 결제 상태 재검증
+ *
+ * 인터페이스의 providerSessionId 는 아임포트의 merchant_uid, providerPaymentId 는 imp_uid 다.
+ * 이 클래스 안에서는 아임포트 용어를 그대로 쓴다.
  */
 @Component // 스프링 컴포넌트 등록
 @Slf4j
@@ -66,6 +69,7 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	 * 결제 사전 등록(prepare) — 특정 merchant_uid에 청구 금액을 고정한다.
 	 * - 차액 결제처럼 자체 merchant_uid를 쓰는 흐름에서 재사용(메인 결제와 동일한 검증 경로 확보).
 	 */
+	@Override
 	public void prepare(String merchantUid, long amount) {
 		String token = getAccessToken(); // 토큰 발급
 		HttpHeaders h = bearer(token); // 인증 헤더
@@ -91,7 +95,7 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	/**
 	 * 환불 여부 역조회 — GET /payments/{imp_uid}
 	 *
-	 * 왜 findByMerchantUid 를 재사용하지 않는가
+	 * 왜 findPaymentBySessionId 를 재사용하지 않는가
 	 * - 그쪽은 catch (Exception) → found=false 로 모든 조회 실패를 삼킨다. 여기서 그렇게 하면
 	 *   네트워크 오류가 "환불 안 나감"으로 읽혀 선점이 풀리고 이중 환불이 난다.
 	 * - 그쪽은 imp_uid 가 없는 PENDING 결제용이라 merchant_uid 로 친다. 환불 경로는 imp_uid 를
@@ -227,17 +231,9 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	}
 
 	/**
-	 * 아임포트 결제 상세 조회 결과(타입/브랜드 확정을 위해 사용)
-	 */
-	public static final class PaymentDetails {
-		public String payMethod;   // ex) card, kakaopay, tosspayments, nice, ...
-		public String pgProvider;  // ex) kakaopay, tosspayments, nice
-		public String cardName;    // ex) VISA, MasterCard, 삼성카드
-	}
-
-	/**
 	 * 결제 상세 조회: pay_method/pg_provider/card_name 추출
 	 */
+	@Override
 	public PaymentDetails fetchPaymentDetails(String impUid) {
 		String token = getAccessToken();
 		HttpHeaders headers = bearer(token);
@@ -261,22 +257,12 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	}
 
 	/**
-	 * merchant_uid로 조회한 결제 대사 결과(대사 배치용)
-	 * - PENDING 결제는 imp_uid가 없으므로 merchant_uid로 아임포트에 실제 상태를 역조회한다.
-	 */
-	public static final class ReconcileResult {
-		public boolean found;      // 아임포트에 결제 시도 기록이 존재하는지
-		public String status;      // ready/paid/failed/cancelled
-		public String impUid;      // 외부 결제 식별자(imp_uid)
-		public long amount;        // 실제 결제 금액
-		public String receiptUrl;  // 영수증 URL
-	}
-
-	/**
 	 * merchant_uid로 결제 상태 역조회
 	 * - GET /payments/find/{merchant_uid} 사용. 결제 시도가 없으면 found=false.
+	 * - 아임포트의 status 값(ready/paid/failed/cancelled)이 인터페이스가 요구하는 정규화 값과 같아 그대로 싣는다.
 	 */
-	public ReconcileResult findByMerchantUid(String merchantUid) {
+	@Override
+	public ReconcileResult findPaymentBySessionId(String merchantUid) {
 		ReconcileResult r = new ReconcileResult();
 		try {
 			String token = getAccessToken();
@@ -297,7 +283,7 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 			}
 			r.found = true;
 			r.status = (String) res.get("status");
-			r.impUid = (String) res.get("imp_uid");
+			r.providerPaymentId = (String) res.get("imp_uid");
 			Number amt = (Number) res.get("amount");
 			r.amount = (amt == null ? 0L : amt.longValue());
 			r.receiptUrl = (String) res.get("receipt_url");
@@ -334,7 +320,8 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	 * 아임포트 API로 결제 상태 재검증
 	 * - 웹훅 처리 후 실제 결제 상태를 API로 확인하여 보안 강화
 	 */
-	public boolean verifyPaymentStatus(String impUid, String merchantUid, long expectedAmount) {
+	@Override
+	public boolean verifyPayment(String impUid, String merchantUid, long expectedAmount) {
 		try {
 			String token = getAccessToken(); // 액세스 토큰 획득
 			HttpHeaders headers = bearer(token); // 인증 헤더
@@ -390,14 +377,14 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 		if (merchantUid == null || merchantUid.isBlank()) {
 			return false; // 역조회 불가
 		}
-		ReconcileResult r = findByMerchantUid(merchantUid);
+		ReconcileResult r = findPaymentBySessionId(merchantUid);
 		if (!r.found || !"paid".equals(r.status)) {
 			return false; // 결제 완료 상태가 아님
 		}
 		if (r.amount != expectedAmount) {
 			return false; // 금액 불일치
 		}
-		if (impUid != null && !impUid.equals(r.impUid)) {
+		if (impUid != null && !impUid.equals(r.providerPaymentId)) {
 			return false; // imp_uid 불일치(위조 방어)
 		}
 		return true; // 검증 통과
@@ -421,19 +408,6 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 			throw new IllegalStateException("Failed to get Iamport access token"); // 실패
 		}
 		return tr.response.access_token; // 토큰
-	}
-
-	/**
-	 * 아임포트 API 연결 테스트 (public 메서드)
-	 */
-	public boolean testConnection() {
-		try {
-			getAccessToken();
-			return true;
-		} catch (Exception e) {
-			log.error("아임포트 API 연결 테스트 실패", e);
-			return false;
-		}
 	}
 
 	private HttpHeaders bearer(String token) { // 인증 헤더 생성

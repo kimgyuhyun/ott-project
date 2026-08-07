@@ -147,7 +147,7 @@ class RefundIdempotencyTest {
     private MembershipPlanRepository planRepository;
 
     @MockitoBean
-    private ImportPaymentGateway paymentGateway; // 돈이 나가는 호출. 몇 번 불렸는지가 이 테스트의 관심사다
+    private PaymentGateway paymentGateway; // 돈이 나가는 호출. 몇 번 불렸는지가 이 테스트의 관심사다
 
     @MockitoBean
     private PlayerProgressReadService playerProgressReadService;

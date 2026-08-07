@@ -2,7 +2,6 @@ package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
 import com.ottproject.ottbackend.exception.GlobalExceptionHandler;
-import com.ottproject.ottbackend.service.ImportPaymentGateway;
 import com.ottproject.ottbackend.service.PaymentCommandService;
 import com.ottproject.ottbackend.service.PaymentMethodService;
 import com.ottproject.ottbackend.service.PaymentReadService;
@@ -55,7 +54,6 @@ class PaymentExceptionBoundaryTest {
     @Mock private PaymentReadService paymentReadService;
     @Mock private SecurityUtil securityUtil;
     @Mock private PaymentMethodService paymentMethodService;
-    @Mock private ImportPaymentGateway importPaymentGateway;
     @Mock private Environment environment;
 
     @InjectMocks private PaymentController controller;
@@ -92,13 +90,13 @@ class PaymentExceptionBoundaryTest {
     }
 
     @Test
-    @DisplayName("게이트웨이 점검 실패 응답에 예외 메시지와 클래스명이 새지 않는다")
+    @DisplayName("게이트웨이 호출 실패 응답에 예외 메시지와 클래스명이 새지 않는다")
     void gatewayFailureDoesNotLeakExceptionDetail() throws Exception {
         // 예외 메시지에 상류 호스트와 자격증명 거절 사유가 섞여 들어온 상황을 흉내낸다.
-        given(importPaymentGateway.testConnection())
+        given(paymentReadService.getPaymentStatus(any(), any()))
                 .willThrow(new IllegalStateException("rest api key rejected by https://api.iamport.kr/users/getToken"));
 
-        mvc.perform(get("/api/payments/test-iamport"))
+        mvc.perform(get("/api/payments/1/status"))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
                 .andExpect(content().string(not(containsString("rest api key rejected"))))

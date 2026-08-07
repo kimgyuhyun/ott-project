@@ -396,10 +396,10 @@ class RecurringBillingServiceTest {
     void reconcileRebillExtendsOriginalSubscription() {
         LocalDateTime originalEnd = sub.getEndAt();
         Payment pending = pendingPayment();
-        ImportPaymentGateway.ReconcileResult r = new ImportPaymentGateway.ReconcileResult();
+        PaymentGateway.ReconcileResult r = new PaymentGateway.ReconcileResult();
         r.found = true;
         r.status = "paid";
-        r.impUid = "imp_reconciled_1";
+        r.providerPaymentId = "imp_reconciled_1";
         r.amount = 9900L;
         given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
 
@@ -418,10 +418,10 @@ class RecurringBillingServiceTest {
     @DisplayName("대사 확정 - 금액이 다르면 확정하지 않는다")
     void reconcileRebillRejectsAmountMismatch() {
         Payment pending = pendingPayment();
-        ImportPaymentGateway.ReconcileResult r = new ImportPaymentGateway.ReconcileResult();
+        PaymentGateway.ReconcileResult r = new PaymentGateway.ReconcileResult();
         r.found = true;
         r.status = "paid";
-        r.impUid = "imp_reconciled_2";
+        r.providerPaymentId = "imp_reconciled_2";
         r.amount = 100L; // 기대 9900원과 불일치
 
         boolean resolved = service.reconcileRebillPayment(pending, r, LocalDateTime.now());

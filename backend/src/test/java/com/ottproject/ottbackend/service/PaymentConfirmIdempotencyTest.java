@@ -140,9 +140,9 @@ class PaymentConfirmIdempotencyTest {
     @Autowired
     private MembershipPlanRepository planRepository;
 
-    // 게이트웨이는 확정 경로가 instanceof 로 분기하므로 IMPORT 구현 타입으로 목을 만든다.
+    // 확정 경로는 PaymentGateway 계약만 쓴다. 구현체를 알 필요가 없으므로 인터페이스로 목을 만든다.
     @MockitoBean
-    private ImportPaymentGateway paymentGateway;
+    private PaymentGateway paymentGateway;
 
     @MockitoBean
     private PaymentQueryMapper paymentQueryMapper;
@@ -195,7 +195,7 @@ class PaymentConfirmIdempotencyTest {
         provisioningCalls = new AtomicInteger();
 
         // 클라 확정의 PG 재검증은 통과시킨다(이 테스트의 관심사가 아니다).
-        given(paymentGateway.verifyPaymentStatus(anyString(), anyString(), anyLong())).willReturn(true);
+        given(paymentGateway.verifyPayment(anyString(), anyString(), anyLong())).willReturn(true);
 
         // 지급 직전 지점에 첫 확정을 붙잡아 둔다.
         // fetchPaymentDetails 는 결제 행을 잠그고 SUCCEEDED 로 바꾼 뒤, 구독을 만들기 전에 불린다.
@@ -205,7 +205,7 @@ class PaymentConfirmIdempotencyTest {
                 firstReachedProvisioning.countDown();
                 releaseFirst.await(10, TimeUnit.SECONDS);
             }
-            return new ImportPaymentGateway.PaymentDetails();
+            return new PaymentGateway.PaymentDetails();
         }).when(paymentGateway).fetchPaymentDetails(any());
     }
 
@@ -220,11 +220,11 @@ class PaymentConfirmIdempotencyTest {
     }
 
     /** 아임포트 역조회 결과(대사 배치용) */
-    private ImportPaymentGateway.ReconcileResult paidResult() {
-        ImportPaymentGateway.ReconcileResult r = new ImportPaymentGateway.ReconcileResult();
+    private PaymentGateway.ReconcileResult paidResult() {
+        PaymentGateway.ReconcileResult r = new PaymentGateway.ReconcileResult();
         r.found = true;
         r.status = "paid";
-        r.impUid = "imp_reconcile";
+        r.providerPaymentId = "imp_reconcile";
         r.amount = 9900L;
         return r;
     }
@@ -293,7 +293,7 @@ class PaymentConfirmIdempotencyTest {
     @Test
     @DisplayName("웹훅이 확정 중일 때 대사 배치가 같은 결제를 집어도 다시 지급하지 않는다")
     void concurrentWebhookAndReconcileProvisionsOnce() throws Exception {
-        given(paymentGateway.findByMerchantUid(MERCHANT_UID)).willReturn(paidResult());
+        given(paymentGateway.findPaymentBySessionId(MERCHANT_UID)).willReturn(paidResult());
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {

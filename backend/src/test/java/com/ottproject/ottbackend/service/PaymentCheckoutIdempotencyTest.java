@@ -148,7 +148,7 @@ class PaymentCheckoutIdempotencyTest {
     private MembershipPlanRepository planRepository;
 
     @MockitoBean
-    private ImportPaymentGateway paymentGateway;
+    private PaymentGateway paymentGateway;
 
     @MockitoBean
     private PaymentQueryMapper paymentQueryMapper;
