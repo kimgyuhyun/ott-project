@@ -182,7 +182,17 @@ jobs:
               if ($LASTEXITCODE -ge 8) { throw "robocopy failed (exit $LASTEXITCODE): $src -> $dst" }
               $global:LASTEXITCODE = 0   # 뒤의 $LASTEXITCODE 검사들이 오판하지 않도록 되돌린다
             } else {
-              Copy-Item $src $dst -Force -ErrorAction Stop
+              # 바이트 그대로가 아니라 LF 로 정규화해서 내보낸다. 러너 git 은
+              # core.autocrlf=true 라 작업폴더의 설정 파일이 CRLF 이고, .gitattributes 에
+              # eol=lf 를 넣어도 "이미 받아둔" 파일은 다시 쓰이지 않는다 — 인덱스의 stat
+              # 캐시가 그 파일을 수정 없음으로 보기 때문에 checkout 도 reset --hard 도
+              # 건드리지 않는다(2026-08-08 실측: 규칙만 추가한 배포가 그대로 또 깨졌다).
+              # dante sockd 는 CRLF 설정을 'near token "\r"' 로 거부하고 크래시 루프에
+              # 빠진다 — SMTP 아웃바운드 전면 정지. squid·nginx 는 견디지만 우연일 뿐이다.
+              # 여기서 복사하는 단일 파일은 전부 리눅스 컨테이너가 읽는 설정이라 CR 이
+              # 필요한 곳이 없다(대상 전부 BOM 없는 UTF-8 임을 확인함. WriteAllText 도
+              # BOM 없는 UTF-8 로 쓴다).
+              [IO.File]::WriteAllText($dst, ([IO.File]::ReadAllText($src) -replace "`r`n", "`n"))
             }
           }
           Write-Host "config copied to $cfgRoot ($((Get-ChildItem $cfgRoot -Recurse -File).Count) files)"
