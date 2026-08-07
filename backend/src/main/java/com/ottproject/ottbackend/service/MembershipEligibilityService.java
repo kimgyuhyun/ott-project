@@ -13,11 +13,10 @@ import java.time.LocalDateTime;
  * MembershipEligibilityService
  *
  * 큰 흐름
- * - 구독 테이블 기준으로 사용자 멤버십 자격과 허용 최대 화질을 판별한다.
+ * - 구독 테이블 기준으로 사용자 멤버십 자격을 판별한다.
  *
  * 메서드 개요
  * - isMember: ACTIVE 상태의 유효 구독 존재 여부로 멤버십 여부 판단
- * - allowedMaxQuality: 멤버십 여부에 따라 최대 화질(1080p/720p) 반환
  */
 @Service
 @Lazy
@@ -32,9 +31,5 @@ public class MembershipEligibilityService { // 멤버십 자격 판별
 		return membershipSubscriptionRepository
 				.findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
 				.isPresent(); // 유효 구독 존재 여부
-	}
-
-	public String allowedMaxQuality(Long userId) {
-		return isMember(userId) ? "1080p" : "720p"; // 멤버십 화질 상한
 	}
 }
