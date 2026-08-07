@@ -74,7 +74,7 @@ public class SecurityConfig {
         return org.springframework.util.StringUtils.commaDelimitedListToSet(
                 System.getProperty("app.cors.allowed-origins",
                         System.getenv().getOrDefault("APP_CORS_ALLOWED_ORIGINS",
-                                "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000,https://finch-noted-entirely.ngrok-free.app"))
+                                "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000"))
         ).stream().toList();
     }
 
