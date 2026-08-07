@@ -398,7 +398,7 @@ class RecurringBillingServiceTest {
         Payment pending = pendingPayment();
         PaymentGateway.ReconcileResult r = new PaymentGateway.ReconcileResult();
         r.found = true;
-        r.status = "paid";
+        r.status = PaymentGateway.ReconcileStatus.PAID;
         r.providerPaymentId = "imp_reconciled_1";
         r.amount = 9900L;
         given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
@@ -420,7 +420,7 @@ class RecurringBillingServiceTest {
         Payment pending = pendingPayment();
         PaymentGateway.ReconcileResult r = new PaymentGateway.ReconcileResult();
         r.found = true;
-        r.status = "paid";
+        r.status = PaymentGateway.ReconcileStatus.PAID;
         r.providerPaymentId = "imp_reconciled_2";
         r.amount = 100L; // 기대 9900원과 불일치
 

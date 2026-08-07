@@ -120,16 +120,34 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 	ReconcileResult findPaymentBySessionId(String providerSessionId);
 
 	/**
+	 * 역조회한 결제의 상태
+	 * - READY: 아직 승인 전(사전 등록만 된 상태)
+	 * - PAID: 승인 완료
+	 * - FAILED: 승인 실패
+	 * - CANCELLED: 승인 후 취소됨
+	 * - UNKNOWN: 게이트웨이가 이 어댑터가 모르는 값을 돌려줬다. 판정 불가이므로 호출자는 상태를 바꾸지 않고
+	 *   결제를 미확정으로 남긴다(READY 와 같은 처리). 결제사가 어휘를 바꾸거나 새 상태를 추가하면
+	 *   여기로 떨어지므로, 어댑터는 UNKNOWN 을 만들 때 반드시 로그를 남긴다. 조용히 삼키면 그 결제는
+	 *   대사 배치가 영원히 다시 집는 미결 건으로 남는다.
+	 *
+	 * 문자열 대신 열거형인 이유
+	 * - 원문 상태값을 그대로 실어 나르면 어휘 해석이 호출부마다 흩어진다. 실제로 대사 스위치 두 곳이
+	 *   cancelled/canceled 두 철자를 모두 받고 있었다(아임포트는 cancelled 만 보낸다). 결제사가 대문자로
+	 *   보내는 순간 양쪽 스위치가 default 로 떨어져 결제가 조용히 미결로 남는다.
+	 * - 원문을 아는 유일한 지점은 어댑터이므로 정규화도 거기서 끝낸다. 환불 쪽 RefundStatus 와 같은 방식이다.
+	 */
+	enum ReconcileStatus { READY, PAID, FAILED, CANCELLED, UNKNOWN }
+
+	/**
 	 * 결제 상태 역조회 결과
-	 * - status 는 게이트웨이 구현이 ready/paid/failed/cancelled 넷 중 하나로 정규화해 채운다.
-	 *   found=false 면 나머지 필드는 의미가 없다.
+	 * - found=false 면 나머지 필드는 의미가 없다.
 	 */
 	final class ReconcileResult {
-		public boolean found;             // 게이트웨이에 결제 시도 기록이 존재하는지
-		public String status;             // ready/paid/failed/cancelled
-		public String providerPaymentId;  // 게이트웨이가 부여한 결제 식별자
-		public long amount;               // 실제 결제 금액
-		public String receiptUrl;         // 영수증 URL
+		public boolean found;              // 게이트웨이에 결제 시도 기록이 존재하는지
+		public ReconcileStatus status;     // 정규화된 결제 상태
+		public String providerPaymentId;   // 게이트웨이가 부여한 결제 식별자
+		public long amount;                // 실제 결제 금액
+		public String receiptUrl;          // 영수증 URL
 	}
 
 	/**

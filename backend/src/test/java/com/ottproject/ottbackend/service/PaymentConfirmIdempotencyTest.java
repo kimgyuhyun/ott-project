@@ -223,7 +223,7 @@ class PaymentConfirmIdempotencyTest {
     private PaymentGateway.ReconcileResult paidResult() {
         PaymentGateway.ReconcileResult r = new PaymentGateway.ReconcileResult();
         r.found = true;
-        r.status = "paid";
+        r.status = PaymentGateway.ReconcileStatus.PAID;
         r.providerPaymentId = "imp_reconcile";
         r.amount = 9900L;
         return r;

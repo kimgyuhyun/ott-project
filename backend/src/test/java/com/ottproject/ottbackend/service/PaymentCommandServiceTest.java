@@ -353,7 +353,7 @@ class PaymentCommandServiceTest {
         return "{\"imp_uid\":\"imp_1\",\"merchant_uid\":\"sess_1\",\"status\":\"" + status + "\"}";
     }
 
-    private PaymentGateway.ReconcileResult reconcile(boolean found, String status) {
+    private PaymentGateway.ReconcileResult reconcile(boolean found, PaymentGateway.ReconcileStatus status) {
         PaymentGateway.ReconcileResult r = new PaymentGateway.ReconcileResult();
         r.found = found;
         r.status = status;
@@ -364,7 +364,7 @@ class PaymentCommandServiceTest {
     @DisplayName("위조 failed 웹훅 - 아임포트 실제 상태가 paid 면 400 거부(결제/구독 손대지 않음)")
     void forgedFailedWebhookIsRejected() {
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, "paid"));
+        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, PaymentGateway.ReconcileStatus.PAID));
 
         assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("failed")))
                 .isInstanceOf(ResponseStatusException.class)
@@ -393,7 +393,7 @@ class PaymentCommandServiceTest {
         ReflectionTestUtils.setField(payment, "id", 1L); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
         MembershipSubscription sub = activeSubscription();
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, "failed"));
+        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, PaymentGateway.ReconcileStatus.FAILED));
         given(paymentQueryMapper.findByProviderSessionId("sess_1")).willReturn(payment);
         given(idempotencyKeyRepository.findByKeyValue("imp_1:FAILED")).willReturn(Optional.empty());
         given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
@@ -410,7 +410,7 @@ class PaymentCommandServiceTest {
     @DisplayName("위조 cancelled 웹훅 - 아임포트가 paid 라고 하면 400 거부(임의 해지 예약 방어)")
     void forgedCanceledWebhookIsRejected() {
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, "paid"));
+        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, PaymentGateway.ReconcileStatus.PAID));
 
         assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("cancelled")))
                 .isInstanceOf(ResponseStatusException.class)

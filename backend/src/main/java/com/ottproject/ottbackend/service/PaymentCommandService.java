@@ -192,7 +192,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private void verifyNonSuccessWebhook(PaymentWebhookEventDto event) {
 		PaymentGateway.ReconcileResult r =
 				paymentGateway.findPaymentBySessionId(event.providerSessionId); // 내부에서 예외를 흡수하고 found=false 반환
-		if (!r.found || mapIamportStatus(r.status) != event.status) {
+		if (!r.found || toPaymentStatus(r.status) != event.status) {
 			log.error("웹훅 재검증 실패 - merchant_uid: {}, 웹훅 주장: {}, 아임포트 실제: {}",
 				event.providerSessionId, event.status, r.status);
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "웹훅 재검증 실패");
@@ -316,6 +316,27 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			throw ex;
 		} catch (Exception e) {
 			throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST, "Invalid webhook payload"); // 400
+		}
+	}
+
+	/**
+	 * 역조회 상태 → 내부 결제 상태
+	 * - UNKNOWN 은 null 로 남긴다. 어떤 웹훅 주장과도 일치하지 않으므로 재검증이 거부된다(fail-closed).
+	 * - 웹훅 원문(문자열) 파싱에는 mapIamportStatus 를 쓴다. 그쪽은 게이트웨이를 거치지 않은 값이다.
+	 */
+	private static PaymentStatus toPaymentStatus(PaymentGateway.ReconcileStatus status) {
+		if (status == null) return null;
+		switch (status) {
+			case PAID:
+				return PaymentStatus.SUCCEEDED;
+			case FAILED:
+				return PaymentStatus.FAILED;
+			case CANCELLED:
+				return PaymentStatus.CANCELED;
+			case READY:
+				return PaymentStatus.PENDING;
+			default:
+				return null; // UNKNOWN
 		}
 	}
 
@@ -1058,7 +1079,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			return recurringBillingService.reconcileRebillPayment(payment, r, now);
 		}
 		switch (r.status) {
-			case "paid":
+			case PAID:
 				long expected = (payment.getPrice() != null ? payment.getPrice().getAmount() : 0L); // 서버 확정 금액(테스트 1원)
 				if (r.amount != expected) {
 					log.warn("대사 금액 불일치 - paymentId: {}, expected: {}, actual: {}", paymentId, expected, r.amount);
@@ -1067,17 +1088,16 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				markSucceededAndProvision(payment, r.providerPaymentId, r.receiptUrl, now); // 공통 확정 로직으로 수렴
 				log.info("대사 배치로 결제 확정 - paymentId: {}", paymentId);
 				return true;
-			case "failed":
+			case FAILED:
 				payment.applyGatewayFailure(now);
 				paymentRepository.save(payment);
 				return true;
-			case "cancelled":
-			case "canceled":
+			case CANCELLED:
 				payment.applyGatewayCancellation(now);
 				paymentRepository.save(payment);
 				return true;
 			default:
-				return false; // ready 등 미결 상태 → 유지
+				return false; // READY/UNKNOWN → 판정 불가, 미결 유지
 		}
 	}
 

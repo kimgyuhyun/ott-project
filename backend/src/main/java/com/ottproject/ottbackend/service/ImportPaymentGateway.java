@@ -259,7 +259,7 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	/**
 	 * merchant_uid로 결제 상태 역조회
 	 * - GET /payments/find/{merchant_uid} 사용. 결제 시도가 없으면 found=false.
-	 * - 아임포트의 status 값(ready/paid/failed/cancelled)이 인터페이스가 요구하는 정규화 값과 같아 그대로 싣는다.
+	 * - 아임포트 원문 status 는 여기서 ReconcileStatus 로 정규화한다(어휘를 아는 유일한 지점).
 	 */
 	@Override
 	public ReconcileResult findPaymentBySessionId(String merchantUid) {
@@ -282,7 +282,7 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 				return r; // 결제 시도 기록 없음(prepare만 된 상태)
 			}
 			r.found = true;
-			r.status = (String) res.get("status");
+			r.status = toReconcileStatus((String) res.get("status"), merchantUid);
 			r.providerPaymentId = (String) res.get("imp_uid");
 			Number amt = (Number) res.get("amount");
 			r.amount = (amt == null ? 0L : amt.longValue());
@@ -294,6 +294,35 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 		}
 	}
 	
+	/**
+	 * 아임포트 원문 status → ReconcileStatus 정규화
+	 *
+	 * 대소문자 변환이나 trim 을 하지 않는다. 관대하게 받으면 "Paid" 같은 값이 PAID 로 읽혀 결제가 확정된다.
+	 * 돈이 나가는 방향으로 추측하지 않고, 아는 값만 통과시키고 나머지는 UNKNOWN 으로 남긴다.
+	 * canceled(l 하나) 는 아임포트가 보내지 않지만, 기존 대사 스위치가 받아주던 철자라 그대로 유지한다.
+	 */
+	private ReconcileStatus toReconcileStatus(String status, String merchantUid) {
+		if (status == null) {
+			log.warn("역조회 응답에 status 없음 - merchant_uid: {}", merchantUid);
+			return ReconcileStatus.UNKNOWN;
+		}
+		switch (status) {
+			case "ready":
+				return ReconcileStatus.READY;
+			case "paid":
+				return ReconcileStatus.PAID;
+			case "failed":
+				return ReconcileStatus.FAILED;
+			case "cancelled":
+			case "canceled":
+				return ReconcileStatus.CANCELLED;
+			default:
+				// 여기 걸린 결제는 아무도 확정하지 못해 대사 배치가 계속 다시 집는다. 로그가 유일한 단서다.
+				log.warn("역조회 상태값 해석 불가 - merchant_uid: {}, status: {}", merchantUid, status);
+				return ReconcileStatus.UNKNOWN;
+		}
+	}
+
 	/**
 	 * 포트원 웹훅 상태값 유효성 검증
 	 */
@@ -378,7 +407,7 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 			return false; // 역조회 불가
 		}
 		ReconcileResult r = findPaymentBySessionId(merchantUid);
-		if (!r.found || !"paid".equals(r.status)) {
+		if (!r.found || r.status != ReconcileStatus.PAID) {
 			return false; // 결제 완료 상태가 아님
 		}
 		if (r.amount != expectedAmount) {

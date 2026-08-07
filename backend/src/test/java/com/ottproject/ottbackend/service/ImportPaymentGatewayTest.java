@@ -232,6 +232,84 @@ class ImportPaymentGatewayTest {
     }
 
     @Nested
+    @DisplayName("findPaymentBySessionId - 원문 상태값 정규화")
+    class ReconcileStatusNormalization {
+
+        /**
+         * 대사 배치가 상태를 잘못 읽으면 결과가 둘 중 하나다: 승인 안 된 결제를 확정해 무료 구독을 주거나,
+         * 승인된 결제를 영원히 미결로 남겨 대사가 같은 건을 계속 다시 집는다. 그래서 어휘 해석을 고정한다.
+         */
+        @Test
+        @DisplayName("paid 는 PAID 로 읽고 imp_uid/금액/영수증을 함께 싣는다")
+        void mapsPaid() throws Exception {
+            givenIamportResponds(Map.of("status", "paid", "amount", EXPECTED_AMOUNT,
+                    "imp_uid", IMP_UID, "receipt_url", "https://receipt.test/1"));
+
+            PaymentGateway.ReconcileResult r = gateway.findPaymentBySessionId(MERCHANT_UID);
+
+            assertThat(r.found).isTrue();
+            assertThat(r.status).isEqualTo(PaymentGateway.ReconcileStatus.PAID);
+            assertThat(r.providerPaymentId).isEqualTo(IMP_UID);
+            assertThat(r.amount).isEqualTo(EXPECTED_AMOUNT);
+            assertThat(r.receiptUrl).isEqualTo("https://receipt.test/1");
+        }
+
+        @Test
+        @DisplayName("cancelled 는 CANCELLED 로 읽는다")
+        void mapsCancelled() throws Exception {
+            givenIamportResponds(Map.of("status", "cancelled", "amount", EXPECTED_AMOUNT, "imp_uid", IMP_UID));
+
+            assertThat(gateway.findPaymentBySessionId(MERCHANT_UID).status)
+                    .isEqualTo(PaymentGateway.ReconcileStatus.CANCELLED);
+        }
+
+        @Test
+        @DisplayName("모르는 상태값은 UNKNOWN 이다 - 결제사가 어휘를 바꿔도 임의로 해석하지 않는다")
+        void mapsUnrecognizedStatusToUnknown() throws Exception {
+            givenIamportResponds(Map.of("status", "settled", "amount", EXPECTED_AMOUNT, "imp_uid", IMP_UID));
+
+            PaymentGateway.ReconcileResult r = gateway.findPaymentBySessionId(MERCHANT_UID);
+
+            assertThat(r.found).isTrue(); // 기록은 있다
+            assertThat(r.status).isEqualTo(PaymentGateway.ReconcileStatus.UNKNOWN); // 다만 판정할 수 없다
+        }
+
+        @Test
+        @DisplayName("대소문자가 다르면 PAID 로 읽지 않는다 - 관대하게 받으면 승인 안 된 결제가 확정된다")
+        void doesNotGuessOnCasing() throws Exception {
+            givenIamportResponds(Map.of("status", "Paid", "amount", EXPECTED_AMOUNT, "imp_uid", IMP_UID));
+
+            assertThat(gateway.findPaymentBySessionId(MERCHANT_UID).status)
+                    .isEqualTo(PaymentGateway.ReconcileStatus.UNKNOWN);
+        }
+
+        @Test
+        @DisplayName("status 가 없으면 UNKNOWN 이다")
+        void mapsMissingStatusToUnknown() throws Exception {
+            givenIamportResponds(Map.of("amount", EXPECTED_AMOUNT, "imp_uid", IMP_UID));
+
+            assertThat(gateway.findPaymentBySessionId(MERCHANT_UID).status)
+                    .isEqualTo(PaymentGateway.ReconcileStatus.UNKNOWN);
+        }
+
+        @Test
+        @DisplayName("조회가 예외로 끝나면 found=false 다 - 한 건의 실패가 대사 배치를 멈추면 안 된다")
+        void swallowsLookupFailure() throws Exception {
+            Object tokenResponse = newTokenResponse("test-token");
+            given(rest.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
+                    .willAnswer(invocation -> {
+                        String url = invocation.getArgument(0);
+                        if (url.endsWith("/users/getToken")) {
+                            return ResponseEntity.ok(tokenResponse);
+                        }
+                        throw new RestClientException("connection reset");
+                    });
+
+            assertThat(gateway.findPaymentBySessionId(MERCHANT_UID).found).isFalse();
+        }
+    }
+
+    @Nested
     @DisplayName("chargeWithSavedMethod - 아임포트 논리 실패를 성공으로 오인하면 안 된다")
     class ChargeWithSavedMethod {
 

@@ -361,7 +361,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 		Long subscriptionId = RebillMerchantUid.subscriptionIdOf(payment.getProviderSessionId());
 
 		switch (r.status) {
-			case "paid":
+			case PAID:
 				long expected = (payment.getPrice() != null ? payment.getPrice().getAmount() : 0L); // 서버 확정 금액
 				if (r.amount != expected) {
 					log.warn("재청구 대사 금액 불일치 - paymentId: {}, expected: {}, actual: {}", payment.getId(), expected, r.amount);
@@ -379,17 +379,16 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 				subscriptionRepository.findByIdForUpdate(subscriptionId).ifPresent(sub -> extendAfterSuccess(sub, now));
 				log.info("대사로 재청구 확정 - paymentId: {}, subscriptionId: {}", payment.getId(), subscriptionId);
 				return true;
-			case "failed":
+			case FAILED:
 				payment.markAsFailed(now);
 				paymentRepository.save(payment);
 				return true;
-			case "cancelled":
-			case "canceled":
+			case CANCELLED:
 				payment.applyGatewayCancellation(now);
 				paymentRepository.save(payment);
 				return true;
 			default:
-				return false; // ready 등 미결 상태 → 유지
+				return false; // READY/UNKNOWN → 판정 불가, 미결 유지
 		}
 	}
 
