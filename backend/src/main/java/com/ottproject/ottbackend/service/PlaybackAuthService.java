@@ -36,7 +36,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class PlaybackAuthService { // 재생 권한/URL 발급
 	private final UserRepository userRepository; // 권한 확인(멤버십 여부 판단용)
-	private final MembershipService membershipService; // 멤버십 추상화
+	private final MembershipEligibilityService membershipEligibilityService; // 멤버십 자격 판별
 	private final com.ottproject.ottbackend.repository.AnimeRepository animeListRepository; // 작품 소속 판단(에피소드 → ani)
 	private final EpisodeMapper episodeMapper; // 에피소드 조회용 MyBatis 매퍼
 
@@ -62,7 +62,7 @@ public class PlaybackAuthService { // 재생 권한/URL 발급
 		}
 
 		// 4화 이상은 멤버십 필요 - 실시간 상태 확인
-		boolean isMember = membershipService.isMember(userId);
+		boolean isMember = membershipEligibilityService.isMember(userId);
 		log.debug("멤버십 에피소드 접근 확인 - episodeId: {}, episodeNumber: {}, isMember: {}", 
 			episodeId, epNo, isMember);
 		

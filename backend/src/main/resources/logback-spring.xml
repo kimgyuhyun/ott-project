@@ -73,7 +73,7 @@
     </logger>
 
     <!-- 멤버십 관련 로그 -->
-    <logger name="com.ottproject.ottbackend.service.MembershipSubscriptionMembershipService" level="INFO" additivity="false">
+    <logger name="com.ottproject.ottbackend.service.MembershipEligibilityService" level="INFO" additivity="false">
         <appender-ref ref="CONSOLE" />
         <appender-ref ref="FILE" />
     </logger>
