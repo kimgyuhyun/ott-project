@@ -154,7 +154,10 @@ foreach ($name in $Instances) {
     # 5. The SMTP path over SOCKS, both halves. Checks 1-4 only exercise squid, so without
     #    this a misrouted or mis-ruled sockd passes the deploy and only shows up when a
     #    user waits for a verification mail that never arrives. It is also the only check
-    #    that covers the sockd.conf "external: eth0" / compose network-priority pairing.
+    #    that covers the sockd.conf "external:" address / compose ipv4_address pairing.
+    #    It has already earned its keep twice: a CRLF config that would not parse, and an
+    #    outbound bound to the wrong interface (sockd logged "running" and its port was
+    #    open both times - only this check saw that no session ever got out).
     #
     #    This curl build has no smtp:// or telnet:// (only file ftp ftps http https ipfs
     #    ipns), so we speak to port 587 as if it were HTTP and let --http0.9 hand us the

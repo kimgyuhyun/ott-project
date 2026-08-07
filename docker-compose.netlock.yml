@@ -58,7 +58,7 @@ services:
       MAIL_SOCKS_PORT: "1080"
 
   # --- 아웃바운드 프록시 2개 -------------------------------------------------
-  # 둘 다 networks 는 [proxy, egress] 뿐이다. data 망에는 붙이지 않는다.
+  # squid 는 [proxy, egress], sockd 는 [proxy, smtpout] 이다. 둘 다 data 망에는 붙이지 않는다.
   # 설정은 nginx 와 같은 방식으로 러너 작업폴더 밖(C:/ott-deploy/config)에서 ro 마운트한다.
   ott-egress-proxy:                     # squid — 허용목록 기반 HTTP/HTTPS 포워드 프록시
     image: ${SQUID_IMAGE:-ott-egress-proxy:clean}
@@ -84,12 +84,10 @@ services:
     mem_limit: 256m
     cpus: 0.5
     networks:
-      # priority: 부착 순서를 고정한다(높은 쪽이 먼저 = eth0). squid 는 라우팅에만 의존해서
-      # 순서를 타지 않지만, 옆의 sockd 와 같은 배선을 유지해 둘이 갈라지지 않게 한다.
-      egress:
-        priority: 100
-      proxy:
-        priority: 10
+      # squid 는 나가는 주소를 설정에 적지 않고 라우팅에 맡기므로 부착 순서를 타지 않는다.
+      # (sockd 는 dante 가 external 주소를 요구해서 사정이 다르다 — 위 주석 참고)
+      egress: {}
+      proxy: {}
 
   ott-smtp-proxy:                      # dante sockd — SMTP 제출 전용 SOCKS5
     image: ${SOCKD_IMAGE:-ott-smtp-proxy:clean}
@@ -118,12 +116,17 @@ services:
     mem_limit: 256m
     cpus: 0.5
     networks:
-      # 이 순서가 sockd.conf 의 "external: eth0" 과 한 쌍이다. priority 가 높은 egress 가
-      # 먼저 붙어 eth0 이 된다. 뒤집히면 SMTP 가 proxy 망으로 나가려다 조용히 실패한다.
-      egress:
-        priority: 100
-      proxy:
-        priority: 10
+      # [2026-08-08] egress 공용 망 대신 전용 망 smtpout 에 고정 IP 로 붙인다.
+      # sockd.conf 의 "external: 172.30.0.10" 과 이 주소가 한 쌍이다 — 함께 바꿔야 한다.
+      # 예전에는 external 에 eth0 을 적고 priority 로 부착 순서를 맞췄는데, 컨테이너를
+      # 다시 만들면 그 짝이 깨져 SMTP 아웃바운드가 조용히 멈췄다(실측). 이름 대신 주소로
+      # 지정하면 인터페이스 번호가 어떻게 붙든 상관이 없어진다.
+      # 전용 망인 이유: 고정 IP 를 주려면 서브넷을 직접 선언해야 하는데, 이미 컨테이너들이
+      # 붙어 있는 egress 망에 서브넷을 뒤늦게 선언하면 compose 가 망 재생성을 요구하며
+      # 배포를 실패시킨다. 새 망을 하나 더 만드는 쪽이 기존 배선을 건드리지 않는다.
+      smtpout:
+        ipv4_address: 172.30.0.10
+      proxy: {}
 
   frontend:                             # Next.js 프론트엔드 (이번 감염 대상)
     image: ${FRONT_IMAGE:-ott-frontend:clean}   # 기본=로컬 클린(Next 15.5.19), CD=ghcr digest
@@ -151,3 +154,9 @@ networks:
                                         # frontend 가 있는 default 와 분리해야 하는 이유는 헤더 주석 참고.
   egress:
     driver: bridge                      # 인터넷 가능(프록시 전용 아웃바운드 경로 + nginx 포트 publish)
+  smtpout:                              # [2026-08-08] ott-smtp-proxy 전용 아웃바운드 망.
+    driver: bridge                      # 여기 붙는 컨테이너는 sockd 하나뿐이다.
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24         # 고정 IP 를 주려면 서브넷 선언이 필요하다.
+                                        # 172.17~172.24 는 이미 다른 망이 쓰고 있어 피했다.
