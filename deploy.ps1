@@ -91,6 +91,24 @@ $dns = docker exec ott-app sh -c "getent hosts oauth2.googleapis.com > /dev/null
 if ("$dns" -match 'RESOLVED') { throw 'SECURITY INVARIANT FAILED: ott-app still resolves external DNS (is it still on the egress network?)' }
 Write-Host '  ott-app external DNS: BLOCKED'
 
+# 5. The SMTP path over SOCKS, both halves. Checks 1-4 only exercise squid, so a misrouted
+#    or mis-ruled sockd would pass the deploy and surface as verification mails that never
+#    arrive. This curl build has no smtp://, so we talk to 587 as HTTP and let --http0.9
+#    hand us the greeting; a real 220 banner proves the SOCKS rule, DNS inside the proxy
+#    and the egress interface at once. It costs one GET line the mail server rejects.
+$smtpProbe = 'curl -s --http0.9 --max-time 10 --socks5-hostname ott-smtp-proxy:1080 http://smtp.naver.com:587/ 2>/dev/null'
+$smtp = "$(docker exec ott-app bash -c $smtpProbe)".Trim()
+if ($smtp -notmatch '220\s+smtp\.naver\.com') { throw "OUTBOUND FAILED: ott-app cannot reach SMTP through the SOCKS proxy (got '$smtp'). Signup and email verification are down." }
+Write-Host '  ott-app -> socks -> smtp.naver.com:587: OK (220 banner)'
+
+#    Deny half. curl exit 97 is specifically "the SOCKS proxy refused", distinct from an
+#    ordinary connection failure, so it says the ruleset rejected us.
+$smtpDenyProbe = 'curl -s -o /dev/null -w "%{exitcode}" --max-time 10 --socks5-hostname ott-smtp-proxy:1080 http://1.1.1.1:443/ 2>/dev/null'
+$smtpDeny = "$(docker exec ott-app bash -c $smtpDenyProbe)".Trim()
+if ($smtpDeny -eq '0') { throw 'SECURITY INVARIANT FAILED: ott-app reached a non-allow-listed destination through the SOCKS proxy' }
+if ($smtpDeny -ne '97') { throw "SOCKS allow-list probe returned an unexpected result (curl exit '$smtpDeny') - not treating it as denied" }
+Write-Host '  ott-app -> socks -> 1.1.1.1: DENIED (ruleset)'
+
 # Apply any nginx config change.
 # The conf is a single-file bind mount, so the `up -d` above does not recreate
 # nginx when only its CONTENTS change, and the running process keeps the config it

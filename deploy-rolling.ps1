@@ -150,6 +150,31 @@ foreach ($name in $Instances) {
     $dns = docker exec $name sh -c "getent hosts oauth2.googleapis.com > /dev/null && echo RESOLVED || echo BLOCKED"
     if ("$dns" -match 'RESOLVED') { throw "SECURITY INVARIANT FAILED: $name still resolves external DNS (is it still on the egress network?)" }
     Write-Host "  $name external DNS: BLOCKED"
+
+    # 5. The SMTP path over SOCKS, both halves. Checks 1-4 only exercise squid, so without
+    #    this a misrouted or mis-ruled sockd passes the deploy and only shows up when a
+    #    user waits for a verification mail that never arrives. It is also the only check
+    #    that covers the sockd.conf "external: eth0" / compose network-priority pairing.
+    #
+    #    This curl build has no smtp:// or telnet:// (only file ftp ftps http https ipfs
+    #    ipns), so we speak to port 587 as if it were HTTP and let --http0.9 hand us the
+    #    server's greeting as the body. Reaching a real 220 banner proves the whole path:
+    #    SOCKS rule, DNS inside the proxy, and the egress interface.
+    #    Cost of the trick: curl sends one GET line that the mail server answers with
+    #    "502 Unrecognized command". Harmless, and it is the price of a positive signal.
+    $smtpProbe = 'curl -s --http0.9 --max-time 10 --socks5-hostname ott-smtp-proxy:1080 http://smtp.naver.com:587/ 2>/dev/null'
+    $smtp = "$(docker exec $name bash -c $smtpProbe)".Trim()
+    if ($smtp -notmatch '220\s+smtp\.naver\.com') { throw "OUTBOUND FAILED: $name cannot reach SMTP through the SOCKS proxy (got '$smtp'). Signup and email verification are down." }
+    Write-Host "  $name -> socks -> smtp.naver.com:587: OK (220 banner)"
+
+    #    And the deny half: exit code 97 is curl's "the SOCKS proxy refused", which is a
+    #    different code from any ordinary connection failure - so it says the ruleset
+    #    rejected us rather than the network being broken.
+    $smtpDenyProbe = 'curl -s -o /dev/null -w "%{exitcode}" --max-time 10 --socks5-hostname ott-smtp-proxy:1080 http://1.1.1.1:443/ 2>/dev/null'
+    $smtpDeny = "$(docker exec $name bash -c $smtpDenyProbe)".Trim()
+    if ($smtpDeny -eq '0') { throw "SECURITY INVARIANT FAILED: $name reached a non-allow-listed destination through the SOCKS proxy" }
+    if ($smtpDeny -ne '97') { throw "SOCKS allow-list probe returned an unexpected result on $name (curl exit '$smtpDeny') - not treating it as denied" }
+    Write-Host "  $name -> socks -> 1.1.1.1: DENIED (ruleset)"
 }
 
 # --- 4. Apply any nginx config change -----------------------------------------
