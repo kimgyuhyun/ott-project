@@ -401,7 +401,10 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 
 		// 플랜 변경 예약된 구독 조회
 		List<MembershipSubscription> scheduledPlanChanges = membershipSubscriptionQueryMapper
-				.findSubscriptionsWithScheduledPlanChanges(now);
+				.findSubscriptionsWithScheduledPlanChanges(
+						List.of(MembershipSubscriptionStatus.ACTIVE.name(), MembershipSubscriptionStatus.PAST_DUE.name()),
+						now
+				);
 
 		log.info("플랜 변경 예약 구독 수: {}", scheduledPlanChanges.size());
 

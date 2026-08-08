@@ -222,6 +222,7 @@ public class MembershipSubscription { // 멤버쉽 구독
      * 재시도 소진 해지 — 즉시 해지하면서 말일 해지 예약 플래그도 함께 세운다.
      * - applyImmediateCancellation 과 달리 cancelAtPeriodEnd 를 true 로 둔다. 결제 실패로 끊긴 구독은
      *   "해지된 멤버십" 화면(findMyCancelledMembership)에 노출돼야 사용자가 재개할 수 있다.
+     * - 플랜 변경 예약은 함께 지운다(아래 applyImmediateCancellation 과 같은 이유).
      */
     public void cancelAfterDunningExhausted(LocalDateTime canceledAt) {
         if (canceledAt == null) {
@@ -231,6 +232,7 @@ public class MembershipSubscription { // 멤버쉽 구독
         this.canceledAt = canceledAt;
         this.autoRenew = false;
         this.cancelAtPeriodEnd = true;
+        clearScheduledPlanChange();
     }
 
     // ===== 외부에서 이미 일어난 일 반영 =====
@@ -255,6 +257,9 @@ public class MembershipSubscription { // 멤버쉽 구독
      * - 상태와 해지 시각과 자동갱신 중단은 반드시 함께 바뀐다.
      * - cancelAtPeriodEnd 는 건드리지 않는다. 환불로 끊긴 구독은 잔여기간 혜택도 사라지므로
      *   "말일까지 유지되는 해지 예약"과 같은 것으로 표시하면 안 된다.
+     * - 플랜 변경 예약은 함께 지운다. CANCELED 는 resume 으로 되살릴 수 없는 종착 상태라
+     *   (resume 은 ACTIVE + cancelAtPeriodEnd 인 구독만 받는다) 예약을 남겨둘 이유가 없고,
+     *   남기면 배치가 끝난 구독의 플랜을 갈아끼우고 안내 메일까지 보낸다.
      */
     public void applyImmediateCancellation(LocalDateTime canceledAt) {
         if (canceledAt == null) {
@@ -263,6 +268,7 @@ public class MembershipSubscription { // 멤버쉽 구독
         this.status = MembershipSubscriptionStatus.CANCELED;
         this.canceledAt = canceledAt;
         this.autoRenew = false;
+        clearScheduledPlanChange();
     }
 
     // ===== 플랜 변경 예약 =====

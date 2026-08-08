@@ -93,7 +93,16 @@
             s.plan_change_scheduled_at,
             s.change_type
         FROM subscriptions s
-        WHERE s.next_billing_at IS NOT NULL
+        WHERE s.status IN
+        <foreach collection="statuses" item="status" open="(" separator="," close=")">
+            #{status}
+        </foreach>
+        <!-- 위 findSubscriptionsForBilling 과 같은 게이트다. 이 조건들이 없으면 해지된 구독의 플랜이
+             바뀌고 안내 메일까지 나간다(탈퇴로 익명화된 계정에도). 말일 해지 예약 구독을 빼는 것은
+             예약을 지우는 것과 다르다 — 재개하면 다시 대상이 되므로 예약이 보존된다. -->
+        AND s.auto_renew = true
+        AND s.cancel_at_period_end = false
+        AND s.next_billing_at IS NOT NULL
         AND s.next_billing_at &lt;= #{now}
         AND s.next_plan_id IS NOT NULL
         ORDER BY s.next_billing_at ASC

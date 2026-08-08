@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * MembershipCommandService
@@ -31,6 +32,7 @@ import java.time.LocalDateTime;
  * 메서드 개요
  * - subscribe: 최근 구독 잔여기간 고려하여 시작점을 산정 후 활성 구독 생성/연장
  * - cancel: 자동갱신 off + 말일 해지 예약(멱등 지원)
+ * - cancelImmediatelyForWithdrawal: 탈퇴 시 즉시 해지(잔여기간 환불 없이 소멸)
  */
 @Service
 @RequiredArgsConstructor
@@ -135,6 +137,28 @@ public class MembershipCommandService {
 
         // 알림: 말일 해지 예약 안내 메일 발송
         notificationService.sendCancelAtPeriodEnd(sub.getUser(), sub);
+    }
+
+    /**
+     * 탈퇴 시 구독 즉시 해지
+     * - 잔여기간은 환불 없이 소멸시킨다(탈퇴는 되돌릴 수 없으므로 말일 해지 예약으로 둘 수 없다).
+     * - 구독이 없어도 탈퇴는 진행돼야 하므로 예외를 던지지 않는다.
+     * - 멱등키를 받지 않는다: 탈퇴는 한 번뿐이고, 상태를 CANCELED 로 설정하는 것 자체가 멱등이다(6절).
+     * - 안내 메일을 보내지 않는다: 이 시점 사용자 이메일은 곧 익명화된다.
+     * - 한 건이 아니라 전부 끊는다: 겹치는 ACTIVE 구독이 실제로 생기므로, 하나만 끊으면 남은 구독이
+     *   autoRenew=true 로 살아남아 정기결제 배치가 익명화된 계정에 계속 청구한다.
+     */
+    public void cancelImmediatelyForWithdrawal(Long userId) {
+        List<MembershipSubscription> subs = subscriptionRepository.findAllByUserAndStatusIn(
+                userId, List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE)
+        ); // 구독 없는 사용자도 탈퇴하므로 빈 목록이면 그대로 끝난다
+        // 던닝 중단 코드는 따로 두지 않는다: RecurringBillingService.prepareRetry 가
+        // "PAST_DUE 아니거나 autoRenew=false 면 skip" 가드를 가지고 있어, 여기서 CANCELED + autoRenew=false 가
+        // 되는 순간 재시도가 자동으로 멈춘다.
+        LocalDateTime now = LocalDateTime.now();
+        for (MembershipSubscription sub : subs) {
+            sub.applyImmediateCancellation(now);
+        }
     }
 
     /**

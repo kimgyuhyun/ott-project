@@ -8,13 +8,20 @@ import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -30,16 +37,39 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * 쿼리가 지키려는 규칙
  * - 사용자 일치 AND 상태 일치 AND startAt <= now AND (endAt is null OR endAt >= now)
+ *
+ * 왜 실제 PostgreSQL 인가
+ * - 직접 작성한 쿼리는 운영과 같은 DB 제품에서 확인해야 한다. NULL 정렬 순서와 limit 절 번역처럼
+ *   여기서 검증하는 동작(endAt is null 포함, startAt desc 정렬)이 제품마다 다르므로,
+ *   H2 에서 통과해도 운영 동작을 보장하지 못한다.
+ *
+ * Docker 가 없으면 컨테이너를 못 띄운다. Testcontainers 가 그 경우 조건부로 테스트를 건너뛴다.
  */
 @DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
 @Import(JpaSliceTestSupport.class)
-// Flyway 마이그레이션은 PostgreSQL 전용 문법이라 H2 슬라이스에서 실행되면 깨진다.
-// 이 테스트는 JPQL 만 보므로 Hibernate 가 엔티티에서 만든 스키마로 충분하다.
+@Testcontainers(disabledWithoutDocker = true)
+// 스키마는 Flyway 가 아니라 엔티티 기준으로 만든다. 이 테스트가 보는 것은 스키마 이력이 아니라 JPQL 이고,
+// 같은 컨테이너 슬라이스인 MembershipSubscriptionLockTest·PaymentMerchantUidUniqueTest 와 구성을 맞춘다.
 @TestPropertySource(properties = {
         "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true" // DDL 오류를 조용히 넘기지 않는다
 })
 class MembershipSubscriptionRepositoryTest {
+
+    @Container
+    @SuppressWarnings("resource") // 컨테이너 수명은 Testcontainers 가 관리한다
+    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:15");
+
+    @DynamicPropertySource
+    static void datasource(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
+        registry.add("spring.datasource.username", POSTGRES::getUsername);
+        registry.add("spring.datasource.password", POSTGRES::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+        registry.add("spring.jpa.database-platform", () -> "org.hibernate.dialect.PostgreSQLDialect");
+    }
 
     @Autowired
     private MembershipSubscriptionRepository subscriptionRepository;
@@ -182,5 +212,49 @@ class MembershipSubscriptionRepositoryTest {
                 subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(user.getId());
 
         assertThat(found).contains(newest);
+    }
+
+    /**
+     * findAllByUserAndStatusIn 은 탈퇴 시 정리 대상을 고르는 쿼리다. 최신 한 건이 아니라 전부를 돌려줘야 한다.
+     * 한 건이라도 남으면 autoRenew=true 인 채로 살아남아, 정기결제 배치가 익명화된 계정에 계속 청구한다.
+     */
+    @Test
+    @DisplayName("findAllByUserAndStatusIn 은 겹치는 ACTIVE 와 PAST_DUE 를 모두 반환한다 - 한 건만 끊으면 청구가 남는다")
+    void findsEverySubscriptionInGivenStatuses() {
+        User user = persistUser("overlap@example.com");
+        MembershipPlan plan = persistPlan("Overlap");
+        // 무기한 구독이 있는 사용자가 재구독하면 실제로 만들어지는 조합이다
+        MembershipSubscription openEnded = persistSubscription(
+                user, plan, NOW.minusDays(60), null, MembershipSubscriptionStatus.ACTIVE);
+        MembershipSubscription active = persistSubscription(
+                user, plan, NOW.minusDays(5), NOW.plusDays(25), MembershipSubscriptionStatus.ACTIVE);
+        MembershipSubscription pastDue = persistSubscription(
+                user, plan, NOW.minusDays(30), NOW.minusDays(1), MembershipSubscriptionStatus.PAST_DUE);
+
+        List<MembershipSubscription> found = subscriptionRepository.findAllByUserAndStatusIn(
+                user.getId(),
+                List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
+
+        // 만료된 PAST_DUE 도 포함돼야 한다. 던닝 재시도는 endAt 이 지났는지와 무관하게 돈다
+        assertThat(found).containsExactlyInAnyOrder(openEnded, active, pastDue);
+    }
+
+    @Test
+    @DisplayName("findAllByUserAndStatusIn 은 요청한 상태가 아니거나 다른 사용자의 구독은 제외한다")
+    void excludesOtherStatusesAndUsers() {
+        User user = persistUser("target@example.com");
+        User other = persistUser("bystander@example.com");
+        MembershipPlan plan = persistPlan("Mixed");
+        MembershipSubscription active = persistSubscription(
+                user, plan, NOW.minusDays(5), NOW.plusDays(25), MembershipSubscriptionStatus.ACTIVE);
+        persistSubscription(user, plan, NOW.minusDays(60), NOW.minusDays(30), MembershipSubscriptionStatus.EXPIRED);
+        persistSubscription(user, plan, NOW.minusDays(20), NOW.plusDays(10), MembershipSubscriptionStatus.CANCELED);
+        persistSubscription(other, plan, NOW.minusDays(5), NOW.plusDays(25), MembershipSubscriptionStatus.ACTIVE);
+
+        List<MembershipSubscription> found = subscriptionRepository.findAllByUserAndStatusIn(
+                user.getId(),
+                List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
+
+        assertThat(found).containsExactly(active);
     }
 }

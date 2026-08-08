@@ -136,7 +136,7 @@ export default function SettingsPage() {
   // 되돌릴 수 없는 작업이라 실행 전에 결과를 명시한 확인을 한 번 받는다.
   const handleWithdraw = async () => {
     const confirmed = window.confirm(
-      '회원탈퇴 시 계정 정보가 삭제되고 다시 로그인할 수 없습니다.\n되돌릴 수 없습니다. 정말 탈퇴하시겠습니까?'
+      '회원탈퇴 시 계정 정보가 삭제되고 다시 로그인할 수 없습니다.\n이용 중인 멤버십은 즉시 종료되며 남은 기간은 환불되지 않습니다.\n되돌릴 수 없습니다. 정말 탈퇴하시겠습니까?'
     );
     if (!confirmed) return;
 
@@ -149,7 +149,8 @@ export default function SettingsPage() {
       window.location.href = '/login';
     } catch (err) {
       console.error('회원탈퇴 실패:', err);
-      // 활성 구독이 남아 있으면 400 + "구독을 먼저 해지해주세요" 가 온다 — 서버 메시지를 그대로 보여준다
+      // 구독이 남아 있어도 서버가 즉시 해지하고 진행하므로 구독 때문에 실패하지는 않는다.
+      // 세션 만료 등 남은 실패 사유는 서버 메시지를 그대로 보여준다
       alert(getErrorMessage(err) ?? '회원탈퇴에 실패했습니다.');
       setIsSaving(false); // 성공 시에는 페이지를 떠나므로 실패 경로에서만 되돌린다
     }
