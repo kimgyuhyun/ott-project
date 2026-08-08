@@ -53,10 +53,14 @@ public interface MembershipSubscriptionRepository extends JpaRepository<Membersh
 	// 들어오면 둘 다 가드를 통과해 결제 API 가 두 번 호출된다.
 	//
 	// NOWAIT 인 이유(lock.timeout = 0)
-	// - 락을 잡은 트랜잭션은 그 안에서 외부 결제 API 를 호출한다. 즉 락 보유 시간이 PG 응답 시간에 묶인다.
-	//   대기로 두면 중복 메시지를 받은 컨슈머 스레드가 그동안 통째로 점유된다.
-	// - 어차피 기다려봐야 retryCount 가드에 걸려 버려질 메시지이므로, 기다리지 않고 즉시 실패시키는 편이 낫다.
-	//   폐기된 건은 스윕 배치(nextBillingAt)가 다음 주기에 복구한다.
+	// - 경합에서 진 쪽은 기다려도 소득이 없다. 앞선 트랜잭션이 커밋되고 나면 retryCount 가 올라가 있어
+	//   prepareRetry 의 스테일 가드에 걸려 그대로 폐기된다. 폐기될 메시지 때문에 컨슈머 스레드를
+	//   붙잡아 둘 이유가 없으므로 즉시 실패시킨다. 폐기된 건은 스윕 배치(nextBillingAt)가 다음 주기에 복구한다.
+	// - 대기가 정답인 반대 사례는 PaymentRepository.findByIdForUpdate 주석 참고. 기다려서 보게 될 상태가
+	//   내 작업을 정상 종료시키느냐(대기), 어차피 폐기시키느냐(NOWAIT)로 갈린다.
+	// - 이 락 구간 안에 외부 호출은 없다. 예전에는 구독 행을 잠근 채 PG 를 호출해 락 보유 시간이 PG 응답
+	//   시간에 묶였지만, 지금은 retryBilling 이 PG 호출을 2단계로 떼어내 트랜잭션·락 밖에서 끝낸다.
+	//   여기에 외부 호출을 다시 들여놓지 말 것(ARCHITECTURE 9절).
 	// - PostgreSQL 은 문장 수준에서 NOWAIT/SKIP LOCKED 만 지원한다. 임의의 대기 시간(예: 10초)을 주면
 	//   Hibernate 방언이 그냥 FOR UPDATE 로 떨어뜨려 조용히 무시되므로, 여기서 쓸 수 있는 값은 0 뿐이다.
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
