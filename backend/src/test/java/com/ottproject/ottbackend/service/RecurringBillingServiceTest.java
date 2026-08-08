@@ -13,6 +13,8 @@ import com.ottproject.ottbackend.mybatis.MembershipSubscriptionQueryMapper;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,17 +22,24 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -65,6 +74,9 @@ class RecurringBillingServiceTest {
     @Mock private MembershipSubscriptionQueryMapper membershipSubscriptionQueryMapper;
     @Mock private BillingRetryPublisher billingRetryPublisher;
     @Mock private BillingAttemptRecorder attemptRecorder;
+    // 목이 아니라 진짜 레지스트리다. 경보 BillingBatchStalled 가 지표 "이름"에 걸려 있어서,
+    // 목으로 두면 이름이 바뀌어도 아무 테스트도 깨지지 않는다.
+    @Spy private MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     @InjectMocks
     private RecurringBillingService service;
@@ -89,6 +101,21 @@ class RecurringBillingServiceTest {
         // retryBilling 은 단계마다 트랜잭션 경계를 만들려고 자기 자신을 프록시로 호출한다.
         // 단위 테스트에는 프록시가 없으므로 자기 참조를 직접 꽂아준다(트랜잭션은 어차피 no-op).
         ReflectionTestUtils.setField(service, "self", service);
+
+        // 프로덕션에서는 @PostConstruct 가 부르는 자리다. 단위 테스트에는 컨테이너가 없으므로 직접 부른다.
+        service.registerBatchLivenessGauge();
+    }
+
+    /** 배치 생존 게이지의 현재 값. 이름이 바뀌면 여기서 먼저 깨진다(경보 식이 이 이름을 쓴다). */
+    private double livenessGauge() {
+        return meterRegistry.get("billing.batch.last.success.timestamp.seconds").gauge().value();
+    }
+
+    /** 마지막 완주 시각을 과거로 되돌린다(배치가 값을 갱신했는지 눈에 보이게 하려고). */
+    private long ageLastSuccess() {
+        long stale = Instant.now().minus(Duration.ofHours(12)).getEpochSecond();
+        ((AtomicLong) ReflectionTestUtils.getField(service, "lastSuccessEpochSeconds")).set(stale);
+        return stale;
     }
 
     // 주의: given(...) 인자 안에서 이 헬퍼를 호출하면 안 된다.
@@ -429,5 +456,39 @@ class RecurringBillingServiceTest {
         assertThat(resolved).isFalse();
         assertThat(pending.getStatus()).isEqualTo(PaymentStatus.PENDING);
         verifyNoInteractions(subscriptionRepository);
+    }
+
+    // ===== 배치 생존 신호 =====
+    //
+    // 이 지표 하나가 경보 BillingBatchStalled 의 전부다. 배치는 사람이 부르지 않는 매출 경로라
+    // 조용히 멈춰도 화면에 아무 변화가 없다. 갱신 조건이 틀리면 경보는 영원히 울리지 않거나
+    // 영원히 울린다 — 둘 다 감시가 없는 것과 같다.
+
+    @Test
+    @DisplayName("배치가 완주하면 마지막 완주 시각이 갱신된다")
+    void completedBatchAdvancesLivenessGauge() {
+        long stale = ageLastSuccess();
+        given(membershipSubscriptionQueryMapper.findSubscriptionsWithScheduledPlanChanges(anyList(), any()))
+                .willReturn(List.of());
+        given(membershipSubscriptionQueryMapper.findSubscriptionsForBilling(anyList(), any()))
+                .willReturn(List.of());
+
+        service.runRecurringBilling();
+
+        assertThat(livenessGauge()).isGreaterThan(stale);
+    }
+
+    @Test
+    @DisplayName("배치가 예외로 죽으면 완주 시각을 갱신하지 않는다 - 이걸 갱신하면 경보가 영원히 안 울린다")
+    void failedBatchLeavesLivenessGaugeStale() {
+        long stale = ageLastSuccess();
+        // 플랜 변경 조회는 청구 루프보다 먼저다. 여기서 던지면 아무도 청구되지 않은 채 배치가 죽는다
+        given(membershipSubscriptionQueryMapper.findSubscriptionsWithScheduledPlanChanges(anyList(), any()))
+                .willThrow(new DataAccessResourceFailureException("connection reset"));
+
+        assertThatThrownBy(() -> service.runRecurringBilling())
+                .isInstanceOf(DataAccessResourceFailureException.class);
+
+        assertThat(livenessGauge()).isEqualTo(stale);
     }
 }

@@ -10,6 +10,9 @@ import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.mybatis.MembershipSubscriptionQueryMapper;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -21,8 +24,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * RecurringBillingService
@@ -58,6 +63,27 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
     private final MembershipSubscriptionQueryMapper membershipSubscriptionQueryMapper; // MyBatis 구독 조회 매퍼
     private final BillingRetryPublisher billingRetryPublisher; // 재시도 지연 메시지 발행(RabbitMQ)
     private final BillingAttemptRecorder attemptRecorder; // 청구 시도 선기록(REQUIRES_NEW)
+    private final MeterRegistry meterRegistry; // 배치 생존 신호 게이지 등록용
+
+    // 배치가 마지막으로 "끝까지" 완주한 시각(epoch seconds). 경보 BillingBatchStalled 가 이 값만 본다.
+    //
+    // 시작값을 0 이 아니라 기동 시각으로 두는 이유: 0 이면 배포 직후 time() - 0 이 곧바로 임계를 넘어
+    // 매 배포마다 오탐이 뜬다. 기동 시각으로 두면 "방금 뜬 인스턴스는 아직 돌 차례가 아니다"가 되고,
+    // cron 주기(6h)가 임계(8h)보다 짧으므로 정상이라면 임계에 닿기 전에 실제 완주가 값을 덮는다.
+    //
+    // 실패 시 갱신하지 않는 것이 요점이다. 매퍼가 던지든 PG 호출이 터지든 이 값은 그대로 늙어가고,
+    // 8시간이 지나면 경보가 뜬다. 로그를 사람이 읽어야만 알 수 있던 것을 지표로 바꾸는 자리다.
+    private final AtomicLong lastSuccessEpochSeconds = new AtomicLong();
+
+    @PostConstruct
+    void registerBatchLivenessGauge() {
+        lastSuccessEpochSeconds.set(Instant.now().getEpochSecond());
+        // 이름에 baseUnit 을 붙이지 않고 전체를 직접 적는다. Micrometer 가 baseUnit 을 이름 뒤에
+        // 덧붙이는 규칙에 경보 식을 의존시키면, 나중에 단위를 바꿀 때 지표 이름이 조용히 바뀐다.
+        Gauge.builder("billing.batch.last.success.timestamp.seconds", lastSuccessEpochSeconds, AtomicLong::get)
+                .description("정기결제 배치가 마지막으로 완주한 시각(epoch seconds)")
+                .register(meterRegistry);
+    }
 
 	// 단계별 트랜잭션을 프록시에 태우기 위한 자기 참조.
 	// retryBilling 은 "락+가드 / PG 호출 / 결과 확정"을 서로 다른 트랜잭션으로 쪼개야 하는데,
@@ -97,6 +123,10 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 		}
 
 		log.info("정기결제 배치 완료 - 처리된 구독: {}", targetSubscriptions.size());
+
+		// 완주 신호. 여기까지 왔다는 것은 예약 플랜 변경 조회와 청구 순회가 모두 예외 없이 끝났다는 뜻이다.
+		// 중간에 던지면 이 줄에 닿지 못하고 값이 늙는다 — 그게 경보의 근거다.
+		lastSuccessEpochSeconds.set(Instant.now().getEpochSecond());
 	}
 
 	/**

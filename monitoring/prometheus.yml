@@ -8,7 +8,7 @@ global:
 
 # 경보 규칙. 컨테이너에는 파일이 아니라 디렉터리로 마운트한다(docker-compose.monitoring.yml).
 # 규칙을 파일 단위로 나눠도 마운트를 건드릴 필요가 없게 하기 위함이다.
-# 규칙이 왜 두 개뿐인지는 rules/alerts.yml 머리말에 있다.
+# 규칙이 왜 이것들뿐인지는 rules/alerts.yml 머리말에 있다.
 rule_files:
   - /etc/prometheus/rules/*.yml
 
