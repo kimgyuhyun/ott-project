@@ -33,8 +33,11 @@ public interface MembershipSubscriptionQueryMapper {
      * 플랜 변경 예약된 구독 조회
      * - nextBillingAt이 현재 시각 이하이고 nextPlanId가 있는 구독
      * - 정기 결제 시 플랜 변경을 적용할 대상 구독들
+     * - 대상 조건은 findSubscriptionsForBilling 과 같다: 지정 상태 + 자동갱신 ON + 말일 해지 예약 아님.
+     *   해지된 구독의 플랜을 바꾸면 안 되기 때문이다.
      */
     List<MembershipSubscription> findSubscriptionsWithScheduledPlanChanges(
+        @Param("statuses") List<String> statuses,
         @Param("now") LocalDateTime now
     );
 }
