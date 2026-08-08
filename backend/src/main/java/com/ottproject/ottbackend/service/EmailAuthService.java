@@ -40,7 +40,7 @@ public class EmailAuthService {
 	// SPring Security 에서 제공하는 암호화 인터페이스임
 	private final AuthenticationManager authenticationManager; // 표준 인증 위임(로컬 로그인)
 	private final VerificationEmailService verificationEmailService; // 이메일 인증 티켓 확인/소비(가입 전제조건)
-	private final MembershipEligibilityService membershipEligibilityService; // 유효 구독 판별(탈퇴 차단 조건)
+	private final MembershipCommandService membershipCommandService; // 탈퇴 시 구독 즉시 해지
 	private final SocialAccountRepository socialAccountRepository; // 소셜 연동 해제(탈퇴)
 	// 엔티티→DTO 변환은 UserResponseDto.from 이 담당한다(다른 DTO 들과 같은 정적 팩토리 방식).
 	// User 엔티티에는 비밀번호 등 민감 정보가 포함되기 때문에 UserResponseDto로 바꿔서 비밀번호를 제외한 안전한 정보만 포함함
@@ -125,11 +125,11 @@ public class EmailAuthService {
 		// orElseThrow() 메서드를 체이닝해서 호출했기떄문에 여기서 검증을하는데 optional이 비어있으면 람다식으로 넘긴
 		// 예외객체가 생성되고 메서드 중단, 값이 있으면 user 변수에 저장됨
 
-		// 결제가 걸린 계정은 막는다. 익명화는 되돌릴 수 없어서, 유효 구독을 남긴 채 탈퇴시키면
-		// 남은 기간의 혜택과 다음 청구 대상이 주인 없는 상태가 된다. 해지는 사용자가 먼저 하게 한다.
-		if (membershipEligibilityService.isMember(user.getId())) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "구독을 먼저 해지해주세요.");
-		}
+		// 구독을 즉시 해지한다(잔여기간은 환불 없이 소멸). 탈퇴를 막지 않는 이유는, 해지가 말일 해지 예약이라
+		// 만료일까지 상태가 ACTIVE 로 남아 사용자가 탈퇴 조건을 스스로 만족시킬 방법이 없었기 때문이다.
+		// PAST_DUE(결제 실패 후 던닝 재시도 중)도 함께 끊어야 익명화된 계정에 결제가 시도되지 않는다.
+		// 익명화보다 반드시 먼저 한다 — 순서가 뒤집히면 주인 잃은 계정에 해지가 걸린다.
+		membershipCommandService.cancelImmediatelyForWithdrawal(user.getId());
 
 		// 소셜 연동 행을 지운다. 남겨두면 OAuth2UserService 가 (provider, providerId)로 이 계정을
 		// 먼저 찾아내 탈퇴한 계정으로 다시 로그인시키고, 같은 소셜 계정의 재가입도 막힌다.

@@ -31,6 +31,7 @@ import java.time.LocalDateTime;
  * 메서드 개요
  * - subscribe: 최근 구독 잔여기간 고려하여 시작점을 산정 후 활성 구독 생성/연장
  * - cancel: 자동갱신 off + 말일 해지 예약(멱등 지원)
+ * - cancelImmediatelyForWithdrawal: 탈퇴 시 즉시 해지(잔여기간 환불 없이 소멸)
  */
 @Service
 @RequiredArgsConstructor
@@ -135,6 +136,26 @@ public class MembershipCommandService {
 
         // 알림: 말일 해지 예약 안내 메일 발송
         notificationService.sendCancelAtPeriodEnd(sub.getUser(), sub);
+    }
+
+    /**
+     * 탈퇴 시 구독 즉시 해지
+     * - 잔여기간은 환불 없이 소멸시킨다(탈퇴는 되돌릴 수 없으므로 말일 해지 예약으로 둘 수 없다).
+     * - 구독이 없어도 탈퇴는 진행돼야 하므로 예외를 던지지 않는다.
+     * - 멱등키를 받지 않는다: 탈퇴는 한 번뿐이고, 상태를 CANCELED 로 설정하는 것 자체가 멱등이다(6절).
+     * - 안내 메일을 보내지 않는다: 이 시점 사용자 이메일은 곧 익명화된다.
+     */
+    public void cancelImmediatelyForWithdrawal(Long userId) {
+        MembershipSubscription sub = subscriptionRepository.findLatestByUserAndStatusIn(
+                userId, java.util.List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE)
+        ).orElse(null);
+        if (sub == null) { // 구독 없는 사용자도 탈퇴한다
+            return;
+        }
+        // 던닝 중단 코드는 따로 두지 않는다: RecurringBillingService.prepareRetry 가
+        // "PAST_DUE 아니거나 autoRenew=false 면 skip" 가드를 가지고 있어, 여기서 CANCELED + autoRenew=false 가
+        // 되는 순간 재시도가 자동으로 멈춘다.
+        sub.applyImmediateCancellation(LocalDateTime.now());
     }
 
     /**

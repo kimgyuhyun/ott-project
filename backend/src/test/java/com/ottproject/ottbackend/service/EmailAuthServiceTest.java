@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -38,8 +40,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * - 로그인 실패 사유는 계정 존재 여부를 노출하지 않는다(계정 열거 공격 방어)
  * - 비활성(탈퇴) 계정은 401 이 아니라 403 으로 구분한다
  * - 비밀번호 변경은 현재 비밀번호를 반드시 확인한다(세션 탈취 시 계정 영구 탈취 방지)
- * - 탈퇴는 되돌릴 수 없으므로 결제가 걸린 계정(유효 구독)은 막고, 통과하면 익명화와 소셜 연동
- *   해제를 함께 한다(둘 중 하나만 되면 로그인 수단만 끊긴 채 이메일이 점유된 계정이 남는다)
+ * - 탈퇴는 구독을 즉시 해지한 뒤(잔여기간 환불 없이 소멸) 익명화와 소셜 연동 해제를 함께 한다
+ *   (둘 중 하나만 되면 로그인 수단만 끊긴 채 이메일이 점유된 계정이 남는다)
  *
  * 경계 메모
  * - 비밀번호 암호화는 UserService.saveUser 안에서 일어난다. 여기서는 userService 가 목이라
@@ -55,7 +57,7 @@ class EmailAuthServiceTest {
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private AuthenticationManager authenticationManager;
     @Mock private VerificationEmailService verificationEmailService;
-    @Mock private MembershipEligibilityService membershipEligibilityService;
+    @Mock private MembershipCommandService membershipCommandService;
     @Mock private SocialAccountRepository socialAccountRepository;
 
     @InjectMocks
@@ -290,22 +292,48 @@ class EmailAuthServiceTest {
     }
 
     @Test
-    @DisplayName("탈퇴 - 유효 구독이 남아 있으면 400 이고 아무것도 바꾸지 않는다")
-    void withdrawWithActiveSubscriptionIsRejected() {
+    @DisplayName("탈퇴 - 구독이 있으면 막지 않고 즉시 해지한 뒤 익명화한다")
+    void withdrawCancelsActiveSubscriptionImmediately() {
         User user = localUser();
         given(userService.findByEmail("user@test.com")).willReturn(Optional.of(user));
-        given(membershipEligibilityService.isMember(1L)).willReturn(true);
 
-        assertThatThrownBy(() -> service.withdraw("user@test.com"))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("구독을 먼저 해지해주세요")
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
-        // 익명화는 되돌릴 수 없다. 결제가 걸린 계정이 여기서 지워지면 남은 기간과 청구 대상이 주인을 잃는다
-        assertThat(user.getEmail()).isEqualTo("user@test.com");
-        assertThat(user.isEnabled()).isTrue();
-        verify(userService, never()).saveUser(any());
-        verify(socialAccountRepository, never()).deleteByUser(any());
+        service.withdraw("user@test.com");
+
+        // 예전에는 400 으로 막았는데, 해지가 말일 해지 예약이라 만료일까지 상태가 ACTIVE 로 남아
+        // 사용자가 탈퇴 조건을 스스로 만족시킬 방법이 없었다
+        verify(membershipCommandService).cancelImmediatelyForWithdrawal(1L);
+        assertThat(user.isEnabled()).isFalse();
+        assertThat(user.getEmail()).isNotEqualTo("user@test.com");
+        verify(userService).saveUser(user);
+    }
+
+    @Test
+    @DisplayName("탈퇴 - 구독이 없는 사용자도 정상적으로 탈퇴된다")
+    void withdrawWithoutSubscriptionSucceeds() {
+        User user = localUser();
+        given(userService.findByEmail("user@test.com")).willReturn(Optional.of(user));
+        // cancelImmediatelyForWithdrawal 은 구독이 없으면 아무것도 하지 않고 리턴한다(예외 없음)
+
+        service.withdraw("user@test.com");
+
+        verify(membershipCommandService).cancelImmediatelyForWithdrawal(1L);
+        assertThat(user.isEnabled()).isFalse();
+        verify(userService).saveUser(user);
+    }
+
+    @Test
+    @DisplayName("탈퇴 - 구독 즉시 해지가 익명화보다 먼저 일어난다(주인 잃은 계정에 해지 방지)")
+    void withdrawCancelsSubscriptionBeforeAnonymizing() {
+        User user = localUser();
+        given(userService.findByEmail("user@test.com")).willReturn(Optional.of(user));
+
+        service.withdraw("user@test.com");
+
+        // 익명화가 먼저 일어나면 구독 해지가 withdrawn-{id}@withdrawn.invalid 계정에 걸린다
+        InOrder order = inOrder(membershipCommandService, socialAccountRepository, userService);
+        order.verify(membershipCommandService).cancelImmediatelyForWithdrawal(1L);
+        order.verify(socialAccountRepository).deleteByUser(user);
+        order.verify(userService).saveUser(user);
     }
 
     @Test

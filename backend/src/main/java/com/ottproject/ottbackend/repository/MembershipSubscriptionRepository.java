@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Optional;
 
 /**
@@ -23,6 +24,7 @@ import java.util.Optional;
  * 메서드 개요
  * - findActiveEffectiveByUser: 주어진 시점(now)에 유효한 사용자 구독(ACTIVE) 조회
  * - findTopByUser_IdOrderByStartAtDesc: 사용자 최근 구독(상태 무관) 조회
+ * - findLatestByUserAndStatusIn: 주어진 상태들 중 최근 구독 1건 조회(탈퇴 시 즉시 해지 대상)
  */
 @Repository
 public interface MembershipSubscriptionRepository extends JpaRepository<MembershipSubscription, Long> {
@@ -47,6 +49,22 @@ public interface MembershipSubscriptionRepository extends JpaRepository<Membersh
 	);
 	
 	Optional<MembershipSubscription> findTopByUser_IdOrderByStartAtDesc(Long userId); // 최근 구독(상태 무관)
+
+	// 탈퇴 시 정리해야 할 구독 조회(ACTIVE + PAST_DUE).
+	// endAt 조건을 넣지 않는다: 만료됐는데도 PAST_DUE 로 남아 던닝 재시도가 도는 구독을 놓치면,
+	// 익명화된 계정에 계속 결제가 시도된다.
+	// limit 1 은 findActiveEffectiveByUser 와 같은 이유로 필수다(겹치는 ACTIVE 구독이 실제로 존재한다).
+	@Query("""
+		select s from MembershipSubscription s
+		where s.user.id = :userId
+		  and s.status in :statuses
+		order by s.startAt desc
+		limit 1
+	""")
+	Optional<MembershipSubscription> findLatestByUserAndStatusIn(
+			@Param("userId") Long userId,
+			@Param("statuses") Collection<MembershipSubscriptionStatus> statuses
+	);
 
 	// 재청구 경로 동시 실행 직렬화용 비관적 쓰기 락 조회.
 	// retryCount 가드는 커밋 후에만 유효해서, MQ 중복 배달 시 첫 처리 커밋 전에 두 번째가

@@ -136,7 +136,7 @@ export default function SettingsPage() {
   // 되돌릴 수 없는 작업이라 실행 전에 결과를 명시한 확인을 한 번 받는다.
   const handleWithdraw = async () => {
     const confirmed = window.confirm(
-      '회원탈퇴 시 계정 정보가 삭제되고 다시 로그인할 수 없습니다.\n되돌릴 수 없습니다. 정말 탈퇴하시겠습니까?'
+      '회원탈퇴 시 계정 정보가 삭제되고 다시 로그인할 수 없습니다.\n이용 중인 멤버십은 즉시 종료되며 남은 기간은 환불되지 않습니다.\n되돌릴 수 없습니다. 정말 탈퇴하시겠습니까?'
     );
     if (!confirmed) return;
 

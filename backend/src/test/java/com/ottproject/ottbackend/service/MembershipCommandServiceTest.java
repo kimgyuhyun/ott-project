@@ -147,6 +147,50 @@ class MembershipCommandServiceTest {
         verifyNoInteractions(notificationService);
     }
 
+    // ===== 탈퇴 시 즉시 해지 =====
+
+    @Test
+    @DisplayName("탈퇴 즉시 해지 - ACTIVE 구독을 CANCELED + autoRenew off 로 바꾼다(잔여기간 소멸)")
+    void cancelImmediatelyForWithdrawalEndsActiveSubscription() {
+        given(subscriptionRepository.findLatestByUserAndStatusIn(eq(1L), any()))
+                .willReturn(Optional.of(sub));
+
+        service.cancelImmediatelyForWithdrawal(1L);
+
+        // 말일 해지 예약으로 두면 만료일까지 ACTIVE 라, 익명화된 계정이 혜택과 청구 대상을 계속 들고 있게 된다
+        assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
+        assertThat(sub.isAutoRenew()).isFalse();
+        assertThat(sub.getCanceledAt()).isNotNull();
+        // 이 시점 사용자 이메일은 곧 익명화되므로 안내 메일을 보내면 안 된다
+        verifyNoInteractions(notificationService);
+    }
+
+    @Test
+    @DisplayName("탈퇴 즉시 해지 - PAST_DUE 구독도 CANCELED 로 바꿔 던닝 재시도를 멈춘다")
+    void cancelImmediatelyForWithdrawalEndsPastDueSubscription() {
+        sub.applyPaymentFailure(LocalDateTime.now()); // 결제 실패 → PAST_DUE, 던닝 재시도 중
+        given(subscriptionRepository.findLatestByUserAndStatusIn(eq(1L), any()))
+                .willReturn(Optional.of(sub));
+
+        service.cancelImmediatelyForWithdrawal(1L);
+
+        // RecurringBillingService.prepareRetry 의 가드가 "PAST_DUE 아니거나 autoRenew=false 면 skip" 이므로
+        // 이 두 값이 재시도를 멈추는 근거다. 그대로 두면 익명화된 계정에 계속 결제가 시도된다
+        assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
+        assertThat(sub.isAutoRenew()).isFalse();
+    }
+
+    @Test
+    @DisplayName("탈퇴 즉시 해지 - 구독이 없으면 예외 없이 아무것도 하지 않는다(구독 없는 사용자도 탈퇴해야 한다)")
+    void cancelImmediatelyForWithdrawalWithoutSubscriptionDoesNothing() {
+        given(subscriptionRepository.findLatestByUserAndStatusIn(eq(1L), any()))
+                .willReturn(Optional.empty());
+
+        service.cancelImmediatelyForWithdrawal(1L);
+
+        verifyNoInteractions(notificationService, idempotencyKeyRepository);
+    }
+
     // ===== 재개 =====
 
     @Test
