@@ -38,6 +38,17 @@ function Send-DiscordAlert($content) {
 
 if ($Test) { Send-DiscordAlert ':white_check_mark: OTT 워치독 테스트 알림 — 이 메시지가 보이면 알림 설정 완료!'; Log 'test alert sent'; exit 0 }
 
+# docker CLI 는 "OCI runtime exec failed: ..." 를 stderr 가 아니라 stdout 으로 낸다. 그래서
+# exec 자체가 실패하면 그 에러 문구가 find 결과인 척 담겨 멀쩡한 컨테이너를 침해로 오탐한다.
+# (2026-08-08: 호스트 부팅 직후 아직 기동 중인 ott-app 에 exec → broken pipe → 자동 격리 →
+#  프록시망에서 끊겨 nginx 가 upstream 을 못 찾고 크래시 루프 → 서비스 전체 다운)
+# 종료 코드로 실패를 걸러내고, find 결과는 절대경로로 시작하는 줄만 인정한다.
+function Invoke-ContainerFind($c, $cmd) {
+  $out = & docker exec $c sh -c $cmd 2>$null
+  if ($LASTEXITCODE -ne 0) { Log "EXEC FAILED [$c] rc=$($LASTEXITCODE) $($out -join ' ')"; return @() }
+  @($out | Where-Object { $_ -match '^/' })
+}
+
 $targets    = @('ott-frontend','ott-app')
 $iocRegex   = 'xmrig|javae|minerd|cpuminer|kdevtmpfsi|kinsing|supportxmr|xRaPNJ'
 $detections = @()
@@ -100,7 +111,16 @@ foreach ($c in $targets) {
   if ($running -ne 'true') { continue }
 
   # (1) 쓰기 경로의 대용량 파일 또는 마이너 파일명 (정상 tmp 파일은 작음)
-  $dropped = & docker exec $c sh -c 'find /tmp /dev/shm /var/tmp -type f \( -size +1024k -o -name "javae" -o -iname "xmrig*" -o -iname "*miner*" -o -iname "cpuminer*" \) 2>/dev/null | head -50' 2>$null
+  # 2026-08-08: ott-app 이미지(Amazon Linux 2023 minimal)엔 find 가 없어서 아래 두 검사가
+  # 줄곧 조용히 0건이었다 — find 를 못 찾은 에러까지 sh 안의 2>/dev/null 이 삼켰고, head 를
+  # 거치며 종료 코드도 0 이 됐다. "이상 없음"과 "검사 못 함"을 구분해서 남긴다.
+  $hasFind = & docker exec $c sh -c 'command -v find >/dev/null 2>&1 && echo yes' 2>$null
+  if ($hasFind -ne 'yes') {
+    Log "SCAN DEGRADED [$c] find 없음 — 파일 기반 검사(1)(3) 건너뜀. IOC 프로세스 검사만 유효"
+    $dropped = @()
+  } else {
+    $dropped = Invoke-ContainerFind $c 'find /tmp /dev/shm /var/tmp -type f \( -size +1024k -o -name "javae" -o -iname "xmrig*" -o -iname "*miner*" -o -iname "cpuminer*" \) 2>/dev/null | head -50'
+  }
   if ($dropped) { $detections += [PSCustomObject]@{ c=$c; kind='DROPPED_BINARY'; detail=($dropped -join '; ') } }
 
   # (2) 호스트측 프로세스 목록에서 IOC (in-container ps 불필요 → distroless도 커버)
@@ -123,7 +143,7 @@ foreach ($c in $targets) {
   }
 
   # (3) /tmp 의 위장 점(.)폴더 안의 파일 (정상적으로는 비어있거나 소켓뿐)
-  $hidden = & docker exec $c sh -c 'find /tmp/.[A-Za-z]*/ -type f 2>/dev/null | head -30' 2>$null
+  $hidden = if ($hasFind -eq 'yes') { Invoke-ContainerFind $c 'find /tmp/.[A-Za-z]*/ -type f 2>/dev/null | head -30' } else { @() }
   if ($hidden) {
     $detections += [PSCustomObject]@{ c=$c; kind='HIDDEN_DIR_FILE'; detail=($hidden -join '; ') }
   }
