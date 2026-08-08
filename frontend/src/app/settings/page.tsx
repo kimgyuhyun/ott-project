@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
 import { getUserSettings, updateUserSettings, changePassword } from "@/lib/api/user";
+import { withdraw } from "@/lib/api/auth";
+import { getErrorMessage } from "@/lib/errorMessage";
 import { useAuth } from "@/lib/AuthContext";
 import styles from "./settings.module.css";
 
@@ -130,6 +132,29 @@ export default function SettingsPage() {
     await logout();
   };
 
+  // 회원탈퇴
+  // 되돌릴 수 없는 작업이라 실행 전에 결과를 명시한 확인을 한 번 받는다.
+  const handleWithdraw = async () => {
+    const confirmed = window.confirm(
+      '회원탈퇴 시 계정 정보가 삭제되고 다시 로그인할 수 없습니다.\n되돌릴 수 없습니다. 정말 탈퇴하시겠습니까?'
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsSaving(true);
+      await withdraw();
+      // 서버가 세션을 무효화했으므로 클라이언트에 남은 로그인 흔적도 지우고 로그인 화면으로 보낸다
+      // (지우지 않으면 다음 화면이 잠깐 로그인 상태로 보인다)
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    } catch (err) {
+      console.error('회원탈퇴 실패:', err);
+      // 활성 구독이 남아 있으면 400 + "구독을 먼저 해지해주세요" 가 온다 — 서버 메시지를 그대로 보여준다
+      alert(getErrorMessage(err) ?? '회원탈퇴에 실패했습니다.');
+      setIsSaving(false); // 성공 시에는 페이지를 떠나므로 실패 경로에서만 되돌린다
+    }
+  };
+
   // 테마 변경
   const handleThemeChange = (theme: string) => {
     setSettingsForm({...settingsForm, theme});
@@ -212,6 +237,22 @@ export default function SettingsPage() {
                   className={styles.logoutAllButton}
                 >
                   모든 기기에서 로그아웃
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.accountItem}>
+              <div className={styles.accountInfo}>
+                <span className={styles.accountLabel}>회원탈퇴</span>
+                <span className={styles.accountDescription}>계정 정보가 삭제되며 되돌릴 수 없습니다.</span>
+              </div>
+              <div className={styles.accountButtons}>
+                <button
+                  onClick={handleWithdraw}
+                  disabled={isSaving}
+                  className={styles.withdrawButton}
+                >
+                  회원탈퇴
                 </button>
               </div>
             </div>

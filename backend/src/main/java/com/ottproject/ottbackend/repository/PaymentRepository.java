@@ -39,11 +39,13 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> { // 결
 	//   판정 근거를 "내가 본 상태"에서 "내가 잠근 상태"로 바꾼다(ARCHITECTURE 6절).
 	//
 	// 왜 NOWAIT 이 아닌가 — MembershipSubscriptionRepository.findByIdForUpdate 와 정반대의 선택이다
-	// - 뒤에 온 요청은 기다렸다가 앞선 확정 결과를 보고 조용히 물러나야 한다. 즉시 실패시키면
-	//   클라 확정이 500 을 받고 웹훅은 재전송을 반복한다. 여기서는 대기가 곧 수렴 수단이다.
-	// - 구독 쪽이 NOWAIT 인 이유는 그 락 구간 안에서 외부 결제 API 를 부르기 때문인데,
-	//   이 락 구간에는 외부 호출이 없다. PG 재검증은 호출자가 트랜잭션 밖에서 끝내고 들어온다(9절).
-	//   그래서 대기 시간은 짧은 DB 문장 몇 개로 한정된다.
+	// - 두 경로 모두 락 구간 안에 외부 호출은 없다(PG 재검증은 호출자가 트랜잭션 밖에서 끝내고 들어온다, 9절).
+	//   그러니 "락 안에서 PG 를 부르느냐"가 갈림길이 아니다. 갈림길은 기다려서 보게 될 상태가
+	//   내 작업을 어떻게 끝내주느냐다.
+	// - 여기서는 기다렸다가 앞선 확정을 보면 "이미 SUCCEEDED" 가드에 걸려 조용히 물러난다. 그게 바로
+	//   원하는 결말이므로 대기가 곧 수렴 수단이다. 즉시 실패시키면 클라 확정이 500 을 받고 웹훅은 재전송을 반복한다.
+	// - 구독 쪽은 기다려도 retryCount 가드에 걸려 메시지가 폐기될 뿐이라 기다림에 얻을 것이 없어 NOWAIT 이다.
+	// - 이 락 구간에는 외부 호출이 없으므로 대기 시간은 짧은 DB 문장 몇 개로 한정된다.
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("select p from Payment p where p.id = :id")
 	Optional<Payment> findByIdForUpdate(@Param("id") Long id);

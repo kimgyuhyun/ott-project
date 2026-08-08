@@ -149,6 +149,70 @@ class UserFactoryTest {
     }
 
     @Nested
+    @DisplayName("withdraw")
+    class Withdraw {
+
+        private User savedUser(long id) {
+            User user = User.createLocalUser("user@example.com", "encoded-pw", "홍길동");
+            user.setId(id); // 익명 이메일이 PK 를 쓰므로 저장된 상태를 흉내낸다
+            return user;
+        }
+
+        @Test
+        @DisplayName("이메일을 예약 TLD(.invalid) 주소로 바꾼다 - 같은 주소로 재가입할 수 있어야 한다")
+        void anonymizesEmailSoTheAddressIsReleased() {
+            User user = savedUser(7L);
+
+            user.withdraw();
+
+            // 원래 주소가 남아 있으면 유니크 제약이 그 주소를 영구 점유해 재가입이 막힌다
+            assertThat(user.getEmail()).isNotEqualTo("user@example.com");
+            // .invalid 는 실제 주소로 존재할 수 없어(RFC 2606) 재가입 이메일과 충돌하지 않는다
+            assertThat(user.getEmail()).isEqualTo("withdrawn-7@withdrawn.invalid");
+        }
+
+        @Test
+        @DisplayName("탈퇴 계정끼리도 이메일이 겹치지 않는다 - PK 로 구분한다")
+        void anonymizedEmailsDoNotCollideBetweenUsers() {
+            User first = savedUser(7L);
+            User second = savedUser(8L);
+
+            first.withdraw();
+            second.withdraw();
+
+            assertThat(first.getEmail()).isNotEqualTo(second.getEmail());
+        }
+
+        @Test
+        @DisplayName("식별 정보를 지우고 계정을 비활성화한다")
+        void clearsIdentifyingFields() {
+            User user = savedUser(7L);
+            user.setProviderId("google-123");
+            user.setProfileImage("http://img");
+            user.setEmailVerified(true);
+
+            user.withdraw();
+
+            assertThat(user.getName()).isEqualTo("탈퇴한 사용자"); // 댓글/리뷰에 실명이 남지 않는다
+            assertThat(user.getPassword()).isNull(); // 자격증명은 파기한다
+            // providerId 가 남으면 소셜 재로그인이 이 계정을 다시 붙잡아 탈퇴가 무효가 된다
+            assertThat(user.getProviderId()).isNull();
+            assertThat(user.getProfileImage()).isNull();
+            assertThat(user.isEmailVerified()).isFalse();
+            assertThat(user.isEnabled()).isFalse(); // 로그인 차단
+        }
+
+        @Test
+        @DisplayName("저장 전 사용자는 탈퇴할 수 없다 - PK 없이는 충돌하지 않는 이메일을 만들 수 없다")
+        void rejectsUnsavedUser() {
+            User user = User.createLocalUser("user@example.com", "encoded-pw", "홍길동");
+
+            assertThatThrownBy(user::withdraw)
+                    .isInstanceOf(IllegalStateException.class);
+        }
+    }
+
+    @Nested
     @DisplayName("normalizeEmail")
     class NormalizeEmail {
 

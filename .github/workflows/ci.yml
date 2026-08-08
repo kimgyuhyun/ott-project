@@ -164,6 +164,52 @@ jobs:
           exit-code: '1'   # [2026-07-18] 게이트 활성화: 패치 가능한 CRITICAL 이 있으면 CI 실패 → push/배포 차단. ignore-unfixed 라 고칠 수 없는 취약점엔 안 막힘(무한 실패 방지).
           format: 'table'
 
+  # [SECURITY 2026-08-07] 백엔드 아웃바운드 프록시 2개. 백엔드/프론트와 완전히 같은 경로로
+  # 다룬다(커밋 SHA 태그로 push → Trivy 게이트 → CD 가 digest 로 고정). 업스트림 이미지를
+  # 쓰지 않고 직접 빌드하는 이유는 각 Dockerfile 상단 참고.
+  # 빌드 산출물이 없어 별도 빌드 스텝이 없다 — docker build 가 전부다.
+  proxies:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write          # ghcr push (GITHUB_TOKEN)
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ott-egress-proxy
+            context: proxy/squid
+          - name: ott-smtp-proxy
+            context: proxy/sockd
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Compute lowercase image ref
+        id: img
+        run: echo "ref=${REGISTRY}/$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')/${{ matrix.name }}" >> "$GITHUB_OUTPUT"
+      - name: Login to ghcr
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # PR 에서도 빌드는 돌려서 Dockerfile 이 깨진 채 main 에 들어가지 않게 한다.
+      # --pull 은 붙이지 않는다: 베이스가 digest 로 고정돼 있어 받아올 다른 이미지가 없다.
+      - name: Build image
+        run: docker build -t ${{ steps.img.outputs.ref }}:${{ github.sha }} ${{ matrix.context }}
+      - name: Push image (by commit SHA)
+        if: github.ref == 'refs/heads/main'
+        run: docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
+      - name: Scan image (gate on fixable CRITICAL)
+        if: github.ref == 'refs/heads/main'
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.img.outputs.ref }}:${{ github.sha }}
+          severity: 'CRITICAL'
+          ignore-unfixed: true
+          exit-code: '1'
+          format: 'table'
+
   frontend:
     runs-on: ubuntu-latest
     permissions:

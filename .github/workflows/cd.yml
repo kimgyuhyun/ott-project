@@ -61,6 +61,9 @@ jobs:
           $owner   = $env:OWNER.ToLower()
           $appTag  = "ghcr.io/$owner/ott-backend:$sha"
           $frontTag= "ghcr.io/$owner/ott-frontend:$sha"
+          # 아웃바운드 프록시 2개 — 백엔드/프론트와 같은 방식(커밋 SHA 태그 → digest 고정).
+          $squidTag= "ghcr.io/$owner/ott-egress-proxy:$sha"
+          $sockdTag= "ghcr.io/$owner/ott-smtp-proxy:$sha"
           Write-Host "commit=$sha"
 
           # --- 1) DB 백업 (age 암호화, 실패해도 진행) ---
@@ -126,13 +129,19 @@ jobs:
           Write-Host '=== PULL from ghcr ==='
           docker pull $appTag;   if ($LASTEXITCODE -ne 0) { throw "pull failed: $appTag" }
           docker pull $frontTag; if ($LASTEXITCODE -ne 0) { throw "pull failed: $frontTag" }
+          docker pull $squidTag; if ($LASTEXITCODE -ne 0) { throw "pull failed: $squidTag" }
+          docker pull $sockdTag; if ($LASTEXITCODE -ne 0) { throw "pull failed: $sockdTag" }
 
           # --- 4) digest 고정 (RepoDigests) ---
           $appImage   = "$(docker inspect --format '{{index .RepoDigests 0}}' $appTag)".Trim()
           $frontImage = "$(docker inspect --format '{{index .RepoDigests 0}}' $frontTag)".Trim()
+          $squidImage = "$(docker inspect --format '{{index .RepoDigests 0}}' $squidTag)".Trim()
+          $sockdImage = "$(docker inspect --format '{{index .RepoDigests 0}}' $sockdTag)".Trim()
           if (-not $appImage -or -not $frontImage) { throw 'failed to resolve image digests' }
+          if (-not $squidImage -or -not $sockdImage) { throw 'failed to resolve proxy image digests' }
           Write-Host "pinned backend : $appImage"
           Write-Host "pinned frontend: $frontImage"
+          Write-Host "pinned proxies : $squidImage / $sockdImage"
 
           # --- 5) 보안 게이트: pull된 이미지에 마이너 IOC 없는지 스캔 ---
           # 오탐 방지를 위해 "특정성 높은 IOC만 대소문자 구분"으로 검사한다.
@@ -154,6 +163,8 @@ jobs:
           # 디스크의 설정만 새것으로 갱신돼, 다음 force-recreate 가 새 설정 + 옛 이미지로 뜬다.
           $cfgRoot = 'C:\ott-deploy\config'
           foreach ($rel in @('nginx\nginx.prod.conf', 'nginx\nginx.prod.ha.conf', 'security\initdb',
+                             # 아웃바운드 허용목록. 빠지면 프록시가 설정 없이 떠서 배포 전체가 실패한다.
+                             'proxy\squid.conf', 'proxy\sockd.conf',
                              'rabbitmq\10-memory.conf', 'monitoring\prometheus.yml',
                              'monitoring\rules',
                              'monitoring\loki\loki-config.yml', 'monitoring\alloy\config.alloy',
@@ -171,7 +182,17 @@ jobs:
               if ($LASTEXITCODE -ge 8) { throw "robocopy failed (exit $LASTEXITCODE): $src -> $dst" }
               $global:LASTEXITCODE = 0   # 뒤의 $LASTEXITCODE 검사들이 오판하지 않도록 되돌린다
             } else {
-              Copy-Item $src $dst -Force -ErrorAction Stop
+              # 바이트 그대로가 아니라 LF 로 정규화해서 내보낸다. 러너 git 은
+              # core.autocrlf=true 라 작업폴더의 설정 파일이 CRLF 이고, .gitattributes 에
+              # eol=lf 를 넣어도 "이미 받아둔" 파일은 다시 쓰이지 않는다 — 인덱스의 stat
+              # 캐시가 그 파일을 수정 없음으로 보기 때문에 checkout 도 reset --hard 도
+              # 건드리지 않는다(2026-08-08 실측: 규칙만 추가한 배포가 그대로 또 깨졌다).
+              # dante sockd 는 CRLF 설정을 'near token "\r"' 로 거부하고 크래시 루프에
+              # 빠진다 — SMTP 아웃바운드 전면 정지. squid·nginx 는 견디지만 우연일 뿐이다.
+              # 여기서 복사하는 단일 파일은 전부 리눅스 컨테이너가 읽는 설정이라 CR 이
+              # 필요한 곳이 없다(대상 전부 BOM 없는 UTF-8 임을 확인함. WriteAllText 도
+              # BOM 없는 UTF-8 로 쓴다).
+              [IO.File]::WriteAllText($dst, ([IO.File]::ReadAllText($src) -replace "`r`n", "`n"))
             }
           }
           Write-Host "config copied to $cfgRoot ($((Get-ChildItem $cfgRoot -Recurse -File).Count) files)"
@@ -191,6 +212,10 @@ jobs:
           $env:FRONT_IMAGE = $frontImage
           $env:APP_PULL_POLICY = 'never'      # 이미 pull됨
           $env:FRONT_PULL_POLICY = 'never'
+          $env:SQUID_IMAGE = $squidImage
+          $env:SOCKD_IMAGE = $sockdImage
+          $env:SQUID_PULL_POLICY = 'never'
+          $env:SOCKD_PULL_POLICY = 'never'
           .\deploy-rolling.ps1
           if ($LASTEXITCODE -ne 0) { throw 'rolling deploy failed' }
           docker exec ott-nginx nginx -t; if ($LASTEXITCODE -ne 0) { throw 'nginx -t failed' }
@@ -201,6 +226,8 @@ jobs:
           # 구버전으로 다운그레이드된다(2026-07-20 에 실제로 그 상태였다).
           docker tag $appImage ott-backend:clean
           docker tag $frontImage ott-frontend:clean
+          docker tag $squidImage ott-egress-proxy:clean
+          docker tag $sockdImage ott-smtp-proxy:clean
 
           # --- 7) 검증: 백엔드 헬스 + 프론트엔드 egress 차단(보안 불변식) ---
           # 기동 직후엔 백엔드가 아직 listen 전이라 wget이 'connection refused'(stderr)를 낸다.

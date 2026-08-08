@@ -35,9 +35,14 @@ public class LocalUserDetailsService implements UserDetailsService { // spring s
 
 		boolean isSocialUser = user.getAuthProvider() != AuthProvider.LOCAL; // LOCAL 이 아닌 경우 소셜 로그인 사용자
 
+		// 탈퇴 계정은 비밀번호가 비어 있다(User.withdraw 가 지운다). null 을 그대로 넘기면 빌더가
+		// IllegalArgumentException 을 던져 403 대신 500 이 나가므로 빈 문자열로 바꾼다.
+		// 어떤 입력과도 일치하지 않고, 비활성 계정이라 비밀번호 대조 전에 DisabledException 으로 끝난다.
+		String storedPassword = user.getPassword() != null ? user.getPassword() : "";
+
 		return org.springframework.security.core.userdetails.User.builder()
 				.username(user.getEmail()) // 사용자명
-				.password(isSocialUser ? "{noop}" + (user.getPassword() != null ? user.getPassword() : "") : user.getPassword()) // 소셜이면 비번검증 skip
+				.password(isSocialUser ? "{noop}" + storedPassword : storedPassword) // 소셜이면 비번검증 skip
 				.disabled(!user.isEnabled())
 				.accountExpired(false)
 				.credentialsExpired(false)

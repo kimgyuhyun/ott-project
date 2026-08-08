@@ -54,6 +54,61 @@ $lateral = docker exec ott-frontend node -e "const s=require('net').connect({hos
 if ("$lateral" -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend can reach postgres (data tier not isolated)' }
 Write-Host "frontend -> postgres: $lateral"
 
+# [SECURITY 2026-08-07] Backend outbound is proxy-only with a destination allow-list.
+# These four are the same invariants deploy-rolling.ps1 checks; this script had no backend
+# check at all, so without them a rollback deploy would drop the whole invariant silently.
+# Single instance here (the ha overlay is not in this file set), so ott-app only.
+# All four judge on positive signals - exit code, 403, a connection that actually succeeds.
+Write-Host '=== VERIFY backend outbound is proxy-only and allow-listed ==='
+
+# 1. An allow-listed destination must go through the proxy.
+docker exec ott-app curl -s -o /dev/null --max-time 8 -x http://ott-egress-proxy:3128 https://api.iamport.kr/ | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "OUTBOUND FAILED: ott-app cannot reach an allow-listed destination through the proxy (curl exit $LASTEXITCODE). OAuth/payment/mail/TMDB are down." }
+Write-Host '  ott-app -> proxy -> api.iamport.kr: OK'
+
+# 2. A destination that is NOT on the list must be refused BY THE PROXY.
+#    %{http_connect} is the proxy's answer to CONNECT; %{http_code} stays 000 when the
+#    tunnel is never established and so cannot tell a refusal from a broken probe.
+$denied = "$(docker exec ott-app curl -s -o /dev/null -w '%{http_connect}' --max-time 8 -x http://ott-egress-proxy:3128 https://1.1.1.1/)".Trim()
+if ($denied -match '^2') { throw "SECURITY INVARIANT FAILED: ott-app reached a non-allow-listed destination through the proxy (CONNECT -> $denied)" }
+if ($denied -ne '403') { throw "allow-list probe returned an unexpected result (CONNECT -> '$denied') - not treating it as denied" }
+Write-Host '  ott-app -> proxy -> 1.1.1.1: DENIED (403)'
+
+# 3. Direct outbound (bypassing the proxy) must fail - the app is off the egress network.
+#    bash prints the verdict itself, and stderr is discarded INSIDE the container: a failed
+#    /dev/tcp writes "connect: Network is unreachable", and native stderr under
+#    $ErrorActionPreference='Stop' is a terminating error however it is redirected on the
+#    host side, so the noise has to be stopped at the source.
+$direct = ''
+try { $direct = (docker exec ott-app bash -c "timeout 3 bash -c 'echo > /dev/tcp/1.1.1.1/443' 2>/dev/null && echo DIRECT-OPEN || echo DIRECT-BLOCKED" | Out-String).Trim() }
+catch { $direct = "PROBE-ERROR: $($_.Exception.Message)" }
+if ($direct -match 'DIRECT-OPEN') { throw 'SECURITY INVARIANT FAILED: ott-app has direct outbound (1.1.1.1:443 reachable without the proxy)' }
+if ($direct -notmatch 'DIRECT-BLOCKED') { throw "direct-outbound probe returned an unexpected result ('$direct') - not treating it as blocked" }
+Write-Host '  ott-app direct 1.1.1.1:443: BLOCKED'
+
+# 4. External DNS must fail too - name resolution belongs to the proxy now.
+$dns = docker exec ott-app sh -c "getent hosts oauth2.googleapis.com > /dev/null && echo RESOLVED || echo BLOCKED"
+if ("$dns" -match 'RESOLVED') { throw 'SECURITY INVARIANT FAILED: ott-app still resolves external DNS (is it still on the egress network?)' }
+Write-Host '  ott-app external DNS: BLOCKED'
+
+# 5. The SMTP path over SOCKS, both halves. Checks 1-4 only exercise squid, so a misrouted
+#    or mis-ruled sockd would pass the deploy and surface as verification mails that never
+#    arrive. This curl build has no smtp://, so we talk to 587 as HTTP and let --http0.9
+#    hand us the greeting; a real 220 banner proves the SOCKS rule, DNS inside the proxy
+#    and the egress interface at once. It costs one GET line the mail server rejects.
+$smtpProbe = 'curl -s --http0.9 --max-time 10 --socks5-hostname ott-smtp-proxy:1080 http://smtp.naver.com:587/ 2>/dev/null'
+$smtp = "$(docker exec ott-app bash -c $smtpProbe)".Trim()
+if ($smtp -notmatch '220\s+smtp\.naver\.com') { throw "OUTBOUND FAILED: ott-app cannot reach SMTP through the SOCKS proxy (got '$smtp'). Signup and email verification are down." }
+Write-Host '  ott-app -> socks -> smtp.naver.com:587: OK (220 banner)'
+
+#    Deny half. curl exit 97 is specifically "the SOCKS proxy refused", distinct from an
+#    ordinary connection failure, so it says the ruleset rejected us.
+$smtpDenyProbe = 'curl -s -o /dev/null -w "%{exitcode}" --max-time 10 --socks5-hostname ott-smtp-proxy:1080 http://1.1.1.1:443/ 2>/dev/null'
+$smtpDeny = "$(docker exec ott-app bash -c $smtpDenyProbe)".Trim()
+if ($smtpDeny -eq '0') { throw 'SECURITY INVARIANT FAILED: ott-app reached a non-allow-listed destination through the SOCKS proxy' }
+if ($smtpDeny -ne '97') { throw "SOCKS allow-list probe returned an unexpected result (curl exit '$smtpDeny') - not treating it as denied" }
+Write-Host '  ott-app -> socks -> 1.1.1.1: DENIED (ruleset)'
+
 # Apply any nginx config change.
 # The conf is a single-file bind mount, so the `up -d` above does not recreate
 # nginx when only its CONTENTS change, and the running process keeps the config it

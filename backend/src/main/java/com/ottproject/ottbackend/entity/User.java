@@ -202,6 +202,33 @@ public class User {
         return user;
     }
 
+    // ===== 상태 전이 =====
+    /**
+     * 회원탈퇴 — 계정을 비활성화하고 식별 정보를 익명화한다.
+     *
+     * 행을 지우지 않는 이유: users 를 참조하는 외래 키가 20개 테이블(결제/구독/댓글 등)에 걸쳐 있어
+     * 하드 삭제는 결제 이력까지 함께 날린다. 대신 개인정보만 지우고 행은 남긴다.
+     *
+     * 이메일을 바꾸는 이유: enabled=false 만으로는 email 유니크 제약이 그 주소를 영구 점유해서
+     * 같은 주소로 재가입할 수 없다. 예약 TLD(.invalid, RFC 2606)라 실제 주소로 존재할 수 없고,
+     * PK 를 붙여 다른 탈퇴 계정과도 충돌하지 않는다.
+     *
+     * providerId 도 함께 비운다. 소셜 재로그인이 이 계정을 다시 붙잡으면 탈퇴가 무효가 된다
+     * (연동 행 삭제는 다른 테이블이라 서비스가 맡는다).
+     */
+    public void withdraw() {
+        if (id == null) {
+            throw new IllegalStateException("저장되지 않은 사용자는 탈퇴할 수 없습니다.");
+        }
+        this.email = "withdrawn-" + id + "@withdrawn.invalid";
+        this.name = "탈퇴한 사용자";
+        this.password = null;
+        this.providerId = null;
+        this.profileImage = null;
+        this.emailVerified = false;
+        this.enabled = false;
+    }
+
     /**
      * 이메일 정규화 (계정 동일성 기준)
      *

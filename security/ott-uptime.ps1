@@ -12,8 +12,13 @@ $ErrorActionPreference = 'Continue'
 $base       = 'C:\solo-project\ott-project\security'
 $log        = Join-Path $base 'uptime.log'
 $state      = Join-Path $base 'uptime.state'
-$target     = 'https://localhost/'
-$hostHeader = 'laputa.kozow.com'
+# 이름은 실도메인, 접속은 127.0.0.1 로 강제한다(--resolve). Host 헤더만 바꾸고
+# https://localhost/ 로 붙던 예전 방식은 TLS 핸드셰이크 단계에서 끊긴다(실측 code=000):
+# 헤더는 암호화 이후에 오는데 SNI 는 그 전에 나가고, nginx 는 모르는 SNI 를 끊기 때문이다.
+# --resolve 는 SNI 와 Host 를 둘 다 실도메인으로 보내면서 접속만 로컬로 돌린다.
+$domain     = 'laputa.kozow.com'
+$target     = "https://$domain/"
+$resolve    = "${domain}:443:127.0.0.1"
 $timeout    = 10
 $failThreshold = 2     # 연속 N회 실패해야 DOWN 처리(일시적 흔들림 무시)
 if (-not (Test-Path $base)) { New-Item -ItemType Directory -Path $base -Force | Out-Null }
@@ -38,7 +43,7 @@ if ($Test) { Send-DiscordAlert ':satellite_orbital: 업타임 모니터 테스�
 # --- 현재 상태 점검 (curl.exe: 자체서명/Host 헤더 처리 용이) ---
 $code = 0
 try {
-  $out  = & curl.exe -s -o NUL -w '%{http_code}' -k --max-time $timeout -H "Host: $hostHeader" $target 2>$null
+  $out  = & curl.exe -s -o NUL -w '%{http_code}' -k --max-time $timeout --resolve $resolve $target 2>$null
   $code = [int]$out
 } catch { $code = 0 }
 $ok = ($code -ge 200 -and $code -lt 400)

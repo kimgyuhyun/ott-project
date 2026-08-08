@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
+import com.ottproject.ottbackend.repository.SocialAccountRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.DisabledException;
@@ -25,7 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
  * - register: 회원가입 처리
  * - login: 로그인 검증 후 사용자 반환
  * - checkEmailDuplicate: 이메일 중복 확인
- * - withdraw: 계정 비활성화(탈퇴)
+ * - withdraw: 계정 비활성화 + 익명화 + 소셜 연동 해제(탈퇴)
  * - changePassword: 비밀번호 변경
  */
 @Service // 스프링에 Bean에 Service로 등록함 싱글턴 패턴을 사용 / 싱글턴 패턴은 클래스의 인스턴스가 하나만 생성되도록 보장하는것것
@@ -39,6 +40,8 @@ public class EmailAuthService {
 	// SPring Security 에서 제공하는 암호화 인터페이스임
 	private final AuthenticationManager authenticationManager; // 표준 인증 위임(로컬 로그인)
 	private final VerificationEmailService verificationEmailService; // 이메일 인증 티켓 확인/소비(가입 전제조건)
+	private final MembershipEligibilityService membershipEligibilityService; // 유효 구독 판별(탈퇴 차단 조건)
+	private final SocialAccountRepository socialAccountRepository; // 소셜 연동 해제(탈퇴)
 	// 엔티티→DTO 변환은 UserResponseDto.from 이 담당한다(다른 DTO 들과 같은 정적 팩토리 방식).
 	// User 엔티티에는 비밀번호 등 민감 정보가 포함되기 때문에 UserResponseDto로 바꿔서 비밀번호를 제외한 안전한 정보만 포함함
 	public UserResponseDto  register(AuthRegisterRequestDto requestDto) { // 회원가입 메서드
@@ -107,6 +110,12 @@ public class EmailAuthService {
 		// DB에 접근해서 중복인지 아닌지 여부를 ture/false로 반환해주고 그걸 바로 반환하는 형식
 	}
 
+	/**
+	 * 회원탈퇴 — 계정 비활성화 + 개인정보 익명화 + 소셜 연동 해제
+	 *
+	 * 세 가지가 한 트랜잭션 안에서 끝나야 한다(클래스 레벨 @Transactional). 연동만 지워지고 익명화가
+	 * 실패하면 로그인 수단은 끊겼는데 이메일은 계속 점유된 계정이 남는다.
+	 */
 	public void withdraw(String email) {
 		// 회원탈퇴 처리하는 메서드고 파라미터로 이메일을 받음
 		User user = userService.findByEmail(email)
@@ -115,16 +124,25 @@ public class EmailAuthService {
 		// findByEmail 메서드에 email 넘겨서 optional<User> 타입으로 User 객체가 Optional에 감싸져 반환되고
 		// orElseThrow() 메서드를 체이닝해서 호출했기떄문에 여기서 검증을하는데 optional이 비어있으면 람다식으로 넘긴
 		// 예외객체가 생성되고 메서드 중단, 값이 있으면 user 변수에 저장됨
-		user.setEnabled(false); // Enalled는 계정 활성화 여부고 false로 email로 가져온 user 객체를 비활성화 세팅함함
+
+		// 결제가 걸린 계정은 막는다. 익명화는 되돌릴 수 없어서, 유효 구독을 남긴 채 탈퇴시키면
+		// 남은 기간의 혜택과 다음 청구 대상이 주인 없는 상태가 된다. 해지는 사용자가 먼저 하게 한다.
+		if (membershipEligibilityService.isMember(user.getId())) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "구독을 먼저 해지해주세요.");
+		}
+
+		// 소셜 연동 행을 지운다. 남겨두면 OAuth2UserService 가 (provider, providerId)로 이 계정을
+		// 먼저 찾아내 탈퇴한 계정으로 다시 로그인시키고, 같은 소셜 계정의 재가입도 막힌다.
+		socialAccountRepository.deleteByUser(user);
+
+		// 이메일/이름 익명화 + 비활성화. 규칙은 엔티티 안에 있다(User.withdraw).
+		// enabled=false 만 두면 email 유니크 제약이 그 주소를 영구 점유해 같은 주소로 재가입할 수 없다.
+		user.withdraw();
 		userService.saveUser(user);
 		// saveuser 메서드에 user 객체를 태워보넴
 		// JPA의 save 메서드는 ID가 있으면 UPDATE를 수행함
-		// 이미 존재하는 suer 객체이므로 UPDATE가 실행됨
-		// DB에서 enabled 필드가 false로 업데이트되서 비활성화됨
-		// 실제로 데이터를 삭제하진않고 활성화 여부만 변경해서 소프트 삭제 처리를함
-		// 데이터는 보존되되지만 로그인은 불가능
-		// 세션에서 email을 가지고 있고 그걸 사용해야하니 findByEmail을 사용하는것것
-		// 이메일을 넣어서 유저 객체 가져오면 id도 같이 가져와짐 그리고 email을 키로 찾을려면 email에 유니크제약을 걸어둬야함
+		// 실제로 데이터를 삭제하진 않고 식별 정보만 지우는 소프트 삭제라, 결제/댓글 등 20개 테이블의
+		// FK 참조가 그대로 살아 있다(하드 삭제하면 그 이력이 통째로 깨진다)
 	}
 
 	public void changePassword(String email, String currentPassword, String newPassword) {

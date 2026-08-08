@@ -37,27 +37,30 @@ $ComposeFiles = @(
     '-f', 'docker-compose.monitoring.yml'
 )
 
-# Instance name -> loopback port used to confirm it is actually up.
-# Going through nginx would not tell us WHICH instance answered.
-$Instances = [ordered]@{
-    'ott-app'   = 8090
-    'ott-app-2' = 8093
-}
+# Backend instances, in replacement order.
+$Instances = @('ott-app', 'ott-app-2')
 
+# [SECURITY 2026-08-07] This used to poll a per-instance loopback port (8090/8093).
+# That stopped working when the backends left the egress network: a container attached
+# ONLY to internal networks cannot publish a host port (PLATFORM 3절), so `docker port
+# ott-app` is now empty and every poll fails - which is what aborted the first deploy
+# after the change.
+# We ask nginx instead, addressing the instance by CONTAINER NAME rather than through the
+# upstream. That keeps the property the loopback ports existed for: we still know WHICH
+# instance answered, so sequential replacement stays controllable. (cd.yml already probed
+# the backend this exact way.)
 function Wait-Healthy {
-    param([string]$Name, [int]$Port, [int]$TimeoutSec = 180)
+    param([string]$Name, [int]$TimeoutSec = 180)
 
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
     while ((Get-Date) -lt $deadline) {
-        try {
-            $r = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/actuator/health" `
-                                   -TimeoutSec 3 -UseBasicParsing
-            if ($r.StatusCode -eq 200) {
-                Write-Host "  $Name is healthy"
-                return
-            }
-        } catch {
-            # not up yet - keep polling
+        $body = ''
+        # A backend that is not listening yet makes wget write to stderr, which is a
+        # terminating error under $ErrorActionPreference='Stop' - hence the try/catch.
+        try { $body = "$(docker exec ott-nginx wget -qO- -T3 "http://${Name}:8090/actuator/health" 2>$null)" } catch { $body = '' }
+        if ($body -match '"status"\s*:\s*"UP"') {
+            Write-Host "  $Name is healthy"
+            return
         }
         Start-Sleep -Seconds 2
     }
@@ -76,19 +79,20 @@ if (-not (Test-Path .env)) {
 # may not exist yet - then step 2 recreates it a second time. That mistake cost
 # a real ~15s outage on the 2026-07-20 first deploy (364 failed requests).
 Write-Host '=== Updating non-backend services (incl. monitoring) ==='
-docker compose @ComposeFiles up -d --remove-orphans --no-deps postgres redis kafka rabbitmq frontend nginx loki prometheus grafana alloy
+# The two egress proxies are in this step on purpose: they must be listening before the
+# backends come up, because the backends have no other way out.
+docker compose @ComposeFiles up -d --remove-orphans --no-deps postgres redis kafka rabbitmq frontend nginx loki prometheus grafana alloy ott-egress-proxy ott-smtp-proxy
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up (non-backend) failed' }
 
 # --- 2. Backend instances, one at a time --------------------------------------
-foreach ($name in $Instances.Keys) {
-    $port = $Instances[$name]
-    $svc  = if ($name -eq 'ott-app') { 'app' } else { 'app2' }
+foreach ($name in $Instances) {
+    $svc = if ($name -eq 'ott-app') { 'app' } else { 'app2' }
 
     Write-Host "=== Replacing $name (service: $svc) ==="
     docker compose @ComposeFiles up -d --force-recreate --no-deps $svc
     if ($LASTEXITCODE -ne 0) { throw "docker compose up failed for $svc" }
 
-    Wait-Healthy -Name $name -Port $port
+    Wait-Healthy -Name $name
 }
 
 # --- 3. Security invariants (same checks as deploy.ps1) -----------------------
@@ -102,13 +106,78 @@ $lateral = docker exec ott-frontend node -e "const s=require('net').connect({hos
 if ("$lateral" -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend can reach postgres (data tier not isolated)' }
 Write-Host "frontend -> postgres: $lateral"
 
-# Both backends must have outbound internet (OAuth / mail / payment / TMDB).
-# A missing 'egress' network on ott-app-2 is the easiest mistake to make here.
-Write-Host '=== VERIFY both backends have egress ==='
-foreach ($name in $Instances.Keys) {
-    $dns = docker exec $name sh -c "getent hosts oauth2.googleapis.com > /dev/null && echo OK || echo FAIL"
-    if ("$dns" -match 'FAIL') { throw "SECURITY/CONFIG FAILED: $name cannot resolve external hosts (egress network missing?)" }
-    Write-Host "  $name egress: $dns"
+# [SECURITY 2026-08-07] Backend outbound is now proxy-only with a destination allow-list.
+# The old check here asserted the OPPOSITE (that the backend could resolve external hosts
+# directly); leaving it in would abort every deploy the moment app leaves the egress network.
+# The expectation is inverted, not the command - see check 4.
+#
+# All four are judged on POSITIVE signals (exit code / 403 / a connection that succeeds),
+# never on "the output was empty" - see the note in cd.yml about why.
+# A missing 'proxy' network on ott-app-2 (ha.yml is not covered by extends) is the easiest
+# mistake to make here, and check 1 is what catches it.
+Write-Host '=== VERIFY backend outbound is proxy-only and allow-listed ==='
+foreach ($name in $Instances) {
+    # 1. An allow-listed destination must go through the proxy.
+    docker exec $name curl -s -o /dev/null --max-time 8 -x http://ott-egress-proxy:3128 https://api.iamport.kr/ | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "OUTBOUND FAILED: $name cannot reach an allow-listed destination through the proxy (curl exit $LASTEXITCODE). OAuth/payment/mail/TMDB are down." }
+    Write-Host "  $name -> proxy -> api.iamport.kr: OK"
+
+    # 2. A destination that is NOT on the list must be refused BY THE PROXY.
+    #    %{http_connect} is the proxy's answer to CONNECT (%{http_code} stays 000 when the
+    #    tunnel is never established, so it cannot tell a refusal from a broken probe).
+    $denied = "$(docker exec $name curl -s -o /dev/null -w '%{http_connect}' --max-time 8 -x http://ott-egress-proxy:3128 https://1.1.1.1/)".Trim()
+    if ($denied -match '^2') { throw "SECURITY INVARIANT FAILED: $name reached a non-allow-listed destination through the proxy (CONNECT -> $denied)" }
+    if ($denied -ne '403') { throw "allow-list probe returned an unexpected result on $name (CONNECT -> '$denied') - not treating it as denied" }
+    Write-Host "  $name -> proxy -> 1.1.1.1: DENIED (403)"
+
+    # 3. Direct outbound (bypassing the proxy) must fail - the app is off the egress network.
+    #    Two things are deliberate here. bash prints the verdict itself instead of us
+    #    reading an exit code, and stderr is discarded INSIDE the container (2>/dev/null
+    #    on the inner bash). A failed /dev/tcp writes "connect: Network is unreachable" to
+    #    stderr, and native stderr under $ErrorActionPreference='Stop' is a terminating
+    #    error no matter how it is redirected on the host side - so the noise has to be
+    #    stopped at the source.
+    $direct = ''
+    try { $direct = (docker exec $name bash -c "timeout 3 bash -c 'echo > /dev/tcp/1.1.1.1/443' 2>/dev/null && echo DIRECT-OPEN || echo DIRECT-BLOCKED" | Out-String).Trim() }
+    catch { $direct = "PROBE-ERROR: $($_.Exception.Message)" }
+    if ($direct -match 'DIRECT-OPEN') { throw "SECURITY INVARIANT FAILED: $name has direct outbound (1.1.1.1:443 reachable without the proxy)" }
+    if ($direct -notmatch 'DIRECT-BLOCKED') { throw "direct-outbound probe returned an unexpected result on $name ('$direct') - not treating it as blocked" }
+    Write-Host "  $name direct 1.1.1.1:443: BLOCKED"
+
+    # 4. External DNS must fail too. Same command as the pre-2026-08-07 check, opposite
+    #    expectation: on an internal-only network the container cannot resolve public names,
+    #    which is why name resolution has to happen inside the proxy.
+    $dns = docker exec $name sh -c "getent hosts oauth2.googleapis.com > /dev/null && echo RESOLVED || echo BLOCKED"
+    if ("$dns" -match 'RESOLVED') { throw "SECURITY INVARIANT FAILED: $name still resolves external DNS (is it still on the egress network?)" }
+    Write-Host "  $name external DNS: BLOCKED"
+
+    # 5. The SMTP path over SOCKS, both halves. Checks 1-4 only exercise squid, so without
+    #    this a misrouted or mis-ruled sockd passes the deploy and only shows up when a
+    #    user waits for a verification mail that never arrives. It is also the only check
+    #    that covers the sockd.conf "external:" address / compose ipv4_address pairing.
+    #    It has already earned its keep twice: a CRLF config that would not parse, and an
+    #    outbound bound to the wrong interface (sockd logged "running" and its port was
+    #    open both times - only this check saw that no session ever got out).
+    #
+    #    This curl build has no smtp:// or telnet:// (only file ftp ftps http https ipfs
+    #    ipns), so we speak to port 587 as if it were HTTP and let --http0.9 hand us the
+    #    server's greeting as the body. Reaching a real 220 banner proves the whole path:
+    #    SOCKS rule, DNS inside the proxy, and the egress interface.
+    #    Cost of the trick: curl sends one GET line that the mail server answers with
+    #    "502 Unrecognized command". Harmless, and it is the price of a positive signal.
+    $smtpProbe = 'curl -s --http0.9 --max-time 10 --socks5-hostname ott-smtp-proxy:1080 http://smtp.naver.com:587/ 2>/dev/null'
+    $smtp = "$(docker exec $name bash -c $smtpProbe)".Trim()
+    if ($smtp -notmatch '220\s+smtp\.naver\.com') { throw "OUTBOUND FAILED: $name cannot reach SMTP through the SOCKS proxy (got '$smtp'). Signup and email verification are down." }
+    Write-Host "  $name -> socks -> smtp.naver.com:587: OK (220 banner)"
+
+    #    And the deny half: exit code 97 is curl's "the SOCKS proxy refused", which is a
+    #    different code from any ordinary connection failure - so it says the ruleset
+    #    rejected us rather than the network being broken.
+    $smtpDenyProbe = 'curl -s -o /dev/null -w "%{exitcode}" --max-time 10 --socks5-hostname ott-smtp-proxy:1080 http://1.1.1.1:443/ 2>/dev/null'
+    $smtpDeny = "$(docker exec $name bash -c $smtpDenyProbe)".Trim()
+    if ($smtpDeny -eq '0') { throw "SECURITY INVARIANT FAILED: $name reached a non-allow-listed destination through the SOCKS proxy" }
+    if ($smtpDeny -ne '97') { throw "SOCKS allow-list probe returned an unexpected result on $name (curl exit '$smtpDeny') - not treating it as denied" }
+    Write-Host "  $name -> socks -> 1.1.1.1: DENIED (ruleset)"
 }
 
 # --- 4. Apply any nginx config change -----------------------------------------
