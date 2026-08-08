@@ -149,7 +149,8 @@ export default function SettingsPage() {
       window.location.href = '/login';
     } catch (err) {
       console.error('회원탈퇴 실패:', err);
-      // 활성 구독이 남아 있으면 400 + "구독을 먼저 해지해주세요" 가 온다 — 서버 메시지를 그대로 보여준다
+      // 구독이 남아 있어도 서버가 즉시 해지하고 진행하므로 구독 때문에 실패하지는 않는다.
+      // 세션 만료 등 남은 실패 사유는 서버 메시지를 그대로 보여준다
       alert(getErrorMessage(err) ?? '회원탈퇴에 실패했습니다.');
       setIsSaving(false); // 성공 시에는 페이지를 떠나므로 실패 경로에서만 되돌린다
     }

@@ -29,6 +29,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -152,8 +153,8 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("탈퇴 즉시 해지 - ACTIVE 구독을 CANCELED + autoRenew off 로 바꾼다(잔여기간 소멸)")
     void cancelImmediatelyForWithdrawalEndsActiveSubscription() {
-        given(subscriptionRepository.findLatestByUserAndStatusIn(eq(1L), any()))
-                .willReturn(Optional.of(sub));
+        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any()))
+                .willReturn(List.of(sub));
 
         service.cancelImmediatelyForWithdrawal(1L);
 
@@ -169,8 +170,8 @@ class MembershipCommandServiceTest {
     @DisplayName("탈퇴 즉시 해지 - PAST_DUE 구독도 CANCELED 로 바꿔 던닝 재시도를 멈춘다")
     void cancelImmediatelyForWithdrawalEndsPastDueSubscription() {
         sub.applyPaymentFailure(LocalDateTime.now()); // 결제 실패 → PAST_DUE, 던닝 재시도 중
-        given(subscriptionRepository.findLatestByUserAndStatusIn(eq(1L), any()))
-                .willReturn(Optional.of(sub));
+        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any()))
+                .willReturn(List.of(sub));
 
         service.cancelImmediatelyForWithdrawal(1L);
 
@@ -183,12 +184,33 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("탈퇴 즉시 해지 - 구독이 없으면 예외 없이 아무것도 하지 않는다(구독 없는 사용자도 탈퇴해야 한다)")
     void cancelImmediatelyForWithdrawalWithoutSubscriptionDoesNothing() {
-        given(subscriptionRepository.findLatestByUserAndStatusIn(eq(1L), any()))
-                .willReturn(Optional.empty());
+        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any()))
+                .willReturn(List.of());
 
         service.cancelImmediatelyForWithdrawal(1L);
 
         verifyNoInteractions(notificationService, idempotencyKeyRepository);
+    }
+
+    @Test
+    @DisplayName("탈퇴 즉시 해지 - 겹치는 구독이 여러 건이면 전부 해지한다(한 건이라도 남으면 청구가 계속된다)")
+    void cancelImmediatelyForWithdrawalEndsEveryRemainingSubscription() {
+        // 무기한 구독(endAt=null)이 있는 사용자가 재구독하면 subscribe() 가 연장 분기를 타지 못해
+        // 겹치는 ACTIVE 구독이 실제로 생긴다. ACTIVE 와 PAST_DUE 가 함께 남는 경우도 같다
+        MembershipSubscription older = MembershipSubscription.createSubscription(
+                User.reference(1L), plan("BASIC", 9900L, 1), LocalDateTime.now().minusMonths(2), null);
+        older.applyPaymentFailure(LocalDateTime.now()); // 던닝 재시도 중인 PAST_DUE
+        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any()))
+                .willReturn(List.of(sub, older));
+
+        service.cancelImmediatelyForWithdrawal(1L);
+
+        // 남겨두면 autoRenew=true 라 정기결제 배치(ACTIVE/PAST_DUE + autoRenew ON 이 대상)가
+        // 익명화된 계정에 계속 청구한다
+        assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
+        assertThat(sub.isAutoRenew()).isFalse();
+        assertThat(older.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
+        assertThat(older.isAutoRenew()).isFalse();
     }
 
     // ===== 재개 =====

@@ -16,8 +16,12 @@ import org.springframework.jdbc.datasource.SimpleDriverDataSource;
  * JPQL 만 검증하는 테스트들은 실제 매퍼 쿼리를 쓰지 않으므로, 등록만 가능한 껍데기 팩토리를 넣어준다.
  *
  * 함께 필요한 프로퍼티(각 테스트에서 @TestPropertySource 로 지정)
- * - spring.flyway.enabled=false : 마이그레이션이 PostgreSQL 전용 문법이라 H2 에서 깨진다
- * - spring.jpa.hibernate.ddl-auto=create-drop : 엔티티로 H2 스키마를 만든다
+ * - spring.flyway.enabled=false : 스키마를 마이그레이션 이력이 아니라 엔티티 기준으로 만든다
+ *   (H2 슬라이스에서는 마이그레이션이 PostgreSQL 전용 문법이라 실행 자체가 깨지기도 한다)
+ * - spring.jpa.hibernate.ddl-auto=create-drop : 엔티티로 스키마를 만든다
+ *
+ * DB 는 테스트마다 다르다. 직접 작성한 쿼리를 보는 슬라이스는 Testcontainers PostgreSQL 을 쓰고
+ * (MembershipSubscriptionRepositoryTest 등), 나머지는 아직 H2 위에서 돈다.
  *
  * ⚠ JpaAuditingConfig 를 슬라이스에 임포트하지 말 것
  * - @EnableJpaAuditing 은 AspectJ 로 위빙된 AnnotationBeanConfigurerAspect 를 끌어오는데,

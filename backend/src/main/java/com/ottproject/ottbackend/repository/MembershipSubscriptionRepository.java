@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -24,7 +25,7 @@ import java.util.Optional;
  * 메서드 개요
  * - findActiveEffectiveByUser: 주어진 시점(now)에 유효한 사용자 구독(ACTIVE) 조회
  * - findTopByUser_IdOrderByStartAtDesc: 사용자 최근 구독(상태 무관) 조회
- * - findLatestByUserAndStatusIn: 주어진 상태들 중 최근 구독 1건 조회(탈퇴 시 즉시 해지 대상)
+ * - findAllByUserAndStatusIn: 주어진 상태들의 구독 전체 조회(탈퇴 시 즉시 해지 대상)
  */
 @Repository
 public interface MembershipSubscriptionRepository extends JpaRepository<MembershipSubscription, Long> {
@@ -53,15 +54,18 @@ public interface MembershipSubscriptionRepository extends JpaRepository<Membersh
 	// 탈퇴 시 정리해야 할 구독 조회(ACTIVE + PAST_DUE).
 	// endAt 조건을 넣지 않는다: 만료됐는데도 PAST_DUE 로 남아 던닝 재시도가 도는 구독을 놓치면,
 	// 익명화된 계정에 계속 결제가 시도된다.
-	// limit 1 은 findActiveEffectiveByUser 와 같은 이유로 필수다(겹치는 ACTIVE 구독이 실제로 존재한다).
+	// findActiveEffectiveByUser 와 달리 limit 1 을 쓰지 않는다. 그쪽은 "지금 유효한 구독 하나"를 고르는
+	// 조회라 최신 한 건이면 되지만, 여기는 남기면 안 되는 것을 전부 걷어내는 것이 목적이다.
+	// 위에 적힌 이유로 겹치는 ACTIVE 구독이 실제로 생기고 ACTIVE 와 PAST_DUE 가 공존할 수도 있는데,
+	// 한 건만 끊으면 남은 구독이 autoRenew=true 인 채로 살아남아 정기결제 배치(ACTIVE/PAST_DUE +
+	// autoRenew ON 이 대상)가 익명화된 계정에 계속 청구한다.
 	@Query("""
 		select s from MembershipSubscription s
 		where s.user.id = :userId
 		  and s.status in :statuses
 		order by s.startAt desc
-		limit 1
 	""")
-	Optional<MembershipSubscription> findLatestByUserAndStatusIn(
+	List<MembershipSubscription> findAllByUserAndStatusIn(
 			@Param("userId") Long userId,
 			@Param("statuses") Collection<MembershipSubscriptionStatus> statuses
 	);
