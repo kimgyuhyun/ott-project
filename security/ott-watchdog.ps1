@@ -17,7 +17,12 @@ $base  = 'C:\solo-project\ott-project\security'
 $log   = Join-Path $base 'watchdog.log'
 $alert = Join-Path $base 'ALERT.txt'
 if (-not (Test-Path $base)) { New-Item -ItemType Directory -Path $base -Force | Out-Null }
-function Log($m){ $line = "$(Get-Date -Format o)  $m"; Add-Content -Path $log -Value $line -Encoding utf8; Write-Output $line }
+# Write-Host 여야 한다. Write-Output 이면 이 함수를 부른 함수의 "반환값"에 로그 줄이 섞인다.
+# 2026-08-09: Invoke-ContainerFind 가 exec 실패를 걸러내고 return @() 를 해도, 그 직전 Log 가
+# 뱉은 "EXEC FAILED ..." 문자열이 파이프라인에 남아 함수 반환값이 됐다. 호출부는 그걸 find 결과로
+# 받아 HIDDEN_DIR_FILE 로 판정했고, 배포 중이던 멀쩡한 프론트가 격리돼 사이트가 내려갔다.
+# 즉 전날의 종료코드 가드(4c609e5)는 이 한 줄 때문에 무력화돼 있었다.
+function Log($m){ $line = "$(Get-Date -Format o)  $m"; Add-Content -Path $log -Value $line -Encoding utf8; Write-Host $line }
 
 # 디스코드 웹훅 알림. URL은 security\discord-webhook.txt 한 줄에 저장(깃 제외). 없으면 조용히 skip.
 function Send-DiscordAlert($content) {
@@ -44,14 +49,32 @@ if ($Test) { Send-DiscordAlert ':white_check_mark: OTT 워치독 테스트 알�
 #  프록시망에서 끊겨 nginx 가 upstream 을 못 찾고 크래시 루프 → 서비스 전체 다운)
 # 종료 코드로 실패를 걸러내고, find 결과는 절대경로로 시작하는 줄만 인정한다.
 function Invoke-ContainerFind($c, $cmd) {
-  $out = & docker exec $c sh -c $cmd 2>$null
-  if ($LASTEXITCODE -ne 0) { Log "EXEC FAILED [$c] rc=$($LASTEXITCODE) $($out -join ' ')"; return @() }
-  @($out | Where-Object { $_ -match '^/' })
+  $out = @(& docker exec $c sh -c $cmd 2>$null)
+  if ($LASTEXITCODE -ne 0) {
+    Log "EXEC FAILED [$c] rc=$($LASTEXITCODE) $($out -join ' ')"
+    $script:scanFailures += "$c(exec rc=$LASTEXITCODE)"
+    return ,@()
+  }
+  # 절대경로로 시작하는 줄만 인정한다. 검사 결과가 아닌 것은 무엇이든 탐지가 될 수 없다.
+  ,@($out | Where-Object { $_ -match '^/' })
 }
 
-$targets    = @('ott-frontend','ott-app')
-$iocRegex   = 'xmrig|javae|minerd|cpuminer|kdevtmpfsi|kinsing|supportxmr|xRaPNJ'
-$detections = @()
+# 컨테이너가 방금 뜬 상태면 파일 검사를 건너뛴다.
+# 배포는 컨테이너를 지웠다 다시 만든다. 그 사이에 exec 를 걸면 반드시 실패하는데, 그것은
+# 침해도 이상도 아니라 그냥 타이밍이다. 2026-08-08 과 08-09 의 오탐이 둘 다 이 창에서 났다.
+# 검사를 한 주기(5분) 미루는 대가로 배포마다 나던 잡음을 없앤다.
+function Test-RecentlyStarted($c, $graceSeconds = 90) {
+  $startedRaw = (& docker inspect -f '{{.State.StartedAt}}' $c 2>$null)
+  if ($LASTEXITCODE -ne 0 -or -not $startedRaw) { return $false }
+  try { $started = [datetime]::Parse($startedRaw).ToUniversalTime() } catch { return $false }
+  return (([datetime]::UtcNow - $started).TotalSeconds -lt $graceSeconds)
+}
+
+$targets      = @('ott-frontend','ott-app')
+$iocRegex     = 'xmrig|javae|minerd|cpuminer|kdevtmpfsi|kinsing|supportxmr|xRaPNJ'
+$detections   = @()
+$scanFailures = @()   # "검사를 못 했다" — 침해와 절대 섞지 않는다(격리 사유가 아니다)
+$scanSkipped  = @()   # 기동 직후라 의도적으로 건너뛴 것 — 정상이므로 알리지 않는다
 
 # === (0) 컨테이너 상태 점검 =================================================
 # PLATFORM 9절 [절대] "컨테이너 상태와 침해 지표를 주기적으로 점검하는 워치독을 둔다".
@@ -114,9 +137,21 @@ foreach ($c in $targets) {
   # 2026-08-08: ott-app 이미지(Amazon Linux 2023 minimal)엔 find 가 없어서 아래 두 검사가
   # 줄곧 조용히 0건이었다 — find 를 못 찾은 에러까지 sh 안의 2>/dev/null 이 삼켰고, head 를
   # 거치며 종료 코드도 0 이 됐다. "이상 없음"과 "검사 못 함"을 구분해서 남긴다.
-  $hasFind = & docker exec $c sh -c 'command -v find >/dev/null 2>&1 && echo yes' 2>$null
+  if (Test-RecentlyStarted $c) {
+    Log "SCAN SKIPPED [$c] 기동 직후(90초 이내) — 파일 검사는 다음 주기에. IOC 프로세스 검사는 계속한다"
+    $scanSkipped += $c
+    $hasFind = 'no'
+  } else {
+    # '&& echo yes' 로만 쓰면 find 가 없을 때 sh 가 rc=1 로 끝나서 "exec 실패"와 구분되지 않는다.
+    # ott-app 이미지에는 원래 find 가 없으므로, 그대로 두면 5분마다 점검 불가 경보가 영원히 울린다.
+    # else 를 붙여 셸을 항상 rc=0 으로 끝내면 rc!=0 은 진짜 exec 실패만 남는다.
+    $hasFind = & docker exec $c sh -c 'if command -v find >/dev/null 2>&1; then echo yes; else echo no; fi' 2>$null
+    if ($LASTEXITCODE -ne 0) { $scanFailures += "$c(exec rc=$LASTEXITCODE)"; $hasFind = 'no' }
+  }
   if ($hasFind -ne 'yes') {
-    Log "SCAN DEGRADED [$c] find 없음 — 파일 기반 검사(1)(3) 건너뜀. IOC 프로세스 검사만 유효"
+    if ($scanSkipped -notcontains $c) {
+      Log "SCAN DEGRADED [$c] find 없거나 exec 불가 — 파일 기반 검사(1)(3) 건너뜀. IOC 프로세스 검사만 유효"
+    }
     $dropped = @()
   } else {
     $dropped = Invoke-ContainerFind $c 'find /tmp /dev/shm /var/tmp -type f \( -size +1024k -o -name "javae" -o -iname "xmrig*" -o -iname "*miner*" -o -iname "cpuminer*" \) 2>/dev/null | head -50'
@@ -150,11 +185,22 @@ foreach ($c in $targets) {
 }
 
 if ($detections.Count -eq 0) {
+  # "이상 없음"과 "검사를 못 했음"은 다른 상태다. 후자를 조용히 넘기면 검사가 망가진 채로
+  # 몇 주가 지나도 아무도 모른다(실제로 ott-app 의 파일 검사가 그렇게 조용히 죽어 있었다).
+  # 다만 이것은 침해가 아니므로 격리하지 않고, 경보도 노란색으로 따로 보낸다.
+  if ($scanFailures) {
+    Log "SCAN FAILED $($scanFailures -join ', ')"
+    Send-DiscordAlert (":warning: **OTT 워치독 점검 불가** — $($scanFailures -join ', ')`n" +
+      "컨테이너 안에서 검사 명령을 실행하지 못했다. 침해 징후가 아니라 검사 자체가 실패한 것이다.`n" +
+      "조치: 없음(격리하지 않음). 기동 직후라면 다음 주기에 저절로 해소되고, 계속 반복되면 이미지에 셸이나 find 가 없는지 확인한다.")
+    exit 0
+  }
   Log "OK  no compromise indicators in $($targets -join ',')"
   exit 0
 }
 
 # === 탐지됨 → 격리 ===
+# 여기 오는 것은 파일/프로세스 증거가 실제로 나온 경우뿐이다. 검사 실패는 위에서 갈라져 나갔다.
 $summary = "!!! COMPROMISE DETECTED $(Get-Date -Format o) !!!`n"
 foreach ($d in $detections) {
   $summary += "[$($d.c)] $($d.kind): $($d.detail)`n"
@@ -170,6 +216,20 @@ foreach ($c in $hitContainers) {
   } catch { Log "CONTAIN error on ${c}: $($_.Exception.Message)" }
 }
 Set-Content -Path $alert -Value $summary -Encoding utf8
-Send-DiscordAlert (":rotating_light: **OTT 보안 경보** — 컨테이너 침해 감지 & 자동 격리됨`n`n$summary`n조치: 네트워크 분리 + 컨테이너 정지(증거 보존). 서버 점검 필요.")
+
+# 경보 문구는 "무엇을 근거로", "무엇을 했고", "무엇을 해야 하는지"가 각각 보여야 한다.
+# 근거 없이 침해라고만 적힌 경보는 오탐일 때 사람이 판단할 재료를 주지 않는다.
+$kinds = @{
+  'IOC_PROCESS'     = '알려진 채굴기 프로세스가 실행 중'
+  'DROPPED_BINARY'  = '쓰기 경로에 대용량/채굴기 이름의 파일'
+  'HIDDEN_DIR_FILE' = '/tmp 위장 점(.)폴더 안의 파일'
+}
+$evidence = ($detections | ForEach-Object {
+  "· [$($_.c)] $($kinds[$_.kind]) — $($_.kind)`n   증거: $($_.detail)"
+}) -join "`n"
+Send-DiscordAlert (":rotating_light: **OTT 침해 감지 — 자동 격리함**`n`n" +
+  "$evidence`n`n" +
+  "조치: $($hitContainers -join ', ') 네트워크 분리 + 정지(파일시스템은 포렌식용으로 보존, rm 안 함).`n" +
+  "확인: docker diff / docker top 으로 증거를 먼저 뜬 뒤, 오탐이면 docker network connect 로 되돌리고 nginx 를 리로드한다(업스트림 IP 가 바뀌어 있다).")
 Log "ALERT written to $alert"
 exit 1
