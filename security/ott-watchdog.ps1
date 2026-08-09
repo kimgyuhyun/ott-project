@@ -24,22 +24,8 @@ if (-not (Test-Path $base)) { New-Item -ItemType Directory -Path $base -Force | 
 # 즉 전날의 종료코드 가드(4c609e5)는 이 한 줄 때문에 무력화돼 있었다.
 function Log($m){ $line = "$(Get-Date -Format o)  $m"; Add-Content -Path $log -Value $line -Encoding utf8; Write-Host $line }
 
-# 디스코드 웹훅 알림. URL은 security\discord-webhook.txt 한 줄에 저장(깃 제외). 없으면 조용히 skip.
-function Send-DiscordAlert($content) {
-  try {
-    $whFile = Join-Path $base 'discord-webhook.txt'
-    if (-not (Test-Path $whFile)) { return }
-    # 파일 어디에 있든 https://... 토큰을 추출(앞에 다른 텍스트가 붙어 있어도 동작)
-    $url = ([regex]::Match((Get-Content $whFile -Raw), 'https://\S+')).Value
-    if (-not $url) { return }
-    if ($content.Length -gt 1800) { $content = $content.Substring(0,1800) }
-    $json  = @{ content = $content } | ConvertTo-Json
-    # 한글 깨짐 방지: 본문을 UTF-8 바이트로 직접 전송(PS 5.1 기본 인코딩 우회)
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
-    Invoke-RestMethod -Uri $url -Method Post -ContentType 'application/json; charset=utf-8' -Body $bytes -TimeoutSec 10 | Out-Null
-    Log 'Discord alert sent'
-  } catch { Log "Discord alert failed: $($_.Exception.Message)" }
-}
+# 디스코드 발송은 ott-alert-relay.ps1 과 공유한다($base 와 Log 가 정의된 뒤에 읽어야 한다).
+. (Join-Path $base 'alert-common.ps1')
 
 if ($Test) { Send-DiscordAlert ':white_check_mark: OTT 워치독 테스트 알림 — 이 메시지가 보이면 알림 설정 완료!'; Log 'test alert sent'; exit 0 }
 

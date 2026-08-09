@@ -316,4 +316,6 @@ security/firewall-*-rollback-*.txt
 security/discord-webhook.txt
 security/uptime.log
 security/uptime.state
+security/alert-relay.log
+security/alert-relay.state
 standards/
