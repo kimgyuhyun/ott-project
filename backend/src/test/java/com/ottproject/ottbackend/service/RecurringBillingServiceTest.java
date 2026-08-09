@@ -19,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -476,6 +477,57 @@ class RecurringBillingServiceTest {
         service.runRecurringBilling();
 
         assertThat(livenessGauge()).isGreaterThan(stale);
+    }
+
+    @Test
+    @DisplayName("스윕 배치는 매퍼가 준 객체가 아니라 JPA 로 다시 읽은 구독을 청구한다")
+    void sweepBillsSubscriptionReloadedThroughJpa() {
+        long stale = ageLastSuccess();
+        PaymentGateway.ChargeResult cr = new PaymentGateway.ChargeResult();
+        cr.providerPaymentId = "imp_sweep_1";
+        cr.paidAt = LocalDateTime.now();
+        LocalDateTime originalEnd = sub.getEndAt();
+
+        given(membershipSubscriptionQueryMapper.findSubscriptionsWithScheduledPlanChanges(anyList(), any()))
+                .willReturn(List.of());
+        given(membershipSubscriptionQueryMapper.findSubscriptionsForBilling(anyList(), any()))
+                .willReturn(List.of(mapperShapedSubscription())); // 매퍼가 실제로 돌려주는 모양
+        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        PaymentMethod card = savedCard();
+        given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
+                .willReturn(List.of(card));
+        given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
+                .willReturn(PAYMENT_ID);
+        given(paymentGateway.chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
+                .willReturn(cr);
+        given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(pendingPayment()));
+
+        service.runRecurringBilling();
+
+        // 매퍼 객체를 그대로 청구하면 플랜 가격을 읽는 순간 NPE 로 배치 전체가 죽는다(경보 BillingBatchStalled)
+        ArgumentCaptor<Money> charged = ArgumentCaptor.forClass(Money.class);
+        verify(attemptRecorder).openAttempt(anyLong(), anyLong(), anyLong(), anyString(), charged.capture());
+        assertThat(charged.getValue().getAmount()).isEqualTo(9900L); // 플랜에서 읽은 청구 금액
+        // 상태 전이도 관리 엔티티에서 일어나야 저장된다(매퍼 객체는 변경 감지 대상이 아니다)
+        assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.ACTIVE);
+        assertThat(sub.getEndAt()).isEqualTo(originalEnd.plusMonths(1));
+        assertThat(livenessGauge()).isGreaterThan(stale);
+    }
+
+    /**
+     * 매퍼 resultMap 이 실제로 채우는 범위를 재현한다 — 연관 엔티티는 id 뿐이고 가격·주기는 비어 있다.
+     * 대상 선별에는 충분하지만 이 객체로 청구하면 안 된다는 것이 위 테스트의 요지다.
+     */
+    private MembershipSubscription mapperShapedSubscription() {
+        MembershipPlan idOnlyPlan = MembershipPlan.createBasicPlan("BASIC", "기본 플랜", new Money(9900L, "KRW"), 1);
+        ReflectionTestUtils.setField(idOnlyPlan, "id", 5L);
+        ReflectionTestUtils.setField(idOnlyPlan, "price", null); // resultMap 에 없는 컬럼
+        ReflectionTestUtils.setField(idOnlyPlan, "periodMonths", null); // resultMap 에 없는 컬럼
+
+        MembershipSubscription mapped = MembershipSubscription.createSubscription(
+                User.reference(1L), idOnlyPlan, sub.getStartAt(), sub.getEndAt());
+        ReflectionTestUtils.setField(mapped, "id", SUB_ID);
+        return mapped;
     }
 
     @Test

@@ -118,8 +118,12 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 
 		log.info("처리 대상 구독 수: {}", targetSubscriptions.size());
 
-		for (MembershipSubscription sub : targetSubscriptions) { // 구독 순회
-			billSubscription(sub, now); // 청구 시도 + 성공/실패 처리(공통 로직)
+		for (MembershipSubscription due : targetSubscriptions) { // 구독 순회
+			// 매퍼가 돌려준 객체는 대상 선별용이다. 영속 상태가 아니고 연관 엔티티는 id 만 채워져 있어서
+			// 플랜 가격/주기를 읽으면 NPE 가 나고, 상태를 바꿔도 변경 감지가 저장하지 않는다.
+			// 청구와 상태 전이는 JPA 로 다시 읽은 관리 엔티티로 한다.
+			subscriptionRepository.findById(due.getId())
+				.ifPresent(sub -> billSubscription(sub, now)); // 청구 시도 + 성공/실패 처리(공통 로직)
 		}
 
 		log.info("정기결제 배치 완료 - 처리된 구독: {}", targetSubscriptions.size());
