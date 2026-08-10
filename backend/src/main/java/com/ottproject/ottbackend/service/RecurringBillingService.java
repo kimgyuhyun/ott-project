@@ -485,22 +485,22 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 
 		for (MembershipSubscription subscription : scheduledPlanChanges) {
 			try {
-				// 플랜 변경 적용(교체와 예약 해제를 함께 — 예약이 남으면 다음 배치가 또 적용한다)
-				subscription.changePlanTo(subscription.getNextPlan());
+				MembershipSubscription applied = self.applyScheduledPlanChange(subscription.getId());
+				if (applied == null) { // 적용할 예약이 남아 있지 않음
+					continue;
+				}
 
-				// 구독 정보 저장
-				subscriptionRepository.save(subscription);
-
-				// 플랜 변경 완료 알림 발송
+				// 알림은 트랜잭션 밖에서 보낸다(ARCHITECTURE 4절). 위 조회가 user 와 새 플랜을
+				// 함께 읽어 뒀으므로 준영속 상태에서도 그대로 읽힌다.
 				notificationService.sendPlanChangeNotification(
-						subscription.getUser(),
-						subscription,
-						subscription.getMembershipPlan()
+						applied.getUser(),
+						applied,
+						applied.getMembershipPlan()
 				);
 
 				log.info("플랜 변경 완료 - userId: {}, newPlan: {}",
-						subscription.getUser().getId(),
-						subscription.getMembershipPlan().getName());
+						applied.getUser().getId(),
+						applied.getMembershipPlan().getName());
 
 			} catch (Exception e) {
 				log.error("플랜 변경 처리 실패 - userId: {}, subscriptionId: {}",
@@ -510,6 +510,28 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 		}
 
 		log.info("플랜 변경 예약 구독 처리 완료 - 처리된 구독: {}", scheduledPlanChanges.size());
+	}
+
+	/**
+	 * 예약된 플랜 변경 적용 — 매퍼가 고른 구독을 JPA 로 다시 읽어 교체하고 커밋한다.
+	 *
+	 * 매퍼 객체를 그대로 쓰면 안 되는 이유는 d3db5e3 과 같은 뿌리다. resultMap 이 연관을 식별자만
+	 * 채우므로 user.email 이 null 이고, 알림 서비스는 수신자가 없으면 조용히 return 한다 —
+	 * 예외도 로그도 없이 안내 메일만 안 나갔다. 여기서 다시 읽어야 수신자가 채워진다.
+	 *
+	 * @return 변경이 적용된 관리 엔티티, 적용할 예약이 없으면 null
+	 */
+	@Transactional
+	public MembershipSubscription applyScheduledPlanChange(Long subscriptionId) {
+		MembershipSubscription sub = subscriptionRepository.findWithUserAndNextPlanById(subscriptionId).orElse(null);
+		if (sub == null) { // 대상 조회 이후에 삭제됐거나 다른 경로가 예약을 이미 적용했다
+			log.warn("플랜 변경 대상 구독 없음 - subscriptionId: {}", subscriptionId);
+			return null;
+		}
+		// 교체와 예약 해제를 함께 한다 — 예약이 남으면 다음 배치가 또 적용한다.
+		// 관리 엔티티라 변경 감지로 저장된다(save 불필요).
+		sub.changePlanTo(sub.getNextPlan());
+		return sub;
 	}
 
 	/**
