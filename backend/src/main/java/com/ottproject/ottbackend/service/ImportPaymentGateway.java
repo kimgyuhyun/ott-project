@@ -262,32 +262,6 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	}
 
 	/**
-	 * 결제 상세 조회: pay_method/pg_provider/card_name 추출
-	 */
-	@Override
-	public PaymentDetails fetchPaymentDetails(String impUid) {
-		String token = getAccessToken();
-		HttpHeaders headers = bearer(token);
-		ResponseEntity<java.util.Map> response = rest.exchange(
-			apiBase + "/payments/" + impUid,
-			HttpMethod.GET,
-			new HttpEntity<>(headers),
-			java.util.Map.class
-		);
-		if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-			throw new IllegalStateException("Failed to fetch payment details from Iamport");
-		}
-		java.util.Map<String, Object> body = response.getBody();
-		@SuppressWarnings("unchecked")
-		java.util.Map<String, Object> res = (java.util.Map<String, Object>) body.get("response");
-		PaymentDetails d = new PaymentDetails();
-		d.payMethod = (String) (res == null ? null : res.get("pay_method"));
-		d.pgProvider = (String) (res == null ? null : res.get("pg_provider"));
-		d.cardName = (String) (res == null ? null : res.get("card_name"));
-		return d;
-	}
-
-	/**
 	 * merchant_uid로 결제 상태 역조회
 	 * - GET /payments/find/{merchant_uid} 사용. 결제 시도가 없으면 found=false.
 	 * - 아임포트 원문 status 는 여기서 ReconcileStatus 로 정규화한다(어휘를 아는 유일한 지점).

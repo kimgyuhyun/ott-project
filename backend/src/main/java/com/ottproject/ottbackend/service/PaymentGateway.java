@@ -18,7 +18,6 @@ import com.ottproject.ottbackend.entity.User;
  * - verifyWebhookBasicValidation: 웹훅 기본 검증
  * - verifyPayment: 결제 성공 주장 재검증
  * - findPaymentBySessionId: 세션 식별자로 결제 상태 역조회(대사용)
- * - fetchPaymentDetails: 확정된 결제의 수단 상세 조회
  *
  * 용어
  * - providerSessionId: 결제 건마다 호출자가 만들어 게이트웨이에 등록하는 주문 식별자(아임포트의 merchant_uid).
@@ -158,23 +157,6 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 		public String providerPaymentId;   // 게이트웨이가 부여한 결제 식별자
 		public long amount;                // 실제 결제 금액
 		public String receiptUrl;          // 영수증 URL
-	}
-
-	/**
-	 * 확정된 결제의 수단 상세 조회
-	 * - 결제수단 type/brand 를 결제창에서 실제로 고른 값으로 확정하는 데 쓴다.
-	 * - 조회에 실패하면 예외를 던진다. 빈 값을 돌려주면 호출자가 "카드"로 잘못 확정한다.
-	 */
-	PaymentDetails fetchPaymentDetails(String providerPaymentId);
-
-	/**
-	 * 결제 수단 상세
-	 * - 게이트웨이가 값을 주지 않으면 각 필드는 null 이다.
-	 */
-	final class PaymentDetails {
-		public String payMethod;   // ex) card, kakaopay, tosspayments, nice
-		public String pgProvider;  // ex) kakaopay, tosspayments, nice
-		public String cardName;    // ex) VISA, MasterCard, 삼성카드
 	}
 
 	/**

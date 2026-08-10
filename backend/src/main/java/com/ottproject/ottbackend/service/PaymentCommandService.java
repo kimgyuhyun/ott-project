@@ -242,6 +242,12 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		// processPaymentSuccess 대신 applyWebhookEvent를 직접 호출하여 일관성 보장
 		// self 경유: processWebhook 에는 트랜잭션이 없으므로 여기서 프록시를 타야 경계가 생긴다.
 		self.applyWebhookEvent(payment.getId(), event);
+		// 확정 트랜잭션 밖에서 빌링키를 확인한다. 이미 다른 경로가 확정한 결제여도 그대로 진행한다 —
+		// 클라 확정이나 대사가 결제수단을 남기지 못했다면 뒤늦은 웹훅이 여기서 복구한다.
+		// 재청구 결제는 청구할 때 이미 결제수단을 들고 있으므로 물어볼 필요가 없다.
+		if (!RebillMerchantUid.isRebill(payment.getProviderSessionId())) {
+			self.attachBillingKeyIfIssued(payment.getId(), payment.getUser().getId());
+		}
 	}
 	
 	/**
@@ -504,22 +510,38 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	}
 
 	/**
-	 * 빌링키가 발급됐으면 저장 결제수단으로 등록하고 결제에 연결한다.
+	 * 빌링키가 발급됐으면 저장 결제수단으로 등록한다 — 결제 확정이 끝난 뒤에 부른다.
 	 *
 	 * 발급 여부는 우리 DB 로 알 수 없다. customer_uid 는 우리가 지은 이름일 뿐이고 실제 키는 게이트웨이가
-	 * 들고 있으므로, 물어보는 것 말고는 확인할 방법이 없다. 그래서 여기서 한 번 조회한다.
+	 * 들고 있으므로, 물어보는 것 말고는 확인할 방법이 없다. 그 조회가 외부 HTTP 라서 확정 트랜잭션 안에
+	 * 둘 수 없다(4절). 예전에는 markSucceededAndProvision 안에 있어서 payments 행 락을 쥔 채로
+	 * 아임포트 응답을 기다렸다.
 	 *
 	 * 미발급이면 아무것도 하지 않는다. 결제수단이 없으면 정기결제 배치가 청구 계획을 세우지 못해
 	 * 연체로만 표시하고 넘어가는데, 그게 빌링키 없는 값으로 매 주기 거절당하며 재시도를 소진하는 것보다 낫다.
 	 *
-	 * @return 등록·연결된 결제수단, 빌링키가 없으면 null
+	 * 확정 뒤에 실패해도 결제는 이미 SUCCEEDED 다. 뒤늦게 도착한 웹훅이 같은 자리를 다시 밟으므로
+	 * 그때 복구된다 — customer_uid 가 사용자당 고정이라 여러 번 불려도 결제수단 행이 늘지 않는다.
 	 */
-	private PaymentMethod registerBillingKeyIfIssued(Payment payment) {
-		Long userId = payment.getUser().getId();
+	@Transactional(propagation = Propagation.NOT_SUPPORTED) // 빌링키 조회가 트랜잭션 안에 들어가지 않게 한다
+	public void attachBillingKeyIfIssued(Long paymentId, Long userId) {
 		String customerUid = billingCustomerUid(userId);
 		if (!paymentGateway.hasBillingKey(customerUid)) {
-			log.info("빌링키 미발급 - 저장 결제수단을 등록하지 않는다. userId: {}, paymentId: {}", userId, payment.getId());
-			return null;
+			log.info("빌링키 미발급 - 저장 결제수단을 등록하지 않는다. userId: {}, paymentId: {}", userId, paymentId);
+			return;
+		}
+		self.registerBillingKey(paymentId, userId, customerUid); // 프록시 경유: 짧은 쓰기 트랜잭션
+	}
+
+	/**
+	 * 확인된 빌링키를 저장 결제수단으로 남기고 결제에 연결한다(DB 쓰기만).
+	 * - 발급 여부 확인은 호출자가 트랜잭션 밖에서 끝내고 들어온다.
+	 */
+	@Transactional
+	public void registerBillingKey(Long paymentId, Long userId, String customerUid) {
+		Payment payment = paymentRepository.findById(paymentId).orElse(null);
+		if (payment == null || payment.getPaymentMethod() != null) {
+			return; // 이미 연결됨(웹훅 재전송·대사가 같은 자리를 다시 밟는다)
 		}
 
 		// customer_uid 는 사용자당 고정이라 재구독해도 같은 행을 다시 쓴다.
@@ -530,7 +552,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 				.orElse(null);
 		if (existing != null) {
 			payment.attachPaymentMethod(existing);
-			return existing;
+			return;
 		}
 
 		PaymentMethod pm = PaymentMethod.createPaymentMethod(
@@ -539,7 +561,6 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		paymentMethodRepository.save(pm);
 		payment.attachPaymentMethod(pm);
 		log.info("빌링키 확인 - 저장 결제수단 등록 완료. userId: {}, customer_uid: {}", userId, customerUid);
-		return pm;
 	}
 
 	/**
@@ -873,48 +894,14 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		paymentRepository.save(payment); // 저장
 		log.info("결제 SUCCEEDED 확정 - paymentId: {}, imp_uid: {}", payment.getId(), providerPaymentId);
 
-		// PG 응답으로 결제수단 type/brand 최종 확정 (아임포트 pay_method와 1:1 매핑)
-		try {
-			PaymentGateway.PaymentDetails details = paymentGateway.fetchPaymentDetails(providerPaymentId);
-			PaymentMethod pm = payment.getPaymentMethod();
-			if (pm == null) {
-				// 체크아웃은 결제수단을 만들지 않는다. 결제가 확정된 지금에야 빌링키가 실제로 묶였는지
-				// 게이트웨이에 물어볼 수 있고, 확인된 경우에만 저장 결제수단으로 승격시킨다.
-				// 확인 안 되면 등록하지 않는다 — 자동 청구가 쓸 수 없는 값을 결제수단으로 남기지 않으려는 것이다.
-				pm = registerBillingKeyIfIssued(payment);
-			}
-			if (pm != null) {
-				String payMethod = details.payMethod == null ? "" : details.payMethod.trim().toLowerCase();
-				PaymentMethodType type;
-				String brand;
-				switch (payMethod) { // pay_method와 1:1 매핑
-					case "card":
-						type = PaymentMethodType.CARD;
-						String cardName = details.cardName;
-						brand = cardName != null && !cardName.isBlank() ? cardName.trim().toUpperCase() : "CARD";
-						break;
-					case "kakaopay":
-						type = PaymentMethodType.KAKAO_PAY;
-						brand = null; // 간편결제는 brand 불필요
-						break;
-					case "tosspayments":
-					case "toss":
-						type = PaymentMethodType.TOSS_PAY;
-						brand = null; // 간편결제는 brand 불필요
-						break;
-					case "nice":
-						type = PaymentMethodType.NICE_PAY;
-						brand = null; // 간편결제는 brand 불필요
-						break;
-					default:
-						type = PaymentMethodType.CARD; // 기본값
-						brand = "UNKNOWN";
-				}
-				pm.applyGatewayMethodDetails(PaymentProvider.IMPORT, type, brand);
-			}
-		} catch (Exception ex) {
-			log.warn("결제수단 확정 중 세부정보 조회 실패 - imp_uid: {}", providerPaymentId, ex);
-		}
+		// 저장 결제수단은 여기서 만들지 않는다. 빌링키 발급 여부를 게이트웨이에 물어봐야 알 수 있는데
+		// 그건 외부 HTTP 라서 이 트랜잭션 안에 들어올 수 없다(4절). 호출자가 확정 직후에
+		// attachBillingKeyIfIssued 로 처리한다.
+		//
+		// 결제수단 type/brand 를 fetchPaymentDetails(imp_uid) 로 확정하던 블록도 여기서 걷어냈다.
+		// 그 조회는 샌드박스 결제에 대해 항상 404 라서 성공한 적이 없고(실측), merchant_uid 역조회로
+		// 폴백해도 카카오 샌드박스가 pay_method 를 "point" 로 돌려줘 CARD/UNKNOWN 으로 잘못 매핑된다.
+		// 정기결제 채널은 카카오뿐이므로 등록 시점에 이미 아는 값(KAKAO_PAY)이 더 정확하다.
 
 		// 멤버십 구독 생성(동기·직접 호출): 실패 시 예외를 전파해 결제 확정과 함께 롤백하고 원인을 응답에 노출한다.
 		// (과거: 이벤트 발행 + 리스너의 블랭킷 catch로 구독 생성 실패가 조용히 묻혀 결제만 SUCCEEDED로 남았음)
@@ -989,6 +976,8 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "결제 검증에 실패했습니다. (PG 재검증 불일치)"); // 400
 		}
 		self.confirmSucceeded(paymentId, impUid, null, LocalDateTime.now()); // 3단계: 락 + 상태 재확인 + 지급
+		// 4단계: 빌링키 확인·등록. 확정 트랜잭션이 닫힌 뒤라 게이트웨이 조회가 락을 늘리지 않는다.
+		self.attachBillingKeyIfIssued(paymentId, userId);
 	}
 
 	/**
@@ -1038,25 +1027,32 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	 */
 	@Transactional(propagation = Propagation.NOT_SUPPORTED) // 아임포트 역조회가 트랜잭션 안에 들어가지 않게 한다
 	public boolean reconcilePending(Long paymentId) {
-		String merchantUid = self.prepareReconcile(paymentId); // 1단계: 대사 대상 여부 판정
-		if (merchantUid == null) {
+		ReconcileTarget target = self.prepareReconcile(paymentId); // 1단계: 대사 대상 여부 판정
+		if (target == null) {
 			return false; // 대상 아님(이미 확정/취소됨, 차액 결제)
 		}
 		PaymentGateway.ReconcileResult r =
-				paymentGateway.findPaymentBySessionId(merchantUid); // 2단계: 트랜잭션 밖에서 세션 식별자 역조회
+				paymentGateway.findPaymentBySessionId(target.merchantUid()); // 2단계: 트랜잭션 밖에서 세션 식별자 역조회
 		if (!r.found || r.status == null) {
 			return false; // 결제 시도 기록 없음(prepare만) → 유지
 		}
-		return self.applyReconcileResult(paymentId, r, LocalDateTime.now()); // 3단계: 락 + 상태 재확인 + 반영
+		boolean settled = self.applyReconcileResult(paymentId, r, LocalDateTime.now()); // 3단계: 락 + 상태 재확인 + 반영
+		// 4단계: 대사로 확정된 체크아웃 결제도 저장 결제수단이 필요하다(클라 확정과 웹훅이 모두 실패한 경우).
+		// 재청구 결제는 청구할 때 이미 결제수단을 들고 있다.
+		if (settled && r.status == PaymentGateway.ReconcileStatus.PAID
+				&& !RebillMerchantUid.isRebill(target.merchantUid())) {
+			self.attachBillingKeyIfIssued(paymentId, target.userId());
+		}
+		return settled;
 	}
 
 	/**
 	 * 대사 1단계 — 대사 대상인지 판정하고 역조회 키만 뽑는다.
 	 * - 여기서 본 PENDING 은 빠른 경로일 뿐이다. 실제 판정은 3단계가 락을 잡고 다시 한다.
-	 * @return 역조회할 merchant_uid, 대상이 아니면 null
+	 * @return 역조회에 필요한 값, 대상이 아니면 null
 	 */
 	@Transactional(readOnly = true)
-	public String prepareReconcile(Long paymentId) {
+	public ReconcileTarget prepareReconcile(Long paymentId) {
 		Payment payment = paymentRepository.findById(paymentId).orElse(null); // 결제 조회(락 없는 빠른 경로)
 		if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
 			return null; // 대상 아님(이미 확정/취소됨)
@@ -1066,8 +1062,14 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		if (payment.getProviderSessionId() != null && payment.getProviderSessionId().startsWith("proration_")) {
 			return null;
 		}
-		return payment.getProviderSessionId();
+		return new ReconcileTarget(payment.getProviderSessionId(), payment.getUser().getId());
 	}
+
+	/**
+	 * 대사 대상 — 트랜잭션 밖에서 역조회와 빌링키 확인을 하기 위해 결제에서 뽑아둔 값들.
+	 * - 트랜잭션이 닫힌 뒤에 쓰이므로 엔티티를 그대로 들고 나가지 않는다(지연 로딩 필드 접근 방지).
+	 */
+	public record ReconcileTarget(String merchantUid, Long userId) {}
 
 	/**
 	 * 대사 3단계 — 결제 행을 잠그고 상태를 다시 확인한 뒤 아임포트 실제 상태를 반영한다.

@@ -286,28 +286,18 @@ class PaymentCommandServiceTest {
     // customer_uid 는 우리가 지은 이름일 뿐이고 실제 빌링키는 게이트웨이가 들고 있다. 그래서 발급 여부는
     // 물어봐야만 알 수 있는데, 예전 코드는 묻지 않고 체크아웃 시점에 "temp_" + 시각을 자리표로 등록했다.
     // 그 값이 사용자 1번에만 41행 쌓였고 자동 청구가 전부 거절당했다(payments 82행 FAILED).
-    // 아래 두 테스트가 지키는 것은 "확인된 것만 등록한다" 하나다.
-
-    /** 카카오페이로 결제된 응답(결제수단 type/brand 확정에 쓰인다) */
-    private PaymentGateway.PaymentDetails kakaoPayDetails() {
-        PaymentGateway.PaymentDetails d = new PaymentGateway.PaymentDetails();
-        d.payMethod = "kakaopay";
-        d.pgProvider = "kakaopay";
-        return d;
-    }
+    // 아래 테스트가 지키는 것은 둘이다: "확인된 것만 등록한다", 그리고 "그 확인을 락 안에서 하지 않는다".
 
     @Test
     @DisplayName("빌링키가 확인되면 저장 결제수단으로 등록하고 결제에 연결한다")
-    void billingKeyIsRegisteredAsPaymentMethodOnConfirm() {
+    void billingKeyIsRegisteredAsPaymentMethod() {
         Payment payment = pendingPayment();
-        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
-        given(paymentGateway.fetchPaymentDetails("imp_1")).willReturn(kakaoPayDetails());
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
         given(paymentGateway.hasBillingKey("ott_billing_1")).willReturn(true);
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
                 .willReturn(List.of());
 
-        service.applyWebhookEvent(1L, succeededEvent());
+        service.attachBillingKeyIfIssued(1L, 1L);
 
         ArgumentCaptor<PaymentMethod> saved = ArgumentCaptor.forClass(PaymentMethod.class);
         verify(paymentMethodRepository).save(saved.capture());
@@ -319,19 +309,40 @@ class PaymentCommandServiceTest {
     @Test
     @DisplayName("빌링키가 없으면 결제수단을 등록하지 않는다 - 청구 못 하는 값을 저장수단으로 남기지 않는다")
     void noPaymentMethodIsRegisteredWithoutBillingKey() {
-        Payment payment = pendingPayment();
-        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
-        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
-        given(paymentGateway.fetchPaymentDetails("imp_1")).willReturn(kakaoPayDetails());
         // 단건 채널로 결제됐거나 발급이 실패했다 - 어느 쪽이든 재청구에 쓸 수 없다
         given(paymentGateway.hasBillingKey("ott_billing_1")).willReturn(false);
 
-        service.applyWebhookEvent(1L, succeededEvent());
+        service.attachBillingKeyIfIssued(1L, 1L);
 
         verify(paymentMethodRepository, never()).save(any());
-        assertThat(payment.getPaymentMethod()).isNull();
-        // 결제 자체는 정상이다. 빌링키가 없다고 해서 결제를 실패시키지는 않는다
-        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+        verifyNoInteractions(paymentRepository); // 물어보고 아니면 DB 를 건드리지 않는다
+    }
+
+    @Test
+    @DisplayName("이미 결제수단이 연결된 결제는 다시 등록하지 않는다 - 웹훅 재전송·대사가 같은 자리를 다시 밟는다")
+    void alreadyAttachedPaymentIsNotRegisteredAgain() {
+        Payment payment = pendingPayment();
+        payment.attachPaymentMethod(PaymentMethod.createPaymentMethod(
+                userWithId(1L), PaymentProvider.IMPORT, PaymentMethodType.KAKAO_PAY, "ott_billing_1"));
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentGateway.hasBillingKey("ott_billing_1")).willReturn(true);
+
+        service.attachBillingKeyIfIssued(1L, 1L);
+
+        verify(paymentMethodRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("확정 트랜잭션은 게이트웨이를 부르지 않는다 - 결제 행 락을 쥔 채 외부 응답을 기다리면 안 된다")
+    void confirmTransactionMakesNoGatewayCall() {
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(pendingPayment()));
+
+        service.applyWebhookEvent(1L, succeededEvent());
+
+        // 빌링키 확인도 결제수단 상세 조회도 이 안에서 하지 않는다(ARCHITECTURE 4절).
+        // 빌링키 확인은 확정이 끝난 뒤 attachBillingKeyIfIssued 가 트랜잭션 밖에서 한다.
+        verifyNoInteractions(paymentGateway);
     }
 
     @Test
