@@ -2,14 +2,14 @@ package com.ottproject.ottbackend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateRequestDto;
-import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
-import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
+import com.ottproject.ottbackend.dto.PaymentCheckoutCreateSuccessResponseDto;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
 import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.Payment;
+import com.ottproject.ottbackend.entity.PaymentMethod;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
@@ -21,11 +21,13 @@ import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
+import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -73,7 +75,7 @@ class PaymentCommandServiceTest {
     @Mock private PlayerProgressReadService playerProgressReadService;
     @Mock private MembershipSubscriptionRepository subscriptionRepository;
     @Mock private PaymentQueryMapper paymentQueryMapper;
-    @Mock private PaymentMethodService paymentMethodService;
+    @Mock private PaymentMethodRepository paymentMethodRepository;
     @Mock private MembershipCommandService membershipCommandService;
     @Mock private OutboxEventRepository outboxEventRepository;
     @Mock private ObjectMapper objectMapper;
@@ -277,6 +279,59 @@ class PaymentCommandServiceTest {
         e.providerPaymentId = "imp_1";
         e.receiptUrl = "https://receipt.test/1";
         return e;
+    }
+
+    // ===== 빌링키와 저장 결제수단 =====
+    //
+    // customer_uid 는 우리가 지은 이름일 뿐이고 실제 빌링키는 게이트웨이가 들고 있다. 그래서 발급 여부는
+    // 물어봐야만 알 수 있는데, 예전 코드는 묻지 않고 체크아웃 시점에 "temp_" + 시각을 자리표로 등록했다.
+    // 그 값이 사용자 1번에만 41행 쌓였고 자동 청구가 전부 거절당했다(payments 82행 FAILED).
+    // 아래 두 테스트가 지키는 것은 "확인된 것만 등록한다" 하나다.
+
+    /** 카카오페이로 결제된 응답(결제수단 type/brand 확정에 쓰인다) */
+    private PaymentGateway.PaymentDetails kakaoPayDetails() {
+        PaymentGateway.PaymentDetails d = new PaymentGateway.PaymentDetails();
+        d.payMethod = "kakaopay";
+        d.pgProvider = "kakaopay";
+        return d;
+    }
+
+    @Test
+    @DisplayName("빌링키가 확인되면 저장 결제수단으로 등록하고 결제에 연결한다")
+    void billingKeyIsRegisteredAsPaymentMethodOnConfirm() {
+        Payment payment = pendingPayment();
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
+        given(paymentGateway.fetchPaymentDetails("imp_1")).willReturn(kakaoPayDetails());
+        given(paymentGateway.hasBillingKey("ott_billing_1")).willReturn(true);
+        given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
+                .willReturn(List.of());
+
+        service.applyWebhookEvent(1L, succeededEvent());
+
+        ArgumentCaptor<PaymentMethod> saved = ArgumentCaptor.forClass(PaymentMethod.class);
+        verify(paymentMethodRepository).save(saved.capture());
+        // 자동 청구가 이 값을 그대로 customer_uid 로 보낸다. 게이트웨이가 빌링키를 묶어 둔 이름이어야 한다
+        assertThat(saved.getValue().getProviderMethodId()).isEqualTo("ott_billing_1");
+        assertThat(payment.getPaymentMethod()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("빌링키가 없으면 결제수단을 등록하지 않는다 - 청구 못 하는 값을 저장수단으로 남기지 않는다")
+    void noPaymentMethodIsRegisteredWithoutBillingKey() {
+        Payment payment = pendingPayment();
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
+        given(paymentGateway.fetchPaymentDetails("imp_1")).willReturn(kakaoPayDetails());
+        // 단건 채널로 결제됐거나 발급이 실패했다 - 어느 쪽이든 재청구에 쓸 수 없다
+        given(paymentGateway.hasBillingKey("ott_billing_1")).willReturn(false);
+
+        service.applyWebhookEvent(1L, succeededEvent());
+
+        verify(paymentMethodRepository, never()).save(any());
+        assertThat(payment.getPaymentMethod()).isNull();
+        // 결제 자체는 정상이다. 빌링키가 없다고 해서 결제를 실패시키지는 않는다
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
     }
 
     @Test
@@ -509,20 +564,13 @@ class PaymentCommandServiceTest {
         verifyNoInteractions(paymentGateway);
     }
 
-    // ===== 체크아웃 - 결제수단 중복 등록 =====
+    // ===== 체크아웃 - 정기결제 채널과 빌링키 식별자 =====
 
     private PaymentCheckoutCreateRequestDto kakaoCheckoutReq() {
         PaymentCheckoutCreateRequestDto req = new PaymentCheckoutCreateRequestDto();
         req.planCode = "BASIC";
         req.paymentService = "kakao";
         return req;
-    }
-
-    private PaymentMethodResponseDto methodDto(long id, PaymentMethodType type) {
-        PaymentMethodResponseDto dto = new PaymentMethodResponseDto();
-        dto.id = id;
-        dto.type = type;
-        return dto;
     }
 
     private void givenCheckoutDependencies() {
@@ -534,37 +582,30 @@ class PaymentCommandServiceTest {
                 .willReturn(session);
     }
 
-    /**
-     * 체크아웃마다 무조건 등록하면 결제를 반복할수록 같은 유형의 결제수단이 계속 쌓인다.
-     */
     @Test
-    @DisplayName("같은 결제 서비스로 두 번 체크아웃해도 결제수단 등록은 1회 - 중복 적재 방지")
-    void reusesExistingPaymentMethodOnRepeatCheckout() {
+    @DisplayName("카카오 체크아웃은 정기결제 채널과 빌링키 식별자를 내려준다 - 결제창이 빌링키를 발급하는 조건")
+    void kakaoCheckoutReturnsSubscriptionChannelAndCustomerUid() {
         givenCheckoutDependencies();
-        PaymentMethodResponseDto registered = methodDto(10L, PaymentMethodType.KAKAO_PAY);
-        // 1회차: 등록 전 목록은 비어 있고, 등록 후에는 방금 만든 수단이 보인다
-        // 2회차: 이미 같은 유형이 있으므로 등록 없이 재사용돼야 한다
-        given(paymentMethodService.list(1L))
-                .willReturn(List.of())
-                .willReturn(List.of(registered))
-                .willReturn(List.of(registered));
 
-        service.checkout(1L, kakaoCheckoutReq());
-        service.checkout(1L, kakaoCheckoutReq());
+        PaymentCheckoutCreateSuccessResponseDto res = service.checkout(1L, kakaoCheckoutReq());
 
-        verify(paymentMethodService, times(1)).register(eq(1L), any(PaymentMethodRegisterRequestDto.class));
+        // 단건 채널(TC0ONETIME)로 열면 결제는 되지만 빌링키가 발급되지 않는다. 그러면 이후 자동 청구가
+        // 통째로 불가능해지는데, 결제는 성공하므로 화면에는 아무 이상이 보이지 않는다.
+        assertThat(res.pg).isEqualTo("kakaopay.TCSUBSCRIP");
+        // customer_uid 가 없으면 결제창이 빌링키를 발급하지 않는다(단건 결제로 끝난다)
+        assertThat(res.customerUid).isEqualTo("ott_billing_1");
     }
 
     @Test
-    @DisplayName("유형이 다른 결제수단만 있으면 새로 등록한다")
-    void registersWhenNoMethodOfSameTypeExists() {
+    @DisplayName("체크아웃은 결제수단을 등록하지 않는다 - 빌링키 확인은 결제 확정 후에만 가능하다")
+    void checkoutDoesNotRegisterPaymentMethod() {
         givenCheckoutDependencies();
-        given(paymentMethodService.list(1L))
-                .willReturn(List.of(methodDto(10L, PaymentMethodType.CARD)))
-                .willReturn(List.of(methodDto(11L, PaymentMethodType.KAKAO_PAY)));
 
         service.checkout(1L, kakaoCheckoutReq());
+        service.checkout(1L, kakaoCheckoutReq());
 
-        verify(paymentMethodService).register(eq(1L), any(PaymentMethodRegisterRequestDto.class));
+        // 예전에는 여기서 매번 "temp_" + 시각을 자리표로 등록했다. 결제창이 열리기도 전이라 성공 여부와
+        // 무관하게 쌓였고(사용자 1번에 41행), 빌링키가 묶이지 않은 값이라 자동 청구가 전부 거절당했다.
+        verify(paymentMethodRepository, never()).save(any());
     }
 }

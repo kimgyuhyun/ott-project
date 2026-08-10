@@ -187,6 +187,37 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 		return result; // 반환
 	}
 
+	/**
+	 * 빌링키 발급 여부 확인 — GET /subscribe/customers/{customer_uid}
+	 *
+	 * 없는 customer_uid 를 물으면 아임포트는 404 를 준다. 그래서 4xx 는 "발급 안 됨"이라는 답이고,
+	 * 그 외 예외(타임아웃/5xx)는 "모름"이다. 둘 다 false 로 좁히는 것이 안전한 방향이다 —
+	 * 이 값이 true 여야만 결제수단이 등록되므로, 틀려서 false 면 등록이 안 될 뿐이지만
+	 * 틀려서 true 면 빌링키 없는 수단이 저장돼 자동 청구가 계속 거절당한다(그게 원래 있던 결함이다).
+	 */
+	@Override
+	public boolean hasBillingKey(String customerUid) {
+		if (customerUid == null || customerUid.isBlank()) {
+			return false;
+		}
+		try {
+			String token = getAccessToken();
+			ResponseEntity<String> res = rest.exchange(
+					apiBase + "/subscribe/customers/" + customerUid,
+					HttpMethod.GET, new HttpEntity<>(bearer(token)), String.class);
+			java.util.Map<String, Object> bodyMap = parseJsonToMap(res != null ? res.getBody() : null);
+			Number code = (Number) bodyMap.get("code");
+			// 아임포트는 논리적 실패도 200 + code != 0 으로 주므로 code 와 response 를 함께 본다.
+			return code != null && code.intValue() == 0 && nested(bodyMap, "response", "customer_uid") != null;
+		} catch (org.springframework.web.client.HttpClientErrorException e) {
+			log.info("빌링키 미발급 - customer_uid: {}, status: {}", customerUid, e.getStatusCode());
+			return false;
+		} catch (Exception e) {
+			log.warn("빌링키 조회 실패(발급 안 된 것으로 취급) - customer_uid: {}", customerUid, e);
+			return false;
+		}
+	}
+
 	@Override
 	public boolean verifyWebhookBasicValidation(String rawBody, java.util.Map<String, String> headers) { // 기본 검증
 		// 웹훅 데이터의 기본 유효성만 검증

@@ -8,17 +8,6 @@ import {
 import type { IamportRequestPayData, IamportResponse } from "@/types/iamport";
 import type { PaymentService } from "@/types/payment";
 
-const PG_MAP: Record<string, string> = {
-  kakao: "kakaopay.TC0ONETIME",
-  kakaopay: "kakaopay.TC0ONETIME",
-  toss: "tosspayments",
-  tosspay: "tosspayments", 
-  tosspayments: "tosspayments",
-  nice: "nice",
-  nicepay: "nice",
-  card: "kakaopay", // 기본 카드 결제
-};
-
 export function useCheckout() {
   const requestPay = async (planCode: string, paymentService: string) => {
     // paymentService 유효성 검사
@@ -29,7 +18,9 @@ export function useCheckout() {
     const successUrl = `${window.location.origin}/membership/guide`;
     const cancelUrl = `${window.location.origin}/oauth2/failure`;
 
-    const { providerSessionId, amount, paymentId } = await createCheckout(
+    // pg 와 customerUid 는 서버가 정한다. 예전에는 프론트가 자기 PG_MAP 으로 다시 매핑했는데,
+    // 서버도 같은 매핑을 들고 있어 두 곳이 갈라졌고 프론트 쪽이 단건 채널로 굳어 있었다.
+    const { providerSessionId, amount, paymentId, pg, customerUid } = await createCheckout(
       planCode,
       successUrl,
       cancelUrl,
@@ -42,14 +33,6 @@ export function useCheckout() {
 
     IMP.init(getPortOneMerchantCode());
 
-    // paymentService가 유효한지 확인하고 pg 값 설정
-    const normalizedPaymentService = paymentService?.toLowerCase?.()?.trim();
-    const pg = normalizedPaymentService && PG_MAP[normalizedPaymentService] 
-      ? PG_MAP[normalizedPaymentService] 
-      : "kakaopay.TC0ONETIME";
-    
-    console.log('Payment Service:', paymentService, 'Normalized:', normalizedPaymentService, 'PG:', pg);
-
     await new Promise<void>((resolve, reject) => {
       const paymentData: IamportRequestPayData = {
         pg,
@@ -59,6 +42,9 @@ export function useCheckout() {
         name: `Membership ${planCode}`,
         m_redirect_url: successUrl,
         popup: preferPortOnePopup(),
+        // 정기결제 채널일 때만 채워진다. 이 값이 있으면 결제창이 결제와 동시에 빌링키를 발급해
+        // 이 이름에 묶어 두고, 이후 자동 청구가 그 이름으로 재청구한다. 없으면 단건 결제로 끝난다.
+        ...(customerUid ? { customer_uid: customerUid } : {}),
       };
 
       IMP.request_pay(

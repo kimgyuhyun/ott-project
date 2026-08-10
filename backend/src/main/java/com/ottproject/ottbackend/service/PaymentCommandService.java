@@ -3,8 +3,6 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.dto.MembershipSubscribeRequestDto;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateRequestDto;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateSuccessResponseDto;
-import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
-import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
 import com.ottproject.ottbackend.dto.PaymentSucceededEventDto;
 import com.ottproject.ottbackend.entity.IdempotencyKey;
@@ -15,7 +13,6 @@ import com.ottproject.ottbackend.entity.OutboxEvent;
 import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.PaymentMethod;
 import com.ottproject.ottbackend.entity.User;
-import java.util.List;
 import com.ottproject.ottbackend.enums.IdempotencyKeyStatus;
 import com.ottproject.ottbackend.enums.PaymentMethodType;
 import com.ottproject.ottbackend.enums.PaymentProvider;
@@ -24,6 +21,7 @@ import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
+import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,7 +77,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 	private final PlayerProgressReadService playerProgressReadService; // 플레이어 진행률 읽기 서비스(누적 시청 검증)
 	private final MembershipSubscriptionRepository subscriptionRepository; // 구독 리포지토리(웹훅 전이 반영)
 	private final PaymentQueryMapper paymentQueryMapper; // 결제 조회 매퍼
-	private final PaymentMethodService paymentMethodService; // 결제수단 서비스
+	private final PaymentMethodRepository paymentMethodRepository; // 빌링키 확인 후 저장 결제수단 등록/조회
 	private final MembershipCommandService membershipCommandService; // 멤버십 구독 생성(동기 직접 호출)
 	private final RecurringBillingService recurringBillingService; // 재청구 결제의 대사 확정(구독 연장 로직이 체크아웃과 다름)
 	private final OutboxEventRepository outboxEventRepository; // 아웃박스 이벤트 리포지토리(부수효과 발행)
@@ -381,10 +379,13 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		// 결제 서비스(pg) 매핑/검증: kakao|toss|nice 만 허용
 		String normalizedService = (req.paymentService == null ? null : req.paymentService.trim().toLowerCase());
 		String mappedPg = null;
+		// 카카오페이만 정기결제 채널(TCSUBSCRIP)이 있다. 토스·나이스는 공용 테스트 상점아이디에
+		// 정기결제가 없어 빌링키를 발급받을 수 없으므로 단건 채널 그대로 둔다 — 그 대신 아래에서
+		// 저장 결제수단을 만들지 않는다. 빌링키 없이 결제수단만 있으면 자동 청구가 영원히 거절당한다.
 		if (normalizedService == null || normalizedService.isBlank()) {
-			mappedPg = "kakaopay.TC0ONETIME"; // 기본값: 카카오 원타임
+			mappedPg = "kakaopay.TCSUBSCRIP"; // 기본값: 카카오 정기결제
 		} else if ("kakao".equals(normalizedService)) {
-			mappedPg = "kakaopay.TC0ONETIME";
+			mappedPg = "kakaopay.TCSUBSCRIP";
 		} else if ("toss".equals(normalizedService)) {
 			mappedPg = "tosspayments";
 		} else if ("nice".equals(normalizedService)) {
@@ -442,70 +443,20 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 
 		long chargeAmount = (testAmount > 0 ? testAmount : plan.getPrice().getAmount()); // 테스트금액 우선
 
-		// 결제수단 자동 등록 (아임포트 pay_method와 1:1 매핑)
+		// 빌링키 식별자(customer_uid). 정기결제 채널로 결제창을 열 때만 넘긴다.
+		//
+		// 이 값은 게이트웨이가 발급하는 것이 아니라 우리가 정하는 이름이고, 게이트웨이가 실제 빌링키를
+		// 여기에 1:1 로 묶어 자기 쪽에 보관한다. 그래서 사용자당 하나로 고정한다 — 재구독하면 같은
+		// 자리에 새 빌링키가 덮이므로, 결제할 때마다 결제수단 행이 늘어나던 문제가 구조적으로 사라진다.
+		//
+		// 여기서는 결제수단을 만들지 않는다. 예전에는 이 자리에서 "temp_" + 현재시각으로 자리표를 만들어
+		// 등록했는데, 결제창이 열리기도 전이라 성공 여부와 무관하게 매번 한 행씩 쌓였고(사용자 1번에 41행),
+		// 무엇보다 빌링키가 묶이지 않은 값이라 자동 청구가 그걸 customer_uid 로 보내 전부 거절당했다.
+		// 등록은 결제가 확정되고 빌링키 발급이 확인된 뒤에 markSucceededAndProvision 에서 한다.
+		String customerUid = mappedPg.startsWith("kakaopay.TCSUBSCRIP") ? billingCustomerUid(userId) : null;
+
+		// 결제수단은 확정 단계에서 연결한다(위 주석 참고). 여기서는 비워 둔다.
 		PaymentMethod paymentMethod = null;
-		if (req.paymentService != null && !req.paymentService.isBlank()) {
-			// 아임포트 pay_method와 1:1 매핑되는 타입 설정
-			PaymentMethodType methodType;
-			String brandUpper = null;
-			if (normalizedService != null) {
-				switch (normalizedService) {
-					case "kakao":
-						methodType = PaymentMethodType.KAKAO_PAY;
-						brandUpper = null; // 간편결제는 brand 불필요
-						break;
-					case "toss":
-						methodType = PaymentMethodType.TOSS_PAY;
-						brandUpper = null; // 간편결제는 brand 불필요
-						break;
-					case "nice":
-						methodType = PaymentMethodType.NICE_PAY;
-						brandUpper = null; // 간편결제는 brand 불필요
-						break;
-					default:
-						methodType = PaymentMethodType.CARD;
-						// 카드 브랜드는 결제 성공 후 PG 응답(card_name)으로 확정 저장
-						break;
-				}
-			} else {
-				methodType = PaymentMethodType.CARD;
-			}
-
-			// 같은 유형의 결제수단이 이미 있으면 재사용한다.
-			// 체크아웃마다 무조건 등록하면 결제를 반복할수록 동일 유형 수단이 계속 쌓인다.
-			final PaymentMethodType resolvedType = methodType;
-			PaymentMethodResponseDto existingMethod = paymentMethodService.list(userId).stream()
-					.filter(pm -> pm.type == resolvedType)
-					.findFirst()
-					.orElse(null);
-
-			if (existingMethod == null) {
-				// 결제수단 등록
-				PaymentMethodRegisterRequestDto methodDto = new PaymentMethodRegisterRequestDto();
-				methodDto.provider = PaymentProvider.IMPORT;
-				methodDto.type = methodType;
-				methodDto.providerMethodId = "temp_" + System.currentTimeMillis(); // 임시 ID
-				methodDto.brand = brandUpper; // ACCOUNT일 때만 세팅, CARD는 나중에 확정
-				methodDto.isDefault = true; // 첫 결제수단이므로 기본으로 설정
-				methodDto.priority = 100;
-				methodDto.label = (methodType == PaymentMethodType.CARD ? "카드" :
-					methodType == PaymentMethodType.KAKAO_PAY ? "카카오페이" :
-					methodType == PaymentMethodType.TOSS_PAY ? "토스페이" :
-					methodType == PaymentMethodType.NICE_PAY ? "나이스페이" : "결제") + " 결제";
-
-				paymentMethodService.register(userId, methodDto);
-
-				// 등록된 결제수단 조회
-				List<PaymentMethodResponseDto> methods = paymentMethodService.list(userId);
-				if (!methods.isEmpty()) {
-					existingMethod = methods.get(0);
-				}
-			}
-
-			if (existingMethod != null) {
-				paymentMethod = PaymentMethod.reference(existingMethod.id);
-			}
-		}
 
 		// 먼저 게이트웨이에서 세션 생성
 		User user = User.reference(userId);
@@ -537,7 +488,58 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		res.amount = chargeAmount; // 결제 금액(검증용)
 		res.paymentId = payment.getId(); // 내부 결제 ID
 		res.pg = mappedPg; // 프론트 PG 코드 전달
+		res.customerUid = customerUid; // 빌링키 식별자(정기결제 채널일 때만)
 		return res; // 반환
+	}
+
+	/**
+	 * 사용자의 빌링키 식별자 — 게이트웨이가 실제 빌링키를 이 이름에 묶어 보관한다.
+	 *
+	 * 사용자당 하나로 고정한다. 시각이나 난수를 섞으면 결제할 때마다 새 이름이 생기고, 이전 이름에
+	 * 묶인 빌링키는 아무도 참조하지 않는 채로 게이트웨이에 남는다. 고정해 두면 재구독이 같은 자리를
+	 * 덮으므로 저장 결제수단도 사용자당 한 행으로 수렴한다.
+	 */
+	private String billingCustomerUid(Long userId) {
+		return "ott_billing_" + userId;
+	}
+
+	/**
+	 * 빌링키가 발급됐으면 저장 결제수단으로 등록하고 결제에 연결한다.
+	 *
+	 * 발급 여부는 우리 DB 로 알 수 없다. customer_uid 는 우리가 지은 이름일 뿐이고 실제 키는 게이트웨이가
+	 * 들고 있으므로, 물어보는 것 말고는 확인할 방법이 없다. 그래서 여기서 한 번 조회한다.
+	 *
+	 * 미발급이면 아무것도 하지 않는다. 결제수단이 없으면 정기결제 배치가 청구 계획을 세우지 못해
+	 * 연체로만 표시하고 넘어가는데, 그게 빌링키 없는 값으로 매 주기 거절당하며 재시도를 소진하는 것보다 낫다.
+	 *
+	 * @return 등록·연결된 결제수단, 빌링키가 없으면 null
+	 */
+	private PaymentMethod registerBillingKeyIfIssued(Payment payment) {
+		Long userId = payment.getUser().getId();
+		String customerUid = billingCustomerUid(userId);
+		if (!paymentGateway.hasBillingKey(customerUid)) {
+			log.info("빌링키 미발급 - 저장 결제수단을 등록하지 않는다. userId: {}, paymentId: {}", userId, payment.getId());
+			return null;
+		}
+
+		// customer_uid 는 사용자당 고정이라 재구독해도 같은 행을 다시 쓴다.
+		PaymentMethod existing = paymentMethodRepository
+				.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(userId).stream()
+				.filter(pm -> customerUid.equals(pm.getProviderMethodId()))
+				.findFirst()
+				.orElse(null);
+		if (existing != null) {
+			payment.attachPaymentMethod(existing);
+			return existing;
+		}
+
+		PaymentMethod pm = PaymentMethod.createPaymentMethod(
+				User.reference(userId), PaymentProvider.IMPORT, PaymentMethodType.KAKAO_PAY, customerUid);
+		pm.applyListingOptions(true, 100, "카카오페이 정기결제");
+		paymentMethodRepository.save(pm);
+		payment.attachPaymentMethod(pm);
+		log.info("빌링키 확인 - 저장 결제수단 등록 완료. userId: {}, customer_uid: {}", userId, customerUid);
+		return pm;
 	}
 
 	/**
@@ -875,6 +877,12 @@ public class PaymentCommandService { // 결제 쓰기 서비스
 		try {
 			PaymentGateway.PaymentDetails details = paymentGateway.fetchPaymentDetails(providerPaymentId);
 			PaymentMethod pm = payment.getPaymentMethod();
+			if (pm == null) {
+				// 체크아웃은 결제수단을 만들지 않는다. 결제가 확정된 지금에야 빌링키가 실제로 묶였는지
+				// 게이트웨이에 물어볼 수 있고, 확인된 경우에만 저장 결제수단으로 승격시킨다.
+				// 확인 안 되면 등록하지 않는다 — 자동 청구가 쓸 수 없는 값을 결제수단으로 남기지 않으려는 것이다.
+				pm = registerBillingKeyIfIssued(payment);
+			}
 			if (pm != null) {
 				String payMethod = details.payMethod == null ? "" : details.payMethod.trim().toLowerCase();
 				PaymentMethodType type;
