@@ -21,7 +21,6 @@ interface PaymentModalProps {
   selectedPaymentService: PaymentService | '';
   onSelectPaymentService: (service: PaymentService) => void;
   onOpenCardRegistration: () => void;
-  onPay: () => void;
 }
 
 export default function PaymentModal({
@@ -33,7 +32,6 @@ export default function PaymentModal({
   selectedPaymentService,
   onSelectPaymentService,
   onOpenCardRegistration,
-  onPay,
 }: PaymentModalProps) {
   const [agreed, setAgreed] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
