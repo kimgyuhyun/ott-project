@@ -35,7 +35,7 @@ public class RatingService {
         if (score == null || score < 1.0 || score > 5.0 || Math.abs(score * 2 - Math.rint(score * 2)) > 1e-9) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "평점은 1.0~5.0 사이 0.5 단위여야 합니다.");
         }
-        User user = userRepository.findById(userId).orElseThrow();
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Anime anime = animeRepository.findById(aniId).orElseThrow();
 
         Rating rating = ratingRepository.findByUserIdAndAnimeId(userId, aniId)

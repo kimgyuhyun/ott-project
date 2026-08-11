@@ -66,8 +66,7 @@ public class ReviewsService {
     }
 
     public Long create(Long userId, Long aniListId, String content) {
-        User user = userRepository.findById(userId) // 사용자 조회(필수)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Anime animeList = animeListRepository.findById(aniListId) // NEW 애니 조회(필수)
                 .orElseThrow(() -> new IllegalArgumentException("animeList not found: " + aniListId));
 
@@ -97,8 +96,7 @@ public class ReviewsService {
     }
 
     public void report(Long reviewId, Long userId) { // 리뷰 신고(사용자당 1회, 임계치 초과 시에만 숨김)
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
 
@@ -119,8 +117,7 @@ public class ReviewsService {
         if (deleted > 0) return false;
 
         // on 시도
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
         try {
