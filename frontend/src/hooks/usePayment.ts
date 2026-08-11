@@ -7,13 +7,11 @@ import {
 } from '@/lib/portone/loadPortOne';
 import { useAuth } from '@/lib/AuthContext';
 import type { IamportRequestPayData, IamportResponse } from '@/types/iamport';
-import { 
-  PaymentError, 
-  PaymentErrorCode, 
-  ValidPgCode, 
-  PaymentService, 
+import {
+  PaymentError,
+  PaymentErrorCode,
+  PaymentService,
   PaymentState,
-  isValidPg,
   isRetryableError,
   delay,
   validatePaymentResponse
@@ -39,13 +37,6 @@ export const usePayment = () => {
     retryCount: 0
   });
   const { user } = useAuth();
-
-  // PG 매핑 - 타입 안전성 강화
-  const PG_MAP: Record<PaymentService, ValidPgCode> = {
-    kakao: "kakaopay.TC0ONETIME",
-    toss: "tosspayments",
-    nice: "nice",
-  };
 
   // 로깅 함수
   const logPaymentEvent = (event: string, data: Record<string, unknown>) => {
@@ -110,23 +101,11 @@ export const usePayment = () => {
 
       // 4. 결제 요청
       return new Promise((resolve) => {
-        // PG 코드 검증 및 변환
-        const pg = PG_MAP[request.paymentService] || "kakaopay.TC0ONETIME";
-        
-        if (!isValidPg(pg)) {
-          const error = new PaymentError(
-            PaymentErrorCode.INVALID_PG,
-            `지원하지 않는 PG 코드입니다: ${pg}`
-          );
-          logPaymentEvent('Invalid PG code', { pg, paymentService: request.paymentService });
-          setPaymentState(prev => ({ ...prev, status: 'error', error }));
-          resolve({
-            success: false,
-            errorMessage: error.message
-          });
-          return;
-        }
-        
+        // pg 와 customer_uid 는 서버가 정한 값을 그대로 쓴다. 여기에 자체 PG_MAP 을 두면
+        // 서버 매핑과 갈라진다 — 실제로 갈라져 있었고, 서버가 정기결제 채널을 내려주는 동안
+        // 이 훅이 단건 채널(kakaopay.TC0ONETIME)로 결제창을 열어 빌링키가 발급되지 않았다.
+        const pg = checkoutResponse.pg;
+
         const paymentData: IamportRequestPayData = {
           pg,
           pay_method: 'card',
@@ -139,6 +118,9 @@ export const usePayment = () => {
           // paymentId/type + 아임포트가 붙여주는 imp_uid로 확정 API를 호출한다.
           m_redirect_url: window.location.origin + '/membership/success?paymentId=' + checkoutResponse.paymentId + '&type=membership',
           popup: preferPortOnePopup(),
+          // 정기결제 채널일 때만 채워진다. 이 값이 있어야 결제창이 결제와 동시에 빌링키를 발급해
+          // 이 이름에 묶어 두고, 이후 자동 청구가 그 이름으로 재청구한다. 없으면 단건 결제로 끝난다.
+          ...(checkoutResponse.customerUid ? { customer_uid: checkoutResponse.customerUid } : {}),
         };
 
         logPaymentEvent('Payment data prepared', {

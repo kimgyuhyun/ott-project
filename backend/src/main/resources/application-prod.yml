@@ -251,6 +251,11 @@ billing:
   retry:
     first-delay-ms: ${BILLING_RETRY_FIRST_DELAY_MS:10800000}   # 1차 실패 후 3시간
     second-delay-ms: ${BILLING_RETRY_SECOND_DELAY_MS:86400000} # 2차 실패 후 24시간
+  # 정기결제 스윕 주기(고정 지연). 청구 대상은 next_billing_at 이 정하므로 발화 시각은 정확할 필요가 없다.
+  # 줄일 때는 RecurringBillingService 의 lockAtMostFor(PT25M)도 함께 낮춰야 한다 — 주기보다 길면
+  # 락을 쥔 인스턴스가 죽었을 때 그 사이 실행이 통째로 스킵된다.
+  sweep-interval-ms: ${BILLING_SWEEP_INTERVAL_MS:1800000}      # 30분
+  sweep-initial-delay-ms: ${BILLING_SWEEP_INITIAL_DELAY_MS:120000} # 기동 2분 뒤 첫 실행
 
 # MyBatis 설정
 mybatis:

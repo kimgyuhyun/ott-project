@@ -43,9 +43,19 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
             if (session != null) {
                 Object emailObj = session.getAttribute("userEmail");
                 if (emailObj instanceof String email && !email.isEmpty()) {
-                    User user = userRepository.findByEmail(email).orElse(null);
-                    if (user != null) {
-                        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
+                    Object roleObj = session.getAttribute("userRole");
+                    String roleName = (roleObj instanceof String r && !r.isEmpty()) ? r : null;
+                    if (roleName == null) {
+                        // 폴백: 새 속성이 없는 기존 세션(배포 시점에 이미 로그인해 있던 사용자)은 조회 후 세션에 채워 넣는다.
+                        User user = userRepository.findByEmail(email).orElse(null);
+                        if (user != null) {
+                            roleName = user.getRole().name();
+                            session.setAttribute("userId", user.getId());
+                            session.setAttribute("userRole", roleName);
+                        }
+                    }
+                    if (roleName != null) {
+                        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + roleName);
                         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
                                 email, null, Collections.singletonList(authority)
                         );

@@ -6,10 +6,8 @@ import Header from "@/components/layout/Header";
 import { useAuth } from "@/lib/AuthContext";
 import { subscribeMembership, registerPaymentMethod } from "@/lib/api/membership";
 import { useMembershipData } from "@/hooks/useMembershipData";
-import { useCheckout } from "@/hooks/useCheckout";
 // import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import PaymentModal from "@/components/membership/PaymentModal";
-import PaymentFailureModal from "@/components/membership/PaymentFailureModal";
 import CardRegistrationModal from "@/components/membership/CardRegistrationModal";
 import { PaymentService } from "@/types/payment";
 import styles from "./membership.module.css";
@@ -28,9 +26,7 @@ export default function MembershipPage() {
   const [paymentMethod, setPaymentMethod] = useState<string>('simple');
   const [selectedPaymentService, setSelectedPaymentService] = useState<PaymentService | ''>('toss');
   const [isCardRegistrationModalOpen, setIsCardRegistrationModalOpen] = useState(false);
-  const [isPaymentFailureOpen, setIsPaymentFailureOpen] = useState(false);
-  const [paymentFailureMsg, setPaymentFailureMsg] = useState<string>('결제 실패');
-  
+
   // 멤버십 페이지는 항상 다크 모드 (라프텔 방식)
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -38,7 +34,6 @@ export default function MembershipPage() {
   
   // 데이터 훅 사용
   const { membershipPlans, userMembership, paymentMethods, isLoading, error, reloadPaymentMethods, reloadUserMembership } = useMembershipData();
-  const { requestPay } = useCheckout();
 
   // 멤버십 사용 중인 유저 리다이렉트 체크
   useEffect(() => {
@@ -136,19 +131,6 @@ export default function MembershipPage() {
     } catch (err) {
       alert('멤버십 구독에 실패했습니다.');
       console.error('구독 오류:', err);
-    }
-  };
-
-  // 결제 진행 (SDK 호출)
-  const handlePayment = async () => {
-    try {
-      const planCode = selectedPlan === 'basic' ? 'BASIC_MONTHLY' : 'PREMIUM_MONTHLY';
-      await requestPay(planCode, selectedPaymentService as string);
-    } catch (err) {
-      const msg = (err as Error)?.message || '결제 실패';
-      setPaymentFailureMsg(msg);
-      setIsPaymentFailureOpen(true);
-      console.error('결제 오류:', err);
     }
   };
 
@@ -518,13 +500,6 @@ export default function MembershipPage() {
         selectedPaymentService={selectedPaymentService}
         onSelectPaymentService={handlePaymentServiceSelect}
         onOpenCardRegistration={openCardRegistrationModal}
-        onPay={handlePayment}
-      />
-
-      <PaymentFailureModal
-        isOpen={isPaymentFailureOpen}
-        onClose={() => setIsPaymentFailureOpen(false)}
-        message={paymentFailureMsg}
       />
 
       {/* 카드 등록 모달 */}

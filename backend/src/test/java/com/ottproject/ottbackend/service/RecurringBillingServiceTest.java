@@ -9,6 +9,7 @@ import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
+import com.ottproject.ottbackend.enums.PlanChangeType;
 import com.ottproject.ottbackend.mybatis.MembershipSubscriptionQueryMapper;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.PaymentMethodRepository;
@@ -104,12 +105,17 @@ class RecurringBillingServiceTest {
         ReflectionTestUtils.setField(service, "self", service);
 
         // 프로덕션에서는 @PostConstruct 가 부르는 자리다. 단위 테스트에는 컨테이너가 없으므로 직접 부른다.
-        service.registerBatchLivenessGauge();
+        service.registerBatchGauges();
     }
 
     /** 배치 생존 게이지의 현재 값. 이름이 바뀌면 여기서 먼저 깨진다(경보 식이 이 이름을 쓴다). */
     private double livenessGauge() {
         return meterRegistry.get("billing.batch.last.success.timestamp.seconds").gauge().value();
+    }
+
+    /** 마지막 배치의 청구 실패 건수. 경보 BillingItemsFailing 이 이 이름을 쓴다. */
+    private double failedItemsGauge() {
+        return meterRegistry.get("billing.batch.failed.items").gauge().value();
     }
 
     /** 마지막 완주 시각을 과거로 되돌린다(배치가 값을 갱신했는지 눈에 보이게 하려고). */
@@ -491,8 +497,9 @@ class RecurringBillingServiceTest {
         given(membershipSubscriptionQueryMapper.findSubscriptionsWithScheduledPlanChanges(anyList(), any()))
                 .willReturn(List.of());
         given(membershipSubscriptionQueryMapper.findSubscriptionsForBilling(anyList(), any()))
-                .willReturn(List.of(mapperShapedSubscription())); // 매퍼가 실제로 돌려주는 모양
-        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+                .willReturn(List.of(mapperShapedSubscription(SUB_ID))); // 매퍼가 실제로 돌려주는 모양
+        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub)); // 1단계
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub)); // 3단계
         PaymentMethod card = savedCard();
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
                 .willReturn(List.of(card));
@@ -512,13 +519,48 @@ class RecurringBillingServiceTest {
         assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.ACTIVE);
         assertThat(sub.getEndAt()).isEqualTo(originalEnd.plusMonths(1));
         assertThat(livenessGauge()).isGreaterThan(stale);
+        assertThat(failedItemsGauge()).isZero();
+    }
+
+    @Test
+    @DisplayName("구독 한 건이 터져도 나머지는 청구된다 - 대신 실패 건수를 지표로 내보낸다")
+    void oneBrokenSubscriptionDoesNotBlockTheRest() {
+        long stale = ageLastSuccess();
+        long brokenId = 11L;
+        PaymentGateway.ChargeResult cr = new PaymentGateway.ChargeResult();
+        cr.providerPaymentId = "imp_sweep_2";
+        cr.paidAt = LocalDateTime.now();
+
+        given(membershipSubscriptionQueryMapper.findSubscriptionsWithScheduledPlanChanges(anyList(), any()))
+                .willReturn(List.of());
+        given(membershipSubscriptionQueryMapper.findSubscriptionsForBilling(anyList(), any()))
+                .willReturn(List.of(mapperShapedSubscription(brokenId), mapperShapedSubscription(SUB_ID)));
+        // 앞 건이 터진다. 배치 전체가 한 트랜잭션이던 시절에는 여기서 뒤 구독이 전부 날아갔다.
+        given(subscriptionRepository.findById(brokenId))
+                .willThrow(new DataAccessResourceFailureException("connection reset"));
+        given(subscriptionRepository.findById(SUB_ID)).willReturn(Optional.of(sub));
+        given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
+        PaymentMethod card = savedCard();
+        given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
+                .willReturn(List.of(card));
+        given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
+                .willReturn(PAYMENT_ID);
+        given(paymentGateway.chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
+                .willReturn(cr);
+        given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(pendingPayment()));
+
+        service.runRecurringBilling();
+
+        assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.ACTIVE); // 뒤 구독은 청구됐다
+        assertThat(livenessGauge()).isGreaterThan(stale); // 배치는 완주했고
+        assertThat(failedItemsGauge()).isEqualTo(1.0); // 실패는 이 지표로만 보인다 - 없으면 조용히 묻힌다
     }
 
     /**
      * 매퍼 resultMap 이 실제로 채우는 범위를 재현한다 — 연관 엔티티는 id 뿐이고 가격·주기는 비어 있다.
      * 대상 선별에는 충분하지만 이 객체로 청구하면 안 된다는 것이 위 테스트의 요지다.
      */
-    private MembershipSubscription mapperShapedSubscription() {
+    private MembershipSubscription mapperShapedSubscription(long subscriptionId) {
         MembershipPlan idOnlyPlan = MembershipPlan.createBasicPlan("BASIC", "기본 플랜", new Money(9900L, "KRW"), 1);
         ReflectionTestUtils.setField(idOnlyPlan, "id", 5L);
         ReflectionTestUtils.setField(idOnlyPlan, "price", null); // resultMap 에 없는 컬럼
@@ -526,8 +568,98 @@ class RecurringBillingServiceTest {
 
         MembershipSubscription mapped = MembershipSubscription.createSubscription(
                 User.reference(1L), idOnlyPlan, sub.getStartAt(), sub.getEndAt());
-        ReflectionTestUtils.setField(mapped, "id", SUB_ID);
+        ReflectionTestUtils.setField(mapped, "id", subscriptionId);
         return mapped;
+    }
+
+    // ===== 예약된 플랜 변경 =====
+    //
+    // 여기서 매퍼 객체를 그대로 쓰면 청구 경로처럼 요란하게 죽지 않는다. 알림 서비스가 수신자 없으면
+    // 조용히 return 하도록 돼 있어서, 예외도 로그도 경보도 없이 안내 메일만 안 나간다.
+    // 그래서 "보냈다"가 아니라 "누구에게 보냈는가"를 확인한다.
+
+    @Test
+    @DisplayName("플랜 변경 안내는 매퍼 객체가 아니라 JPA 로 다시 읽은 수신자에게 나간다")
+    void planChangeNotificationGoesToReloadedRecipient() {
+        MembershipSubscription managed = subscriptionWithScheduledPlanChange();
+        given(membershipSubscriptionQueryMapper.findSubscriptionsWithScheduledPlanChanges(anyList(), any()))
+                .willReturn(List.of(mapperShapedPlanChange())); // user 는 id 뿐이라 이메일이 비어 있다
+        given(subscriptionRepository.findWithUserAndNextPlanById(SUB_ID)).willReturn(Optional.of(managed));
+        given(membershipSubscriptionQueryMapper.findSubscriptionsForBilling(anyList(), any()))
+                .willReturn(List.of());
+
+        service.runRecurringBilling();
+
+        ArgumentCaptor<User> recipient = ArgumentCaptor.forClass(User.class);
+        ArgumentCaptor<MembershipPlan> newPlan = ArgumentCaptor.forClass(MembershipPlan.class);
+        verify(notificationService).sendPlanChangeNotification(recipient.capture(), any(), newPlan.capture());
+        // 매퍼 객체를 넘기면 여기가 null 이고, 알림 서비스는 그대로 조용히 return 한다
+        assertThat(recipient.getValue().getEmail()).isEqualTo("plan-change@example.com");
+        // 본문이 새 플랜의 가격을 읽는다 - 매퍼의 nextPlan 은 id 뿐이라 이 값도 비어 있다
+        assertThat(newPlan.getValue().getPrice().getAmount()).isEqualTo(14900L);
+    }
+
+    @Test
+    @DisplayName("플랜 변경은 관리 엔티티에 적용되고 예약은 해제된다 - 매퍼 객체에 적용하면 저장되지 않는다")
+    void planChangeIsAppliedToManagedEntity() {
+        MembershipSubscription managed = subscriptionWithScheduledPlanChange();
+        given(membershipSubscriptionQueryMapper.findSubscriptionsWithScheduledPlanChanges(anyList(), any()))
+                .willReturn(List.of(mapperShapedPlanChange()));
+        given(subscriptionRepository.findWithUserAndNextPlanById(SUB_ID)).willReturn(Optional.of(managed));
+        given(membershipSubscriptionQueryMapper.findSubscriptionsForBilling(anyList(), any()))
+                .willReturn(List.of());
+
+        service.runRecurringBilling();
+
+        assertThat(managed.getMembershipPlan().getName()).isEqualTo("PREMIUM");
+        assertThat(managed.getNextPlan()).isNull(); // 예약이 남으면 다음 배치가 같은 변경을 또 적용한다
+    }
+
+    @Test
+    @DisplayName("대상 조회 이후 예약이 사라졌으면 건너뛴다 - 안내 메일도 나가지 않는다")
+    void planChangeSkippedWhenReservationIsGone() {
+        given(membershipSubscriptionQueryMapper.findSubscriptionsWithScheduledPlanChanges(anyList(), any()))
+                .willReturn(List.of(mapperShapedPlanChange()));
+        // 다른 경로가 먼저 적용해 next_plan_id 가 비었다 → fetch join 이 결과를 돌려주지 않는다
+        given(subscriptionRepository.findWithUserAndNextPlanById(SUB_ID)).willReturn(Optional.empty());
+        given(membershipSubscriptionQueryMapper.findSubscriptionsForBilling(anyList(), any()))
+                .willReturn(List.of());
+
+        service.runRecurringBilling();
+
+        verifyNoInteractions(notificationService);
+    }
+
+    /**
+     * findSubscriptionsWithScheduledPlanChanges 가 돌려주는 모양.
+     * mapperShapedSubscription 과 달리 nextPlan 이 반드시 있다(그 쿼리가 next_plan_id IS NOT NULL 로
+     * 거른다). 단 id 만 채워져 있어서 이 객체로 안내 메일을 보내면 수신자도 가격도 비어 있다.
+     */
+    private MembershipSubscription mapperShapedPlanChange() {
+        MembershipSubscription mapped = mapperShapedSubscription(SUB_ID);
+        MembershipPlan idOnlyNextPlan = MembershipPlan.createBasicPlan("PREMIUM", "프리미엄 플랜", new Money(14900L, "KRW"), 1);
+        ReflectionTestUtils.setField(idOnlyNextPlan, "id", 6L);
+        ReflectionTestUtils.setField(idOnlyNextPlan, "name", null); // resultMap 에 없는 컬럼
+        ReflectionTestUtils.setField(idOnlyNextPlan, "price", null); // resultMap 에 없는 컬럼
+        mapped.schedulePlanChange(idOnlyNextPlan, LocalDateTime.now(), PlanChangeType.UPGRADE);
+        return mapped;
+    }
+
+    /** fetch join 조회가 돌려주는 모양 — 수신자 이메일과 새 플랜 가격이 실제로 채워져 있다. */
+    private MembershipSubscription subscriptionWithScheduledPlanChange() {
+        User user = User.createLocalUser("plan-change@example.com", "pw", "홍길동");
+        ReflectionTestUtils.setField(user, "id", 1L); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
+
+        MembershipPlan current = MembershipPlan.createBasicPlan("BASIC", "기본 플랜", new Money(9900L, "KRW"), 1);
+        ReflectionTestUtils.setField(current, "id", 5L);
+        MembershipPlan next = MembershipPlan.createBasicPlan("PREMIUM", "프리미엄 플랜", new Money(14900L, "KRW"), 1);
+        ReflectionTestUtils.setField(next, "id", 6L);
+
+        MembershipSubscription managed = MembershipSubscription.createSubscription(
+                user, current, LocalDateTime.now().minusDays(20), LocalDateTime.now().plusDays(10));
+        ReflectionTestUtils.setField(managed, "id", SUB_ID);
+        managed.schedulePlanChange(next, LocalDateTime.now(), PlanChangeType.UPGRADE);
+        return managed;
     }
 
     @Test
