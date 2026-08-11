@@ -3,6 +3,7 @@ package com.ottproject.ottbackend.handler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.enums.AuthEventType;
 import com.ottproject.ottbackend.enums.AuthProvider;
+import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.service.AuthEventService;
 import com.ottproject.ottbackend.util.ClientRequestUtil;
 import jakarta.servlet.ServletException;
@@ -36,6 +37,7 @@ public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHand
 
     private final ObjectMapper objectMapper;
     private final AuthEventService authEventService; // 소셜 로그인 성공 감사 로그 기록 주입
+    private final UserRepository userRepository; // 로그인 시점 1회 사용자 조회(세션에 id/role 보관)
 
     /**
      * OAuth2 소셜 로그인 성공 시 호출되는 메서드
@@ -77,6 +79,12 @@ public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHand
                     String emailFromAuth = authentication.getName();
                     if (emailFromAuth != null && !emailFromAuth.isBlank()) {
                         session.setAttribute("userEmail", emailFromAuth);
+                        // 이후 요청에서 사용자 조회를 생략하기 위해 식별자와 권한을 세션에 함께 보관한다(로그인당 1회 조회).
+                        // 조회에 실패하면 이메일만 남기고 넘어간다(필터/유틸에 폴백 경로가 있음).
+                        userRepository.findByEmail(emailFromAuth).ifPresent(user -> {
+                            session.setAttribute("userId", user.getId());
+                            session.setAttribute("userRole", user.getRole().name());
+                        });
                     }
                     session.setAttribute("isNewUser", isNewUser);
                 } catch (Exception ignore) { }

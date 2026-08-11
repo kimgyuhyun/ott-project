@@ -191,6 +191,10 @@ public class EmailAuthController {
         // 공격자가 미리 심어둔 세션 ID 가 인증 후에도 그대로 유지되는 것을 막기 위해 명시적으로 회전시킨다.
         request.changeSessionId();
         session.setAttribute("userEmail", requestDto.getEmail());
+        // 이후 요청에서 사용자 조회를 생략하기 위해 식별자와 권한을 세션에 함께 보관한다.
+        // role 은 enum 이 아니라 name() 문자열로 저장한다(세션이 Redis 에 직렬화되어 저장되므로).
+        session.setAttribute("userId", responseDto.getId());
+        session.setAttribute("userRole", responseDto.getRole().name());
         // SecurityContext 를 세션에 명시적으로 저장한다(회전 직후에 저장해야 새 세션에 실린다).
         // 저장하지 않으면 다음 요청에서 SessionAuthenticationFilter 가 인증을 붙이는 시점이
         // "방금 인증된 새 로그인"으로 보여 Spring Security 의 세션 고정 방어가 한 번 더 발동하고,
