@@ -18,7 +18,6 @@ import com.ottproject.ottbackend.entity.User;
  * - verifyWebhookBasicValidation: 웹훅 기본 검증
  * - verifyPayment: 결제 성공 주장 재검증
  * - findPaymentBySessionId: 세션 식별자로 결제 상태 역조회(대사용)
- * - fetchPaymentDetails: 확정된 결제의 수단 상세 조회
  *
  * 용어
  * - providerSessionId: 결제 건마다 호출자가 만들어 게이트웨이에 등록하는 주문 식별자(아임포트의 merchant_uid).
@@ -87,6 +86,16 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 	 */
 	ChargeResult chargeWithSavedMethod(String providerCustomerId, String providerMethodId, String merchantUid, long amount, String currency, String description);
 
+	/**
+	 * 빌링키 발급 여부 확인
+	 * - customerUid 는 우리가 정하는 값이고, 게이트웨이가 실제 빌링키를 거기에 묶어 자기 쪽에 보관한다.
+	 *   그래서 "발급됐는가"는 우리 DB 로 알 수 없고 게이트웨이에 물어야만 알 수 있다.
+	 * - 결제수단을 등록하기 전에 이걸 확인한다. 확인 없이 등록하면 빌링키가 없는 값이 저장 결제수단으로
+	 *   남아, 자동 청구가 그 값을 customer_uid 로 보내고 게이트웨이가 매번 거절한다.
+	 * @return 발급이 확인되면 true. 조회 실패나 판정 불가도 false 다(없는 것으로 취급해야 안전하다).
+	 */
+	boolean hasBillingKey(String customerUid);
+
 	final class ChargeResult {
 		public String providerPaymentId;
 		public java.time.LocalDateTime paidAt;
@@ -148,23 +157,6 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
 		public String providerPaymentId;   // 게이트웨이가 부여한 결제 식별자
 		public long amount;                // 실제 결제 금액
 		public String receiptUrl;          // 영수증 URL
-	}
-
-	/**
-	 * 확정된 결제의 수단 상세 조회
-	 * - 결제수단 type/brand 를 결제창에서 실제로 고른 값으로 확정하는 데 쓴다.
-	 * - 조회에 실패하면 예외를 던진다. 빈 값을 돌려주면 호출자가 "카드"로 잘못 확정한다.
-	 */
-	PaymentDetails fetchPaymentDetails(String providerPaymentId);
-
-	/**
-	 * 결제 수단 상세
-	 * - 게이트웨이가 값을 주지 않으면 각 필드는 null 이다.
-	 */
-	final class PaymentDetails {
-		public String payMethod;   // ex) card, kakaopay, tosspayments, nice
-		public String pgProvider;  // ex) kakaopay, tosspayments, nice
-		public String cardName;    // ex) VISA, MasterCard, 삼성카드
 	}
 
 	/**

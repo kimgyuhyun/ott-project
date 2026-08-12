@@ -8,12 +8,14 @@ import com.ottproject.ottbackend.enums.AuthEventType;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
 import com.ottproject.ottbackend.security.SessionEventListener;
+import com.ottproject.ottbackend.security.UserSessionRegistry;
 import com.ottproject.ottbackend.service.AuthEventService;
 import com.ottproject.ottbackend.service.EmailAuthService;
 import com.ottproject.ottbackend.service.LoginAttemptService;
 import com.ottproject.ottbackend.service.TurnstileVerifier;
 import com.ottproject.ottbackend.service.VerificationEmailService;
 import com.ottproject.ottbackend.util.ClientRequestUtil;
+import com.ottproject.ottbackend.util.SecurityUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
@@ -72,6 +74,8 @@ public class EmailAuthController {
     private final AuthEventService authEventService; // 인증 이벤트(로그인/로그아웃 등) 감사 로그 기록 주입
     private final LoginAttemptService loginAttemptService; // 로그인 실패 횟수 기반 계정 잠금(brute-force 방어) 주입
     private final TurnstileVerifier turnstileVerifier; // Cloudflare Turnstile(봇/사람 확인) 검증 주입
+    private final UserSessionRegistry userSessionRegistry; // 사용자별 세션 목록(탈퇴 시 다른 기기 세션 차단) 주입
+    private final SecurityUtil securityUtil; // 세션에서 사용자 ID 확인(탈퇴 전 캡처용) 주입
     private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository(); // 로그인 성공 시 SecurityContext 를 세션에 저장
 
     @Operation(summary = "회원가입", description = "이메일/비밀번호/프로필 정보로 신규 계정을 생성합니다.")
@@ -191,6 +195,13 @@ public class EmailAuthController {
         // 공격자가 미리 심어둔 세션 ID 가 인증 후에도 그대로 유지되는 것을 막기 위해 명시적으로 회전시킨다.
         request.changeSessionId();
         session.setAttribute("userEmail", requestDto.getEmail());
+        // 이후 요청에서 사용자 조회를 생략하기 위해 식별자와 권한을 세션에 함께 보관한다.
+        // role 은 enum 이 아니라 name() 문자열로 저장한다(세션이 Redis 에 직렬화되어 저장되므로).
+        session.setAttribute("userId", responseDto.getId());
+        session.setAttribute("userRole", responseDto.getRole().name());
+        // 탈퇴 시 다른 기기 세션까지 끊으려면 사용자별 세션 목록이 필요하다(UserSessionRegistry 주석 참고).
+        // 회전 뒤의 세션 ID 를 넣어야 한다 — 회전 전 ID 는 이미 버려진 값이다.
+        userSessionRegistry.register(responseDto.getId(), session.getId());
         // SecurityContext 를 세션에 명시적으로 저장한다(회전 직후에 저장해야 새 세션에 실린다).
         // 저장하지 않으면 다음 요청에서 SessionAuthenticationFilter 가 인증을 붙이는 시점이
         // "방금 인증된 새 로그인"으로 보여 Spring Security 의 세션 고정 방어가 한 번 더 발동하고,
@@ -335,6 +346,10 @@ public class EmailAuthController {
         if (userEmail == null) { // 만약 userEmail이 null이면 실행
             return ResponseEntity.badRequest().body("로그인이 필요합니다.");
         }
+        // 탈퇴는 이메일을 익명화하므로, 그 뒤에는 이메일로 사용자 ID 를 되찾을 수 없다.
+        // 다른 기기 세션을 끊으려면 ID 가 필요하니 탈퇴를 부르기 전에 확보해 둔다.
+        Long userId = securityUtil.getCurrentUserIdOrNull(session);
+
         emailAuthService.withdraw(userEmail); // userEmail 값이 null이 아니면 실행
         // emailAuthService에 withdraw 메서드에 userEmail 값을 태워보냄
         // withdraw 메서드는 userEmail을 키로 사용해 해당 사용자의 계정을 비활성화(탈퇴) 처리함
@@ -343,6 +358,10 @@ public class EmailAuthController {
         String sessionId = session.getId();
         authEventService.record(AuthEventType.WITHDRAW, AuthProvider.LOCAL, userEmail,
                 ClientRequestUtil.clientIp(request), ClientRequestUtil.userAgent(request), sessionId, null);
+
+        // 다른 기기에 남아 있는 세션을 끊는다. 탈퇴(DB 익명화)가 커밋된 뒤에 호출해야
+        // 롤백된 탈퇴 때문에 멀쩡한 세션이 끊기는 일이 없다.
+        userSessionRegistry.revokeOthers(userId, sessionId);
 
         // 명시적 탈퇴임을 표시 → SessionEventListener 가 SESSION_EXPIRED 로 중복 기록하지 않도록 함
         session.setAttribute(SessionEventListener.EXPLICIT_INVALIDATION_FLAG, Boolean.TRUE);

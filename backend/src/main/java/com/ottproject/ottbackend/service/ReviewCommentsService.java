@@ -82,8 +82,7 @@ public class ReviewCommentsService {
     }
 
     public Long create(Long userId, Long reviewId, Long parentId, String content) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
 
@@ -131,8 +130,7 @@ public class ReviewCommentsService {
     }
 
     public void report(Long commentId, Long userId) { // 댓글 신고(사용자당 1회, 임계치 초과 시에만 숨김)
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Comment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
 
@@ -156,8 +154,7 @@ public class ReviewCommentsService {
                 return false; // off
             }
 
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+            User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
             
             Comment comment = commentRepository.findById(commentId)
                     .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
@@ -192,8 +189,7 @@ public class ReviewCommentsService {
     }
 
     public Long createReply(Long userId, Long parentId, String content) { // 대댓글 생성(부모에서 리뷰 ID 유추)
-        User user = userRepository.findById(userId) // 사용자 조회(필수)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId)); // 없으면 예외
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Comment parent = commentRepository.findById(parentId) // 부모 댓글 조회(필수)
                 .orElseThrow(() -> new IllegalArgumentException("parent comment not found: " + parentId)); // 없으면 예외
         Review review = parent.getReview(); // 부모 댓글이 속한 리뷰 엔티티 추출

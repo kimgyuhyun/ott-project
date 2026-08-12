@@ -12,7 +12,8 @@ import java.time.LocalDateTime;
  * 큰 흐름
  * - 결제 확정 등 도메인 변경과 "같은 트랜잭션"으로 이벤트를 이 테이블에 저장한다(dual-write 문제 회피).
  * - 별도 발행기(OutboxPublisher)가 NEW 상태 행을 폴링하여 카프카로 발행하고 PUBLISHED 로 전환한다.
- * - eventId 는 카프카 메시지 키/헤더로 전파되어 컨슈머 멱등 처리(중복 배달 방어)의 기준이 된다.
+ * - eventId 는 payload(JSON) 안에 담겨 컨슈머로 전파되어 멱등 처리(중복 배달 방어)의 기준이 된다.
+ *   카프카 메시지 키는 aggregateId 다(동일 애그리거트의 파티션 순서 보장).
  *
  * 필드 개요
  * - id: PK

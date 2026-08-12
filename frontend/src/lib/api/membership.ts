@@ -240,6 +240,8 @@ export interface PaymentCheckoutCreateSuccess {
   paymentId: number;
   providerSessionId: string; // merchant_uid
   amount: number; // 결제 금액(dev에서는 1원)
+  pg: string; // 서버가 정한 PortOne 채널(kakaopay.TCSUBSCRIP 등) — 프론트에서 다시 매핑하지 않는다
+  customerUid?: string | null; // 빌링키 식별자. 정기결제 채널일 때만 채워진다
 }
 
 export interface PaymentStatusResponse {

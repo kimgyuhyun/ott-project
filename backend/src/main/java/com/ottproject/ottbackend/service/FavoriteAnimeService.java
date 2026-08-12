@@ -43,7 +43,7 @@ public class FavoriteAnimeService { // 보고싶다 도메인 서비스
             favoriteRepository.deleteByUser_IdAndAnime_Id(userId, aniId); // 삭제로 off
             return false; // 현재 상태: off
         } // 미추가 상태
-        User user = userRepository.findById(userId).orElseThrow(); // 사용자 존재 확인
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Anime ani = animeListRepository.findById(aniId).orElseThrow(); // 통합 Anime 조회
         AnimeFavorite entity = AnimeFavorite.createFavorite(user, ani); // NEW 엔티티 구성
         favoriteRepository.save(entity); // 저장으로 on

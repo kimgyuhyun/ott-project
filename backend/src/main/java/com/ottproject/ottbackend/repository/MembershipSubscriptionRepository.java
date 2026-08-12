@@ -89,6 +89,23 @@ public interface MembershipSubscriptionRepository extends JpaRepository<Membersh
 	@QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "0"))
 	@Query("select s from MembershipSubscription s where s.id = :id")
 	Optional<MembershipSubscription> findByIdForUpdate(@Param("id") Long id);
+
+	// 예약된 플랜 변경을 적용하는 경로 전용 조회.
+	//
+	// fetch join 인 이유(ARCHITECTURE 3절 [상황] @Query): 변경 안내 메일은 트랜잭션 밖에서 보내야 하는데
+	// (4절 — 트랜잭션 안에서 이메일을 발송하지 않는다), user 와 nextPlan 은 LAZY 라 초기화하지 않은 채
+	// 밖으로 들고 나가면 발송 시점에 LazyInitializationException 이 난다. 여기서 함께 읽어 두면
+	// 트랜잭션이 끝나 준영속이 돼도 이미 초기화된 값이라 그대로 읽힌다.
+	//
+	// nextPlan 이 inner join 인 것은 의도다. 매퍼가 대상을 고른 뒤 이 조회 사이에 다른 경로가 예약을
+	// 이미 적용했다면 next_plan_id 가 비어 결과가 없고, 그 건은 건너뛰는 것이 맞다.
+	@Query("""
+		select s from MembershipSubscription s
+		join fetch s.user
+		join fetch s.nextPlan
+		where s.id = :id
+	""")
+	Optional<MembershipSubscription> findWithUserAndNextPlanById(@Param("id") Long id);
 }
 
 

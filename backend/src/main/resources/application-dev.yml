@@ -252,6 +252,10 @@ billing:
   retry:
     first-delay-ms: ${BILLING_RETRY_FIRST_DELAY_MS:30000}   # 1차 실패 후 30초
     second-delay-ms: ${BILLING_RETRY_SECOND_DELAY_MS:60000} # 2차 실패 후 60초
+  # 개발에서는 짧게 돌려 확인한다(프로덕션은 30분). lockAtMostFor 보다 짧아도 되는 이유는
+  # 개발 인스턴스가 하나라 락 경합이 없기 때문이다.
+  sweep-interval-ms: ${BILLING_SWEEP_INTERVAL_MS:60000}       # 1분
+  sweep-initial-delay-ms: ${BILLING_SWEEP_INITIAL_DELAY_MS:10000}
 
 # MyBatis 설정 (최상위 루트)
 mybatis:

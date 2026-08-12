@@ -30,6 +30,7 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -159,18 +160,23 @@ class PaymentConfirmIdempotencyTest {
     @MockitoBean
     private MembershipNotificationService notificationService;
 
+    // 확정 트랜잭션 안(락 보유 중)에 붙잡을 지점. 실제 직렬화는 그대로 수행해야 아웃박스가 정상 적재된다.
+    // 예전에는 fetchPaymentDetails 를 붙잡았는데, 그 호출이 확정 트랜잭션 밖으로 나가면서 없어졌다.
+    @MockitoSpyBean
+    private ObjectMapper objectMapper;
+
     private Long userId;
     private Long paymentId;
 
-    /** 첫 확정이 지급 직전(fetchPaymentDetails)에 도달했음을 알린다 */
-    private CountDownLatch firstReachedProvisioning;
+    /** 첫 확정이 아웃박스 적재 직전(락 보유, 커밋 전)에 도달했음을 알린다 */
+    private CountDownLatch firstReachedOutbox;
     /** 첫 확정을 커밋시키는 신호 */
     private CountDownLatch releaseFirst;
-    /** 지급 단계에 몇 번 들어왔는가 = 실제로 몇 번 지급했는가 */
+    /** 확정 마무리 단계에 몇 번 들어왔는가 = 실제로 몇 번 지급했는가 */
     private AtomicInteger provisioningCalls;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception { // writeValueAsString 스터빙이 검사 예외를 선언한다
         outboxEventRepository.deleteAll();
         idempotencyKeyRepository.deleteAll();
         paymentRepository.deleteAll();
@@ -190,23 +196,23 @@ class PaymentConfirmIdempotencyTest {
         ReflectionTestUtils.setField(payment, "updatedAt", now);
         paymentId = paymentRepository.save(payment).getId();
 
-        firstReachedProvisioning = new CountDownLatch(1);
+        firstReachedOutbox = new CountDownLatch(1);
         releaseFirst = new CountDownLatch(1);
         provisioningCalls = new AtomicInteger();
 
         // 클라 확정의 PG 재검증은 통과시킨다(이 테스트의 관심사가 아니다).
         given(paymentGateway.verifyPayment(anyString(), anyString(), anyLong())).willReturn(true);
 
-        // 지급 직전 지점에 첫 확정을 붙잡아 둔다.
-        // fetchPaymentDetails 는 결제 행을 잠그고 SUCCEEDED 로 바꾼 뒤, 구독을 만들기 전에 불린다.
+        // 지급 단계에 첫 확정을 붙잡아 둔다.
+        // 아웃박스 직렬화는 결제 행을 잠그고 SUCCEEDED 로 바꾸고 구독을 만든 뒤, 커밋하기 전에 불린다.
         // 즉 여기서 멈춘 스레드는 락을 쥔 채 아직 커밋하지 않은 상태다.
         doAnswer(invocation -> {
             if (provisioningCalls.incrementAndGet() == 1) {
-                firstReachedProvisioning.countDown();
+                firstReachedOutbox.countDown();
                 releaseFirst.await(10, TimeUnit.SECONDS);
             }
-            return new PaymentGateway.PaymentDetails();
-        }).when(paymentGateway).fetchPaymentDetails(any());
+            return invocation.callRealMethod(); // 실제 직렬화는 그대로 수행
+        }).when(objectMapper).writeValueAsString(any());
     }
 
     /** 결제 성공 웹훅 1건 */
@@ -246,10 +252,10 @@ class PaymentConfirmIdempotencyTest {
     void concurrentWebhookAndClientConfirmProvisionsOnce() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            // 첫 번째: 웹훅 확정. 결제 행을 잠그고 지급 직전에서 멈춘다(아직 커밋 전).
+            // 첫 번째: 웹훅 확정. 결제 행을 잠그고 지급 단계에서 멈춘다(아직 커밋 전).
             Future<Throwable> webhook = pool.submit(
                     () -> catchThrowable(() -> service.applyWebhookEvent(paymentId, succeededWebhook())));
-            assertThat(firstReachedProvisioning.await(30, TimeUnit.SECONDS)).isTrue();
+            assertThat(firstReachedOutbox.await(30, TimeUnit.SECONDS)).isTrue();
 
             // 두 번째: 클라 확정. 별도 스레드여야 별도 커넥션/트랜잭션이 열린다.
             // 성공 여부가 아니라 "끝났는가"를 봐야 하므로 완료 표식을 돌려준다.
@@ -299,7 +305,7 @@ class PaymentConfirmIdempotencyTest {
         try {
             Future<Throwable> webhook = pool.submit(
                     () -> catchThrowable(() -> service.applyWebhookEvent(paymentId, succeededWebhook())));
-            assertThat(firstReachedProvisioning.await(30, TimeUnit.SECONDS)).isTrue();
+            assertThat(firstReachedOutbox.await(30, TimeUnit.SECONDS)).isTrue();
 
             // 대사 배치는 1단계에서 아직 PENDING 을 본다(웹훅이 커밋 전이므로). 그 상태로 아임포트에
             // 물어보고 paid 를 받는다. 낡은 판정으로 확정하면 여기서 구독이 하나 더 생긴다.

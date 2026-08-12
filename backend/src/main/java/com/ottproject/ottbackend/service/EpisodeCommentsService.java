@@ -82,8 +82,7 @@ public class EpisodeCommentsService {
     }
 
     public Long create(Long userId, Long episodeId, Long parentId, String content) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Episode episode = episodeRepository.findById(episodeId)
                 .orElseThrow(() -> new IllegalArgumentException("episode not found: " + episodeId));
 
@@ -127,8 +126,7 @@ public class EpisodeCommentsService {
     }
 
     public void report(Long commentId, Long userId) { // 댓글 신고(사용자당 1회, 임계치 초과 시에만 숨김)
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         EpisodeComment comment = commentRepository.findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
 
@@ -152,8 +150,7 @@ public class EpisodeCommentsService {
                 return false; // off
             }
 
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId));
+            User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
             
             EpisodeComment comment = commentRepository.findById(commentId)
                     .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
@@ -188,8 +185,7 @@ public class EpisodeCommentsService {
     }
 
     public Long createReply(Long userId, Long parentId, String content) { // 대댓글 생성(부모에서 에피소드 ID 유추)
-        User user = userRepository.findById(userId) // 사용자 조회(필수)
-                .orElseThrow(() -> new IllegalArgumentException("user not found: " + userId)); // 없으면 예외
+        User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         EpisodeComment parent = commentRepository.findById(parentId) // 부모 댓글 조회(필수)
                 .orElseThrow(() -> new IllegalArgumentException("parent comment not found: " + parentId)); // 없으면 예외
         Episode episode = parent.getEpisode(); // 부모 댓글이 속한 에피소드 엔티티 추출
