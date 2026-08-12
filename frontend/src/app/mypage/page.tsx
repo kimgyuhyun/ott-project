@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
@@ -33,6 +33,7 @@ type ActivityTab = 'ratings' | 'reviews' | 'comments';
  */
 function MyPageContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   
   const formatRelativeTime = (isoLike?: string) => {
     if (!isoLike) return '';
@@ -461,7 +462,10 @@ function MyPageContent() {
                 </div>
 
                 {/* 프로필 선택 버튼 */}
-                <button className={styles.profileSelectButton}>
+                <button
+                  className={styles.profileSelectButton}
+                  onClick={() => router.push('/profiles')}
+                >
                   프로필 선택
                 </button>
 

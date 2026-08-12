@@ -1,5 +1,6 @@
 package com.ottproject.ottbackend.exception;
 
+import com.ottproject.ottbackend.entity.ViewingProfile;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +59,28 @@ public class GlobalExceptionHandler {
 	public ResponseEntity<Void> handleDuplicateWebhookEvent(DuplicateWebhookEventException ex) {
 		log.info("웹훅 중복 수신(멱등키 경합) - 200 처리: {}", ex.getMessage());
 		return ResponseEntity.ok().build(); // 바디 없이 200 — 원래 웹훅 성공 응답과 같은 모양
+	}
+
+	@ExceptionHandler(ViewingProfileNotFoundException.class)
+	public ResponseEntity<ApiError> handleViewingProfileNotFound(ViewingProfileNotFoundException ex) {
+		log.warn("시청 프로필 없음: {}", ex.getMessage());
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ApiError.builder().code("PROFILE_NOT_FOUND").message("프로필을 찾을 수 없습니다.").build());
+	}
+
+	@ExceptionHandler(ViewingProfileLimitExceededException.class)
+	public ResponseEntity<ApiError> handleViewingProfileLimit(ViewingProfileLimitExceededException ex) {
+		log.warn("시청 프로필 상한 초과: {}", ex.getMessage());
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ApiError.builder().code("PROFILE_LIMIT_EXCEEDED")
+						.message("프로필은 계정당 " + ViewingProfile.MAX_PER_ACCOUNT + "개까지 만들 수 있습니다.").build());
+	}
+
+	@ExceptionHandler(LastViewingProfileException.class)
+	public ResponseEntity<ApiError> handleLastViewingProfile(LastViewingProfileException ex) {
+		log.warn("마지막 시청 프로필 삭제 시도: {}", ex.getMessage());
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ApiError.builder().code("LAST_PROFILE").message("마지막 프로필은 삭제할 수 없습니다.").build());
 	}
 
 	@ExceptionHandler(Exception.class)

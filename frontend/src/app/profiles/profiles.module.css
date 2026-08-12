@@ -1,0 +1,151 @@
+/* 프로필 선택 화면 */
+
+.page {
+  min-height: 100vh;
+  background: #000;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 700;
+  color: #9a9a9a;
+  margin: 0 0 12px;
+}
+
+.title {
+  font-size: 30px;
+  font-weight: 800;
+  margin: 0 0 64px;
+  text-align: center;
+}
+
+.profileRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 48px;
+  margin-bottom: 64px;
+}
+
+.profileItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+}
+
+.avatarButton {
+  width: 172px;
+  height: 172px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  background: #2a2a2a;
+  padding: 0;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.avatarButton:hover:not(:disabled),
+.avatarButton:focus-visible {
+  border-color: #fff;
+  transform: scale(1.03);
+}
+
+.avatarButton:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.addButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 46px;
+  font-weight: 300;
+  color: #fff;
+  background: #3a3a3a;
+}
+
+.profileName {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* 편집 모드에서 아바타 위에 얹는 삭제 버튼 */
+.deleteButton {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: #e04b4b;
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.deleteButton:disabled {
+  background: #5a5a5a;
+  cursor: not-allowed;
+}
+
+.nameInput {
+  width: 172px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 15px;
+  text-align: center;
+}
+
+.editButton {
+  padding: 12px 28px;
+  background: transparent;
+  border: 1px solid #6a6a6a;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.editButton:hover {
+  border-color: #fff;
+}
+
+.message {
+  min-height: 22px;
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: #ff8080;
+  text-align: center;
+}
+
+.notice {
+  margin-top: 28px;
+  font-size: 13px;
+  color: #6f6f6f;
+  text-align: center;
+  max-width: 460px;
+  line-height: 1.6;
+}
