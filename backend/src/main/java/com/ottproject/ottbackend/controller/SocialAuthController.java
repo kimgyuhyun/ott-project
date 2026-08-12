@@ -183,30 +183,22 @@ public class SocialAuthController {
                 userInfo.put("oauth2User", true); // OAuth2 사용자임을 표시
                 userInfo.put("provider", extractProvider(oAuth2User.getAttributes())); // 소셜 로그인 제공자 설정
                 Map<String, Object> attrs = new HashMap<>(oAuth2User.getAttributes());
-                // 세션에 존재하는 표시명(닉네임) 오버라이드가 있으면 반영
+                // 표시명(닉네임)은 항상 DB 의 현재 값을 반영한다.
+                // 세션 오버라이드를 두면 그 값이 DB 를 가려, 다른 기기에서 닉네임을 바꿔도
+                // 이 세션은 만료될 때까지 옛 이름을 계속 보여준다(무효화 지점이 없다).
                 try {
-                    jakarta.servlet.http.HttpSession session =
-                            ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes())
-                                    .getRequest().getSession(false);
-                    String displayOverride = session != null ? (String) session.getAttribute("displayNameOverride") : null;
-                    if (displayOverride != null && !displayOverride.isBlank()) {
-                        attrs.put("userName", displayOverride);
-                        attrs.put("name", displayOverride);
-                    } else {
-                        // 세션 오버라이드가 없으면 DB의 현재 값을 우선 반영
-                        Object userIdObj = attrs.get("userId");
-                        if (userIdObj instanceof Number) {
-                            Long uid = ((Number) userIdObj).longValue();
-                            userProfileService.findProfile(uid).ifPresent(u -> {
-                                if (u.getName() != null && !u.getName().isBlank()) {
-                                    attrs.put("userName", u.getName());
-                                    attrs.put("name", u.getName());
-                                }
-                            });
-                        } else if (dbUserOrNull != null && dbUserOrNull.getName() != null && !dbUserOrNull.getName().isBlank()) {
-                            attrs.put("userName", dbUserOrNull.getName());
-                            attrs.put("name", dbUserOrNull.getName());
-                        }
+                    Object userIdObj = attrs.get("userId");
+                    if (userIdObj instanceof Number) {
+                        Long uid = ((Number) userIdObj).longValue();
+                        userProfileService.findProfile(uid).ifPresent(u -> {
+                            if (u.getName() != null && !u.getName().isBlank()) {
+                                attrs.put("userName", u.getName());
+                                attrs.put("name", u.getName());
+                            }
+                        });
+                    } else if (dbUserOrNull != null && dbUserOrNull.getName() != null && !dbUserOrNull.getName().isBlank()) {
+                        attrs.put("userName", dbUserOrNull.getName());
+                        attrs.put("name", dbUserOrNull.getName());
                     }
                 } catch (Exception ignore) {
                     // 삼켜도 무해: 표시명 보강에 실패해도 attrs 는 OAuth2 원본 속성을 그대로 들고 있어
@@ -340,37 +332,24 @@ public class SocialAuthController {
                 return ResponseEntity.badRequest().body(response); // 400 Bad Request 상태코드와 함께 응답 데이터 반환
             }
 
-            // 세션/시큐리티 컨텍스트의 OAuth2 attributes도 최신화(프론트 즉시 반영)
+            // 가입 직후 플래그를 내린다. 표시명은 user-info 가 DB 에서 읽으므로 여기서 손대지 않는다.
+            //
+            // 예전에는 여기서 SecurityContext 의 Principal 도 새 닉네임으로 교체했으나 지웠다.
+            // Spring Security 6 에서는 SecurityContextHolder 에 set 하는 것만으로는 세션에 실리지
+            // 않고 SecurityContextRepository.saveContext 를 직접 불러야 하는데(EmailAuthController
+            // 의 saveSecurityContext 참고) 그 호출이 없었다. 즉 교체분은 이 요청이 끝나면 사라졌고,
+            // 아래 응답도 newNickname 을 그대로 쓰므로 아무 데도 영향이 없었다.
             try {
                 if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User) {
-                    // 1) 세션 플래그
-                    // mutable map 이 아닐 수 있어 세션 플래그로 알리고, user-info 에서 name 을 DB에서 읽게 함
                     jakarta.servlet.http.HttpSession session =
                             ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes())
                                     .getRequest().getSession(false);
                     if (session != null) {
-                        session.setAttribute("displayNameOverride", newNickname);
                         session.setAttribute("isNewUser", Boolean.FALSE);
-                    }
-
-                    // 2) SecurityContext 의 Principal 을 교체하여 즉시 반영
-                    if (authentication instanceof org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken oAuth2Token) {
-                        org.springframework.security.oauth2.core.user.OAuth2User principal = oAuth2Token.getPrincipal();
-                        java.util.Map<String, Object> newAttrs = new java.util.HashMap<>(principal.getAttributes());
-                        newAttrs.put("userName", newNickname);
-                        newAttrs.put("name", newNickname);
-                        org.springframework.security.oauth2.core.user.DefaultOAuth2User newPrincipal =
-                                new org.springframework.security.oauth2.core.user.DefaultOAuth2User(
-                                        oAuth2Token.getAuthorities(), newAttrs, "userEmail");
-                        org.springframework.security.core.Authentication refreshed =
-                                new org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken(
-                                        newPrincipal, oAuth2Token.getAuthorities(), oAuth2Token.getAuthorizedClientRegistrationId());
-                        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(refreshed);
                     }
                 }
             } catch (Exception ignore) {
-                // 삼켜도 무해: 닉네임은 위에서 이미 저장·커밋됐고 이 블록은 즉시 반영용 보조 경로다.
-                // 실패하면 프론트가 이번 응답으로 갱신을 못 볼 뿐, user-info 가 DB 값을 다시 읽어 보정한다.
+                // 삼켜도 무해: 닉네임은 위에서 이미 저장·커밋됐고 이 블록은 보조 경로다.
             }
 
             // 성공 응답 데이터 설정
