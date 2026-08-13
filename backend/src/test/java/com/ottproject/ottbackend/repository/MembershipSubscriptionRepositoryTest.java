@@ -55,7 +55,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 // 같은 컨테이너 슬라이스인 MembershipSubscriptionLockTest·PaymentMerchantUidUniqueTest 와 구성을 맞춘다.
 @TestPropertySource(properties = {
         "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
         "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true" // DDL 오류를 조용히 넘기지 않는다
 })
 class MembershipSubscriptionRepositoryTest {

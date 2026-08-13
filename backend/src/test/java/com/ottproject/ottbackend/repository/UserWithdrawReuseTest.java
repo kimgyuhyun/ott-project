@@ -57,7 +57,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @TestPropertySource(properties = {
         // 엔티티 기준으로 스키마를 만든다. User.email 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
         "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
         "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
 })
 class UserWithdrawReuseTest {

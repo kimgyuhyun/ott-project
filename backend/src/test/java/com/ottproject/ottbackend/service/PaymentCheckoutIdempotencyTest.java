@@ -76,7 +76,7 @@ import static org.mockito.Mockito.doAnswer;
 @TestPropertySource(properties = {
         // 엔티티 기준으로 스키마를 만든다. IdempotencyKey.keyValue 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
         "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
         "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true",
         // 아래 AuditTimestampInterceptor 주석 참고
         "spring.jpa.properties.hibernate.session_factory.interceptor="
