@@ -199,3 +199,18 @@ test {
 		events "passed", "skipped", "failed" // 실행 결과를 로그로 남겨 CI 에서 확인 가능하게
 	}
 }
+
+// 편집 직후 되먹임용 빠른 테스트. CI 와 test 태스크는 그대로 전량 실행한다 — 커버리지는 줄이지 않는다.
+// Testcontainers 를 쓰는 13개 클래스만 뺀다. 실측으로 전체 570초 중 그 13개가 520초를 쓰는데,
+// 대부분이 검증이 아니라 대기다: Testcontainers 가 컨테이너를 먼저 내린 뒤 스프링 종료 훅이
+// 스키마를 지우려고 다시 접속하면서 Hikari 커넥션 타임아웃을 매번 끝까지 태운다.
+// 남는 88개 클래스가 28초라, 턴마다 돌려도 부담이 없다.
+tasks.register('testFast', Test) {
+	description = 'Runs every test except the Testcontainers-backed ones.'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform {
+		excludeTags 'testcontainers'
+	}
+}

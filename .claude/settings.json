@@ -13,6 +13,19 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/backend-test-mirror.js\"",
+            "timeout": 150,
+            "statusMessage": "running backend testFast"
+          }
+        ]
+      }
     ]
   }
 }

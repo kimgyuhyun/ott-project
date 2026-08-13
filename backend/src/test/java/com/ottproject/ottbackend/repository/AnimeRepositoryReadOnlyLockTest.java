@@ -5,6 +5,7 @@ import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -52,6 +53,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
 @Import(JpaSliceTestSupport.class)
 @Testcontainers(disabledWithoutDocker = true)
+@Tag("testcontainers") // testFast 가 제외하는 태그. 이 클래스들이 전체 실행 9분 중 8분 40초를 쓴다.
 @TestPropertySource(properties = {
         // Flyway 마이그레이션 대신 엔티티 기준 스키마를 만든다(이 테스트는 스키마 이력이 아니라 락 동작을 본다).
         "spring.flyway.enabled=false",
