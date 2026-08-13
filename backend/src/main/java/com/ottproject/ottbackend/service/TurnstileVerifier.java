@@ -1,6 +1,7 @@
 package com.ottproject.ottbackend.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -40,9 +41,9 @@ public class TurnstileVerifier {
     @Value("${turnstile.secret-key:}")
     private String secretKey; // 백엔드 전용 비밀 키(절대 노출 금지). 미설정 시 기능 비활성.
 
-    private final RestTemplate rest; // 기존 RestTemplateConfig 의 Bean 재사용(타임아웃 설정 포함)
+    private final RestTemplate rest; // 요청 경로 전용 빈(짧은 타임아웃). 수집용 빈을 쓰면 로그인이 30초 묶인다.
 
-    public TurnstileVerifier(RestTemplate rest) {
+    public TurnstileVerifier(@Qualifier("turnstileRestTemplate") RestTemplate rest) {
         this.rest = rest;
     }
 

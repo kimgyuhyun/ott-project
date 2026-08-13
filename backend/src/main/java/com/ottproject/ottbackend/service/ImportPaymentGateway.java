@@ -2,6 +2,7 @@ package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.User;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -41,9 +42,9 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	@Value("${iamport.rest.api-secret:}")
 	private String apiSecret; // REST API Secret (application-*.yml: iamport.rest.api-secret)
 
-	private final RestTemplate rest; // REST 클라이언트 (Bean 주입)
+	private final RestTemplate rest; // 결제 전용 빈. 대부분의 메서드가 getToken 을 먼저 불러 순차 2회다.
 
-	public ImportPaymentGateway(RestTemplate rest) {
+	public ImportPaymentGateway(@Qualifier("paymentRestTemplate") RestTemplate rest) {
 		this.rest = rest;
 	}
 
