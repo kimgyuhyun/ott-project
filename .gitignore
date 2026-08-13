@@ -319,3 +319,7 @@ security/uptime.state
 security/alert-relay.log
 security/alert-relay.state
 standards/
+
+# Claude Code: 훅 등록(.claude/settings.json)은 커밋해서 머신 간에 따라가야 한다.
+# 머신마다 다른 값(JAVA_HOME 등)만 아래 파일로 분리하고, 이 저장소는 공개이므로 커밋하지 않는다.
+.claude/settings.local.json

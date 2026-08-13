@@ -1,6 +1,7 @@
 # OTT Project
 
-이 문서의 모든 경로·명령은 `ott-project/` 기준(세션 작업 디렉터리가 상위 `solo-project/`일 수 있음).
+이 문서의 모든 경로·명령은 저장소 루트(`C:\solo-project\ott-project`) 기준이며, 세션도 이 폴더에서 연다.
+상위 `solo-project/`에서 열면 `.claude/settings.json`이 로드되지 않아 훅이 전부 조용히 죽는다.
 
 애니메이션 OTT 서비스(추천·소셜·정기결제·재생권한). Spring Boot 3.5(Java 21, JPA+MyBatis, Flyway)
 + Next.js 15(App Router, React Query) + PostgreSQL/Redis/Kafka(아웃박스)/RabbitMQ(던닝) + nginx.

@@ -6,38 +6,20 @@ script for why. Deploys must go through `deploy-rolling.ps1` / `deploy.ps1`.
 
 ## Registering it on a new machine
 
-The script travels with this repo, but the hook **registration** does not: sessions are
-opened with `C:\solo-project` as the working directory, which is one level above this
-repo and therefore not version-controlled.
+Nothing to do - `settings.json` next to this file is committed, so a `pull` is enough.
 
-So on a new machine, create `C:\solo-project\.claude\settings.json` with:
+That only holds because sessions are opened **at the repo root** (`C:\solo-project\ott-project`).
+Claude Code reads project settings from the directory the session starts in and does not
+look into subdirectories, so a session opened one level up at `C:\solo-project` loads
+nothing from here and every hook is silently dead. If you must work from the parent
+directory, the registration has to be duplicated there by hand and will not travel
+between machines.
 
-```json
-{
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash|PowerShell",
-        "hooks": [
-          {
-            "type": "command",
-            "shell": "bash",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/ott-project/.claude/hooks/block-bare-compose.js\"",
-            "timeout": 10,
-            "statusMessage": "checking docker command"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+Machine-specific values (`JAVA_HOME` and the like) belong in `.claude/settings.local.json`,
+which is gitignored. Never put them in `settings.json` or in a hook script.
 
-If sessions are opened at the repo root instead, drop the `ott-project/` segment from
-the command path and put the file in this repo's `.claude/settings.json`.
-
-Restart the session (or open `/hooks`) after creating the file - the settings watcher
-only picks up directories that already had a settings file when the session started.
+Restart the session after changing `settings.json` - the settings watcher only picks up
+directories that already had a settings file when the session started.
 
 ## Verifying it works
 
