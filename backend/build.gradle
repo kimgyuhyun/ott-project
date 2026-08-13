@@ -201,10 +201,10 @@ test {
 }
 
 // 편집 직후 되먹임용 빠른 테스트. CI 와 test 태스크는 그대로 전량 실행한다 — 커버리지는 줄이지 않는다.
-// Testcontainers 를 쓰는 13개 클래스만 뺀다. 실측으로 전체 570초 중 그 13개가 520초를 쓰는데,
-// 대부분이 검증이 아니라 대기다: Testcontainers 가 컨테이너를 먼저 내린 뒤 스프링 종료 훅이
-// 스키마를 지우려고 다시 접속하면서 Hikari 커넥션 타임아웃을 매번 끝까지 태운다.
-// 남는 88개 클래스가 28초라, 턴마다 돌려도 부담이 없다.
+// Testcontainers 를 쓰는 13개 클래스(@Tag("testcontainers"))만 뺀다. 실측으로 전량 104초,
+// 여기 남는 88개 클래스는 28초다. 차이는 전부 클래스마다 PostgreSQL 컨테이너를 새로 띄우는 값이다.
+// (한때 이 13개가 520초였다. 대부분이 검증이 아니라 종료 시 커넥션 타임아웃 대기였고, 그건
+//  ddl-auto 를 create 로 바꿔 없앴다 — 각 테스트 클래스의 @TestPropertySource 주석 참고)
 tasks.register('testFast', Test) {
 	description = 'Runs every test except the Testcontainers-backed ones.'
 	group = 'verification'

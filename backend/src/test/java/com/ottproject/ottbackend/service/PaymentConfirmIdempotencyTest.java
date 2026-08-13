@@ -84,7 +84,7 @@ import static org.mockito.Mockito.doAnswer;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
 @Import({JpaSliceTestSupport.class, PaymentCommandService.class, MembershipCommandService.class})
 @Testcontainers(disabledWithoutDocker = true)
-@Tag("testcontainers") // testFast 가 제외하는 태그. 이 클래스들이 전체 실행 9분 중 8분 40초를 쓴다.
+@Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
 @TestPropertySource(properties = {
         "spring.flyway.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다

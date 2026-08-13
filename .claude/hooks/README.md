@@ -16,9 +16,9 @@ instance already running - passes silently, because a mirror that blocks on its 
 plumbing gets switched off.
 
 `testFast` is every test except the 13 Testcontainers-backed classes, which carry
-`@Tag("testcontainers")`: 28s instead of 570s. The `test` task and CI still run all of
-them. Tag any new Testcontainers test the same way, or it lands in the fast set and the
-28s becomes a minute.
+`@Tag("testcontainers")`: 28s against 104s for the full suite, the difference being one
+PostgreSQL container per class. The `test` task and CI still run all of them. Tag any new
+Testcontainers test the same way, or it lands in the fast set and drags the 28s up with it.
 
 ## Registering it on a new machine
 

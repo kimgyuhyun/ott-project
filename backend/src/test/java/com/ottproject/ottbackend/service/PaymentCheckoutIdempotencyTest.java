@@ -72,7 +72,7 @@ import static org.mockito.Mockito.doAnswer;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
 @Import({JpaSliceTestSupport.class, PaymentCommandService.class})
 @Testcontainers(disabledWithoutDocker = true)
-@Tag("testcontainers") // testFast 가 제외하는 태그. 이 클래스들이 전체 실행 9분 중 8분 40초를 쓴다.
+@Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
 @TestPropertySource(properties = {
         // 엔티티 기준으로 스키마를 만든다. IdempotencyKey.keyValue 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
         "spring.flyway.enabled=false",
