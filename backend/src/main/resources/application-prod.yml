@@ -31,7 +31,8 @@ spring:
     hikari:
       maximum-pool-size: 20
       minimum-idle: 5
-      connection-timeout: 30000
+      # 2026-08-12 부하시험 실측: 풀 포화(active 20/idle 0/대기 121) 구간 획득 최대 3.585s, 평균 0.02s
+      connection-timeout: 10000
       idle-timeout: 600000
       max-lifetime: 1800000
 
