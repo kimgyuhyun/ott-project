@@ -15,18 +15,24 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.endsWith;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 /**
  * ImportPaymentGateway 웹훅 검증/결제 재검증 테스트
@@ -49,6 +55,7 @@ class ImportPaymentGatewayTest {
     private static final String IMP_UID = "imp_123";
     private static final String MERCHANT_UID = "order_123";
     private static final long EXPECTED_AMOUNT = 9900L;
+    private static final long IAMPORT_NOW = 1_700_000_000L; // 아임포트가 응답에 실어 주는 서버 시각(epoch)
 
     @Mock private RestTemplate rest;
 
@@ -67,6 +74,15 @@ class ImportPaymentGatewayTest {
      * getAccessToken 이 tr.response.access_token 을 필드로 직접 읽으므로 목으로는 대체할 수 없다.
      */
     private static Object newTokenResponse(String accessToken) throws Exception {
+        // 아임포트 토큰 수명은 30분이다. 캐시가 유효하게 살아 있는 평범한 응답.
+        return newTokenResponse(accessToken, IAMPORT_NOW, IAMPORT_NOW + 1800L);
+    }
+
+    /**
+     * now/expired_at 을 직접 지정해 캐시 만료 경계를 만든다.
+     * 잔여 수명은 expiredAt - now 로 재므로 두 값을 함께 준다.
+     */
+    private static Object newTokenResponse(String accessToken, long now, long expiredAt) throws Exception {
         Class<?> tokenResponseType = Class.forName(
                 "com.ottproject.ottbackend.service.ImportPaymentGateway$TokenResponse");
         Class<?> tokenType = Class.forName(
@@ -78,6 +94,12 @@ class ImportPaymentGatewayTest {
         Field accessTokenField = tokenType.getDeclaredField("access_token");
         accessTokenField.setAccessible(true);
         accessTokenField.set(token, accessToken);
+        Field nowField = tokenType.getDeclaredField("now");
+        nowField.setAccessible(true);
+        nowField.set(token, now);
+        Field expiredAtField = tokenType.getDeclaredField("expired_at");
+        expiredAtField.setAccessible(true);
+        expiredAtField.set(token, expiredAt);
 
         Constructor<?> responseCtor = tokenResponseType.getDeclaredConstructor();
         responseCtor.setAccessible(true);
@@ -95,7 +117,13 @@ class ImportPaymentGatewayTest {
      * - 그 외: paymentBody 를 그대로 반환(null 이면 예외를 던져 조회 실패를 표현)
      */
     private void givenIamportResponds(Map<String, Object> paymentResponse) throws Exception {
-        Object tokenResponse = newTokenResponse("test-token");
+        givenIamportResponds(newTokenResponse("test-token"), paymentResponse);
+    }
+
+    /**
+     * 토큰 응답까지 지정한다. 캐시 만료 경계를 만드는 테스트가 쓴다.
+     */
+    private void givenIamportResponds(Object tokenResponse, Map<String, Object> paymentResponse) {
         given(rest.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
                 .willAnswer(invocation -> {
                     String url = invocation.getArgument(0);
@@ -104,6 +132,11 @@ class ImportPaymentGatewayTest {
                     }
                     return ResponseEntity.ok(Map.of("response", paymentResponse));
                 });
+    }
+
+    private void verifyTokenIssuedTimes(int expected) {
+        verify(rest, times(expected)).exchange(
+                endsWith("/users/getToken"), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
     }
 
     private Map<String, Object> paidPayment(long amount, String merchantUid) {
@@ -439,6 +472,96 @@ class ImportPaymentGatewayTest {
                         .as("상태값 %s", status)
                         .isTrue();
             }
+        }
+    }
+
+    /**
+     * 왜 이 테스트가 필요한가
+     * - 여덟 메서드가 본 호출 앞에 토큰 발급을 순차로 붙여서, 결제 작업 하나의 실제 상한이
+     *   설정값의 두 배였다(ARCHITECTURE 12). 준비 호출이 사라졌다는 것은 컨텍스트가 뜨는 것으로는
+     *   증명되지 않는다. /users/getToken 이 몇 번 나갔는지를 직접 센다.
+     */
+    @Nested
+    @DisplayName("액세스 토큰 캐시")
+    class AccessTokenCaching {
+
+        @Test
+        @DisplayName("연속 호출에서 토큰 발급은 한 번만 나간다 - 작업당 왕복이 2회에서 1회로 준다")
+        void issuesTokenOnceAcrossConsecutiveCalls() throws Exception {
+            givenIamportResponds(paidPayment(EXPECTED_AMOUNT, MERCHANT_UID));
+
+            gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT);
+            gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT);
+            gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT);
+
+            verifyTokenIssuedTimes(1);
+            verify(rest, times(3)).exchange(
+                    contains("/payments/"), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
+        }
+
+        @Test
+        @DisplayName("만료된 토큰은 캐시하지 않고 매번 새로 받는다")
+        void refetchesWhenTokenHasNoUsableLifetimeLeft() throws Exception {
+            // expired_at 이 now 와 같다 = 남은 수명 0. 여유 시간을 빼면 쓸 수 없으므로 캐시에 올리지 않는다.
+            givenIamportResponds(
+                    newTokenResponse("stale-token", IAMPORT_NOW, IAMPORT_NOW),
+                    paidPayment(EXPECTED_AMOUNT, MERCHANT_UID));
+
+            gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT);
+            gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT);
+
+            verifyTokenIssuedTimes(2);
+        }
+
+        @Test
+        @DisplayName("401 이 오면 토큰을 버리고 다시 받아 한 번만 재시도한다")
+        void discardsTokenAndRetriesOnceOnUnauthorized() throws Exception {
+            AtomicInteger tokenIssues = new AtomicInteger();
+            AtomicInteger lookups = new AtomicInteger();
+            given(rest.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
+                    .willAnswer(invocation -> {
+                        String url = invocation.getArgument(0);
+                        if (url.endsWith("/users/getToken")) {
+                            return ResponseEntity.ok(newTokenResponse("token-" + tokenIssues.incrementAndGet()));
+                        }
+                        if (url.contains("/payments/find/")) {
+                            // 재시도가 없으면 verifyPayment 가 merchant_uid 폴백으로 새어나간다. 그 경로를 막아 구분한다.
+                            throw new RestClientException("폴백으로 샜다면 재시도가 일어나지 않은 것이다");
+                        }
+                        if (lookups.incrementAndGet() == 1) {
+                            throw new HttpClientErrorException(HttpStatus.UNAUTHORIZED);
+                        }
+                        return ResponseEntity.ok(Map.of("response", paidPayment(EXPECTED_AMOUNT, MERCHANT_UID)));
+                    });
+
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isTrue();
+            assertThat(tokenIssues.get()).isEqualTo(2); // 최초 1회 + 401 후 재발급 1회
+            assertThat(lookups.get()).isEqualTo(2);     // 재시도는 정확히 한 번
+        }
+
+        /**
+         * 401 재시도를 조회에만 건 이유를 고정한다. 청구는 401 이어도 본 호출을 다시 부르지 않는다 -
+         * 재시도 판단은 결정적 merchant_uid 를 쥔 던닝의 몫이다(ARCHITECTURE 5, 6).
+         */
+        @Test
+        @DisplayName("청구는 401 이어도 재시도하지 않는다 - 승인이 두 번 나가면 안 된다")
+        void doesNotRetryChargeOnUnauthorized() throws Exception {
+            AtomicInteger charges = new AtomicInteger();
+            given(rest.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
+                    .willAnswer(invocation -> {
+                        String url = invocation.getArgument(0);
+                        if (url.endsWith("/users/getToken")) {
+                            return ResponseEntity.ok(newTokenResponse("test-token"));
+                        }
+                        charges.incrementAndGet();
+                        throw new HttpClientErrorException(HttpStatus.UNAUTHORIZED);
+                    });
+
+            assertThatThrownBy(() -> gateway.chargeWithSavedMethod(
+                    "cust_1", "billing_1", "rebill_10_20260808_1_100", EXPECTED_AMOUNT, "KRW", "Subscription renewal"))
+                    .isInstanceOf(PaymentGateway.ChargeException.class);
+
+            assertThat(charges.get()).isEqualTo(1); // 청구는 정확히 한 번만 나갔다
         }
     }
 
