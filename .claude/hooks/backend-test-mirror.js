@@ -221,7 +221,10 @@ function collectFailures(resultsDir, notOlderThan) {
     } catch {
       continue;
     }
-    const caseRe = /<testcase\b([^>]*)(\/>|>([\s\S]*?)<\/testcase>)/g;
+    // The attribute group must stay lazy. Greedy, it swallows the '/' of a self-closing
+    // <testcase .../>, so the '>' branch matches instead and runs on to the next test's
+    // </testcase> - pinning that test's failure on this earlier, passing one.
+    const caseRe = /<testcase\b([^>]*?)(\/>|>([\s\S]*?)<\/testcase>)/g;
     let m;
     while ((m = caseRe.exec(xml))) {
       const body = m[3] || '';
@@ -237,7 +240,9 @@ function collectFailures(resultsDir, notOlderThan) {
 }
 
 function attr(s, name) {
-  const m = new RegExp(`${name}="([^"]*)"`).exec(s || '');
+  // Anchored to a boundary so that asking for 'name' cannot match the tail of 'classname'.
+  // Gradle happens to emit name first today, which is the only reason it has not bitten.
+  const m = new RegExp(`(?:^|\\s)${name}="([^"]*)"`).exec(s || '');
   return m ? m[1] : '';
 }
 
