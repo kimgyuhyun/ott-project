@@ -47,6 +47,31 @@ jobs:
       - name: Scan history for secrets
         run: ./gitleaks git . --no-banner --redact --config .gitleaks.toml
 
+  # 워크플로와 셸 스크립트도 코드다. CD 가 self-hosted 러너에서 실제 배포를 자동 실행하는데
+  # 그 배포를 태우는 이 파일들만 지금까지 아무 검사도 받지 않았다.
+  # 액션 대신 릴리스 바이너리를 버전 고정 + 체크섬 검증으로 받는다 — secret-scan 잡과 같은 이유다.
+  # (체크섬은 배포처가 게시한 actionlint_1.7.12_checksums.txt 와 대조한 값이다)
+  iac-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install actionlint (pinned, checksum verified)
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          curl -sSfL -o actionlint.tar.gz "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  actionlint.tar.gz" | sha256sum -c -
+          tar -xzf actionlint.tar.gz actionlint
+          ./actionlint -version
+      # actionlint 는 PATH 의 shellcheck 를 찾아 run: 블록 안의 셸까지 함께 본다.
+      # shellcheck 는 러너 이미지에 이미 포함돼 있어 따로 설치하지 않는다.
+      - name: Lint workflows
+        run: ./actionlint
+      # 스크립트 파일 자체. .githooks/pre-commit 은 확장자가 없어 glob 에 안 걸리므로 직접 적는다.
+      - name: Lint shell scripts
+        run: shellcheck -x .github/scripts/*.sh .githooks/pre-commit
+
   # 마이그레이션 검증 전용 잡.
   # 슬라이스 테스트는 H2 로 돌고 전부 flyway.enabled=false 라, Flyway 가 실제로 처음
   # 실행되는 곳이 CD 의 운영 DB 였다. 여기서 빈 Postgres 에 전량 적용해보고 검증한다.
