@@ -186,11 +186,10 @@ export default function ReviewList({ animeId, onRatingChange }: ReviewListProps)
       console.log('🕐 formatRelativeTime 입력:', { iso, updatedIso });
       
       // 여러 방법으로 시간 파싱 시도
-      let created: Date;
       let updated: Date | null = null;
       
       // 백엔드에서 한국 시간대로 저장된 시간을 그대로 사용
-      created = new Date(iso);
+      const created = new Date(iso);
       console.log('🕐 한국 시간대로 해석한 시간:', created.toISOString(), '로컬:', created.toLocaleString());
       
       if (updatedIso) {
