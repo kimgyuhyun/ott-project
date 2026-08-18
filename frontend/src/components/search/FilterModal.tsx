@@ -11,7 +11,7 @@ interface FilterModalProps {
   selectedItems: (number | string)[];
   onItemToggle: (item: number | string) => void;
   onResetAll: () => void;
-  type: 'genre' | 'tag' | 'season' | 'status' | 'type';
+  type: "genre" | "tag" | "season" | "status" | "type";
 }
 
 /**
@@ -26,7 +26,7 @@ export default function FilterModal({
   selectedItems,
   onItemToggle,
   onResetAll,
-  type
+  type,
 }: FilterModalProps) {
   if (!isOpen) return null;
 
@@ -34,7 +34,12 @@ export default function FilterModal({
     onItemToggle(item);
   };
 
-  const getItemKey = (item: { id?: number; key?: string; name: string; label?: string }) => {
+  const getItemKey = (item: {
+    id?: number;
+    key?: string;
+    name: string;
+    label?: string;
+  }) => {
     return item.id || item.key || item.name;
   };
 
@@ -56,14 +61,14 @@ export default function FilterModal({
             ×
           </button>
         </div>
-        
+
         <div className={styles.modalBody}>
           <div className={styles.checkboxGrid}>
             {items.map((item) => {
               const key = getItemKey(item);
               const label = getItemLabel(item);
               const isSelected = selectedItems.includes(key);
-              
+
               return (
                 <label key={key} className={styles.checkboxItem}>
                   <input
@@ -78,14 +83,24 @@ export default function FilterModal({
             })}
           </div>
         </div>
-        
+
         <div className={styles.modalFooter}>
           <button className={styles.resetButton} onClick={onResetAll}>
-            <svg className={styles.resetIcon} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-              <path d="M21 3v5h-5"/>
-              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-              <path d="M3 21v-5h5"/>
+            <svg
+              className={styles.resetIcon}
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+              <path d="M3 21v-5h5" />
             </svg>
             전체 초기화
           </button>

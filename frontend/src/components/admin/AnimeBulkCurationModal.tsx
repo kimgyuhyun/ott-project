@@ -33,7 +33,12 @@ type TriState = "" | "true" | "false";
  * - 운영자가 방금 눈으로 확인한 목록과 수정 대상이 항상 같아진다.
  * - 조건 없는 벌크(백엔드가 400 으로 거부)를 구조적으로 시도할 수 없게 된다.
  */
-export default function AnimeBulkCurationModal({ condition, matchedCount, onClose, onApplied }: Props) {
+export default function AnimeBulkCurationModal({
+  condition,
+  matchedCount,
+  onClose,
+  onApplied,
+}: Props) {
   const [isActive, setIsActive] = useState<TriState>("");
   const [isExclusive, setIsExclusive] = useState<TriState>("");
   const [isPopular, setIsPopular] = useState<TriState>("");
@@ -48,7 +53,10 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
   const [error, setError] = useState<string | null>(null);
 
   const buildChanges = () => {
-    const changes: Omit<AnimeBulkCurationRequest, "condition" | "expectedCount"> = {};
+    const changes: Omit<
+      AnimeBulkCurationRequest,
+      "condition" | "expectedCount"
+    > = {};
     if (isActive) changes.isActive = isActive === "true";
     if (isExclusive) changes.isExclusive = isExclusive === "true";
     if (isPopular) changes.isPopular = isPopular === "true";
@@ -86,11 +94,14 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
       });
       onApplied(res.affectedCount);
     } catch (e) {
-      const status = (e as { response?: { status?: number } })?.response?.status;
+      const status = (e as { response?: { status?: number } })?.response
+        ?.status;
       if (status === 409) {
         // 승인한 건수와 실제 대상이 달라졌다. 새 건수를 다시 확인시켜야 하므로 1단계로 되돌린다.
         setPreview(null);
-        setError("미리보기 이후 대상 건수가 바뀌었습니다. 영향 범위를 다시 확인해 주세요.");
+        setError(
+          "미리보기 이후 대상 건수가 바뀌었습니다. 영향 범위를 다시 확인해 주세요.",
+        );
       } else {
         setError(e instanceof Error ? e.message : "일괄 수정에 실패했습니다.");
       }
@@ -101,25 +112,39 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
 
   const changeSummary = () => {
     const labels: string[] = [];
-    if (isActive) labels.push(isActive === "true" ? "노출로 변경" : "숨김으로 변경");
-    if (isExclusive) labels.push(isExclusive === "true" ? "독점 켜기" : "독점 끄기");
-    if (isPopular) labels.push(isPopular === "true" ? "인기 켜기" : "인기 끄기");
+    if (isActive)
+      labels.push(isActive === "true" ? "노출로 변경" : "숨김으로 변경");
+    if (isExclusive)
+      labels.push(isExclusive === "true" ? "독점 켜기" : "독점 끄기");
+    if (isPopular)
+      labels.push(isPopular === "true" ? "인기 켜기" : "인기 끄기");
     if (isNew) labels.push(isNew === "true" ? "신작 켜기" : "신작 끄기");
-    if (isCompleted) labels.push(isCompleted === "true" ? "완결 켜기" : "완결 끄기");
-    if (isSubtitle) labels.push(isSubtitle === "true" ? "자막 켜기" : "자막 끄기");
+    if (isCompleted)
+      labels.push(isCompleted === "true" ? "완결 켜기" : "완결 끄기");
+    if (isSubtitle)
+      labels.push(isSubtitle === "true" ? "자막 켜기" : "자막 끄기");
     if (isDub) labels.push(isDub === "true" ? "더빙 켜기" : "더빙 끄기");
-    if (isSimulcast) labels.push(isSimulcast === "true" ? "동시방영 켜기" : "동시방영 끄기");
+    if (isSimulcast)
+      labels.push(isSimulcast === "true" ? "동시방영 켜기" : "동시방영 끄기");
     return labels.join(", ");
   };
 
-  const renderSelect = (label: string, value: TriState, onChange: (v: TriState) => void,
-                        onText: string, offText: string) => (
+  const renderSelect = (
+    label: string,
+    value: TriState,
+    onChange: (v: TriState) => void,
+    onText: string,
+    offText: string,
+  ) => (
     <div className={styles.modalField}>
       <label className={styles.filterLabel}>{label}</label>
       <select
         className={styles.select}
         value={value}
-        onChange={(e) => { onChange(e.target.value as TriState); setPreview(null); }}
+        onChange={(e) => {
+          onChange(e.target.value as TriState);
+          setPreview(null);
+        }}
         disabled={loading}
       >
         <option value="">변경하지 않음</option>
@@ -134,11 +159,19 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
       <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
         <h3 className={styles.modalTitle}>조건 일괄 수정</h3>
         <p className={styles.modalHint}>
-          지금 검색 조건에 걸린 <strong>{matchedCount.toLocaleString()}건</strong>이 대상입니다.
-          대상을 좁히려면 닫고 검색 조건을 바꾸세요. 제목·포스터는 일괄 수정 대상이 아닙니다.
+          지금 검색 조건에 걸린{" "}
+          <strong>{matchedCount.toLocaleString()}건</strong>이 대상입니다.
+          대상을 좁히려면 닫고 검색 조건을 바꾸세요. 제목·포스터는 일괄 수정
+          대상이 아닙니다.
         </p>
 
-        {renderSelect("노출 여부", isActive, setIsActive, "사용자에게 노출", "숨김")}
+        {renderSelect(
+          "노출 여부",
+          isActive,
+          setIsActive,
+          "사용자에게 노출",
+          "숨김",
+        )}
         {renderSelect("독점", isExclusive, setIsExclusive, "켜기", "끄기")}
         {renderSelect("인기", isPopular, setIsPopular, "켜기", "끄기")}
         {renderSelect("신작", isNew, setIsNew, "켜기", "끄기")}
@@ -147,22 +180,41 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
         {renderSelect("더빙", isDub, setIsDub, "켜기", "끄기")}
         {renderSelect("동시방영", isSimulcast, setIsSimulcast, "켜기", "끄기")}
 
-        {error && <div className={`${styles.result} ${styles.resultErr}`}>{error}</div>}
+        {error && (
+          <div className={`${styles.result} ${styles.resultErr}`}>{error}</div>
+        )}
 
         {preview && (
-          <div className={styles.result} style={{ background: "#0e0f13", border: "1px solid #2c2f38", color: "#c7cad1" }}>
+          <div
+            className={styles.result}
+            style={{
+              background: "#0e0f13",
+              border: "1px solid #2c2f38",
+              color: "#c7cad1",
+            }}
+          >
             <div>
-              <span className={styles.previewCount}>{preview.affectedCount.toLocaleString()}건</span>
-              <span style={{ marginLeft: 8 }}>이 다음과 같이 바뀝니다 — {changeSummary()}</span>
+              <span className={styles.previewCount}>
+                {preview.affectedCount.toLocaleString()}건
+              </span>
+              <span style={{ marginLeft: 8 }}>
+                이 다음과 같이 바뀝니다 — {changeSummary()}
+              </span>
             </div>
             {preview.sample.length > 0 && (
               <div className={styles.sampleList}>
                 {preview.sample.map((it) => (
-                  <div key={it.id}>· {it.title || it.titleEn || `(제목 없음) ID ${it.id}`}</div>
+                  <div key={it.id}>
+                    · {it.title || it.titleEn || `(제목 없음) ID ${it.id}`}
+                  </div>
                 ))}
                 {preview.affectedCount > preview.sample.length && (
                   <div style={{ color: "#9aa0aa" }}>
-                    … 외 {(preview.affectedCount - preview.sample.length).toLocaleString()}건
+                    … 외{" "}
+                    {(
+                      preview.affectedCount - preview.sample.length
+                    ).toLocaleString()}
+                    건
                   </div>
                 )}
               </div>
@@ -171,15 +223,31 @@ export default function AnimeBulkCurationModal({ condition, matchedCount, onClos
         )}
 
         <div className={styles.modalActions}>
-          <button className={styles.pagerBtn} onClick={onClose} disabled={loading}>취소</button>
+          <button
+            className={styles.pagerBtn}
+            onClick={onClose}
+            disabled={loading}
+          >
+            취소
+          </button>
           {!preview ? (
-            <button className={styles.button} onClick={handlePreview} disabled={loading || !hasChanges}>
+            <button
+              className={styles.button}
+              onClick={handlePreview}
+              disabled={loading || !hasChanges}
+            >
               {loading ? "확인 중..." : "영향 범위 확인"}
             </button>
           ) : (
             // 실행 버튼은 건수를 눈으로 확인한 뒤에만 나타난다
-            <button className={styles.dangerButton} onClick={handleApply} disabled={loading}>
-              {loading ? "적용 중..." : `${preview.affectedCount.toLocaleString()}건 수정 실행`}
+            <button
+              className={styles.dangerButton}
+              onClick={handleApply}
+              disabled={loading}
+            >
+              {loading
+                ? "적용 중..."
+                : `${preview.affectedCount.toLocaleString()}건 수정 실행`}
             </button>
           )}
         </div>

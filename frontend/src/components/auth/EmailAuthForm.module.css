@@ -1,8 +1,20 @@
-
-
 /* 기본 폰트 설정 */
 .emailAuthForm {
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    Roboto,
+    "Helvetica Neue",
+    "Segoe UI",
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    "Malgun Gothic",
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   line-height: 1.5;
   letter-spacing: normal;
@@ -43,12 +55,12 @@
 .formTitle {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 닫기 버튼 */
 .closeButton {
-  color: #ABABAB;
+  color: #ababab;
   transition: color 0.2s ease;
   background: none;
   border: none;
@@ -59,7 +71,7 @@
 }
 
 .closeButton:hover {
-  color: #E2E2E2;
+  color: #e2e2e2;
   background-color: #323232;
 }
 
@@ -81,7 +93,7 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #E2E2E2;
+  color: #e2e2e2;
   margin-bottom: 0.5rem;
 }
 
@@ -92,14 +104,14 @@
   border: 1px solid #323232;
   border-radius: 0.5rem;
   outline: none;
-  color: #F7F7F7;
+  color: #f7f7f7;
   background-color: #000000;
   font-size: 0.875rem;
   transition: all 0.2s ease;
 }
 
 .input:focus {
-  border-color: #816BFF;
+  border-color: #816bff;
   box-shadow: 0 0 0 2px rgba(129, 107, 255, 0.1);
   background-color: #121212;
 }
@@ -118,7 +130,7 @@
 .duplicateCheckButton {
   padding: 0.75rem 1rem;
   background-color: #323232;
-  color: #F7F7F7;
+  color: #f7f7f7;
   font-size: 0.875rem;
   border-radius: 0.5rem;
   transition: all 0.2s ease;
@@ -137,7 +149,7 @@
 .sendVerificationButton {
   width: 100%;
   padding: 0.75rem 1rem;
-  background-color: #816BFF;
+  background-color: #816bff;
   color: #121212;
   border-radius: 0.5rem;
   transition: all 0.2s ease;
@@ -149,14 +161,14 @@
 
 .sendVerificationButton:hover {
   background-color: #242537;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 제출 버튼 */
 .submitButton {
   width: 100%;
   padding: 0.875rem 1rem;
-  background-color: #816BFF;
+  background-color: #816bff;
   color: #121212;
   border-radius: 0.5rem;
   transition: all 0.2s ease;
@@ -168,7 +180,7 @@
 
 .submitButton:hover:not(:disabled) {
   background-color: #242537;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .submitButton:disabled {
@@ -205,7 +217,7 @@
 
 /* 모드 전환 버튼 */
 .modeSwitchButton {
-  color: #816BFF;
+  color: #816bff;
   transition: all 0.2s ease;
   background: none;
   border: none;
@@ -216,7 +228,7 @@
 }
 
 .modeSwitchButton:hover {
-  color: #F7F7F7;
+  color: #f7f7f7;
   background-color: rgba(129, 107, 255, 0.1);
 }
 
@@ -234,6 +246,6 @@
 }
 
 .resetButton:hover {
-  color: #ABABAB;
+  color: #ababab;
   background-color: #323232;
 }

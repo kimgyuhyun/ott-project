@@ -21,9 +21,9 @@ interface FilterSidebarProps {
   genreOptions: { id: number; name: string; color?: string }[];
   tagOptions: { id: number; name: string; color?: string }[];
   seasonOptions: string[];
-  yearOptions: {value: string; label: string; type: string}[];
-  statusOptions: {key: string; label: string}[];
-  typeOptions: {key: string; label: string}[];
+  yearOptions: { value: string; label: string; type: string }[];
+  statusOptions: { key: string; label: string }[];
+  typeOptions: { key: string; label: string }[];
   onGenreChange: (genreId: number) => void;
   onTagChange: (tagId: number) => void;
   onSeasonChange: (season: string) => void;
@@ -55,7 +55,7 @@ export default function FilterSidebar({
   onSeasonChange,
   onStatusChange,
   onTypeChange,
-  onResetFilters
+  onResetFilters,
 }: FilterSidebarProps) {
   // 백엔드에서 이미 번역된 데이터 사용
   const genres = genreOptions ?? [];
@@ -73,19 +73,19 @@ export default function FilterSidebar({
 
   // 모달용 토글 어댑터 (매개변수 통일)
   const handleToggleGenre = (item: number | string) => {
-    if (typeof item === 'number') onGenreChange(item);
+    if (typeof item === "number") onGenreChange(item);
   };
   const handleToggleTag = (item: number | string) => {
-    if (typeof item === 'number') onTagChange(item);
+    if (typeof item === "number") onTagChange(item);
   };
   const handleToggleSeason = (item: number | string) => {
-    if (typeof item === 'string') onSeasonChange(item);
+    if (typeof item === "string") onSeasonChange(item);
   };
   const handleToggleStatus = (item: number | string) => {
-    if (typeof item === 'string') onStatusChange(item);
+    if (typeof item === "string") onStatusChange(item);
   };
   const handleToggleType = (item: number | string) => {
-    if (typeof item === 'string') onTypeChange(item);
+    if (typeof item === "string") onTypeChange(item);
   };
 
   return (
@@ -93,14 +93,16 @@ export default function FilterSidebar({
       {/* 필터 헤더 */}
       <div className={styles.filterHeader}>
         <h2 className={styles.filterTitle}>필터</h2>
-        <button
-          onClick={onResetFilters}
-          className={styles.resetButton}
-        >
+        <button onClick={onResetFilters} className={styles.resetButton}>
           전체 초기화
-          {(selectedGenreIds.length > 0 || selectedTagIds.length > 0 || searchQuery.trim()) && (
+          {(selectedGenreIds.length > 0 ||
+            selectedTagIds.length > 0 ||
+            searchQuery.trim()) && (
             <span className={styles.filterCount}>
-              {selectedGenreIds.length + selectedTagIds.length + (searchQuery.trim() ? 1 : 0)}개
+              {selectedGenreIds.length +
+                selectedTagIds.length +
+                (searchQuery.trim() ? 1 : 0)}
+              개
             </span>
           )}
         </button>
@@ -109,10 +111,8 @@ export default function FilterSidebar({
       {/* 장르 필터 */}
       <div className={styles.filterSection}>
         <div className={styles.filterSectionHeader}>
-          <h3 className={styles.filterSectionTitle}>
-            장르
-          </h3>
-          <button 
+          <h3 className={styles.filterSectionTitle}>장르</h3>
+          <button
             className={styles.moreButton}
             onClick={() => setShowMoreGenres(true)}
           >
@@ -133,14 +133,12 @@ export default function FilterSidebar({
           ))}
         </div>
       </div>
-      
+
       {/* 태그 필터 */}
       <div className={styles.filterSection}>
         <div className={styles.filterSectionHeader}>
-          <h3 className={styles.filterSectionTitle}>
-            태그
-          </h3>
-          <button 
+          <h3 className={styles.filterSectionTitle}>태그</h3>
+          <button
             className={styles.moreButton}
             onClick={() => setShowMoreTags(true)}
           >
@@ -165,10 +163,8 @@ export default function FilterSidebar({
       {/* 년도 필터 */}
       <div className={styles.filterSection}>
         <div className={styles.filterSectionHeader}>
-          <h3 className={styles.filterSectionTitle}>
-            년도
-          </h3>
-          <button 
+          <h3 className={styles.filterSectionTitle}>년도</h3>
+          <button
             className={styles.moreButton}
             onClick={() => setShowMoreSeasons(true)}
           >
@@ -193,10 +189,8 @@ export default function FilterSidebar({
       {/* 방영 상태 필터 */}
       <div className={styles.filterSection}>
         <div className={styles.filterSectionHeader}>
-          <h3 className={styles.filterSectionTitle}>
-            방영
-          </h3>
-          <button 
+          <h3 className={styles.filterSectionTitle}>방영</h3>
+          <button
             className={styles.moreButton}
             onClick={() => setShowMoreStatuses(true)}
           >
@@ -221,10 +215,8 @@ export default function FilterSidebar({
       {/* 출시 타입 필터 */}
       <div className={styles.filterSection}>
         <div className={styles.filterSectionHeader}>
-          <h3 className={styles.filterSectionTitle}>
-            출시타입
-          </h3>
-          <button 
+          <h3 className={styles.filterSectionTitle}>출시타입</h3>
+          <button
             className={styles.moreButton}
             onClick={() => setShowMoreTypes(true)}
           >
@@ -255,7 +247,7 @@ export default function FilterSidebar({
         selectedItems={selectedGenreIds}
         onItemToggle={handleToggleGenre}
         onResetAll={() => {
-          selectedGenreIds.forEach(id => onGenreChange(id));
+          selectedGenreIds.forEach((id) => onGenreChange(id));
         }}
         type="genre"
       />
@@ -269,7 +261,7 @@ export default function FilterSidebar({
         selectedItems={selectedTagIds}
         onItemToggle={handleToggleTag}
         onResetAll={() => {
-          selectedTagIds.forEach(id => onTagChange(id));
+          selectedTagIds.forEach((id) => onTagChange(id));
         }}
         type="tag"
       />
@@ -279,11 +271,11 @@ export default function FilterSidebar({
         isOpen={showMoreSeasons}
         onClose={() => setShowMoreSeasons(false)}
         title="년도 전체"
-        items={years.map(year => ({ key: year.value, name: year.label }))}
+        items={years.map((year) => ({ key: year.value, name: year.label }))}
         selectedItems={selectedSeasons}
         onItemToggle={handleToggleSeason}
         onResetAll={() => {
-          selectedSeasons.forEach(season => onSeasonChange(season));
+          selectedSeasons.forEach((season) => onSeasonChange(season));
         }}
         type="season"
       />
@@ -293,11 +285,11 @@ export default function FilterSidebar({
         isOpen={showMoreStatuses}
         onClose={() => setShowMoreStatuses(false)}
         title="방영 전체"
-        items={statuses.map(s => ({ ...s, name: s.label }))}
+        items={statuses.map((s) => ({ ...s, name: s.label }))}
         selectedItems={selectedStatuses}
         onItemToggle={handleToggleStatus}
         onResetAll={() => {
-          selectedStatuses.forEach(status => onStatusChange(status));
+          selectedStatuses.forEach((status) => onStatusChange(status));
         }}
         type="status"
       />
@@ -307,11 +299,11 @@ export default function FilterSidebar({
         isOpen={showMoreTypes}
         onClose={() => setShowMoreTypes(false)}
         title="출시타입 전체"
-        items={types.map(t => ({ ...t, name: t.label }))}
+        items={types.map((t) => ({ ...t, name: t.label }))}
         selectedItems={selectedTypes}
         onItemToggle={handleToggleType}
         onResetAll={() => {
-          selectedTypes.forEach(type => onTypeChange(type));
+          selectedTypes.forEach((type) => onTypeChange(type));
         }}
         type="type"
       />

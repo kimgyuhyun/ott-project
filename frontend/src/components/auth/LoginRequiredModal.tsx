@@ -1,18 +1,21 @@
-import { useRouter } from 'next/navigation';
-import styles from './LoginRequiredModal.module.css';
+import { useRouter } from "next/navigation";
+import styles from "./LoginRequiredModal.module.css";
 
 interface LoginRequiredModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export default function LoginRequiredModal({ isOpen, onClose }: LoginRequiredModalProps) {
+export default function LoginRequiredModal({
+  isOpen,
+  onClose,
+}: LoginRequiredModalProps) {
   const router = useRouter();
 
   if (!isOpen) return null;
 
   const handleLogin = () => {
-    router.push('/login');
+    router.push("/login");
     onClose();
   };
 

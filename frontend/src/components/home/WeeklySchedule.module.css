@@ -19,13 +19,13 @@
 .weeklyTitle {
   font-size: 0.82646vw;
   font-weight: 700;
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   margin-bottom: 0.5rem;
 }
 
 .weeklyNoticeButton {
   font-size: 0.875rem;
-  color: var(--foreground-slight, #ABABAB);
+  color: var(--foreground-slight, #ababab);
   background-color: var(--button-slight-1, #323232);
   border: none;
   padding: 0.5rem 1rem;
@@ -58,7 +58,7 @@
   border: none;
   cursor: pointer;
   background-color: var(--background-3, #323232);
-  color: var(--foreground-2, #ABABAB);
+  color: var(--foreground-2, #ababab);
 }
 
 .weeklyTab:hover {
@@ -66,12 +66,12 @@
 }
 
 .weeklyTab.active {
-  background-color: var(--foreground-slight, #816BFF);
+  background-color: var(--foreground-slight, #816bff);
   color: white;
 }
 
 .weeklyTab.active:hover {
-  background-color: var(--foreground-slight, #816BFF);
+  background-color: var(--foreground-slight, #816bff);
 }
 
 /* 캐러셀 래퍼 */
@@ -164,7 +164,7 @@
 .animeGridTitle {
   font-size: 0.875rem;
   font-weight: 500;
-  color: #F7F7F7;
+  color: #f7f7f7;
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -178,7 +178,7 @@
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  background: #816BFF;
+  background: #816bff;
   color: white;
   font-size: 0.75rem;
   font-weight: 600;
@@ -189,5 +189,5 @@
 .weeklyEmpty {
   text-align: center;
   padding: 3rem 0;
-  color: var(--foreground-3, #ABABAB);
+  color: var(--foreground-3, #ababab);
 }

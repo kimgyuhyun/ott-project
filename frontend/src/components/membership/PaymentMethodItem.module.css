@@ -16,7 +16,7 @@
 
 .paymentMethodButtonSelected {
   background-color: rgba(129, 107, 255, 0.1);
-  border-color: #816BFF;
+  border-color: #816bff;
   box-shadow: 0 0 20px rgba(129, 107, 255, 0.2);
 }
 
@@ -63,5 +63,5 @@
 
 /* 결제 수단 라벨 */
 .paymentMethodLabel {
-  color: #F7F7F7;
+  color: #f7f7f7;
 }

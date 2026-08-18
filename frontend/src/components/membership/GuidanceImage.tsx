@@ -7,7 +7,11 @@ interface GuidanceImageProps {
   width?: number; // px
 }
 
-export default function GuidanceImage({ title, items, width = 900 }: GuidanceImageProps) {
+export default function GuidanceImage({
+  title,
+  items,
+  width = 900,
+}: GuidanceImageProps) {
   const [src, setSrc] = useState<string>("");
 
   const lines = useMemo(() => {
@@ -22,7 +26,8 @@ export default function GuidanceImage({ title, items, width = 900 }: GuidanceIma
     const contentWidth = width - padding * 2;
     const out: string[] = [];
 
-    ctx.font = "bold 22px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    ctx.font =
+      "bold 22px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
     out.push(title);
     ctx.font = "16px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
 
@@ -59,7 +64,8 @@ export default function GuidanceImage({ title, items, width = 900 }: GuidanceIma
     // 측정: 총 높이
     const titleLines = 1;
     const contentLines = Math.max(0, lines.length - titleLines);
-    const height = padding + 22 + titleGap + contentLines * lineHeight + padding;
+    const height =
+      padding + 22 + titleGap + contentLines * lineHeight + padding;
 
     canvas.width = width;
     canvas.height = height;
@@ -75,7 +81,8 @@ export default function GuidanceImage({ title, items, width = 900 }: GuidanceIma
 
     // 제목
     ctx.fillStyle = "var(--foreground-1, #F7F7F7)";
-    ctx.font = "bold 22px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
+    ctx.font =
+      "bold 22px system-ui, -apple-system, Segoe UI, Roboto, sans-serif";
     ctx.fillText(lines[0] || title, padding, padding + 20);
 
     // 본문
@@ -90,18 +97,25 @@ export default function GuidanceImage({ title, items, width = 900 }: GuidanceIma
     setSrc(canvas.toDataURL("image/png"));
   }, [lines]);
 
-  if (!src) return <div style={{ 
-    height: 200, 
-    backgroundColor: 'var(--background-1, #121212)', 
-    border: '1px solid var(--border-1, #323232)' 
-  }} />;
+  if (!src)
+    return (
+      <div
+        style={{
+          height: 200,
+          backgroundColor: "var(--background-1, #121212)",
+          border: "1px solid var(--border-1, #323232)",
+        }}
+      />
+    );
   return (
-    <img src={src} alt={title} style={{ 
-      width: '100%', 
-      border: '1px solid var(--border-1, #323232)', 
-      borderRadius: 8 
-    }} />
+    <img
+      src={src}
+      alt={title}
+      style={{
+        width: "100%",
+        border: "1px solid var(--border-1, #323232)",
+        borderRadius: 8,
+      }}
+    />
   );
 }
-
-

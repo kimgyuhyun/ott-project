@@ -6,7 +6,16 @@ import AnimeDetailModal from "@/components/anime/AnimeDetailModal";
 import FilterSidebar from "@/components/search/FilterSidebar";
 import AnimeGrid from "@/components/search/AnimeGrid";
 import { searchContent } from "@/lib/api/search";
-import { getGenres, getTags, getSeasons, getYearOptions, getStatuses, getTypes, getAnimeList, listAnime } from "@/lib/api/anime";
+import {
+  getGenres,
+  getTags,
+  getSeasons,
+  getYearOptions,
+  getStatuses,
+  getTypes,
+  getAnimeList,
+  listAnime,
+} from "@/lib/api/anime";
 import { AnimeListItem } from "@/types/anime";
 import styles from "./TagsPage.module.css";
 
@@ -15,25 +24,27 @@ import styles from "./TagsPage.module.css";
  * 2단 레이아웃: 좌측 필터 사이드바 + 우측 애니메이션 그리드
  */
 function TagsPageContent() {
-  console.log('[DEBUG] TagsPage 컴포넌트 렌더링');
+  console.log("[DEBUG] TagsPage 컴포넌트 렌더링");
   const searchParams = useSearchParams();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(null);
+  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(
+    null,
+  );
   const [animes, setAnimes] = useState<AnimeListItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
+
   // 무한스크롤링을 위한 상태
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [cursorId, setCursorId] = useState<number | null>(null);
   const [cursorRating, setCursorRating] = useState<number | null>(null);
-  
+
   // 필터 상태
   const [filters, setFilters] = useState({
     watchable: true,
-    membership: false
+    membership: false,
   });
 
   const [selectedGenreIds, setSelectedGenreIds] = useState<number[]>([]);
@@ -41,17 +52,27 @@ function TagsPageContent() {
   const [selectedSeasons, setSelectedSeasons] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<string>('popular');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<string>("popular");
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [genreOptions, setGenreOptions] = useState<{id:number; name:string; color?:string}[]>([]);
-  const [tagOptions, setTagOptions] = useState<{id:number; name:string; color?:string}[]>([]);
+  const [genreOptions, setGenreOptions] = useState<
+    { id: number; name: string; color?: string }[]
+  >([]);
+  const [tagOptions, setTagOptions] = useState<
+    { id: number; name: string; color?: string }[]
+  >([]);
   const [seasonOptions, setSeasonOptions] = useState<string[]>([]);
-  const [yearOptions, setYearOptions] = useState<{value: string; label: string; type: string}[]>([]);
-  const [statusOptions, setStatusOptions] = useState<{key: string; label: string}[]>([]);
-  const [typeOptions, setTypeOptions] = useState<{key: string; label: string}[]>([]);
+  const [yearOptions, setYearOptions] = useState<
+    { value: string; label: string; type: string }[]
+  >([]);
+  const [statusOptions, setStatusOptions] = useState<
+    { key: string; label: string }[]
+  >([]);
+  const [typeOptions, setTypeOptions] = useState<
+    { key: string; label: string }[]
+  >([]);
 
   // URL 검색 파라미터 처리 및 초기 데이터 로드
   useEffect(() => {
@@ -59,7 +80,7 @@ function TagsPageContent() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         // 필터 옵션은 항상 로드 (검색어 유무와 무관)
         const [gs, ts, ss, yos, sts, tps] = await Promise.all([
           getGenres(),
@@ -67,22 +88,22 @@ function TagsPageContent() {
           getSeasons(),
           getYearOptions(),
           getStatuses(),
-          getTypes()
+          getTypes(),
         ]);
-        
+
         // API 응답 로그
-        console.log('필터 옵션 로딩 완료:', {
+        console.log("필터 옵션 로딩 완료:", {
           genres: Array.isArray(gs) ? gs.length : 0,
           tags: Array.isArray(ts) ? ts.length : 0,
           seasons: Array.isArray(ss) ? ss.length : 0,
           yearOptions: Array.isArray(yos) ? yos.length : 0,
           statuses: Array.isArray(sts) ? sts.length : 0,
-          types: Array.isArray(tps) ? tps.length : 0
+          types: Array.isArray(tps) ? tps.length : 0,
         });
-        
+
         // 장르/태그 데이터 구조 확인
-        console.log('장르 데이터 샘플:', Array.isArray(gs) ? gs[0] : null);
-        console.log('태그 데이터 샘플:', Array.isArray(ts) ? ts[0] : null);
+        console.log("장르 데이터 샘플:", Array.isArray(gs) ? gs[0] : null);
+        console.log("태그 데이터 샘플:", Array.isArray(ts) ? ts[0] : null);
 
         setGenreOptions(Array.isArray(gs) ? gs : []);
         setTagOptions(Array.isArray(ts) ? ts : []);
@@ -90,21 +111,21 @@ function TagsPageContent() {
         setYearOptions(Array.isArray(yos) ? yos : []);
         setStatusOptions(Array.isArray(sts) ? sts : []);
         setTypeOptions(Array.isArray(tps) ? tps : []);
-        
+
         // URL 검색어 처리
-        const urlSearch = searchParams.get('search');
+        const urlSearch = searchParams.get("search");
         if (urlSearch) {
           setSearchQuery(urlSearch); // 상태 업데이트하면 useEffect(line 149)에서 자동 검색
         } else {
           // 검색어 없으면 초기 인기순 목록 로드
-          const listRaw = await getAnimeList(0, 20, 'popular');
+          const listRaw = await getAnimeList(0, 20, "popular");
           const list = listRaw.items;
-          console.log('[DEBUG] 초기 최종 list:', list);
+          console.log("[DEBUG] 초기 최종 list:", list);
           setAnimes(list);
         }
       } catch (e) {
-        console.error('초기 데이터 로드 실패', e);
-        setError('초기 데이터를 불러오지 못했습니다.');
+        console.error("초기 데이터 로드 실패", e);
+        setError("초기 데이터를 불러오지 못했습니다.");
         setAnimes([]);
       } finally {
         setIsLoading(false);
@@ -114,16 +135,27 @@ function TagsPageContent() {
 
   // 필터 변경 시 자동 검색 실행 (searchQuery 제외)
   useEffect(() => {
-    console.log('[DEBUG] 필터 변경 감지:', {
+    console.log("[DEBUG] 필터 변경 감지:", {
       selectedSeasons,
       selectedStatuses,
       selectedTypes,
       selectedGenreIds,
-      selectedTagIds
+      selectedTagIds,
     });
     // 필터가 있으면 필터링된 결과, 없으면 초기 목록
     executeSearch();
-  }, [selectedSeasons, selectedStatuses, selectedTypes, selectedGenreIds, selectedTagIds, selectedYear, selectedStatus, selectedType, filters, sortBy]);
+  }, [
+    selectedSeasons,
+    selectedStatuses,
+    selectedTypes,
+    selectedGenreIds,
+    selectedTagIds,
+    selectedYear,
+    selectedStatus,
+    selectedType,
+    filters,
+    sortBy,
+  ]);
 
   // searchQuery 변경 시 자동 검색 실행
   useEffect(() => {
@@ -145,13 +177,22 @@ function TagsPageContent() {
 
       const normalizeToArray = (data: unknown): AnimeListItem[] => {
         const isArr = Array.isArray(data);
-        const hasContent = data && Array.isArray((data as { content: unknown[] }).content);
-        const hasItems = data && Array.isArray((data as { items: unknown[] }).items);
-        console.log('[검색응답] typeof=', typeof data, 'isArray=', isArr, 'keys=', data ? Object.keys(data) : null);
+        const hasContent =
+          data && Array.isArray((data as { content: unknown[] }).content);
+        const hasItems =
+          data && Array.isArray((data as { items: unknown[] }).items);
+        console.log(
+          "[검색응답] typeof=",
+          typeof data,
+          "isArray=",
+          isArr,
+          "keys=",
+          data ? Object.keys(data) : null,
+        );
         if (isArr) return data as AnimeListItem[];
         if (hasContent) return (data as { content: AnimeListItem[] }).content;
         if (hasItems) return (data as { items: AnimeListItem[] }).items;
-        console.warn('[검색응답] 예상치 못한 구조, 빈 배열로 처리:', data);
+        console.warn("[검색응답] 예상치 못한 구조, 빈 배열로 처리:", data);
         return [];
       };
 
@@ -161,26 +202,37 @@ function TagsPageContent() {
       // 정렬 값을 백엔드 API 형식으로 변환
       const getSortValue = (sort: string) => {
         switch (sort) {
-          case 'latest': return 'id';
-          case 'popular': return 'popular';
-          case 'rating': return 'rating';
-          default: return 'id';
+          case "latest":
+            return "id";
+          case "popular":
+            return "popular";
+          case "rating":
+            return "rating";
+          default:
+            return "id";
         }
       };
 
       // 목록 API 사용: 키워드가 있으면 searchContent, 없으면 listAnime
       if (searchQuery.trim()) {
-        const raw = await searchContent(searchQuery.trim(), undefined, undefined, getSortValue(sortBy), page, 10);
+        const raw = await searchContent(
+          searchQuery.trim(),
+          undefined,
+          undefined,
+          getSortValue(sortBy),
+          page,
+          10,
+        );
         collected = normalizeToArray(raw);
       } else {
         // selectedSeasons에서 년도와 분기 추출 (2025-Q3 -> year: 2025, quarter: 3)
         let yearFromSeasons = null;
         let quarterFromSeasons = null;
-        
+
         if (selectedSeasons.length > 0) {
           const season = selectedSeasons[0]; // 첫 번째 선택된 시즌 사용
-          if (season.includes('-Q')) {
-            const [year, quarter] = season.split('-Q');
+          if (season.includes("-Q")) {
+            const [year, quarter] = season.split("-Q");
             yearFromSeasons = parseInt(year);
             quarterFromSeasons = parseInt(quarter);
           } else {
@@ -188,7 +240,7 @@ function TagsPageContent() {
           }
         }
 
-        console.log('[DEBUG] 필터 값들:', {
+        console.log("[DEBUG] 필터 값들:", {
           selectedSeasons,
           selectedStatuses,
           selectedTypes,
@@ -196,9 +248,9 @@ function TagsPageContent() {
           quarterFromSeasons,
           selectedYear,
           selectedStatus,
-          selectedType
+          selectedType,
         });
-        console.log('[DEBUG] selectedSeasons 상세:', selectedSeasons);
+        console.log("[DEBUG] selectedSeasons 상세:", selectedSeasons);
 
         // listAnime 사용하여 모든 필터링을 백엔드에서 처리
         const list = await listAnime({
@@ -206,36 +258,40 @@ function TagsPageContent() {
           tagIds: selectedTagIds.length > 0 ? selectedTagIds : null,
           year: yearFromSeasons || selectedYear,
           quarter: quarterFromSeasons,
-          status: selectedStatuses.length > 0 ? selectedStatuses[0] : selectedStatus,
+          status:
+            selectedStatuses.length > 0 ? selectedStatuses[0] : selectedStatus,
           type: selectedTypes.length > 0 ? selectedTypes[0] : selectedType,
           sort: getSortValue(sortBy),
           page: page,
           size: 10,
           cursorId: isLoadMore ? (cursorId ?? undefined) : undefined,
-          cursorRating: isLoadMore && sortBy === 'rating' ? (cursorRating ?? undefined) : undefined
+          cursorRating:
+            isLoadMore && sortBy === "rating"
+              ? (cursorRating ?? undefined)
+              : undefined,
         });
-        console.log('[DEBUG] listAnime 응답:', list);
+        console.log("[DEBUG] listAnime 응답:", list);
         collected = list.items;
-        console.log('[DEBUG] 최종 collected:', collected);
+        console.log("[DEBUG] 최종 collected:", collected);
       }
 
       // 백엔드에서 이미 필터링된 결과이므로 클라이언트 측 필터링은 최소화
       // 연도, 상태, 타입은 백엔드에서 처리됨
-      
+
       // 고급 필터만 클라이언트에서 처리 (백엔드에서 지원하지 않는 필터들)
       // 참고: 과거의 watchable 필터는 AnimeListDto 에 없는 status 필드를 참조해 실제로는 동작하지 않아 제거함
       if (filters.membership) {
-        collected = collected.filter(anime => anime.isExclusive === true);
+        collected = collected.filter((anime) => anime.isExclusive === true);
       }
 
       let uniqueResults: AnimeListItem[] = [];
       if (Array.isArray(collected)) {
         uniqueResults = collected.filter((anime, index, self) => {
           const key = anime?.aniId;
-          return index === self.findIndex(a => a?.aniId === key);
+          return index === self.findIndex((a) => a?.aniId === key);
         });
       } else {
-        console.warn('[검색응답] 배열이 아님. 빈 배열로 처리:', collected);
+        console.warn("[검색응답] 배열이 아님. 빈 배열로 처리:", collected);
         uniqueResults = [];
       }
 
@@ -256,18 +312,27 @@ function TagsPageContent() {
         const lastId = last?.aniId;
         const lastRating = last?.rating;
         setCursorId(Number(lastId));
-        setCursorRating(typeof lastRating === 'number' ? lastRating : null);
+        setCursorRating(typeof lastRating === "number" ? lastRating : null);
       }
 
       // 더 불러올 데이터가 있는지 확인 (10개 미만이면 끝)
       setHasMore(uniqueResults.length === 10);
 
-      if ((searchQuery.trim() || selectedGenreIds.length || selectedTagIds.length) && uniqueResults.length === 0) {
-        console.log('[검색] 결과 없음', { searchQuery, selectedGenreIds, selectedTagIds });
+      if (
+        (searchQuery.trim() ||
+          selectedGenreIds.length ||
+          selectedTagIds.length) &&
+        uniqueResults.length === 0
+      ) {
+        console.log("[검색] 결과 없음", {
+          searchQuery,
+          selectedGenreIds,
+          selectedTagIds,
+        });
       }
     } catch (err) {
-      console.error('애니메이션 검색 실패:', err);
-      setError('검색에 실패했습니다. 다시 시도해주세요.');
+      console.error("애니메이션 검색 실패:", err);
+      setError("검색에 실패했습니다. 다시 시도해주세요.");
       if (!isLoadMore) {
         setAnimes([]);
       }
@@ -288,19 +353,19 @@ function TagsPageContent() {
 
   // 장르 선택/해제
   const toggleGenre = (genreId: number) => {
-    setSelectedGenreIds((prev: number[]) => 
-      prev.includes(genreId) 
+    setSelectedGenreIds((prev: number[]) =>
+      prev.includes(genreId)
         ? prev.filter((g: number) => g !== genreId)
-        : [...prev, genreId]
+        : [...prev, genreId],
     );
   };
 
   // 태그 선택/해제
   const toggleTag = (tagId: number) => {
-    setSelectedTagIds((prev: number[]) => 
-      prev.includes(tagId) 
+    setSelectedTagIds((prev: number[]) =>
+      prev.includes(tagId)
         ? prev.filter((g: number) => g !== tagId)
-        : [...prev, tagId]
+        : [...prev, tagId],
     );
   };
 
@@ -308,37 +373,38 @@ function TagsPageContent() {
   const handleFilterChange = (key: string, value: boolean) => {
     setFilters((prev: { watchable: boolean; membership: boolean }) => ({
       ...prev,
-      [key]: value
+      [key]: value,
     }));
   };
 
   // 연도/상태 변경 (기존 단일 선택)
   const handleYearChange = (year: number | null) => setSelectedYear(year);
-  const handleStatusChange = (status: string | null) => setSelectedStatus(status);
+  const handleStatusChange = (status: string | null) =>
+    setSelectedStatus(status);
   const handleTypeChange = (type: string | null) => setSelectedType(type);
 
   // 시즌/상태/타입 다중 선택 핸들러
   const handleSeasonToggle = (season: string) => {
-    setSelectedSeasons((prev: string[]) => 
-      prev.includes(season) 
+    setSelectedSeasons((prev: string[]) =>
+      prev.includes(season)
         ? prev.filter((s: string) => s !== season)
-        : [...prev, season]
+        : [...prev, season],
     );
   };
 
   const handleStatusToggle = (status: string) => {
-    setSelectedStatuses((prev: string[]) => 
-      prev.includes(status) 
+    setSelectedStatuses((prev: string[]) =>
+      prev.includes(status)
         ? prev.filter((s: string) => s !== status)
-        : [...prev, status]
+        : [...prev, status],
     );
   };
 
   const handleTypeToggle = (type: string) => {
-    setSelectedTypes((prev: string[]) => 
-      prev.includes(type) 
+    setSelectedTypes((prev: string[]) =>
+      prev.includes(type)
         ? prev.filter((t: string) => t !== type)
-        : [...prev, type]
+        : [...prev, type],
     );
   };
 
@@ -349,14 +415,14 @@ function TagsPageContent() {
     setSelectedSeasons([]);
     setSelectedStatuses([]);
     setSelectedTypes([]);
-    setSearchQuery('');
-    setSortBy('popular');
+    setSearchQuery("");
+    setSortBy("popular");
     setSelectedYear(null);
     setSelectedStatus(null);
     setSelectedType(null);
     setFilters({
       watchable: true,
-      membership: false
+      membership: false,
     });
     setAnimes([]);
     setCurrentPage(0);
@@ -366,11 +432,11 @@ function TagsPageContent() {
   // 스크롤 이벤트 감지하여 무한스크롤링 처리
   const handleScroll = () => {
     if (isLoadingMore || !hasMore || isLoading) return; // 로딩 중이면 추가 호출 방지
-    
+
     const scrollTop = window.scrollY;
     const windowHeight = window.innerHeight;
     const documentHeight = document.documentElement.scrollHeight;
-    
+
     // 페이지 하단에 거의 도달했을 때 (800px 여유로 조정)
     if (scrollTop + windowHeight >= documentHeight - 800) {
       // 디바운싱: 연속 호출 방지
@@ -383,15 +449,15 @@ function TagsPageContent() {
   // 스크롤 이벤트 리스너 등록/해제 (디바운싱 적용)
   useEffect(() => {
     let timeoutId: number;
-    
+
     const debouncedHandleScroll = () => {
       window.clearTimeout(timeoutId);
       timeoutId = window.setTimeout(handleScroll, 100); // 100ms 디바운싱
     };
-    
-    window.addEventListener('scroll', debouncedHandleScroll);
+
+    window.addEventListener("scroll", debouncedHandleScroll);
     return () => {
-      window.removeEventListener('scroll', debouncedHandleScroll);
+      window.removeEventListener("scroll", debouncedHandleScroll);
       window.clearTimeout(timeoutId);
     };
   }, [currentPage, hasMore, isLoadingMore, isLoading]);
@@ -405,7 +471,7 @@ function TagsPageContent() {
   return (
     <div className={styles.root}>
       <Header />
-      
+
       <main className={styles.mainContainer}>
         {/* 2단 레이아웃: 좌측 필터 + 우측 결과 */}
         <div className={styles.layoutContainer}>
@@ -442,9 +508,27 @@ function TagsPageContent() {
             isLoading={isLoading}
             error={error}
             searchQuery={searchQuery}
-            selectedGenres={selectedGenreIds.map((id: number) => genreOptions.find((g: {id: number; name: string; color?: string}) => g.id === id)?.name ?? String(id))}
-            selectedTags={selectedTagIds.map((id: number) => tagOptions.find((t: {id: number; name: string; color?: string}) => t.id === id)?.name ?? String(id))}
-            selectedSeasons={selectedSeasons.map((season: string) => yearOptions.find((y: {value: string; label: string; type: string}) => y.value === season)?.label ?? season)}
+            selectedGenres={selectedGenreIds.map(
+              (id: number) =>
+                genreOptions.find(
+                  (g: { id: number; name: string; color?: string }) =>
+                    g.id === id,
+                )?.name ?? String(id),
+            )}
+            selectedTags={selectedTagIds.map(
+              (id: number) =>
+                tagOptions.find(
+                  (t: { id: number; name: string; color?: string }) =>
+                    t.id === id,
+                )?.name ?? String(id),
+            )}
+            selectedSeasons={selectedSeasons.map(
+              (season: string) =>
+                yearOptions.find(
+                  (y: { value: string; label: string; type: string }) =>
+                    y.value === season,
+                )?.label ?? season,
+            )}
             selectedStatuses={selectedStatuses}
             selectedTypes={selectedTypes}
             sortBy={sortBy}
@@ -468,7 +552,13 @@ function TagsPageContent() {
 
 export default function TagsPage() {
   return (
-    <Suspense fallback={<div className={styles.root}><main className={styles.mainContainer}>로딩 중...</main></div>}>
+    <Suspense
+      fallback={
+        <div className={styles.root}>
+          <main className={styles.mainContainer}>로딩 중...</main>
+        </div>
+      }
+    >
       <TagsPageContent />
     </Suspense>
   );

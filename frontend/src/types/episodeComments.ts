@@ -8,7 +8,7 @@ export interface EpisodeComment {
   userName: string;
   userProfileImage?: string;
   content: string;
-  commentStatus: 'ACTIVE' | 'DELETED' | 'REPORTED';
+  commentStatus: "ACTIVE" | "DELETED" | "REPORTED";
   repliesCount?: number;
   likeCount: number;
   isLikedByCurrentUser: boolean;
@@ -32,4 +32,3 @@ export interface PagedEpisodeCommentsResponse {
   size: number;
   totalPages: number;
 }
-  

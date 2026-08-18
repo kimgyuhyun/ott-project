@@ -40,7 +40,9 @@ export default function AdminStatsPage() {
   const [dailyLoading, setDailyLoading] = useState(false);
 
   // 재집계 상태
-  const [rebuildDate, setRebuildDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [rebuildDate, setRebuildDate] = useState(() =>
+    new Date().toISOString().slice(0, 10),
+  );
   const [rebuildLoading, setRebuildLoading] = useState(false);
   const [rebuildResult, setRebuildResult] = useState<ResultState>(null);
 
@@ -92,12 +94,13 @@ export default function AdminStatsPage() {
         acc.signup += s.signupCount;
         return acc;
       },
-      { loginSuccess: 0, loginFail: 0, logout: 0, signup: 0 }
+      { loginSuccess: 0, loginFail: 0, logout: 0, signup: 0 },
     );
   }, [daily]);
 
   // 기간 내 최근일 DAU (가장 마지막 스냅샷)
-  const latestDau = daily.length > 0 ? daily[daily.length - 1].activeUserCount : 0;
+  const latestDau =
+    daily.length > 0 ? daily[daily.length - 1].activeUserCount : 0;
 
   const handleRebuild = async () => {
     if (!rebuildDate) {
@@ -114,7 +117,10 @@ export default function AdminStatsPage() {
       });
       loadDaily(days); // 목록 갱신
     } catch (e) {
-      setRebuildResult({ ok: false, text: e instanceof Error ? e.message : "재집계 실패" });
+      setRebuildResult({
+        ok: false,
+        text: e instanceof Error ? e.message : "재집계 실패",
+      });
     } finally {
       setRebuildLoading(false);
     }
@@ -123,12 +129,19 @@ export default function AdminStatsPage() {
   return (
     <div>
       <h1 className={styles.pageTitle}>통계 / 감사 로그</h1>
-      <p className={styles.pageSubtitle}>인증 이벤트 기반 일일 통계 스냅샷과 최근 접속 감사 로그입니다.</p>
+      <p className={styles.pageSubtitle}>
+        인증 이벤트 기반 일일 통계 스냅샷과 최근 접속 감사 로그입니다.
+      </p>
 
       {/* 기간 합계 KPI */}
       <section className={styles.panel}>
-        <div className={styles.row} style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <h2 className={styles.panelTitle} style={{ margin: 0 }}>최근 {days}일 요약</h2>
+        <div
+          className={styles.row}
+          style={{ justifyContent: "space-between", alignItems: "center" }}
+        >
+          <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+            최근 {days}일 요약
+          </h2>
           <select
             className={styles.input}
             style={{ maxWidth: 140 }}
@@ -144,19 +157,27 @@ export default function AdminStatsPage() {
         </div>
         <div className={styles.statGrid}>
           <div className={styles.statCard}>
-            <div className={styles.statValue}>{totals.loginSuccess.toLocaleString()}</div>
+            <div className={styles.statValue}>
+              {totals.loginSuccess.toLocaleString()}
+            </div>
             <div className={styles.statLabel}>로그인 성공</div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statValue}>{totals.loginFail.toLocaleString()}</div>
+            <div className={styles.statValue}>
+              {totals.loginFail.toLocaleString()}
+            </div>
             <div className={styles.statLabel}>로그인 실패</div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statValue}>{totals.signup.toLocaleString()}</div>
+            <div className={styles.statValue}>
+              {totals.signup.toLocaleString()}
+            </div>
             <div className={styles.statLabel}>신규 가입</div>
           </div>
           <div className={styles.statCard}>
-            <div className={styles.statValue}>{totals.logout.toLocaleString()}</div>
+            <div className={styles.statValue}>
+              {totals.logout.toLocaleString()}
+            </div>
             <div className={styles.statLabel}>로그아웃</div>
           </div>
           <div className={styles.statCard}>
@@ -169,7 +190,9 @@ export default function AdminStatsPage() {
       {/* 일일 통계 테이블 */}
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>일별 통계</h2>
-        <p className={styles.panelHint}>매일 새벽 스냅샷으로 집계됩니다. 최신 일자가 위로 오도록 표시합니다.</p>
+        <p className={styles.panelHint}>
+          매일 새벽 스냅샷으로 집계됩니다. 최신 일자가 위로 오도록 표시합니다.
+        </p>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -184,9 +207,31 @@ export default function AdminStatsPage() {
             </thead>
             <tbody>
               {dailyLoading ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>불러오는 중...</td></tr>
+                <tr>
+                  <td
+                    colSpan={6}
+                    style={{
+                      textAlign: "center",
+                      color: "#9aa0aa",
+                      padding: 24,
+                    }}
+                  >
+                    불러오는 중...
+                  </td>
+                </tr>
               ) : daily.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>집계된 통계가 없습니다.</td></tr>
+                <tr>
+                  <td
+                    colSpan={6}
+                    style={{
+                      textAlign: "center",
+                      color: "#9aa0aa",
+                      padding: 24,
+                    }}
+                  >
+                    집계된 통계가 없습니다.
+                  </td>
+                </tr>
               ) : (
                 [...daily].reverse().map((s) => (
                   <tr key={s.statDate}>
@@ -207,7 +252,9 @@ export default function AdminStatsPage() {
       {/* 수동 재집계 */}
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>스냅샷 재집계</h2>
-        <p className={styles.panelHint}>특정 일자의 통계를 즉시 다시 계산합니다(멱등, 백필/검증용).</p>
+        <p className={styles.panelHint}>
+          특정 일자의 통계를 즉시 다시 계산합니다(멱등, 백필/검증용).
+        </p>
         <div className={styles.row}>
           <input
             className={styles.input}
@@ -216,12 +263,18 @@ export default function AdminStatsPage() {
             onChange={(e) => setRebuildDate(e.target.value)}
             disabled={rebuildLoading}
           />
-          <button className={styles.button} onClick={handleRebuild} disabled={rebuildLoading}>
+          <button
+            className={styles.button}
+            onClick={handleRebuild}
+            disabled={rebuildLoading}
+          >
             {rebuildLoading ? "재집계 중..." : "재집계"}
           </button>
         </div>
         {rebuildResult && (
-          <div className={`${styles.result} ${rebuildResult.ok ? styles.resultOk : styles.resultErr}`}>
+          <div
+            className={`${styles.result} ${rebuildResult.ok ? styles.resultOk : styles.resultErr}`}
+          >
             {rebuildResult.text}
           </div>
         )}
@@ -229,13 +282,24 @@ export default function AdminStatsPage() {
 
       {/* 감사 로그 */}
       <section className={styles.panel}>
-        <div className={styles.row} style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <h2 className={styles.panelTitle} style={{ margin: 0 }}>최근 인증 이벤트</h2>
-          <button className={styles.pagerBtn} onClick={loadEvents} disabled={eventsLoading}>
+        <div
+          className={styles.row}
+          style={{ justifyContent: "space-between", alignItems: "center" }}
+        >
+          <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+            최근 인증 이벤트
+          </h2>
+          <button
+            className={styles.pagerBtn}
+            onClick={loadEvents}
+            disabled={eventsLoading}
+          >
             {eventsLoading ? "새로고침 중..." : "새로고침"}
           </button>
         </div>
-        <p className={styles.panelHint}>최근 100건을 최신순으로 표시합니다. (접속 IP/제공자 포함)</p>
+        <p className={styles.panelHint}>
+          최근 100건을 최신순으로 표시합니다. (접속 IP/제공자 포함)
+        </p>
         <div className={styles.tableWrap}>
           <table className={styles.table}>
             <thead>
@@ -250,9 +314,31 @@ export default function AdminStatsPage() {
             </thead>
             <tbody>
               {eventsLoading ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>불러오는 중...</td></tr>
+                <tr>
+                  <td
+                    colSpan={6}
+                    style={{
+                      textAlign: "center",
+                      color: "#9aa0aa",
+                      padding: 24,
+                    }}
+                  >
+                    불러오는 중...
+                  </td>
+                </tr>
               ) : events.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>기록된 이벤트가 없습니다.</td></tr>
+                <tr>
+                  <td
+                    colSpan={6}
+                    style={{
+                      textAlign: "center",
+                      color: "#9aa0aa",
+                      padding: 24,
+                    }}
+                  >
+                    기록된 이벤트가 없습니다.
+                  </td>
+                </tr>
               ) : (
                 events.map((ev) => (
                   <tr key={ev.id}>

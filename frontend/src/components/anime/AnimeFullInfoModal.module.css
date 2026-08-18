@@ -31,7 +31,7 @@
 
 .modalContainer {
   padding: 0;
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   background: var(--background-1, #121212);
   border-radius: 0 0 12px 12px;
   max-height: 70vh;
@@ -42,17 +42,17 @@
   font-size: 1.125rem;
   font-weight: 700;
   margin: 0;
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
 }
 
 .closeIcon {
   cursor: pointer;
-  color: var(--foreground-3, #ABABAB);
+  color: var(--foreground-3, #ababab);
   transition: color 0.2s;
 }
 
 .closeIcon:hover {
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
 }
 
 .content {
@@ -67,14 +67,14 @@
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 0.75rem;
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   display: block;
 }
 
 .paragraph {
   line-height: 1.6;
   white-space: pre-wrap;
-  color: var(--foreground-2, #ABABAB);
+  color: var(--foreground-2, #ababab);
   overflow: visible;
   font-size: 0.875rem;
 }
@@ -93,14 +93,14 @@
 }
 
 .tagLink {
-  color: var(--foreground-2, #ABABAB);
+  color: var(--foreground-2, #ababab);
   text-decoration: none;
   font-size: 0.875rem;
   transition: color 0.2s;
 }
 
 .tagLink:hover {
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
 }
 
 .voiceSection {
@@ -123,12 +123,12 @@
 .voiceRole {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
 }
 
 .voiceName {
   font-size: 0.875rem;
-  color: var(--foreground-2, #ABABAB);
+  color: var(--foreground-2, #ababab);
 }
 
 .productionSection {
@@ -151,12 +151,10 @@
 .productionLabel {
   font-size: 0.875rem;
   font-weight: 600;
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
 }
 
 .productionValue {
   font-size: 0.875rem;
-  color: var(--foreground-2, #ABABAB);
+  color: var(--foreground-2, #ababab);
 }
-
-

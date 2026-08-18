@@ -72,7 +72,7 @@
 }
 
 .checkIcon {
-  color: #816BFF;
+  color: #816bff;
   font-weight: bold;
   margin-right: 12px;
   margin-top: 2px;
@@ -87,13 +87,13 @@
 }
 
 .planNameHighlight {
-  color: #816BFF;
+  color: #816bff;
   font-weight: 600;
 }
 
 .changeButton {
   width: 100%;
-  background: linear-gradient(135deg, #816BFF 0%, #6B4BFF 100%);
+  background: linear-gradient(135deg, #816bff 0%, #6b4bff 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -122,11 +122,11 @@
     padding: 24px;
     margin: 16px;
   }
-  
+
   .modalTitle {
     font-size: 20px;
   }
-  
+
   .infoText {
     font-size: 13px;
   }

@@ -263,17 +263,17 @@
     width: 95%;
     margin: 1rem;
   }
-  
+
   .modalHeader,
   .modalBody,
   .modalFooter {
     padding: 1rem;
   }
-  
+
   .settingOptions {
     gap: 0.375rem;
   }
-  
+
   .optionButton {
     min-width: 70px;
     padding: 0.375rem 0.75rem;

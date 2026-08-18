@@ -2,8 +2,22 @@
 .mypageContainer {
   min-height: 100vh;
   background-color: #000000; /* 배경 → 라프텔 스타일(더 어두움) */
-  color: #F7F7F7;
-  font-family: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif;
+  color: #f7f7f7;
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    Roboto,
+    "Helvetica Neue",
+    "Segoe UI",
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    "Malgun Gothic",
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    sans-serif;
   -webkit-font-smoothing: antialiased;
   box-sizing: border-box;
 }
@@ -18,7 +32,7 @@
 
 .loadingText {
   font-size: 1.25rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 /* 에러 상태 */
@@ -68,7 +82,7 @@
 .profileTitle {
   font-size: 1rem;
   font-weight: 600;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin-bottom: 0.75rem;
 }
 
@@ -107,7 +121,7 @@
 .profileName {
   font-size: 1.25rem; /* 글자 크기 약간 축소 */
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin-bottom: 0.5rem;
 }
 
@@ -123,11 +137,13 @@
   width: max-content; /* 텍스트 크기에 맞춤 */
   padding: 0.5rem 0.75rem;
   background-color: transparent; /* 배경 제거 */
-  color: #E2E2E2;
+  color: #e2e2e2;
   border-radius: 0.5rem;
   font-size: 1rem;
   font-weight: 500;
-  transition: border-color 0.2s ease, color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease;
   border: 1px solid #4b5563; /* 테두리 표시 */
   cursor: pointer;
   margin: 0 auto 1rem; /* 중앙 정렬 */
@@ -157,14 +173,14 @@
 }
 
 .statNumber {
-  color: #F7F7F7;
+  color: #f7f7f7;
   font-weight: 700;
   font-size: 1.5rem;
   margin-bottom: 0.5rem;
 }
 
 .statLabel {
-  color: #ABABAB;
+  color: #ababab;
   font-size: 0.875rem;
   font-weight: 500;
 }
@@ -192,7 +208,7 @@
 }
 
 .clickableStat:hover .statLabel {
-  color: #E2E2E2;
+  color: #e2e2e2;
 }
 
 /* 보관함 버튼 */
@@ -300,13 +316,13 @@
   background: none;
   border: none;
   cursor: pointer;
-  color: #ABABAB;
+  color: #ababab;
   position: relative;
   white-space: nowrap;
 }
 
 .tabButton:hover {
-  color: #E2E2E2;
+  color: #e2e2e2;
 }
 
 .tabButtonActive {
@@ -317,7 +333,7 @@
 .tabCount {
   margin-left: 0.5rem;
   background-color: #323232;
-  color: #ABABAB;
+  color: #ababab;
   padding: 0.125rem 0.375rem;
   border-radius: 9999px;
   font-size: 0.75rem;
@@ -330,7 +346,7 @@
   padding: 0.5rem 1rem;
   background-color: transparent;
   border: none;
-  color: #FFFFFF;
+  color: #ffffff;
   font-size: 1rem; /* 16px */
   font-weight: 500;
   cursor: pointer;
@@ -356,7 +372,7 @@
   padding: 0.5rem 1rem;
   background-color: transparent;
   border: none;
-  color: #ABABAB;
+  color: #ababab;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -371,7 +387,7 @@
   padding: 0.5rem 1rem;
   background-color: transparent;
   border: none;
-  color: #FFFFFF;
+  color: #ffffff;
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
@@ -401,7 +417,7 @@
 }
 
 .selected::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -421,7 +437,7 @@
   width: 3rem;
   height: 3rem;
   background-color: #8b5cf6;
-  color: #FFFFFF;
+  color: #ffffff;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -444,15 +460,15 @@
   width: 1.25rem;
   height: 1.25rem;
   appearance: none;
-  border: 2px solid #ABABAB;
+  border: 2px solid #ababab;
   border-radius: 50%;
-  background-color: #ABABAB;
+  background-color: #ababab;
   cursor: pointer;
   position: relative;
 }
 
 .selectAllCheckbox::after {
-  content: '✓';
+  content: "✓";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -468,12 +484,12 @@
 }
 
 .selectAllCheckbox:checked::after {
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .selectAllLabel {
   font-size: 0.875rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
   cursor: pointer;
   user-select: none;
 }
@@ -487,14 +503,17 @@
 .tabTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin-bottom: 1.25rem; /* 제목과 카드 간격 확대 */
 }
 
 /* 애니메이션 그리드 */
 .animeGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 200px)); /* 고정 크기 그리드 */
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(180px, 200px)
+  ); /* 고정 크기 그리드 */
   gap: 1.5rem 1rem; /* 세로/가로 간격 더 넉넉하게 */
   padding: 0 0.5rem; /* 좌우 여백 추가 */
   min-height: 12rem; /* 목록이 적어도 영역 유지 */
@@ -544,7 +563,7 @@
 .animeTitle {
   font-size: 0.75rem;
   line-height: 1.4;
-  color: #F7F7F7;
+  color: #f7f7f7;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -553,7 +572,7 @@
 
 .animeEpisode {
   font-size: 0.75rem; /* 12px */
-  color: #ABABAB;
+  color: #ababab;
   text-align: center;
 }
 
@@ -601,14 +620,19 @@
     "avatar footer thumb";
   column-gap: 12px;
   row-gap: 8px;
-  transition: background-color .15s ease;
+  transition: background-color 0.15s ease;
 }
 
 .commentItem:hover {
   background-color: rgba(255, 255, 255, 0.03);
 }
 
-.commentTopRow { grid-area: header; display: flex; align-items: center; gap: 8px; }
+.commentTopRow {
+  grid-area: header;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 .commentTitleBox {
   display: flex;
@@ -618,14 +642,14 @@
 .commentAniTitle {
   font-size: 1rem;
   font-weight: 800;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin: 0;
 }
 
 .commentEpisodeTitle {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #ABABAB;
+  color: #ababab;
   margin: 2px 0 0 0;
 }
 
@@ -645,7 +669,7 @@
   object-fit: cover;
   object-position: center 20%;
   transform: scale(1);
-  transition: transform .2s ease;
+  transition: transform 0.2s ease;
 }
 
 /* 카드 전체 오버레이(보라 원 체크)는 리뷰/평점 등에서만 사용. 댓글 아이템에는 적용하지 않음 */
@@ -657,7 +681,7 @@
   width: 3rem;
   height: 3rem;
   background-color: #8b5cf6;
-  color: #FFFFFF;
+  color: #ffffff;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -681,7 +705,7 @@
   align-items: center;
   justify-content: center;
   background-color: #8b5cf6;
-  color: #FFFFFF;
+  color: #ffffff;
   font-weight: 800;
   font-size: 20px;
   line-height: 1;
@@ -689,16 +713,26 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }
 
-.commentEpisodeThumb:hover img { transform: scale(1.02); }
+.commentEpisodeThumb:hover img {
+  transform: scale(1.02);
+}
 
-.commentMiddleRow { grid-area: body; margin-top: 6px; }
+.commentMiddleRow {
+  grid-area: body;
+  margin-top: 6px;
+}
 
-.commentBottomRow { grid-area: footer; display: flex; align-items: center; justify-content: space-between; }
+.commentBottomRow {
+  grid-area: footer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
 .reviewTitle {
   font-size: 1rem;
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin: 0;
 }
 
@@ -710,7 +744,7 @@
 }
 
 .reviewScore {
-  color: #7C6BFF;
+  color: #7c6bff;
   font-weight: 700;
 }
 
@@ -744,7 +778,7 @@
   align-items: center;
   justify-content: center;
   background-color: #8b5cf6;
-  color: #FFFFFF;
+  color: #ffffff;
   font-weight: 800;
   font-size: 20px;
   line-height: 1;
@@ -766,7 +800,7 @@
 }
 
 .reviewExcerpt {
-  color: #E5E5E5;
+  color: #e5e5e5;
   font-size: 0.875rem;
   line-height: 1.5;
 }
@@ -782,27 +816,66 @@
 
 .commentSortSelect {
   height: 28px;
-  background: #0F0F10;
-  color: #EDEDED;
+  background: #0f0f10;
+  color: #ededed;
   border: 1px solid #232425;
   border-radius: 6px;
   padding: 0 8px;
 }
 
 /* 댓글 전용 텍스트/타이틀 색상 고정 */
-.commentAniTitle { font-size: 12px; color: #9CA3AF; font-weight: 600; }
-.commentEpisodeTitle { font-size: 16px; font-weight: 800; color: #EDEDED; margin-top: 2px; text-decoration: none; }
-.commentEpisodeTitle:hover { color: #EDEDED; }
-.commentBodyText { color: #EDEDED; font-size: 14px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.commentAniTitle {
+  font-size: 12px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+.commentEpisodeTitle {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ededed;
+  margin-top: 2px;
+  text-decoration: none;
+}
+.commentEpisodeTitle:hover {
+  color: #ededed;
+}
+.commentBodyText {
+  color: #ededed;
+  font-size: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 
 /* 아바타 */
-.commentAvatar { width: 40px; height: 40px; grid-area: avatar; border-radius: 50%; object-fit: cover; background: #323232; }
+.commentAvatar {
+  width: 40px;
+  height: 40px;
+  grid-area: avatar;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #323232;
+}
 
 /* 태그 배지 */
-.commentTagBadge { background: #2A2A2C; color: #A5B4FC; font-size: 11px; border-radius: 4px; padding: 2px 6px; position: relative; top: -1px; }
+.commentTagBadge {
+  background: #2a2a2c;
+  color: #a5b4fc;
+  font-size: 11px;
+  border-radius: 4px;
+  padding: 2px 6px;
+  position: relative;
+  top: -1px;
+}
 
 /* 헤더 영역 컨테이너 */
-.commentTopRow { grid-area: header; display: flex; align-items: flex-start; justify-content: space-between; }
+.commentTopRow {
+  grid-area: header;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
 
 @media (max-width: 640px) {
   .commentItem {
@@ -820,7 +893,7 @@
 }
 
 .reviewMeta {
-  color: #ABABAB;
+  color: #ababab;
   font-size: 0.875rem;
   margin-bottom: 12px;
 }
@@ -831,7 +904,7 @@
 }
 
 .reviewTime {
-  color: #ABABAB;
+  color: #ababab;
   font-size: 0.75rem;
 }
 
@@ -850,7 +923,7 @@
   gap: 6px;
   background: transparent;
   border: 0;
-  color: #E5E5E5;
+  color: #e5e5e5;
   cursor: pointer;
 }
 
@@ -863,7 +936,7 @@
 .emptyState {
   text-align: center;
   padding: 1.5rem 0;
-  color: #ABABAB;
+  color: #ababab;
   min-height: 12rem; /* 빈 상태 영역 기본 높이 */
   display: flex;
   align-items: center;
@@ -887,7 +960,7 @@
 .profileModeTitle {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin: 0;
   padding: 0.75rem 0;
 }
@@ -902,7 +975,7 @@
 
 .reviewContent,
 .commentContent {
-  color: #ABABAB;
+  color: #ababab;
   font-size: 0.625rem;
   line-height: 1.3;
   margin-top: 0.25rem;

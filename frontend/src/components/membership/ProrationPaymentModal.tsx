@@ -18,7 +18,7 @@ interface ProrationPaymentModalProps {
   planInfo: PlanInfo;
   paymentMethod: string;
   onChangePaymentMethod: (method: string) => void;
-  selectedPaymentService: PaymentService | '';
+  selectedPaymentService: PaymentService | "";
   onSelectPaymentService: (service: PaymentService) => void;
   onOpenCardRegistration: () => void;
   onPay: () => void;
@@ -38,8 +38,8 @@ export default function ProrationPaymentModal({
   const [agreed, setAgreed] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  
+  const [errorMessage, setErrorMessage] = useState("");
+
   const { processProrationPayment, isLoading, error } = useProrationPayment();
 
   // 에러 발생 시 에러 모달 표시
@@ -53,36 +53,39 @@ export default function ProrationPaymentModal({
   const handlePayment = async () => {
     if (!agreed) return;
     // '다른 결제 수단' 선택 시에는 PG 선택 필수, 간편 결제는 선택 없어도 진행
-    if (paymentMethod === 'other' && !selectedPaymentService) return;
+    if (paymentMethod === "other" && !selectedPaymentService) return;
 
-    console.log('ProrationPaymentModal - planInfo:', planInfo);
-    console.log('ProrationPaymentModal - planCode:', planInfo.code);
+    console.log("ProrationPaymentModal - planInfo:", planInfo);
+    console.log("ProrationPaymentModal - planCode:", planInfo.code);
 
     try {
       const result = await processProrationPayment({
         planCode: planInfo.code,
         // 간편 결제인 경우 선택값이 없으면 기본 PG로 'kakao' 사용
-        paymentService: paymentMethod === 'other' ? (selectedPaymentService as PaymentService) : (selectedPaymentService as PaymentService || 'kakao'),
+        paymentService:
+          paymentMethod === "other"
+            ? (selectedPaymentService as PaymentService)
+            : (selectedPaymentService as PaymentService) || "kakao",
         successUrl: `${window.location.origin}/membership/success`,
-        cancelUrl: `${window.location.origin}/membership/cancel`
+        cancelUrl: `${window.location.origin}/membership/cancel`,
       });
 
       if (result.success) {
         onPay();
         setShowSuccess(true);
       } else {
-        setErrorMessage(result.errorMessage || '차액 결제에 실패했습니다.');
+        setErrorMessage(result.errorMessage || "차액 결제에 실패했습니다.");
         setShowError(true);
       }
     } catch (err) {
-      setErrorMessage('차액 결제 처리 중 오류가 발생했습니다.');
+      setErrorMessage("차액 결제 처리 중 오류가 발생했습니다.");
       setShowError(true);
     }
   };
 
   const handleCloseError = () => {
     setShowError(false);
-    setErrorMessage('');
+    setErrorMessage("");
   };
 
   if (!isOpen) return null;
@@ -94,10 +97,7 @@ export default function ProrationPaymentModal({
           {/* 모달 헤더 */}
           <div className={styles.modalHeader}>
             <h3 className={styles.modalTitle}>플랜 업그레이드 차액 결제</h3>
-            <button
-              onClick={onClose}
-              className={styles.closeButton}
-            >
+            <button onClick={onClose} className={styles.closeButton}>
               ×
             </button>
           </div>
@@ -107,7 +107,9 @@ export default function ProrationPaymentModal({
             <h4 className={styles.membershipInfoTitle}>{planInfo.name}</h4>
             <ul className={styles.membershipInfoList}>
               {planInfo.features.map((feature, index) => (
-                <li key={index} className={styles.membershipInfoItem}>{feature}</li>
+                <li key={index} className={styles.membershipInfoItem}>
+                  {feature}
+                </li>
               ))}
             </ul>
           </div>
@@ -116,10 +118,14 @@ export default function ProrationPaymentModal({
           <div className={styles.paymentAmountInfo}>
             <div className={styles.paymentAmountRow}>
               <span className={styles.paymentAmountLabel}>차액 결제</span>
-              <span className={styles.paymentAmountValue}>차액 {planInfo.price}원</span>
+              <span className={styles.paymentAmountValue}>
+                차액 {planInfo.price}원
+              </span>
             </div>
             <div className={styles.paymentTotalRow}>
-              <span className={styles.paymentTotalValue}>{planInfo.price}원</span>
+              <span className={styles.paymentTotalValue}>
+                {planInfo.price}원
+              </span>
             </div>
           </div>
 
@@ -134,21 +140,23 @@ export default function ProrationPaymentModal({
                   type="radio"
                   name="paymentMethod"
                   value="simple"
-                  checked={paymentMethod === 'simple'}
-                  onChange={() => onChangePaymentMethod('simple')}
+                  checked={paymentMethod === "simple"}
+                  onChange={() => onChangePaymentMethod("simple")}
                   className={styles.paymentMethodRadio}
                 />
                 <span className={styles.paymentMethodText}>간편 결제</span>
               </label>
-              {paymentMethod === 'simple' && (
+              {paymentMethod === "simple" && (
                 <div className={styles.simplePaymentAdd}>
-                  <div 
+                  <div
                     className={styles.simplePaymentButton}
                     onClick={onOpenCardRegistration}
                   >
                     <div className={styles.simplePaymentContent}>
                       <span className={styles.simplePaymentIcon}>+</span>
-                      <span className={styles.simplePaymentText}>간편 결제 추가</span>
+                      <span className={styles.simplePaymentText}>
+                        간편 결제 추가
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -162,55 +170,57 @@ export default function ProrationPaymentModal({
                   type="radio"
                   name="paymentMethod"
                   value="other"
-                  checked={paymentMethod === 'other'}
-                  onChange={() => onChangePaymentMethod('other')}
+                  checked={paymentMethod === "other"}
+                  onChange={() => onChangePaymentMethod("other")}
                   className={styles.paymentMethodRadio}
                 />
                 <span className={styles.paymentMethodText}>다른 결제 수단</span>
               </label>
 
-              {paymentMethod === 'other' && (
+              {paymentMethod === "other" && (
                 <div className={styles.otherPaymentGrid}>
-                  <div 
-                    className={`${styles.paymentMethodCard} ${selectedPaymentService === 'kakao' ? styles.paymentMethodCardSelected : ''}`}
-                    onClick={() => onSelectPaymentService('kakao')}
+                  <div
+                    className={`${styles.paymentMethodCard} ${selectedPaymentService === "kakao" ? styles.paymentMethodCardSelected : ""}`}
+                    onClick={() => onSelectPaymentService("kakao")}
                   >
                     <div className={styles.paymentMethodIcon}>
-                      <img 
-                        src="/images/logos/kakao.svg" 
-                        alt="카카오페이" 
+                      <img
+                        src="/images/logos/kakao.svg"
+                        alt="카카오페이"
                         className={styles.paymentMethodLogo}
                       />
                     </div>
                     <div className={styles.paymentMethodLabel}>카카오페이</div>
                   </div>
-                  
-                  <div 
-                    className={`${styles.paymentMethodCard} ${selectedPaymentService === 'toss' ? styles.paymentMethodCardSelected : ''}`}
-                    onClick={() => onSelectPaymentService('toss')}
+
+                  <div
+                    className={`${styles.paymentMethodCard} ${selectedPaymentService === "toss" ? styles.paymentMethodCardSelected : ""}`}
+                    onClick={() => onSelectPaymentService("toss")}
                   >
                     <div className={styles.paymentMethodIcon}>
-                      <img 
-                        src="/images/logos/tosspaylogo.jpg" 
-                        alt="토스페이" 
+                      <img
+                        src="/images/logos/tosspaylogo.jpg"
+                        alt="토스페이"
                         className={styles.paymentMethodLogo}
                       />
                     </div>
                     <div className={styles.paymentMethodLabel}>토스페이</div>
                   </div>
-                  
-                  <div 
-                    className={`${styles.paymentMethodCard} ${selectedPaymentService === 'nice' ? styles.paymentMethodCardSelected : ''}`}
-                    onClick={() => onSelectPaymentService('nice')}
+
+                  <div
+                    className={`${styles.paymentMethodCard} ${selectedPaymentService === "nice" ? styles.paymentMethodCardSelected : ""}`}
+                    onClick={() => onSelectPaymentService("nice")}
                   >
                     <div className={styles.paymentMethodIcon}>
-                      <img 
-                        src="/images/logos/nicepay.png" 
-                        alt="나이스페이먼츠" 
+                      <img
+                        src="/images/logos/nicepay.png"
+                        alt="나이스페이먼츠"
                         className={styles.paymentMethodLogo}
                       />
                     </div>
-                    <div className={styles.paymentMethodLabel}>나이스페이먼츠</div>
+                    <div className={styles.paymentMethodLabel}>
+                      나이스페이먼츠
+                    </div>
                   </div>
                 </div>
               )}
@@ -235,11 +245,17 @@ export default function ProrationPaymentModal({
           {/* 결제 버튼 */}
           <button
             onClick={handlePayment}
-            disabled={!agreed || (paymentMethod === 'other' && !selectedPaymentService) || isLoading}
-            className={`${styles.paymentButton} ${agreed && (paymentMethod !== 'other' || selectedPaymentService) && !isLoading ? styles.paymentButtonEnabled : styles.paymentButtonDisabled}`}
+            disabled={
+              !agreed ||
+              (paymentMethod === "other" && !selectedPaymentService) ||
+              isLoading
+            }
+            className={`${styles.paymentButton} ${agreed && (paymentMethod !== "other" || selectedPaymentService) && !isLoading ? styles.paymentButtonEnabled : styles.paymentButtonDisabled}`}
           >
             <span>
-              {isLoading ? '차액 결제 처리 중...' : `차액 ${planInfo.price}원 결제하기`}
+              {isLoading
+                ? "차액 결제 처리 중..."
+                : `차액 ${planInfo.price}원 결제하기`}
             </span>
           </button>
 
@@ -249,8 +265,12 @@ export default function ProrationPaymentModal({
               <h4 className={styles.noticeBoxTitle}>플랜 업그레이드 안내</h4>
               <div className={styles.noticeBoxContent}>
                 <p>• 업그레이드 시 남은 기간에 대한 차액이 즉시 결제됩니다.</p>
-                <p>• 결제 완료 후 즉시 새로운 플랜 혜택을 이용하실 수 있습니다.</p>
-                <p>• 다음 정기 결제일부터는 새로운 플랜 가격으로 자동 결제됩니다.</p>
+                <p>
+                  • 결제 완료 후 즉시 새로운 플랜 혜택을 이용하실 수 있습니다.
+                </p>
+                <p>
+                  • 다음 정기 결제일부터는 새로운 플랜 가격으로 자동 결제됩니다.
+                </p>
                 <p>• 차액 결제 후에는 다운그레이드가 불가능합니다.</p>
                 <p>• 결제 금액은 부가가치세(VAT)가 포함된 가격입니다.</p>
               </div>
@@ -275,21 +295,21 @@ export default function ProrationPaymentModal({
             <h3>플랜 업그레이드가 완료되었습니다.</h3>
             <p>플랜이 즉시 업그레이드되었습니다.</p>
             <div className={styles.successButtonGroup}>
-              <button 
+              <button
                 onClick={() => {
                   setShowSuccess(false);
                   onClose();
-                  window.location.href = '/membership/guide';
+                  window.location.href = "/membership/guide";
                 }}
                 className={styles.successButton}
               >
                 멤버십 확인하러 가기
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setShowSuccess(false);
                   onClose();
-                  window.location.href = '/';
+                  window.location.href = "/";
                 }}
                 className={styles.cancelButton}
               >

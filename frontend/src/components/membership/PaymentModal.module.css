@@ -28,7 +28,7 @@
   .paymentModalOverlay {
     padding: 0.25rem;
   }
-  
+
   .paymentModalContainer {
     padding: 1rem;
     max-height: 95vh;
@@ -46,12 +46,12 @@
 .modalTitle {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .closeButton {
   font-size: 1.5rem;
-  color: #FFFFFF;
+  color: #ffffff;
   background: none;
   border: none;
   transition: opacity 0.2s ease;
@@ -74,13 +74,13 @@
   font-size: 1.125rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .membershipInfoList {
   font-size: 0.875rem;
   line-height: 1.25;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .membershipInfoItem {
@@ -101,11 +101,11 @@
 }
 
 .paymentAmountLabel {
-  color: #E2E2E2;
+  color: #e2e2e2;
 }
 
 .paymentAmountValue {
-  color: #E2E2E2;
+  color: #e2e2e2;
 }
 
 .paymentTotalRow {
@@ -117,7 +117,7 @@
 .paymentTotalValue {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #816BFF;
+  color: #816bff;
 }
 
 /* 결제 수단 선택 */
@@ -129,7 +129,7 @@
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .paymentMethodOption {
@@ -144,11 +144,11 @@
 
 .paymentMethodRadio {
   margin-right: 0.75rem;
-  accent-color: #816BFF;
+  accent-color: #816bff;
 }
 
 .paymentMethodText {
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 간편 결제 추가 */
@@ -193,20 +193,20 @@
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
   border: 2px solid #505050;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: all 0.3s ease;
 }
 
 .simplePaymentButton:hover .simplePaymentIcon {
-  border-color: #816BFF;
-  background-color: #816BFF;
+  border-color: #816bff;
+  background-color: #816bff;
   transform: scale(1.1);
 }
 
 .simplePaymentText {
-  color: #F7F7F7;
+  color: #f7f7f7;
   font-size: 0.8rem;
 }
 
@@ -229,34 +229,34 @@
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
   }
-  
+
   .paymentMethodCard {
     padding: 1rem 0.75rem;
     min-height: 4rem;
   }
-  
+
   .paymentMethodIcon {
     width: 2.5rem;
     height: 2.5rem;
     font-size: 0.75rem;
   }
-  
+
   .paymentMethodLabel {
     font-size: 0.75rem;
   }
-  
+
   /* 간편결제 버튼 모바일 조정 */
   .simplePaymentButton {
     padding: 1.5rem 1rem;
     min-height: 4rem;
   }
-  
+
   .simplePaymentIcon {
     width: 2.5rem;
     height: 2.5rem;
     font-size: 1.25rem;
   }
-  
+
   .simplePaymentText {
     font-size: 0.8rem;
   }
@@ -285,7 +285,7 @@
 }
 
 .paymentMethodCardSelected {
-  border-color: #816BFF;
+  border-color: #816bff;
   box-shadow: 0 0 20px rgba(129, 107, 255, 0.4);
   background-color: #0a0a0a;
 }
@@ -313,7 +313,7 @@
 
 .paymentMethodLabel {
   font-size: 0.8rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
   font-weight: 500;
   line-height: 1.2;
 }
@@ -336,13 +336,13 @@
   font-size: 0.875rem;
   font-weight: 600;
   margin-bottom: 0.75rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .noticeBoxContent {
   font-size: 0.875rem;
   line-height: 1.25;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .noticeBoxContent p {
@@ -363,12 +363,12 @@
 .agreementCheckbox {
   margin-right: 0.75rem;
   margin-top: 0.25rem;
-  accent-color: #816BFF;
+  accent-color: #816bff;
 }
 
 .agreementText {
   font-size: 0.875rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 결제 버튼 */
@@ -382,8 +382,8 @@
 }
 
 .paymentButtonEnabled {
-  background-color: #816BFF;
-  color: #F7F7F7;
+  background-color: #816bff;
+  color: #f7f7f7;
 }
 
 .paymentButtonEnabled:hover {
@@ -421,14 +421,14 @@
 }
 
 .successContent h3 {
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   font-size: 24px;
   font-weight: bold;
   margin-bottom: 16px;
 }
 
 .successContent p {
-  color: var(--foreground-2, #CCCCCC);
+  color: var(--foreground-2, #cccccc);
   font-size: 16px;
   line-height: 1.5;
   margin-bottom: 24px;
@@ -441,7 +441,7 @@
 }
 
 .successButton {
-  background-color: var(--foreground-slight, #816BFF);
+  background-color: var(--foreground-slight, #816bff);
   color: white;
   border: none;
   border-radius: 8px;
@@ -453,12 +453,12 @@
 }
 
 .successButton:hover {
-  background-color: #6B5BC7;
+  background-color: #6b5bc7;
 }
 
 .cancelButton {
   background-color: var(--button-slight-1, #323232);
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   border: none;
   border-radius: 8px;
   padding: 12px 24px;
@@ -504,7 +504,7 @@
 }
 
 .errorContent p {
-  color: var(--foreground-2, #CCCCCC);
+  color: var(--foreground-2, #cccccc);
   font-size: 16px;
   line-height: 1.5;
   margin-bottom: 24px;
@@ -512,7 +512,7 @@
 
 .errorContent button {
   background-color: var(--button-slight-1, #323232);
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   border: none;
   border-radius: 8px;
   padding: 12px 24px;

@@ -12,15 +12,15 @@ type ModalProps = {
   closeOnEscape?: boolean; // ESC 키로 닫기 (기본값: true)
 };
 
-export default function Modal({ 
-  open, 
-  isOpen, 
-  onClose, 
-  children, 
+export default function Modal({
+  open,
+  isOpen,
+  onClose,
+  children,
   closeOnBackdropClick = true,
-  closeOnEscape = true 
+  closeOnEscape = true,
 }: ModalProps) {
-  const visible = typeof open === 'boolean' ? open : !!isOpen;
+  const visible = typeof open === "boolean" ? open : !!isOpen;
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" && closeOnEscape) onClose();
@@ -38,20 +38,12 @@ export default function Modal({
   if (!visible) return null;
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      className={styles.modalOverlay}
-    >
-      <div 
-        className={styles.modalBackdrop} 
+    <div role="dialog" aria-modal="true" className={styles.modalOverlay}>
+      <div
+        className={styles.modalBackdrop}
         onClick={closeOnBackdropClick ? onClose : undefined}
       />
-      <div className={styles.modalContainer}>
-        {children}
-      </div>
+      <div className={styles.modalContainer}>{children}</div>
     </div>
   );
 }
-
-

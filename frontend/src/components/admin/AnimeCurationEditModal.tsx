@@ -1,7 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { getAnimeForCuration, updateAnimeCuration } from "@/lib/api/admin";
-import type { AdminAnimeDetail, AnimeCurationUpdateRequest } from "@/lib/api/admin";
+import type {
+  AdminAnimeDetail,
+  AnimeCurationUpdateRequest,
+} from "@/lib/api/admin";
 import styles from "@/app/admin/admin.module.css";
 
 interface Props {
@@ -48,7 +51,15 @@ const toForm = (a: AdminAnimeDetail): FormState => ({
 });
 
 /** 보강(AnimeEnhancementService)이 덮어쓰는 필드. 이걸 바꾸면 백엔드가 curated 를 켠다. */
-const CONTENT_KEYS = ["title", "titleEn", "titleJp", "synopsis", "fullSynopsis", "posterUrl", "backdropUrl"] as const;
+const CONTENT_KEYS = [
+  "title",
+  "titleEn",
+  "titleJp",
+  "synopsis",
+  "fullSynopsis",
+  "posterUrl",
+  "backdropUrl",
+] as const;
 
 /**
  * 애니 단건 큐레이션 수정 모달
@@ -62,7 +73,11 @@ const CONTENT_KEYS = ["title", "titleEn", "titleJp", "synopsis", "fullSynopsis",
  * - 콘텐츠(제목/줄거리/이미지)가 실제로 바뀌면 curated 가 켜지고, 이후 TMDB 보강이 이 작품을 건너뛴다.
  *   그래서 보강이 채우던 줄거리/배경이미지도 이 화면에서 관리할 수 있어야 한다(안 그러면 영영 빈 채로 남는다).
  */
-export default function AnimeCurationEditModal({ animeId, onClose, onSaved }: Props) {
+export default function AnimeCurationEditModal({
+  animeId,
+  onClose,
+  onSaved,
+}: Props) {
   const [original, setOriginal] = useState<AdminAnimeDetail | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -78,12 +93,15 @@ export default function AnimeCurationEditModal({ animeId, onClose, onSaved }: Pr
         setOriginal(detail);
         setForm(toForm(detail));
       } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : "불러오지 못했습니다.");
+        if (alive)
+          setError(e instanceof Error ? e.message : "불러오지 못했습니다.");
       } finally {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; }; // 응답 도착 전에 닫으면 setState 하지 않는다
+    return () => {
+      alive = false;
+    }; // 응답 도착 전에 닫으면 setState 하지 않는다
   }, [animeId]);
 
   const setField = <K extends keyof FormState>(key: K, value: FormState[K]) =>
@@ -102,8 +120,16 @@ export default function AnimeCurationEditModal({ animeId, onClose, onSaved }: Pr
       if (next && next !== (original[key] ?? "")) request[key] = next;
     });
 
-    const booleanKeys = ["isActive", "isExclusive", "isPopular", "isNew",
-      "isCompleted", "isSubtitle", "isDub", "isSimulcast"] as const;
+    const booleanKeys = [
+      "isActive",
+      "isExclusive",
+      "isPopular",
+      "isNew",
+      "isCompleted",
+      "isSubtitle",
+      "isDub",
+      "isSimulcast",
+    ] as const;
     booleanKeys.forEach((key) => {
       if (form[key] !== original[key]) request[key] = form[key];
     });
@@ -112,7 +138,9 @@ export default function AnimeCurationEditModal({ animeId, onClose, onSaved }: Pr
   };
 
   const willMarkCurated = () =>
-    !!original && !original.curated && CONTENT_KEYS.some((key) => buildRequest()[key] !== undefined);
+    !!original &&
+    !original.curated &&
+    CONTENT_KEYS.some((key) => buildRequest()[key] !== undefined);
 
   const handleSave = async () => {
     const request = buildRequest();
@@ -132,7 +160,11 @@ export default function AnimeCurationEditModal({ animeId, onClose, onSaved }: Pr
     }
   };
 
-  const textField = (label: string, key: typeof CONTENT_KEYS[number], hint?: string) => (
+  const textField = (
+    label: string,
+    key: (typeof CONTENT_KEYS)[number],
+    hint?: string,
+  ) => (
     <div className={styles.modalField}>
       <label className={styles.filterLabel}>{label}</label>
       <input
@@ -150,7 +182,9 @@ export default function AnimeCurationEditModal({ animeId, onClose, onSaved }: Pr
       <input
         type="checkbox"
         checked={form![key] as boolean}
-        onChange={(e) => setField(key, e.target.checked as FormState[typeof key])}
+        onChange={(e) =>
+          setField(key, e.target.checked as FormState[typeof key])
+        }
         disabled={saving}
       />
       {label}
@@ -167,25 +201,32 @@ export default function AnimeCurationEditModal({ animeId, onClose, onSaved }: Pr
           <p className={styles.modalHint}>불러오는 중...</p>
         ) : !form || !original ? (
           <>
-            <div className={`${styles.result} ${styles.resultErr}`}>{error ?? "불러오지 못했습니다."}</div>
+            <div className={`${styles.result} ${styles.resultErr}`}>
+              {error ?? "불러오지 못했습니다."}
+            </div>
             <div className={styles.modalActions}>
-              <button className={styles.pagerBtn} onClick={onClose}>닫기</button>
+              <button className={styles.pagerBtn} onClick={onClose}>
+                닫기
+              </button>
             </div>
           </>
         ) : (
           <>
             <p className={styles.modalHint}>
-              전달하지 않은 항목은 그대로 둡니다. 값을 비워도 지워지지 않습니다(무시).
+              전달하지 않은 항목은 그대로 둡니다. 값을 비워도 지워지지
+              않습니다(무시).
               {original.curated && (
                 <>
-                  <br />
-                  이 작품은 <strong>큐레이션 표시</strong> 상태라 TMDB 자동 보강 대상이 아닙니다 — 줄거리·이미지는 여기서만 채워집니다.
+                  <br />이 작품은 <strong>큐레이션 표시</strong> 상태라 TMDB
+                  자동 보강 대상이 아닙니다 — 줄거리·이미지는 여기서만
+                  채워집니다.
                 </>
               )}
               {willMarkCurated() && (
                 <>
                   <br />
-                  콘텐츠를 바꾸면 <strong>큐레이션 표시</strong>가 켜져, 이후 TMDB 자동 보강이 이 작품을 건너뜁니다.
+                  콘텐츠를 바꾸면 <strong>큐레이션 표시</strong>가 켜져, 이후
+                  TMDB 자동 보강이 이 작품을 건너뜁니다.
                 </>
               )}
             </p>
@@ -197,10 +238,16 @@ export default function AnimeCurationEditModal({ animeId, onClose, onSaved }: Pr
             {textField("배경 이미지 URL", "backdropUrl")}
 
             <div className={styles.modalField}>
-              <label className={styles.filterLabel}>줄거리 (목록용, 500자)</label>
+              <label className={styles.filterLabel}>
+                줄거리 (목록용, 500자)
+              </label>
               <textarea
                 className={styles.input}
-                style={{ minHeight: 70, resize: "vertical", fontFamily: "inherit" }}
+                style={{
+                  minHeight: 70,
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                }}
                 value={form.synopsis}
                 onChange={(e) => setField("synopsis", e.target.value)}
                 disabled={saving}
@@ -211,30 +258,65 @@ export default function AnimeCurationEditModal({ animeId, onClose, onSaved }: Pr
               <label className={styles.filterLabel}>전체 줄거리 (상세용)</label>
               <textarea
                 className={styles.input}
-                style={{ minHeight: 110, resize: "vertical", fontFamily: "inherit" }}
+                style={{
+                  minHeight: 110,
+                  resize: "vertical",
+                  fontFamily: "inherit",
+                }}
                 value={form.fullSynopsis}
                 onChange={(e) => setField("fullSynopsis", e.target.value)}
                 disabled={saving}
               />
             </div>
 
-            <label className={styles.filterLabel} style={{ display: "block", marginTop: 6 }}>배지 / 노출</label>
+            <label
+              className={styles.filterLabel}
+              style={{ display: "block", marginTop: 6 }}
+            >
+              배지 / 노출
+            </label>
             <div className={styles.checkGrid}>
-              {checkbox("사용자에게 노출", "isActive", "끄면 사용자 목록·검색에서 사라집니다")}
+              {checkbox(
+                "사용자에게 노출",
+                "isActive",
+                "끄면 사용자 목록·검색에서 사라집니다",
+              )}
               {checkbox("독점", "isExclusive")}
               {checkbox("인기", "isPopular")}
               {checkbox("신작", "isNew")}
               {checkbox("완결", "isCompleted")}
-              {checkbox("자막", "isSubtitle", "수집 시 항상 켜진 값이라 실제와 다를 수 있습니다")}
-              {checkbox("더빙", "isDub", "수집 시 평점으로 추측된 값이라 실제와 다를 수 있습니다")}
+              {checkbox(
+                "자막",
+                "isSubtitle",
+                "수집 시 항상 켜진 값이라 실제와 다를 수 있습니다",
+              )}
+              {checkbox(
+                "더빙",
+                "isDub",
+                "수집 시 평점으로 추측된 값이라 실제와 다를 수 있습니다",
+              )}
               {checkbox("동시방영", "isSimulcast")}
             </div>
 
-            {error && <div className={`${styles.result} ${styles.resultErr}`}>{error}</div>}
+            {error && (
+              <div className={`${styles.result} ${styles.resultErr}`}>
+                {error}
+              </div>
+            )}
 
             <div className={styles.modalActions}>
-              <button className={styles.pagerBtn} onClick={onClose} disabled={saving}>취소</button>
-              <button className={styles.button} onClick={handleSave} disabled={saving}>
+              <button
+                className={styles.pagerBtn}
+                onClick={onClose}
+                disabled={saving}
+              >
+                취소
+              </button>
+              <button
+                className={styles.button}
+                onClick={handleSave}
+                disabled={saving}
+              >
                 {saving ? "저장 중..." : "저장"}
               </button>
             </div>

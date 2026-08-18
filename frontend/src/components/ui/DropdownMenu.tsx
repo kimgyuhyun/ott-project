@@ -22,14 +22,17 @@ export default function DropdownMenu({ children, items }: DropdownMenuProps) {
   // 외부 클릭 시 드롭다운 닫기
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -47,13 +50,13 @@ export default function DropdownMenu({ children, items }: DropdownMenuProps) {
       >
         {children}
       </button>
-      
+
       {isOpen && (
         <div className={styles.dropdownMenu}>
           {items.map((item, index) => (
             <button
               key={index}
-              className={`${styles.dropdownItem} ${item.className || ''}`}
+              className={`${styles.dropdownItem} ${item.className || ""}`}
               onClick={() => handleItemClick(item.onClick)}
             >
               {item.label}

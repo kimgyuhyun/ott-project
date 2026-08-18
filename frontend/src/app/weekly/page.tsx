@@ -13,41 +13,45 @@ import styles from "./weekly.module.css";
  */
 export default function WeeklyPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(null);
-  const [weeklyAnimes, setWeeklyAnimes] = useState<Record<string, AnimeListItem[]>>({
-    '월': [],
-    '화': [],
-    '수': [],
-    '목': [],
-    '금': [],
-    '토': [],
-    '일': []
+  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(
+    null,
+  );
+  const [weeklyAnimes, setWeeklyAnimes] = useState<
+    Record<string, AnimeListItem[]>
+  >({
+    월: [],
+    화: [],
+    수: [],
+    목: [],
+    금: [],
+    토: [],
+    일: [],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeColumn, setActiveColumn] = useState<string>('');
-  
+  const [activeColumn, setActiveColumn] = useState<string>("");
+
   const columnRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // 다크모드 적용
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.setAttribute("data-theme", "dark");
   }, []);
 
   const days = [
-    { id: '월' as const, fullLabel: '월요일' },
-    { id: '화' as const, fullLabel: '화요일' },
-    { id: '수' as const, fullLabel: '수요일' },
-    { id: '목' as const, fullLabel: '목요일' },
-    { id: '금' as const, fullLabel: '금요일' },
-    { id: '토' as const, fullLabel: '토요일' },
-    { id: '일' as const, fullLabel: '일요일' }
+    { id: "월" as const, fullLabel: "월요일" },
+    { id: "화" as const, fullLabel: "화요일" },
+    { id: "수" as const, fullLabel: "수요일" },
+    { id: "목" as const, fullLabel: "목요일" },
+    { id: "금" as const, fullLabel: "금요일" },
+    { id: "토" as const, fullLabel: "토요일" },
+    { id: "일" as const, fullLabel: "일요일" },
   ];
 
   // 현재 요일 가져오기
   const getCurrentDay = () => {
     const today = new Date().getDay();
-    const dayMap = ['일', '월', '화', '수', '목', '금', '토'];
+    const dayMap = ["일", "월", "화", "수", "목", "금", "토"];
     return dayMap[today];
   };
 
@@ -59,41 +63,49 @@ export default function WeeklyPage() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         // 모든 요일의 애니메이션 데이터를 병렬로 로드
         const dayPromises = days.map(async (day) => {
           try {
-            const data = await api.get<AnimeListItem[]>(`/api/anime/weekly/${day.id}?limit=20`);
+            const data = await api.get<AnimeListItem[]>(
+              `/api/anime/weekly/${day.id}?limit=20`,
+            );
             const allAnime = Array.isArray(data) ? data : [];
             // 신작만 필터링
             const newAnime = allAnime.filter((anime) => anime.isNew === true);
-            console.log(`${day.fullLabel} 전체 애니메이션:`, allAnime.length, '개, 신작만:', newAnime.length, '개');
+            console.log(
+              `${day.fullLabel} 전체 애니메이션:`,
+              allAnime.length,
+              "개, 신작만:",
+              newAnime.length,
+              "개",
+            );
             return { day: day.id, data: newAnime };
           } catch (err) {
             console.error(`${day.fullLabel} 애니메이션 로드 실패:`, err);
             return { day: day.id, data: [] };
           }
         });
-        
+
         const results = await Promise.all(dayPromises);
         const animeData: Record<string, AnimeListItem[]> = {
-          '월': [],
-          '화': [],
-          '수': [],
-          '목': [],
-          '금': [],
-          '토': [],
-          '일': []
+          월: [],
+          화: [],
+          수: [],
+          목: [],
+          금: [],
+          토: [],
+          일: [],
         };
-        
+
         results.forEach(({ day, data }) => {
           animeData[day] = data;
         });
-        
+
         setWeeklyAnimes(animeData);
       } catch (err) {
-        console.error('요일별 애니메이션 데이터 로드 실패:', err);
-        setError('요일별 애니메이션 데이터를 불러오는데 실패했습니다.');
+        console.error("요일별 애니메이션 데이터 로드 실패:", err);
+        setError("요일별 애니메이션 데이터를 불러오는데 실패했습니다.");
       } finally {
         setIsLoading(false);
       }
@@ -106,13 +118,13 @@ export default function WeeklyPage() {
   useEffect(() => {
     if (!isLoading && Object.keys(weeklyAnimes).length > 0) {
       const currentDayColumn = columnRefs.current[currentDay];
-      
+
       if (currentDayColumn) {
         setTimeout(() => {
-          currentDayColumn.scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start',
-            inline: 'center'
+          currentDayColumn.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+            inline: "center",
           });
           setActiveColumn(currentDay);
         }, 100);
@@ -126,7 +138,7 @@ export default function WeeklyPage() {
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            const dayId = entry.target.getAttribute('data-day');
+            const dayId = entry.target.getAttribute("data-day");
             if (dayId) {
               setActiveColumn(dayId);
             }
@@ -135,9 +147,9 @@ export default function WeeklyPage() {
       },
       {
         root: null,
-        rootMargin: '-20% 0px -20% 0px',
-        threshold: 0.5
-      }
+        rootMargin: "-20% 0px -20% 0px",
+        threshold: 0.5,
+      },
     );
 
     Object.values(columnRefs.current).forEach((ref) => {
@@ -151,7 +163,6 @@ export default function WeeklyPage() {
     };
   }, [weeklyAnimes]);
 
-
   // 애니 카드 클릭 시 모달 열기
   const handleAnimeClick = (anime: AnimeListItem) => {
     setSelectedAnime(anime);
@@ -160,7 +171,7 @@ export default function WeeklyPage() {
 
   // 키보드 접근성
   const handleKeyDown = (event: React.KeyboardEvent, anime: AnimeListItem) => {
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       handleAnimeClick(anime);
     }
@@ -191,7 +202,7 @@ export default function WeeklyPage() {
   return (
     <div className={styles.weeklyPageContainer}>
       <Header />
-      
+
       <main className={styles.weeklyMain}>
         <div className={styles.weeklyContent}>
           {/* 페이지 제목 */}
@@ -204,22 +215,41 @@ export default function WeeklyPage() {
                 <div className={styles.noticeIcon}>🔔</div>
                 <div className={styles.noticeText}>
                   <p>
-                    8월 12일 서비스 예정이었던 <span className={styles.noticeHighlight}>《가치아쿠타》 3화</span>는 
-                    판권사 사정으로 인해 4화와 함께 <span className={styles.noticeHighlight}>8월 28일 업데이트 예정</span>입니다.
+                    8월 12일 서비스 예정이었던{" "}
+                    <span className={styles.noticeHighlight}>
+                      《가치아쿠타》 3화
+                    </span>
+                    는 판권사 사정으로 인해 4화와 함께{" "}
+                    <span className={styles.noticeHighlight}>
+                      8월 28일 업데이트 예정
+                    </span>
+                    입니다.
                   </p>
                   <p>
-                    8월 21일 업데이트 예정이었던 <span className={styles.noticeHighlight}>《앤 셜리 (Anne Shirley)》 19화</span>는 
-                    현지 휴방으로 인해 <span className={styles.noticeHighlight}>8월 28일 업데이트 예정</span>입니다.
+                    8월 21일 업데이트 예정이었던{" "}
+                    <span className={styles.noticeHighlight}>
+                      《앤 셜리 (Anne Shirley)》 19화
+                    </span>
+                    는 현지 휴방으로 인해{" "}
+                    <span className={styles.noticeHighlight}>
+                      8월 28일 업데이트 예정
+                    </span>
+                    입니다.
                   </p>
                   <p>
-                    <span className={styles.noticeHighlight}>《가라오케 가자!》 5화</span>는 
-                    현지 휴방으로 인해 <span className={styles.noticeHighlight}>9월 중 서비스 예정</span>입니다.
+                    <span className={styles.noticeHighlight}>
+                      《가라오케 가자!》 5화
+                    </span>
+                    는 현지 휴방으로 인해{" "}
+                    <span className={styles.noticeHighlight}>
+                      9월 중 서비스 예정
+                    </span>
+                    입니다.
                   </p>
                 </div>
               </div>
             </div>
           )}
-
 
           {/* 7열 컬럼 컨테이너 */}
           <div className={styles.weeklyColumnsContainer}>
@@ -228,16 +258,20 @@ export default function WeeklyPage() {
               return (
                 <div
                   key={day.id}
-                  ref={(el) => { columnRefs.current[day.id] = el; }}
+                  ref={(el) => {
+                    columnRefs.current[day.id] = el;
+                  }}
                   data-day={day.id}
-                  className={`${styles.weeklyColumn} ${day.id === currentDay ? styles.weeklyColumnToday : ''}`}
+                  className={`${styles.weeklyColumn} ${day.id === currentDay ? styles.weeklyColumnToday : ""}`}
                   aria-labelledby={`column-header-${day.id}`}
                 >
                   {/* 컬럼 헤더 */}
-                  <div className={`${styles.weeklyColumnHeader} ${day.id === currentDay ? styles.weeklyColumnHeaderToday : ''}`}>
-                    <h2 
+                  <div
+                    className={`${styles.weeklyColumnHeader} ${day.id === currentDay ? styles.weeklyColumnHeaderToday : ""}`}
+                  >
+                    <h2
                       id={`column-header-${day.id}`}
-                      className={`${styles.weeklyColumnTitle} ${day.id === currentDay ? styles.weeklyColumnTitleToday : ''}`}
+                      className={`${styles.weeklyColumnTitle} ${day.id === currentDay ? styles.weeklyColumnTitleToday : ""}`}
                     >
                       {day.fullLabel}
                     </h2>
@@ -249,7 +283,7 @@ export default function WeeklyPage() {
                       <div className={styles.weeklyAnimeGrid}>
                         {dayAnimes.map((anime, index: number) => {
                           const itemId = anime.aniId ?? index;
-                          const key = `${itemId}-${anime.title ?? 'item'}`;
+                          const key = `${itemId}-${anime.title ?? "item"}`;
                           return (
                             <div
                               key={key}
@@ -258,18 +292,29 @@ export default function WeeklyPage() {
                               onKeyDown={(e) => handleKeyDown(e, anime)}
                               tabIndex={0}
                               role="button"
-                              aria-label={`${anime.title || anime.titleEn || anime.titleJp || '애니메이션'} 상세보기`}
+                              aria-label={`${anime.title || anime.titleEn || anime.titleJp || "애니메이션"} 상세보기`}
                             >
                               <Image
                                 className={styles.weeklyAnimePoster}
-                                src={anime.posterUrl || "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"}
-                                alt={anime.title || anime.titleEn || anime.titleJp || '애니메이션 포스터'}
+                                src={
+                                  anime.posterUrl ||
+                                  "https://placehold.co/200x280/4a5568/ffffff?text=No+Image"
+                                }
+                                alt={
+                                  anime.title ||
+                                  anime.titleEn ||
+                                  anime.titleJp ||
+                                  "애니메이션 포스터"
+                                }
                                 width={200}
                                 height={280}
                                 loading="lazy"
                               />
                               <div className={styles.weeklyAnimeTitle}>
-                                {anime.title || anime.titleEn || anime.titleJp || '제목 없음'}
+                                {anime.title ||
+                                  anime.titleEn ||
+                                  anime.titleJp ||
+                                  "제목 없음"}
                               </div>
                             </div>
                           );

@@ -22,7 +22,7 @@
 .filterTitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin-bottom: 0.75rem;
 }
 
@@ -30,7 +30,7 @@
   width: 100%;
   padding: 0.5rem 1rem;
   background-color: #323232;
-  color: #F7F7F7;
+  color: #f7f7f7;
   border-radius: 0.5rem;
   border: none;
   cursor: pointer;
@@ -46,7 +46,7 @@
   margin-left: 0.5rem;
   font-size: 0.75rem;
   background-color: #323232;
-  color: #ABABAB;
+  color: #ababab;
   padding: 0.25rem 0.5rem;
   border-radius: 9999px;
 }
@@ -66,7 +66,7 @@
 .filterSectionTitle {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .filterCount {
@@ -135,7 +135,7 @@
 }
 
 .checkbox:checked::after {
-  content: '✓';
+  content: "✓";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -146,7 +146,7 @@
 }
 
 .checkboxLabel {
-  color: #ABABAB;
+  color: #ababab;
   font-size: 0.875rem;
 }
 
@@ -183,7 +183,7 @@
 .selectLabel {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin-bottom: 0.5rem;
 }
 
@@ -195,8 +195,10 @@
   font-size: 0.875rem;
   outline: none;
   background-color: #323232;
-  color: #F7F7F7;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #f7f7f7;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .select:focus {

@@ -19,7 +19,9 @@
   border-radius: 1rem;
   padding: 2rem;
   border: 1px solid #323232;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.3),
+    0 1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 
 /* 별점 섹션 그리드 */
@@ -44,21 +46,21 @@
 .ratingTitle {
   font-size: 1.125rem;
   font-weight: 600;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin-bottom: 0.5rem;
 }
 
 .ratingValue {
   font-size: 2.25rem;
   font-weight: 700;
-  color: #8B5CF6;
+  color: #8b5cf6;
   margin-bottom: 0.5rem;
   text-shadow: 0 1px 2px rgba(139, 92, 246, 0.1);
 }
 
 .ratingSubtitle {
   font-size: 0.875rem;
-  color: #ABABAB;
+  color: #ababab;
   margin-bottom: 0.5rem;
 }
 
@@ -137,7 +139,7 @@
 
 .chartBarLabel {
   font-size: 0.75rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
   font-weight: 500;
   margin-top: 0.25rem;
 }
@@ -169,11 +171,12 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
-    opacity: .5;
+    opacity: 0.5;
   }
 }
 
@@ -182,14 +185,14 @@
   margin-top: 0.5rem;
   text-align: center;
   font-size: 0.875rem;
-  color: #DC2626;
+  color: #dc2626;
 }
 
 .retryButton {
   margin-left: 0.5rem;
   padding: 0.125rem 0.5rem;
-  background-color: #8B5CF6;
-  color: #FFFFFF;
+  background-color: #8b5cf6;
+  color: #ffffff;
   border-radius: 0.25rem;
   border: none;
   cursor: pointer;
@@ -197,7 +200,7 @@
 }
 
 .retryButton:hover {
-  background-color: #7C3AED;
+  background-color: #7c3aed;
 }
 
 /* 리뷰 작성 섹션 */
@@ -214,7 +217,7 @@
 }
 
 .loginRequiredText {
-  color: #816BFF;
+  color: #816bff;
   font-size: 0.875rem;
 }
 
@@ -235,18 +238,20 @@
   font-size: 0.875rem;
   line-height: 1.5;
   background-color: #1a1a1a;
-  color: #F7F7F7;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  color: #f7f7f7;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .reviewTextarea:focus {
-  border-color: #8B5CF6;
+  border-color: #8b5cf6;
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
 
 .characterCount {
   font-size: 0.75rem;
-  color: #ABABAB;
+  color: #ababab;
   text-align: right;
   margin-top: 0.25rem;
   padding-right: 0.5rem;
@@ -261,8 +266,8 @@
 
 .submitButton {
   padding: 0.25rem 0.75rem;
-  background-color: #8B5CF6;
-  color: #FFFFFF;
+  background-color: #8b5cf6;
+  color: #ffffff;
   border-radius: 0.25rem;
   border: none;
   cursor: pointer;
@@ -275,13 +280,13 @@
 }
 
 .submitButton:hover:not(:disabled) {
-  background-color: #7C3AED;
+  background-color: #7c3aed;
   transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.3);
 }
 
 .submitButton:disabled {
-  background-color: #9CA3AF;
+  background-color: #9ca3af;
   cursor: not-allowed;
 }
 
@@ -309,13 +314,13 @@
 }
 
 .sortButtonActive {
-  background-color: #8B5CF6;
-  color: #FFFFFF;
+  background-color: #8b5cf6;
+  color: #ffffff;
 }
 
 .sortButtonInactive {
   background-color: #323232;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .sortButtonInactive:hover {
@@ -325,10 +330,10 @@
 /* 경고 메시지 */
 .warningMessage {
   background-color: #2d1b00;
-  border: 1px solid #F59E0B;
+  border: 1px solid #f59e0b;
   border-radius: 0.5rem;
   padding: 1rem;
-  color: #F59E0B;
+  color: #f59e0b;
   margin-bottom: 1rem;
 }
 
@@ -345,12 +350,16 @@
   border: 1px solid #323232;
   border-radius: 0.75rem;
   padding: 1.5rem;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  box-shadow:
+    0 1px 3px 0 rgba(0, 0, 0, 0.3),
+    0 1px 2px 0 rgba(0, 0, 0, 0.2);
   transition: box-shadow 0.2s;
 }
 
 .reviewItem:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06);
 }
 
 /* 리뷰 편집 폼 */
@@ -374,7 +383,7 @@
   display: block;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #ABABAB;
+  color: #ababab;
   margin-bottom: 0.5rem;
 }
 
@@ -390,11 +399,11 @@
 }
 
 .starActive {
-  color: #F59E0B;
+  color: #f59e0b;
 }
 
 .starInactive {
-  color: #D1D5DB;
+  color: #d1d5db;
 }
 
 .editTextarea {
@@ -405,12 +414,12 @@
   outline: none;
   min-height: 6rem;
   background-color: #1a1a1a;
-  color: #F7F7F7;
+  color: #f7f7f7;
   resize: none;
 }
 
 .editTextarea:focus {
-  border-color: #8B5CF6;
+  border-color: #8b5cf6;
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
 
@@ -422,7 +431,7 @@
 
 .cancelButton {
   padding: 0.25rem 0.75rem;
-  color: #ABABAB;
+  color: #ababab;
   background: none;
   border: none;
   cursor: pointer;
@@ -434,13 +443,13 @@
 }
 
 .cancelButton:hover {
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .saveButton {
   padding: 0.25rem 0.75rem !important;
-  background-color: #8B5CF6 !important;
-  color: #FFFFFF !important;
+  background-color: #8b5cf6 !important;
+  color: #ffffff !important;
   border-radius: 0.5rem !important;
   border: none !important;
   cursor: pointer !important;
@@ -455,7 +464,7 @@
 }
 
 .saveButton:hover {
-  background-color: #7C3AED;
+  background-color: #7c3aed;
 }
 
 /* 리뷰 내용 */
@@ -492,7 +501,7 @@
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
-  color: #FFFFFF;
+  color: #ffffff;
 }
 
 .userRating {
@@ -510,12 +519,12 @@
 .userRatingValue {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .userRatingText {
   font-size: 0.875rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .reviewMeta {
@@ -528,13 +537,13 @@
 
 .reviewDate {
   font-size: 0.75rem;
-  color: #ABABAB;
+  color: #ababab;
   margin-right: 0.5rem;
 }
 
 .userName {
   font-weight: 600;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .userNameSection {
@@ -570,7 +579,7 @@
   border: none !important;
   cursor: pointer !important;
   background: none !important;
-  color: #ABABAB !important;
+  color: #ababab !important;
   line-height: 1 !important;
   height: 2rem !important;
   box-sizing: border-box !important;
@@ -596,11 +605,11 @@
 }
 
 .actionButton.edit {
-  color: #2563EB !important;
+  color: #2563eb !important;
 }
 
 .actionButton.delete {
-  color: #DC2626 !important;
+  color: #dc2626 !important;
 }
 
 .actionButton:hover {
@@ -618,7 +627,7 @@
   cursor: pointer;
   padding: 0.25rem;
   border-radius: 0.25rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .likeButton:hover {
@@ -627,7 +636,7 @@
 
 .likeButtonActive {
   background: none;
-  color: #8B5CF6;
+  color: #8b5cf6;
 }
 
 .likeButtonActive:hover {
@@ -635,7 +644,7 @@
 }
 
 .likeButtonInactive {
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .likeIcon {
@@ -661,11 +670,11 @@
   cursor: pointer;
   padding: 0.25rem;
   border-radius: 0.25rem;
-  color: #8B5CF6;
+  color: #8b5cf6;
 }
 
 .commentButton:hover {
-  color: #7C3AED;
+  color: #7c3aed;
   background-color: #323232;
 }
 
@@ -692,13 +701,13 @@
   min-height: 4rem;
   background-color: #121212;
   box-sizing: border-box;
-  color: #F7F7F7;
+  color: #f7f7f7;
   font-size: 0.875rem;
   line-height: 1.5;
 }
 
 .reviewCommentTextarea:focus {
-  border-color: #8B5CF6;
+  border-color: #8b5cf6;
   box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1);
 }
 
@@ -715,14 +724,14 @@
 
 .reviewDateSection .reviewDate {
   font-size: 0.75rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 /* editButton/deleteButton 규칙 제거: 모든 버튼은 actionButton 기본색을 따름 */
 
 /* 리뷰 텍스트 */
 .reviewText {
-  color: #ABABAB;
+  color: #ababab;
   margin-bottom: 0.5rem;
 }
 
@@ -738,7 +747,7 @@
 }
 
 .expandButton {
-  color: #8B5CF6;
+  color: #8b5cf6;
   background: none;
   border: none;
   cursor: pointer;
@@ -748,7 +757,7 @@
 }
 
 .expandButton:hover {
-  color: #7C3AED;
+  color: #7c3aed;
 }
 
 /* 댓글 섹션 */
@@ -760,7 +769,7 @@
 .emptyState {
   text-align: center;
   padding: 3rem 0;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 /* 반응형 디자인 */
@@ -769,17 +778,17 @@
     grid-template-columns: 1fr;
     gap: 1rem;
   }
-  
+
   .reviewCard {
     padding: 1rem;
   }
-  
+
   .reviewHeader {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.5rem;
   }
-  
+
   .reviewMeta {
     flex-direction: column;
     align-items: flex-start;

@@ -3,17 +3,20 @@
 import { getErrorStatus } from "@/lib/errorMessage";
 
 // API 기본 설정: 항상 동일 오리진 프록시 사용
-const API_BASE = '';
+const API_BASE = "";
 
 // 공통 fetch 함수
-async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiCall<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
-  
+
   const response = await fetch(url, {
     ...options,
-    credentials: 'include', // 세션 쿠키 포함
+    credentials: "include", // 세션 쿠키 포함
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
@@ -22,7 +25,10 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     const errorText = await response.text();
     if (response.status === 401) {
       // 401 에러는 리다이렉트하지 않고 에러로만 처리
-      throw Object.assign(new Error('UNAUTHORIZED'), { status: 401, body: errorText });
+      throw Object.assign(new Error("UNAUTHORIZED"), {
+        status: 401,
+        body: errorText,
+      });
     }
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
@@ -36,8 +42,16 @@ export async function getNotifications(page: number = 0, size: number = 20) {
     return await apiCall(`/api/notifications?page=${page}&size=${size}`);
   } catch (error: unknown) {
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 알림 목록 조회 실패: 로그인 필요 (401)');
-      return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+      console.log("🔍 알림 목록 조회 실패: 로그인 필요 (401)");
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size,
+        number: page,
+        first: true,
+        last: true,
+      };
     }
     throw error;
   }
@@ -46,10 +60,10 @@ export async function getNotifications(page: number = 0, size: number = 20) {
 // 읽지 않은 알림 개수 조회
 export async function getUnreadNotificationCount() {
   try {
-    return await apiCall('/api/notifications/unread-count');
+    return await apiCall("/api/notifications/unread-count");
   } catch (error: unknown) {
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 읽지 않은 알림 개수 조회 실패: 로그인 필요 (401)');
+      console.log("🔍 읽지 않은 알림 개수 조회 실패: 로그인 필요 (401)");
       return 0;
     }
     throw error;
@@ -59,13 +73,13 @@ export async function getUnreadNotificationCount() {
 // 개별 알림 읽음 처리
 export async function markNotificationAsRead(notificationId: number) {
   return apiCall(`/api/notifications/${notificationId}/read`, {
-    method: 'PUT',
+    method: "PUT",
   });
 }
 
 // 전체 알림 읽음 처리
 export async function markAllNotificationsAsRead() {
-  return apiCall('/api/notifications/read-all', {
-    method: 'PUT',
+  return apiCall("/api/notifications/read-all", {
+    method: "PUT",
   });
 }

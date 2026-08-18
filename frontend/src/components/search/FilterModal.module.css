@@ -44,14 +44,14 @@
 .modalTitle {
   font-size: 1.5rem;
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
   margin: 0 0 0.5rem 0;
 }
 
 .closeButton {
   background: none;
   border: none;
-  color: #ABABAB;
+  color: #ababab;
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.25rem;
@@ -60,12 +60,12 @@
 }
 
 .closeButton:hover {
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 모달 설명 */
 .modalDescription {
-  color: #ABABAB;
+  color: #ababab;
   font-size: 0.875rem;
   line-height: 1.4;
   margin: 0;
@@ -121,7 +121,7 @@
 }
 
 .checkbox:checked::after {
-  content: '✓';
+  content: "✓";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -137,7 +137,7 @@
 }
 
 .checkboxLabel {
-  color: #ABABAB;
+  color: #ababab;
   font-size: 0.875rem;
 }
 
@@ -178,7 +178,7 @@
 
 .resetButton {
   background: none;
-  color: #ABABAB;
+  color: #ababab;
   border: none;
   padding: 0.5rem;
   font-size: 0.875rem;
@@ -191,12 +191,12 @@
 }
 
 .resetButton:hover {
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .resetIcon {
   font-size: 1rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .confirmButton {

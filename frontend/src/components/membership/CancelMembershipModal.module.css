@@ -17,7 +17,7 @@
   padding: 28px;
   color: #f0f0f0;
   text-align: center;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
 .title {
@@ -63,7 +63,7 @@
 }
 
 .benefitCard li::before {
-  content: '✓';
+  content: "✓";
   position: absolute;
   left: 0;
   top: 0;
@@ -131,5 +131,3 @@
   font-weight: 600;
   cursor: not-allowed;
 }
-
-

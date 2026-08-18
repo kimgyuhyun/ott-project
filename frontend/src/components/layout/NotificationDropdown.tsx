@@ -1,6 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { getNotifications, getUnreadNotificationCount, markNotificationAsRead, markAllNotificationsAsRead } from "@/lib/api/notification";
+import {
+  getNotifications,
+  getUnreadNotificationCount,
+  markNotificationAsRead,
+  markAllNotificationsAsRead,
+} from "@/lib/api/notification";
 import styles from "./NotificationDropdown.module.css";
 
 interface NotificationData {
@@ -29,7 +34,10 @@ interface NotificationDropdownProps {
   onClose: () => void;
 }
 
-export default function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
+export default function NotificationDropdown({
+  isOpen,
+  onClose,
+}: NotificationDropdownProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -40,35 +48,45 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   // 드롭다운 외부 클릭 시 닫기
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         onClose();
       }
     }
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      document.addEventListener("mousedown", handleClickOutside);
+      return () =>
+        document.removeEventListener("mousedown", handleClickOutside);
     }
     return () => {};
   }, [isOpen, onClose]);
 
   // 알림 데이터 로드
-  const loadNotifications = async (pageNum: number = 0, append: boolean = false) => {
+  const loadNotifications = async (
+    pageNum: number = 0,
+    append: boolean = false,
+  ) => {
     try {
       setIsLoading(true);
-      const response = await getNotifications(pageNum, 20) as { content: Notification[]; last: boolean };
+      const response = (await getNotifications(pageNum, 20)) as {
+        content: Notification[];
+        last: boolean;
+      };
       const newNotifications = response.content || [];
-      
+
       if (append) {
-        setNotifications(prev => [...prev, ...newNotifications]);
+        setNotifications((prev) => [...prev, ...newNotifications]);
       } else {
         setNotifications(newNotifications);
       }
-      
+
       setHasMore(!response.last);
       setPage(pageNum);
     } catch (error) {
-      console.error('알림 로드 실패:', error);
+      console.error("알림 로드 실패:", error);
     } finally {
       setIsLoading(false);
     }
@@ -77,10 +95,10 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   // 읽지 않은 알림 개수 로드
   const loadUnreadCount = async () => {
     try {
-      const count = await getUnreadNotificationCount() as number;
+      const count = (await getUnreadNotificationCount()) as number;
       setUnreadCount(count);
     } catch (error) {
-      console.error('읽지 않은 알림 개수 로드 실패:', error);
+      console.error("읽지 않은 알림 개수 로드 실패:", error);
     }
   };
 
@@ -96,14 +114,14 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   const handleMarkAsRead = async (notificationId: number) => {
     try {
       await markNotificationAsRead(notificationId);
-      setNotifications(prev => 
-        prev.map(notif => 
-          notif.id === notificationId ? { ...notif, isRead: true } : notif
-        )
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          notif.id === notificationId ? { ...notif, isRead: true } : notif,
+        ),
       );
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('알림 읽음 처리 실패:', error);
+      console.error("알림 읽음 처리 실패:", error);
     }
   };
 
@@ -111,12 +129,12 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   const handleMarkAllAsRead = async () => {
     try {
       await markAllNotificationsAsRead();
-      setNotifications(prev => 
-        prev.map(notif => ({ ...notif, isRead: true }))
+      setNotifications((prev) =>
+        prev.map((notif) => ({ ...notif, isRead: true })),
       );
       setUnreadCount(0);
     } catch (error) {
-      console.error('전체 알림 읽음 처리 실패:', error);
+      console.error("전체 알림 읽음 처리 실패:", error);
     }
   };
 
@@ -132,18 +150,21 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
     if (!notification.isRead) {
       await handleMarkAsRead(notification.id);
     }
-    
+
     // 알림 타입에 따른 네비게이션
-    if (notification.type === 'EPISODE_UPDATE' && notification.data.animeId) {
+    if (notification.type === "EPISODE_UPDATE" && notification.data.animeId) {
       window.location.href = `/player?animeId=${notification.data.animeId}&episodeId=${notification.data.episodeId}`;
-    } else if (notification.type === 'COMMENT_ACTIVITY' && notification.data.animeId) {
-      if (notification.data.contentType === 'REVIEW_COMMENT') {
+    } else if (
+      notification.type === "COMMENT_ACTIVITY" &&
+      notification.data.animeId
+    ) {
+      if (notification.data.contentType === "REVIEW_COMMENT") {
         window.location.href = `/anime/${notification.data.animeId}#reviews`;
-      } else if (notification.data.contentType === 'EPISODE_COMMENT') {
+      } else if (notification.data.contentType === "EPISODE_COMMENT") {
         window.location.href = `/player?animeId=${notification.data.animeId}&episodeId=${notification.data.episodeId}#comments`;
       }
     }
-    
+
     onClose();
   };
 
@@ -151,9 +172,11 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
   const formatTime = (createdAt: string) => {
     const now = new Date();
     const created = new Date(createdAt);
-    const diffInMinutes = Math.floor((now.getTime() - created.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) return '방금 전';
+    const diffInMinutes = Math.floor(
+      (now.getTime() - created.getTime()) / (1000 * 60),
+    );
+
+    if (diffInMinutes < 1) return "방금 전";
     if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}시간 전`;
     return `${Math.floor(diffInMinutes / 1440)}일 전`;
@@ -166,7 +189,7 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
       <div className={styles.header}>
         <h3 className={styles.title}>알림</h3>
         {unreadCount > 0 && (
-          <button 
+          <button
             className={styles.markAllReadButton}
             onClick={handleMarkAllAsRead}
           >
@@ -174,7 +197,7 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
           </button>
         )}
       </div>
-      
+
       <div className={styles.notificationList}>
         {notifications.length === 0 ? (
           <div className={styles.emptyState}>
@@ -184,7 +207,7 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
           notifications.map((notification) => (
             <div
               key={notification.id}
-              className={`${styles.notificationItem} ${!notification.isRead ? styles.unread : ''}`}
+              className={`${styles.notificationItem} ${!notification.isRead ? styles.unread : ""}`}
               onClick={() => handleNotificationClick(notification)}
             >
               <div className={styles.notificationContent}>
@@ -207,14 +230,14 @@ export default function NotificationDropdown({ isOpen, onClose }: NotificationDr
             </div>
           ))
         )}
-        
+
         {hasMore && (
           <button
             className={styles.loadMoreButton}
             onClick={handleLoadMore}
             disabled={isLoading}
           >
-            {isLoading ? '로딩 중...' : '더보기'}
+            {isLoading ? "로딩 중..." : "더보기"}
           </button>
         )}
       </div>

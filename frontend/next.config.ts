@@ -12,7 +12,7 @@ const CONTENT_SECURITY_POLICY =
   "default-src 'self'; img-src 'self' data: https:; media-src 'self' https: blob:; worker-src 'self' blob:; script-src 'self' 'unsafe-inline' https://cdn.iamport.kr https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https:; frame-src 'self' https:;";
 
 const nextConfig: NextConfig = {
-  output: 'standalone', // Docker 빌드를 위한 standalone 모드 활성화
+  output: "standalone", // Docker 빌드를 위한 standalone 모드 활성화
   experimental: {
     forceSwcTransforms: true,
     // 보안 하드닝으로 컨테이너 루트FS가 read-only(.next/server/app 쓰기 불가)이므로
@@ -46,22 +46,22 @@ const nextConfig: NextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "placehold.co",
+        port: "",
+        pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: 'cdn.myanimelist.net',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "cdn.myanimelist.net",
+        port: "",
+        pathname: "/**",
       },
       {
-        protocol: 'https',
-        hostname: 'cdn.example.com',
-        port: '',
-        pathname: '/**',
+        protocol: "https",
+        hostname: "cdn.example.com",
+        port: "",
+        pathname: "/**",
       },
     ],
   },
@@ -80,17 +80,24 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     // 개발 서버에서만 필요. 기본은 Nginx 리버스 프록시가 처리하므로 상대경로 유지
-    const origin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || process.env.BACKEND_ORIGIN;
+    const origin =
+      process.env.NEXT_PUBLIC_BACKEND_ORIGIN || process.env.BACKEND_ORIGIN;
     if (!origin) return [];
-    const base = origin.replace(/\/$/, '');
+    const base = origin.replace(/\/$/, "");
     return [
       { source: "/api/:path*", destination: `${base}/api/:path*` },
       // OAuth2 인가/콜백 경로를 개발 환경에서 백엔드로 프록시
-      { source: "/login/oauth2/:path*", destination: `${base}/login/oauth2/:path*` },
+      {
+        source: "/login/oauth2/:path*",
+        destination: `${base}/login/oauth2/:path*`,
+      },
       // 주의: /oauth2/success, /oauth2/failure 는 프론트 라우팅 페이지
       { source: "/oauth2/(success|failure)", destination: "/oauth2/$1" },
       // 그 외 /oauth2/api 하위만 백엔드로
-      { source: "/oauth2/api/:path*", destination: `${base}/oauth2/api/:path*` }
+      {
+        source: "/oauth2/api/:path*",
+        destination: `${base}/oauth2/api/:path*`,
+      },
     ];
   },
   eslint: {

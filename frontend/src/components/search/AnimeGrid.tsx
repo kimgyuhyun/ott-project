@@ -35,12 +35,19 @@ export default function AnimeGrid({
   selectedTypes,
   sortBy,
   onSortChange,
-  onAnimeClick
+  onAnimeClick,
 }: AnimeGridProps) {
   const [isSelectOpen, setIsSelectOpen] = useState(false);
-  
+
   // 검색 조건이 있는지 확인
-  const hasSearchCriteria = searchQuery.trim() || selectedGenres.length > 0 || selectedTags.length > 0 || selectedSeasons.length > 0 || selectedStatuses.length > 0 || selectedTypes.length > 0 || animes.length > 0;
+  const hasSearchCriteria =
+    searchQuery.trim() ||
+    selectedGenres.length > 0 ||
+    selectedTags.length > 0 ||
+    selectedSeasons.length > 0 ||
+    selectedStatuses.length > 0 ||
+    selectedTypes.length > 0 ||
+    animes.length > 0;
 
   if (isLoading) {
     return (
@@ -68,8 +75,12 @@ export default function AnimeGrid({
     return (
       <div className={styles.animeGridContainer}>
         <div className={styles.searchGuideContainer}>
-          <div className={styles.searchGuideTitle}>검색 조건을 선택하거나 검색어를 입력해주세요</div>
-          <p className={styles.searchGuideSubtitle}>장르, 태그, 또는 제목으로 검색할 수 있습니다</p>
+          <div className={styles.searchGuideTitle}>
+            검색 조건을 선택하거나 검색어를 입력해주세요
+          </div>
+          <p className={styles.searchGuideSubtitle}>
+            장르, 태그, 또는 제목으로 검색할 수 있습니다
+          </p>
           <div className={styles.searchGuideTips}>
             <p>• 상단 검색바에 애니메이션 제목을 입력하세요</p>
             <p>• 좌측 사이드바에서 장르나 태그를 선택하세요</p>
@@ -85,7 +96,9 @@ export default function AnimeGrid({
       <div className={styles.animeGridContainer}>
         <div className={styles.noResultsContainer}>
           <div className={styles.noResultsTitle}>검색 결과가 없습니다.</div>
-          <p className={styles.noResultsSubtitle}>다른 키워드로 검색해보세요.</p>
+          <p className={styles.noResultsSubtitle}>
+            다른 키워드로 검색해보세요.
+          </p>
           <div className={styles.noResultsTips}>
             <p>• 검색어를 변경해보세요</p>
             <p>• 다른 장르나 태그를 선택해보세요</p>
@@ -101,59 +114,72 @@ export default function AnimeGrid({
       {/* 검색 결과 헤더 */}
       <div className={styles.searchHeader}>
         <div className={styles.searchHeaderTop}>
-          <h2 className={styles.searchTitle}>
-            검색 결과 ({animes.length}개)
-          </h2>
-          
+          <h2 className={styles.searchTitle}>검색 결과 ({animes.length}개)</h2>
+
           {/* 정렬 옵션 */}
           <div className={styles.sortContainer}>
             <div className={styles.customSelect}>
-              <div 
+              <div
                 className={styles.selectTrigger}
                 onClick={() => setIsSelectOpen(!isSelectOpen)}
               >
                 <span className={styles.selectValue}>
-                  {sortBy === 'latest' ? '최신순' : sortBy === 'popular' ? '인기순' : '평점순'}
+                  {sortBy === "latest"
+                    ? "최신순"
+                    : sortBy === "popular"
+                      ? "인기순"
+                      : "평점순"}
                 </span>
-                <svg 
-                  className={`${styles.selectArrow} ${isSelectOpen ? styles.open : ''}`}
-                  fill="none" 
-                  stroke="currentColor" 
+                <svg
+                  className={`${styles.selectArrow} ${isSelectOpen ? styles.open : ""}`}
+                  fill="none"
+                  stroke="currentColor"
                   viewBox="0 0 24 24"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 9l-7 7-7-7"
+                  />
                 </svg>
               </div>
               {isSelectOpen && (
                 <div className={styles.selectOptions}>
-                  <div 
-                    className={`${styles.selectOption} ${sortBy === 'latest' ? styles.selected : ''}`}
+                  <div
+                    className={`${styles.selectOption} ${sortBy === "latest" ? styles.selected : ""}`}
                     onClick={() => {
-                      onSortChange('latest');
+                      onSortChange("latest");
                       setIsSelectOpen(false);
                     }}
                   >
-                    <span className={styles.checkIcon}>{sortBy === 'latest' ? '✓' : ''}</span>
+                    <span className={styles.checkIcon}>
+                      {sortBy === "latest" ? "✓" : ""}
+                    </span>
                     <span>최신순</span>
                   </div>
-                  <div 
-                    className={`${styles.selectOption} ${sortBy === 'popular' ? styles.selected : ''}`}
+                  <div
+                    className={`${styles.selectOption} ${sortBy === "popular" ? styles.selected : ""}`}
                     onClick={() => {
-                      onSortChange('popular');
+                      onSortChange("popular");
                       setIsSelectOpen(false);
                     }}
                   >
-                    <span className={styles.checkIcon}>{sortBy === 'popular' ? '✓' : ''}</span>
+                    <span className={styles.checkIcon}>
+                      {sortBy === "popular" ? "✓" : ""}
+                    </span>
                     <span>인기순</span>
                   </div>
-                  <div 
-                    className={`${styles.selectOption} ${sortBy === 'rating' ? styles.selected : ''}`}
+                  <div
+                    className={`${styles.selectOption} ${sortBy === "rating" ? styles.selected : ""}`}
                     onClick={() => {
-                      onSortChange('rating');
+                      onSortChange("rating");
                       setIsSelectOpen(false);
                     }}
                   >
-                    <span className={styles.checkIcon}>{sortBy === 'rating' ? '✓' : ''}</span>
+                    <span className={styles.checkIcon}>
+                      {sortBy === "rating" ? "✓" : ""}
+                    </span>
                     <span>평점순</span>
                   </div>
                 </div>
@@ -161,14 +187,17 @@ export default function AnimeGrid({
             </div>
           </div>
         </div>
-        
+
         {/* 검색 조건 표시 */}
-        {(searchQuery.trim() || selectedGenres.length > 0 || selectedTags.length > 0 || selectedSeasons.length > 0 || selectedStatuses.length > 0 || selectedTypes.length > 0) && (
+        {(searchQuery.trim() ||
+          selectedGenres.length > 0 ||
+          selectedTags.length > 0 ||
+          selectedSeasons.length > 0 ||
+          selectedStatuses.length > 0 ||
+          selectedTypes.length > 0) && (
           <div className={styles.searchCriteria}>
             {searchQuery.trim() && (
-              <span className={styles.searchCriteriaTag}>
-                {searchQuery}
-              </span>
+              <span className={styles.searchCriteriaTag}>{searchQuery}</span>
             )}
             {selectedGenres.map((genre) => (
               <span key={genre} className={styles.searchCriteriaTag}>
@@ -187,7 +216,13 @@ export default function AnimeGrid({
             ))}
             {selectedStatuses.map((status) => (
               <span key={status} className={styles.searchCriteriaTag}>
-                {status === 'ONGOING' ? '방영중' : status === 'COMPLETED' ? '완결' : status === 'UPCOMING' ? '방영예정' : '방영중단'}
+                {status === "ONGOING"
+                  ? "방영중"
+                  : status === "COMPLETED"
+                    ? "완결"
+                    : status === "UPCOMING"
+                      ? "방영예정"
+                      : "방영중단"}
               </span>
             ))}
             {selectedTypes.map((type) => (
@@ -207,7 +242,10 @@ export default function AnimeGrid({
             .filter((item) => {
               // 더 엄격한 필터링: title이 반드시 있어야 함
               const hasValidId = item && item.aniId != null;
-              const hasValidTitle = item.title && typeof item.title === 'string' && item.title.trim() !== '';
+              const hasValidTitle =
+                item.title &&
+                typeof item.title === "string" &&
+                item.title.trim() !== "";
               return hasValidId && hasValidTitle;
             })
             .filter((item) => {
@@ -216,30 +254,31 @@ export default function AnimeGrid({
               seen.add(key);
               return true;
             });
-          
-          console.log('[DEBUG] 최종 safeItems:', safeItems);
-          
+
+          console.log("[DEBUG] 최종 safeItems:", safeItems);
+
           return safeItems
             .filter((anime) => anime.title) // title이 있는 애니메이션만 필터링
             .map((anime, index: number) => {
-            const itemId = anime.aniId ?? index;
-            const key = `${itemId}-${anime.title}`;
+              const itemId = anime.aniId ?? index;
+              const key = `${itemId}-${anime.title}`;
 
-            // 포스터 URL (없으면 플레이스홀더)
-            const posterUrl = anime.posterUrl ||
-                             `https://placehold.co/200x280/4a5568/ffffff?text=${encodeURIComponent(anime.title)}`;
+              // 포스터 URL (없으면 플레이스홀더)
+              const posterUrl =
+                anime.posterUrl ||
+                `https://placehold.co/200x280/4a5568/ffffff?text=${encodeURIComponent(anime.title)}`;
 
-            return (
-              <AnimeCard
-                key={key}
-                aniId={Number(itemId)}
-                title={anime.title}
-                posterUrl={posterUrl}
-                rating={anime.rating}
-                onClick={() => onAnimeClick(anime)}
-              />
-            );
-          });
+              return (
+                <AnimeCard
+                  key={key}
+                  aniId={Number(itemId)}
+                  title={anime.title}
+                  posterUrl={posterUrl}
+                  rating={anime.rating}
+                  onClick={() => onAnimeClick(anime)}
+                />
+              );
+            });
         })()}
       </div>
     </div>

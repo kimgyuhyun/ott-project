@@ -18,11 +18,18 @@ const COLORS: Record<Provider, string> = {
   email: "#6b6bff",
 };
 
-export default function SocialButton({ provider, label, href, onClick }: Props) {
+export default function SocialButton({
+  provider,
+  label,
+  href,
+  onClick,
+}: Props) {
   const content = (
     <div
       className={styles.socialButtonContainer}
-      style={{ backgroundColor: provider === "google" ? "#ffffff" : COLORS[provider] }}
+      style={{
+        backgroundColor: provider === "google" ? "#ffffff" : COLORS[provider],
+      }}
     >
       {provider === "email" ? (
         <span className={styles.emailIcon} />
@@ -34,9 +41,7 @@ export default function SocialButton({ provider, label, href, onClick }: Props) 
           height={20}
         />
       )}
-      <span className={styles.buttonText}>
-        {label}
-      </span>
+      <span className={styles.buttonText}>{label}</span>
     </div>
   );
 
@@ -53,5 +58,3 @@ export default function SocialButton({ provider, label, href, onClick }: Props) 
     </button>
   );
 }
-
-

@@ -57,7 +57,7 @@
   font-size: 3rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 서브 제목 */
@@ -65,7 +65,7 @@
   font-size: 1.875rem;
   font-weight: 500;
   margin-bottom: 2rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 /* 멤버십 시작 버튼 */
@@ -77,7 +77,7 @@
   transition: all 0.3s ease;
   transform: scale(1);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  background-color: #816BFF;
+  background-color: #816bff;
 }
 
 .startButton:hover {
@@ -85,7 +85,7 @@
 }
 
 .startButtonText {
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 멤버십 페이지 이미지 섹션 */
@@ -126,13 +126,13 @@
   font-size: 2.25rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .descriptionText {
   font-size: 1.25rem;
   margin-bottom: 4rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 /* 멤버십 플랜 카드 그리드 */
@@ -157,7 +157,7 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 플랜 가격 */
@@ -165,7 +165,7 @@
   font-size: 1.875rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
-  color: #816BFF;
+  color: #816bff;
 }
 
 /* 플랜 기능 리스트 */
@@ -178,12 +178,12 @@
   display: flex;
   align-items: center;
   margin-bottom: 0.75rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .featureCheck {
   margin-right: 0.75rem;
-  color: #816BFF;
+  color: #816bff;
 }
 
 /* 멤버십 유의사항 */
@@ -195,7 +195,7 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 2rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 안내 박스 */
@@ -212,13 +212,13 @@
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 1rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .noticeBoxContent {
   font-size: 0.875rem;
   line-height: 1.625;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .noticeBoxContent p {
@@ -237,19 +237,23 @@
   width: 8rem;
   height: 8rem;
   border-radius: 50%;
-  border-bottom: 2px solid #816BFF;
+  border-bottom: 2px solid #816bff;
   margin: 0 auto 1rem;
   animation: spin 1s linear infinite;
 }
 
 .loadingText {
   font-size: 1.25rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 에러 상태 */
@@ -263,14 +267,14 @@
 .errorText {
   font-size: 1.25rem;
   margin-bottom: 1rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .retryButton {
   padding: 0.75rem 1.5rem;
   border-radius: 0.5rem;
-  background-color: #816BFF;
-  color: #F7F7F7;
+  background-color: #816bff;
+  color: #f7f7f7;
 }
 
 /* 멤버십 선택 모달 */
@@ -300,7 +304,7 @@
   top: 1rem;
   right: 1rem;
   font-size: 1.5rem;
-  color: #FFFFFF;
+  color: #ffffff;
   background: none;
   border: none;
   transition: opacity 0.2s ease;
@@ -319,11 +323,11 @@
   font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 0.5rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .modalSubtitle {
-  color: #ABABAB;
+  color: #ababab;
 }
 
 /* 플랜 선택 카드 */
@@ -342,7 +346,7 @@
 }
 
 .planSelectionCardSelected {
-  border-color: #816BFF;
+  border-color: #816bff;
   box-shadow: 0 0 20px rgba(129, 107, 255, 0.2);
 }
 
@@ -356,18 +360,18 @@
   font-size: 1.125rem;
   font-weight: 600;
   margin-bottom: 0.25rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .planSelectionInfo p {
   font-size: 0.875rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .planSelectionPrice {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 구독 시작 버튼 */
@@ -377,8 +381,8 @@
   border-radius: 0.5rem;
   font-weight: 700;
   transition: background-color 0.2s ease;
-  background-color: #816BFF;
-  color: #F7F7F7;
+  background-color: #816bff;
+  color: #f7f7f7;
 }
 
 .subscriptionStartButton:hover {

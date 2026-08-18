@@ -26,7 +26,7 @@
 /* 로딩 텍스트 */
 .loadingText {
   font-size: 1.25rem;
-  color: var(--foreground-3, #ABABAB);
+  color: var(--foreground-3, #ababab);
 }
 
 /* 오류 컨테이너 */
@@ -52,7 +52,7 @@
 /* 오류 도움말 */
 .errorHelp {
   font-size: 0.875rem;
-  color: var(--foreground-3, #ABABAB);
+  color: var(--foreground-3, #ababab);
   margin-bottom: 1rem;
 }
 
@@ -87,7 +87,7 @@
 .sectionTitle {
   font-size: 0.82646vw;
   font-weight: 700;
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   margin-bottom: 1.5rem;
 }
 
@@ -125,7 +125,7 @@
 /* 애니메 그리드 제목 */
 .animeGridTitle {
   font-size: 0.875rem;
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   line-height: 1.3;
   display: -webkit-box;
   -webkit-line-clamp: 3;
@@ -141,7 +141,7 @@
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
-  background: #816BFF;
+  background: #816bff;
   color: white;
   font-size: 0.75rem;
   font-weight: 600;

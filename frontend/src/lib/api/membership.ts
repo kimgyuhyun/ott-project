@@ -1,20 +1,24 @@
 // 동일 오리진 경유
 
 // 멤버십 관련 API 함수들
-import { PaymentService } from '@/types/payment';
+import { PaymentService } from "@/types/payment";
 
 // API 기본 설정: 항상 동일 오리진 프록시 사용
-const API_BASE = '';
+const API_BASE = "";
 
 // 공통 fetch 함수
-async function apiCall<T>(endpoint: string, options: RequestInit = {}, expectJson: boolean = true): Promise<T> {
+async function apiCall<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  expectJson: boolean = true,
+): Promise<T> {
   const url = `${API_BASE}${endpoint}`; // '' + '/api/...' => '/api/...'
-  
+
   const response = await fetch(url, {
     ...options,
-    credentials: 'include', // 세션 쿠키 포함
+    credentials: "include", // 세션 쿠키 포함
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
@@ -30,8 +34,8 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}, expectJso
   }
 
   // 응답이 비어있으면 undefined 반환 (환불 API 등)
-  const contentType = response.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
+  const contentType = response.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
     return undefined as T;
   }
 
@@ -45,18 +49,18 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}, expectJso
 
 // 멤버십 플랜 목록 조회
 export async function getMembershipPlans() {
-  return apiCall<MembershipPlan[]>('/api/memberships/plans');
+  return apiCall<MembershipPlan[]>("/api/memberships/plans");
 }
 
 // 사용자 멤버십 구독 상태 조회
 export async function getUserMembership() {
-  return apiCall<UserMembership>('/api/users/me/membership');
+  return apiCall<UserMembership>("/api/users/me/membership");
 }
 
 // 멤버십 구독 시작
 export async function subscribeMembership(planCode: string) {
-  return apiCall<UserMembership>('/api/memberships/subscribe', {
-    method: 'POST',
+  return apiCall<UserMembership>("/api/memberships/subscribe", {
+    method: "POST",
     body: JSON.stringify({ planCode }),
   });
 }
@@ -64,40 +68,42 @@ export async function subscribeMembership(planCode: string) {
 // 멤버십 구독 취소
 // idempotencyKey 는 "해지 의도" 단위로 호출자가 만들어 넘긴다(여기서 만들면 재시도마다 값이 달라져 무의미).
 export async function cancelMembership(idempotencyKey?: string) {
-  return apiCall<UserMembership>('/api/memberships/cancel', {
-    method: 'POST',
+  return apiCall<UserMembership>("/api/memberships/cancel", {
+    method: "POST",
     body: JSON.stringify({ idempotencyKey }),
   });
 }
 
 // 멤버십 정기결제 재시작
 export async function resumeMembership() {
-  return apiCall<UserMembership>('/api/memberships/resume', {
-    method: 'POST',
+  return apiCall<UserMembership>("/api/memberships/resume", {
+    method: "POST",
   });
 }
 
 // 멤버십 플랜 변경
 export async function changeMembershipPlan(newPlanCode: string) {
-  return apiCall<MembershipPlanChangeResponse>('/api/memberships/change-plan', {
-    method: 'PUT',
+  return apiCall<MembershipPlanChangeResponse>("/api/memberships/change-plan", {
+    method: "PUT",
     body: JSON.stringify({ newPlanCode }),
   });
 }
 
 // 플랜 변경 예약 취소
 export async function cancelScheduledPlanChange() {
-  return apiCall<UserMembership>('/api/memberships/change-plan/cancel', {
-    method: 'POST',
+  return apiCall<UserMembership>("/api/memberships/change-plan/cancel", {
+    method: "POST",
   });
 }
 
 // 결제수단 등록
-export async function registerPaymentMethod(paymentMethod: PaymentMethodRegisterRequest) {
+export async function registerPaymentMethod(
+  paymentMethod: PaymentMethodRegisterRequest,
+) {
   return apiCall<void>(
-    '/api/payment-methods',
+    "/api/payment-methods",
     {
-      method: 'POST',
+      method: "POST",
       body: JSON.stringify(paymentMethod),
     },
     false,
@@ -106,7 +112,7 @@ export async function registerPaymentMethod(paymentMethod: PaymentMethodRegister
 
 // 결제수단 목록 조회
 export async function getPaymentMethods() {
-  return apiCall<PaymentMethodResponse[]>('/api/payment-methods');
+  return apiCall<PaymentMethodResponse[]>("/api/payment-methods");
 }
 
 // 결제수단 기본 지정
@@ -114,7 +120,7 @@ export async function setDefaultPaymentMethod(id: number) {
   return apiCall<void>(
     `/api/payment-methods/${id}/default`,
     {
-      method: 'PUT',
+      method: "PUT",
     },
     false,
   );
@@ -125,7 +131,7 @@ export async function deletePaymentMethod(id: number) {
   return apiCall<void>(
     `/api/payment-methods/${id}`,
     {
-      method: 'DELETE',
+      method: "DELETE",
     },
     false,
   );
@@ -134,17 +140,31 @@ export async function deletePaymentMethod(id: number) {
 // 결제 내역 조회
 export async function getPaymentHistory(start?: string, end?: string) {
   const params = new URLSearchParams();
-  if (start) params.append('start', start);
-  if (end) params.append('end', end);
-  
-  return apiCall<PaymentHistoryItem[]>(`/api/payments/history?${params.toString()}`);
+  if (start) params.append("start", start);
+  if (end) params.append("end", end);
+
+  return apiCall<PaymentHistoryItem[]>(
+    `/api/payments/history?${params.toString()}`,
+  );
 }
 
 // 체크아웃 생성 (결제창 이동용)
-export async function createCheckout(planCode: string, successUrl?: string, cancelUrl?: string, idempotencyKey?: string, paymentService?: PaymentService) {
+export async function createCheckout(
+  planCode: string,
+  successUrl?: string,
+  cancelUrl?: string,
+  idempotencyKey?: string,
+  paymentService?: PaymentService,
+) {
   return apiCall<PaymentCheckoutCreateSuccess>(`/api/payments/checkout`, {
-    method: 'POST',
-    body: JSON.stringify({ planCode, successUrl, cancelUrl, idempotencyKey, paymentService }),
+    method: "POST",
+    body: JSON.stringify({
+      planCode,
+      successUrl,
+      cancelUrl,
+      idempotencyKey,
+      paymentService,
+    }),
   });
 }
 
@@ -156,7 +176,7 @@ export async function checkPaymentStatus(paymentId: number) {
 // 클라이언트 결제 확정 (결제창 성공 콜백에서 imp_uid로 서버가 아임포트 재검증 후 즉시 확정/지급)
 export async function completePayment(paymentId: number, impUid: string) {
   return apiCall<PaymentStatusResponse>(`/api/payments/${paymentId}/complete`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ impUid }),
   });
 }
@@ -166,7 +186,7 @@ export async function requestRefund(paymentId: number) {
   return apiCall<void>(
     `/api/payments/${paymentId}/refund`,
     {
-      method: 'POST',
+      method: "POST",
     },
     false,
   );
@@ -197,7 +217,7 @@ export interface UserMembership {
 }
 
 export interface MembershipPlanChangeResponse {
-  changeType: 'UPGRADE' | 'DOWNGRADE';
+  changeType: "UPGRADE" | "DOWNGRADE";
   effectiveDate: string;
   prorationAmount?: number;
   message: string;

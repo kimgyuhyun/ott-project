@@ -6,7 +6,10 @@ import {
   enhanceAllAnime,
   searchAnimeForCuration,
 } from "@/lib/api/admin";
-import type { AdminAnimeItem, AnimeCurationSearchCondition } from "@/lib/api/admin";
+import type {
+  AdminAnimeItem,
+  AnimeCurationSearchCondition,
+} from "@/lib/api/admin";
 import AnimeCurationEditModal from "@/components/admin/AnimeCurationEditModal";
 import AnimeEpisodeManageModal from "@/components/admin/AnimeEpisodeManageModal";
 import AnimeBulkCurationModal from "@/components/admin/AnimeBulkCurationModal";
@@ -39,13 +42,15 @@ type Filters = typeof EMPTY_FILTERS;
 /** 폼의 문자열 상태를 백엔드 조건 객체로 옮긴다. 빈 값은 조건에서 제외한다. */
 function toCondition(filters: Filters): AnimeCurationSearchCondition {
   const condition: AnimeCurationSearchCondition = {};
-  if (filters.titleKeyword.trim()) condition.titleKeyword = filters.titleKeyword.trim();
+  if (filters.titleKeyword.trim())
+    condition.titleKeyword = filters.titleKeyword.trim();
   if (filters.status) condition.status = filters.status;
   if (filters.year.trim()) condition.year = Number(filters.year);
   if (filters.syncOrigin) condition.syncOrigin = filters.syncOrigin;
   if (filters.isActive) condition.isActive = filters.isActive === "true";
   if (filters.curated) condition.curated = filters.curated === "true";
-  if (filters.isExclusive) condition.isExclusive = filters.isExclusive === "true";
+  if (filters.isExclusive)
+    condition.isExclusive = filters.isExclusive === "true";
   if (filters.isPopular) condition.isPopular = filters.isPopular === "true";
   if (filters.isNew) condition.isNew = filters.isNew === "true";
   return condition;
@@ -92,14 +97,20 @@ export default function AdminAnimePage() {
     setListLoading(true);
     setListError(null);
     try {
-      const res = await searchAnimeForCuration(toCondition(applied), p, PAGE_SIZE);
+      const res = await searchAnimeForCuration(
+        toCondition(applied),
+        p,
+        PAGE_SIZE,
+      );
       setItems(res.items);
       setTotal(res.total);
     } catch (e) {
       console.error("큐레이션 목록 조회 실패:", e);
       setItems([]);
       setTotal(0);
-      setListError(e instanceof Error ? e.message : "목록을 불러오지 못했습니다.");
+      setListError(
+        e instanceof Error ? e.message : "목록을 불러오지 못했습니다.",
+      );
     } finally {
       setListLoading(false);
     }
@@ -130,7 +141,10 @@ export default function AdminAnimePage() {
   // 항목 객체가 아니라 ID 만 들고 모달이 상세를 따로 받는다 — 줄거리는 목록 응답에 없다.
   const [editing, setEditing] = useState<number | null>(null);
   // 에피소드 모달은 제목까지 필요하다(헤더에 표시). 목록 항목에서 그대로 넘긴다.
-  const [managingEpisodesOf, setManagingEpisodesOf] = useState<{ id: number; title: string } | null>(null);
+  const [managingEpisodesOf, setManagingEpisodesOf] = useState<{
+    id: number;
+    title: string;
+  } | null>(null);
 
   const handleEditSaved = () => {
     setEditing(null);
@@ -148,7 +162,10 @@ export default function AdminAnimePage() {
 
   const handleBulkApplied = (affectedCount: number) => {
     setBulkOpen(false);
-    setBulkResultText({ ok: true, text: `${affectedCount.toLocaleString()}건을 일괄 수정했습니다.` });
+    setBulkResultText({
+      ok: true,
+      text: `${affectedCount.toLocaleString()}건을 일괄 수정했습니다.`,
+    });
     loadCatalog(page, appliedFilters);
   };
 
@@ -163,9 +180,15 @@ export default function AdminAnimePage() {
     try {
       const res = await syncAnime(id);
       setSingleResult({ ok: res.success, text: res.message });
-      if (res.success) { setPage(0); loadCatalog(0, appliedFilters); }
+      if (res.success) {
+        setPage(0);
+        loadCatalog(0, appliedFilters);
+      }
     } catch (e) {
-      setSingleResult({ ok: false, text: e instanceof Error ? e.message : "동기화 실패" });
+      setSingleResult({
+        ok: false,
+        text: e instanceof Error ? e.message : "동기화 실패",
+      });
     } finally {
       setSingleLoading(false);
     }
@@ -177,31 +200,55 @@ export default function AdminAnimePage() {
       setBulkResult({ ok: false, text: "1 이상의 수집 개수를 입력하세요." });
       return;
     }
-    if (!window.confirm(`인기 애니메이션 ${limit}개를 일괄 수집합니다. 시간이 걸릴 수 있어요. 진행할까요?`)) return;
+    if (
+      !window.confirm(
+        `인기 애니메이션 ${limit}개를 일괄 수집합니다. 시간이 걸릴 수 있어요. 진행할까요?`,
+      )
+    )
+      return;
     setBulkLoading(true);
     setBulkResult(null);
     try {
       const res = await syncPopularAnime(limit);
-      const stats = res.statistics ? `\n${JSON.stringify(res.statistics, null, 2)}` : "";
+      const stats = res.statistics
+        ? `\n${JSON.stringify(res.statistics, null, 2)}`
+        : "";
       setBulkResult({ ok: res.success, text: `${res.message}${stats}` });
-      if (res.success) { setPage(0); loadCatalog(0, appliedFilters); }
+      if (res.success) {
+        setPage(0);
+        loadCatalog(0, appliedFilters);
+      }
     } catch (e) {
-      setBulkResult({ ok: false, text: e instanceof Error ? e.message : "일괄 동기화 실패" });
+      setBulkResult({
+        ok: false,
+        text: e instanceof Error ? e.message : "일괄 동기화 실패",
+      });
     } finally {
       setBulkLoading(false);
     }
   };
 
   const handleEnhanceAll = async () => {
-    if (!window.confirm("한국어 정보가 없는 애니를 TMDB로 보강합니다. 서버에서 백그라운드로 진행됩니다. 시작할까요?")) return;
+    if (
+      !window.confirm(
+        "한국어 정보가 없는 애니를 TMDB로 보강합니다. 서버에서 백그라운드로 진행됩니다. 시작할까요?",
+      )
+    )
+      return;
     setEnhanceLoading(true);
     setEnhanceResult(null);
     try {
       await enhanceAllAnime();
       // 백엔드가 @Async 라 완료가 아니라 "시작"만 응답한다. 진행/결과는 서버 로그에서 확인.
-      setEnhanceResult({ ok: true, text: "보강 작업을 시작했습니다. 진행 상황은 서버 로그를 확인하세요. (완료 후 목록 새로고침)" });
+      setEnhanceResult({
+        ok: true,
+        text: "보강 작업을 시작했습니다. 진행 상황은 서버 로그를 확인하세요. (완료 후 목록 새로고침)",
+      });
     } catch (e) {
-      setEnhanceResult({ ok: false, text: e instanceof Error ? e.message : "보강 시작 실패" });
+      setEnhanceResult({
+        ok: false,
+        text: e instanceof Error ? e.message : "보강 시작 실패",
+      });
     } finally {
       setEnhanceLoading(false);
     }
@@ -211,13 +258,16 @@ export default function AdminAnimePage() {
     <div>
       <h1 className={styles.pageTitle}>애니 카탈로그 / 큐레이션</h1>
       <p className={styles.pageSubtitle}>
-        Jikan/TMDB에서 수집한 애니를 검색하고 노출 여부·배지를 관리합니다. (19금 콘텐츠는 수집 시 자동 제외)
+        Jikan/TMDB에서 수집한 애니를 검색하고 노출 여부·배지를 관리합니다. (19금
+        콘텐츠는 수집 시 자동 제외)
       </p>
 
       {/* 단일 동기화 */}
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>단일 동기화</h2>
-        <p className={styles.panelHint}>MyAnimeList ID(MAL ID)로 특정 작품 하나를 수집합니다.</p>
+        <p className={styles.panelHint}>
+          MyAnimeList ID(MAL ID)로 특정 작품 하나를 수집합니다.
+        </p>
         <div className={styles.row}>
           <input
             className={styles.input}
@@ -227,12 +277,18 @@ export default function AdminAnimePage() {
             onChange={(e) => setMalId(e.target.value)}
             disabled={singleLoading}
           />
-          <button className={styles.button} onClick={handleSingleSync} disabled={singleLoading}>
+          <button
+            className={styles.button}
+            onClick={handleSingleSync}
+            disabled={singleLoading}
+          >
             {singleLoading ? "동기화 중..." : "동기화"}
           </button>
         </div>
         {singleResult && (
-          <div className={`${styles.result} ${singleResult.ok ? styles.resultOk : styles.resultErr}`}>
+          <div
+            className={`${styles.result} ${singleResult.ok ? styles.resultOk : styles.resultErr}`}
+          >
             {singleResult.text}
           </div>
         )}
@@ -241,7 +297,10 @@ export default function AdminAnimePage() {
       {/* 인기 일괄 동기화 */}
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>인기 애니 일괄 동기화</h2>
-        <p className={styles.panelHint}>Jikan 인기 목록을 한 번에 수집합니다. (최대 5000개, 많을수록 오래 걸림)</p>
+        <p className={styles.panelHint}>
+          Jikan 인기 목록을 한 번에 수집합니다. (최대 5000개, 많을수록 오래
+          걸림)
+        </p>
         <div className={styles.row}>
           <input
             className={styles.input}
@@ -251,12 +310,18 @@ export default function AdminAnimePage() {
             onChange={(e) => setBulkLimit(e.target.value)}
             disabled={bulkLoading}
           />
-          <button className={styles.button} onClick={handleBulkSync} disabled={bulkLoading}>
+          <button
+            className={styles.button}
+            onClick={handleBulkSync}
+            disabled={bulkLoading}
+          >
             {bulkLoading ? "수집 중..." : "일괄 동기화"}
           </button>
         </div>
         {bulkResult && (
-          <div className={`${styles.result} ${bulkResult.ok ? styles.resultOk : styles.resultErr}`}>
+          <div
+            className={`${styles.result} ${bulkResult.ok ? styles.resultOk : styles.resultErr}`}
+          >
             {bulkResult.text}
           </div>
         )}
@@ -265,14 +330,23 @@ export default function AdminAnimePage() {
       {/* TMDB 보강 */}
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>TMDB 데이터 보강</h2>
-        <p className={styles.panelHint}>Jikan으로 수집한 데이터에 한국어 제목/줄거리 등을 TMDB에서 채웁니다. 백그라운드로 실행되며 즉시 반환됩니다.</p>
+        <p className={styles.panelHint}>
+          Jikan으로 수집한 데이터에 한국어 제목/줄거리 등을 TMDB에서 채웁니다.
+          백그라운드로 실행되며 즉시 반환됩니다.
+        </p>
         <div className={styles.row}>
-          <button className={styles.button} onClick={handleEnhanceAll} disabled={enhanceLoading}>
+          <button
+            className={styles.button}
+            onClick={handleEnhanceAll}
+            disabled={enhanceLoading}
+          >
             {enhanceLoading ? "시작 중..." : "전체 보강 시작"}
           </button>
         </div>
         {enhanceResult && (
-          <div className={`${styles.result} ${enhanceResult.ok ? styles.resultOk : styles.resultErr}`}>
+          <div
+            className={`${styles.result} ${enhanceResult.ok ? styles.resultOk : styles.resultErr}`}
+          >
             {enhanceResult.text}
           </div>
         )}
@@ -295,7 +369,9 @@ export default function AdminAnimePage() {
               placeholder="예: 귀멸"
               value={filters.titleKeyword}
               onChange={(e) => setFilter("titleKeyword", e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch();
+              }}
             />
           </div>
 
@@ -304,7 +380,9 @@ export default function AdminAnimePage() {
             <select
               className={styles.select}
               value={filters.status ?? ""}
-              onChange={(e) => setFilter("status", e.target.value as Filters["status"])}
+              onChange={(e) =>
+                setFilter("status", e.target.value as Filters["status"])
+              }
             >
               <option value="">전체</option>
               <option value="ONGOING">방영중</option>
@@ -322,7 +400,9 @@ export default function AdminAnimePage() {
               placeholder="예: 2026"
               value={filters.year}
               onChange={(e) => setFilter("year", e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSearch();
+              }}
             />
           </div>
 
@@ -331,7 +411,9 @@ export default function AdminAnimePage() {
             <select
               className={styles.select}
               value={filters.isActive}
-              onChange={(e) => setFilter("isActive", e.target.value as TriState)}
+              onChange={(e) =>
+                setFilter("isActive", e.target.value as TriState)
+              }
             >
               <option value="">전체</option>
               <option value="true">노출 중</option>
@@ -357,7 +439,9 @@ export default function AdminAnimePage() {
             <select
               className={styles.select}
               value={filters.syncOrigin ?? ""}
-              onChange={(e) => setFilter("syncOrigin", e.target.value as Filters["syncOrigin"])}
+              onChange={(e) =>
+                setFilter("syncOrigin", e.target.value as Filters["syncOrigin"])
+              }
             >
               <option value="">전체</option>
               <option value="JIKAN">Jikan 동기화</option>
@@ -370,7 +454,9 @@ export default function AdminAnimePage() {
             <select
               className={styles.select}
               value={filters.isExclusive}
-              onChange={(e) => setFilter("isExclusive", e.target.value as TriState)}
+              onChange={(e) =>
+                setFilter("isExclusive", e.target.value as TriState)
+              }
             >
               <option value="">전체</option>
               <option value="true">켜짐</option>
@@ -383,7 +469,9 @@ export default function AdminAnimePage() {
             <select
               className={styles.select}
               value={filters.isPopular}
-              onChange={(e) => setFilter("isPopular", e.target.value as TriState)}
+              onChange={(e) =>
+                setFilter("isPopular", e.target.value as TriState)
+              }
             >
               <option value="">전체</option>
               <option value="true">켜짐</option>
@@ -406,28 +494,49 @@ export default function AdminAnimePage() {
         </div>
 
         <div className={styles.row}>
-          <button className={styles.button} onClick={handleSearch} disabled={listLoading}>
+          <button
+            className={styles.button}
+            onClick={handleSearch}
+            disabled={listLoading}
+          >
             {listLoading ? "검색 중..." : "검색"}
           </button>
-          <button className={styles.pagerBtn} onClick={handleResetFilters} disabled={listLoading}>
+          <button
+            className={styles.pagerBtn}
+            onClick={handleResetFilters}
+            disabled={listLoading}
+          >
             조건 초기화
           </button>
-          <span style={{ color: "#9aa0aa", fontSize: 13 }}>총 {total.toLocaleString()}건</span>
+          <span style={{ color: "#9aa0aa", fontSize: 13 }}>
+            총 {total.toLocaleString()}건
+          </span>
           <button
             className={styles.pagerBtn}
             style={{ marginLeft: "auto" }}
-            onClick={() => { setBulkResultText(null); setBulkOpen(true); }}
+            onClick={() => {
+              setBulkResultText(null);
+              setBulkOpen(true);
+            }}
             // 조건 없는 벌크는 백엔드가 400 으로 거부한다(=전체 수정 방지). 버튼 단계에서 미리 막는다.
             disabled={listLoading || !hasAppliedCondition || total === 0}
-            title={hasAppliedCondition ? undefined : "먼저 검색 조건을 걸어야 합니다"}
+            title={
+              hasAppliedCondition ? undefined : "먼저 검색 조건을 걸어야 합니다"
+            }
           >
             이 조건으로 일괄 수정
           </button>
         </div>
 
-        {listError && <div className={`${styles.result} ${styles.resultErr}`}>{listError}</div>}
+        {listError && (
+          <div className={`${styles.result} ${styles.resultErr}`}>
+            {listError}
+          </div>
+        )}
         {bulkResultText && (
-          <div className={`${styles.result} ${bulkResultText.ok ? styles.resultOk : styles.resultErr}`}>
+          <div
+            className={`${styles.result} ${bulkResultText.ok ? styles.resultOk : styles.resultErr}`}
+          >
             {bulkResultText.text}
           </div>
         )}
@@ -448,44 +557,131 @@ export default function AdminAnimePage() {
             </thead>
             <tbody>
               {listLoading ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>불러오는 중...</td></tr>
+                <tr>
+                  <td
+                    colSpan={8}
+                    style={{
+                      textAlign: "center",
+                      color: "#9aa0aa",
+                      padding: 24,
+                    }}
+                  >
+                    불러오는 중...
+                  </td>
+                </tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={8} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>조건에 맞는 작품이 없습니다.</td></tr>
+                <tr>
+                  <td
+                    colSpan={8}
+                    style={{
+                      textAlign: "center",
+                      color: "#9aa0aa",
+                      padding: 24,
+                    }}
+                  >
+                    조건에 맞는 작품이 없습니다.
+                  </td>
+                </tr>
               ) : (
                 items.map((it) => (
-                  <tr key={it.id} className={it.isActive ? undefined : styles.rowInactive}>
+                  <tr
+                    key={it.id}
+                    className={it.isActive ? undefined : styles.rowInactive}
+                  >
                     <td>
                       {/* 외부 포스터 URL이라 next/image 대신 img 사용 */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img className={styles.thumb} src={it.posterUrl || "/placeholder-anime.jpg"} alt={it.title || ""} />
+                      <img
+                        className={styles.thumb}
+                        src={it.posterUrl || "/placeholder-anime.jpg"}
+                        alt={it.title || ""}
+                      />
                     </td>
                     <td>{it.id}</td>
                     <td>
-                      {it.title || <span style={{ color: "#9aa0aa" }}>(한국어 제목 없음)</span>}
-                      {it.titleEn && <div style={{ color: "#9aa0aa", fontSize: 11 }}>{it.titleEn}</div>}
+                      {it.title || (
+                        <span style={{ color: "#9aa0aa" }}>
+                          (한국어 제목 없음)
+                        </span>
+                      )}
+                      {it.titleEn && (
+                        <div style={{ color: "#9aa0aa", fontSize: 11 }}>
+                          {it.titleEn}
+                        </div>
+                      )}
                     </td>
                     <td>{it.status}</td>
                     <td>{it.year ?? "-"}</td>
                     <td>
                       {/* 숨김은 "사용자에게 안 보인다"는 뜻이라 가장 먼저 눈에 띄어야 한다 */}
-                      {!it.isActive && <span className={`${styles.badge} ${styles.badgeOff}`}>숨김</span>}
-                      {it.curated && <span className={`${styles.badge} ${styles.badgeCurated}`}>큐레이션</span>}
-                      {it.isExclusive && <span className={`${styles.badge} ${styles.badgeOn}`}>독점</span>}
-                      {it.isPopular && <span className={`${styles.badge} ${styles.badgeOn}`}>인기</span>}
-                      {it.isNew && <span className={`${styles.badge} ${styles.badgeOn}`}>신작</span>}
-                      {it.isCompleted && <span className={`${styles.badge} ${styles.badgeOn}`}>완결</span>}
-                      {it.isSubtitle && <span className={`${styles.badge} ${styles.badgeOn}`}>자막</span>}
-                      {it.isDub && <span className={`${styles.badge} ${styles.badgeOn}`}>더빙</span>}
-                      {it.isSimulcast && <span className={`${styles.badge} ${styles.badgeOn}`}>동시</span>}
+                      {!it.isActive && (
+                        <span className={`${styles.badge} ${styles.badgeOff}`}>
+                          숨김
+                        </span>
+                      )}
+                      {it.curated && (
+                        <span
+                          className={`${styles.badge} ${styles.badgeCurated}`}
+                        >
+                          큐레이션
+                        </span>
+                      )}
+                      {it.isExclusive && (
+                        <span className={`${styles.badge} ${styles.badgeOn}`}>
+                          독점
+                        </span>
+                      )}
+                      {it.isPopular && (
+                        <span className={`${styles.badge} ${styles.badgeOn}`}>
+                          인기
+                        </span>
+                      )}
+                      {it.isNew && (
+                        <span className={`${styles.badge} ${styles.badgeOn}`}>
+                          신작
+                        </span>
+                      )}
+                      {it.isCompleted && (
+                        <span className={`${styles.badge} ${styles.badgeOn}`}>
+                          완결
+                        </span>
+                      )}
+                      {it.isSubtitle && (
+                        <span className={`${styles.badge} ${styles.badgeOn}`}>
+                          자막
+                        </span>
+                      )}
+                      {it.isDub && (
+                        <span className={`${styles.badge} ${styles.badgeOn}`}>
+                          더빙
+                        </span>
+                      )}
+                      {it.isSimulcast && (
+                        <span className={`${styles.badge} ${styles.badgeOn}`}>
+                          동시
+                        </span>
+                      )}
                     </td>
-                    <td style={{ color: "#9aa0aa" }}>{it.syncOrigin === "JIKAN" ? "Jikan" : "수동"}</td>
+                    <td style={{ color: "#9aa0aa" }}>
+                      {it.syncOrigin === "JIKAN" ? "Jikan" : "수동"}
+                    </td>
                     <td>
                       <div style={{ display: "flex", gap: 6 }}>
-                        <button className={styles.pagerBtn} onClick={() => setEditing(it.id)}>수정</button>
+                        <button
+                          className={styles.pagerBtn}
+                          onClick={() => setEditing(it.id)}
+                        >
+                          수정
+                        </button>
                         {/* 작품 필드와 에피소드는 저장 대상이 달라 모달을 나눈다 */}
                         <button
                           className={styles.pagerBtn}
-                          onClick={() => setManagingEpisodesOf({ id: it.id, title: it.title ?? "" })}
+                          onClick={() =>
+                            setManagingEpisodesOf({
+                              id: it.id,
+                              title: it.title ?? "",
+                            })
+                          }
                         >
                           화수
                         </button>
@@ -507,7 +703,9 @@ export default function AdminAnimePage() {
             이전
           </button>
           {/* total 을 주는 엔드포인트라 마지막 페이지를 실제로 알 수 있다(이전에는 추측했다) */}
-          <span style={{ color: "#9aa0aa", fontSize: 13 }}>{page + 1} / {totalPages} 페이지</span>
+          <span style={{ color: "#9aa0aa", fontSize: 13 }}>
+            {page + 1} / {totalPages} 페이지
+          </span>
           <button
             className={styles.pagerBtn}
             onClick={() => setPage((p) => p + 1)}

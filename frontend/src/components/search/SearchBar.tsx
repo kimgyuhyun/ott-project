@@ -2,19 +2,31 @@
 import { useState, useEffect, useRef } from "react";
 import { getSearchSuggestions } from "@/lib/api/search";
 import { getTrendingAnime24h } from "@/lib/api/anime";
-import { fetchRecentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } from "@/lib/api/recentSearch";
+import {
+  fetchRecentSearches,
+  addRecentSearch,
+  removeRecentSearch,
+  clearRecentSearches,
+} from "@/lib/api/recentSearch";
 import styles from "./SearchBar.module.css";
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
   placeholder?: string;
   className?: string;
-  align?: 'left' | 'right';
+  align?: "left" | "right";
   autoShow?: boolean;
   showSuggestions?: boolean;
 }
 
-export default function SearchBar({ onSearch, placeholder = "검색어를 입력하세요...", className = "", align = 'right', autoShow = true, showSuggestions: externalShowSuggestions }: SearchBarProps) {
+export default function SearchBar({
+  onSearch,
+  placeholder = "검색어를 입력하세요...",
+  className = "",
+  align = "right",
+  autoShow = true,
+  showSuggestions: externalShowSuggestions,
+}: SearchBarProps) {
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -66,7 +78,8 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
 
   // 검색어가 변경될 때마다 자동완성 요청
   useEffect(() => {
-    if (searchTimeoutRef.current !== undefined) window.clearTimeout(searchTimeoutRef.current);
+    if (searchTimeoutRef.current !== undefined)
+      window.clearTimeout(searchTimeoutRef.current);
 
     if (query.trim().length > 0) {
       searchTimeoutRef.current = window.setTimeout(async () => {
@@ -74,12 +87,14 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
           setIsLoading(true);
           setError(null);
           const results = await getSearchSuggestions(query, 8);
-          const titles = Array.isArray(results) ? results.map((item) => item.title) : [];
+          const titles = Array.isArray(results)
+            ? results.map((item) => item.title)
+            : [];
           setSuggestions(titles.filter(Boolean));
           setShowSuggestions(true);
         } catch (error) {
-          console.error('자동완성 로드 실패:', error);
-          setError('자동완성 로드에 실패했습니다.');
+          console.error("자동완성 로드 실패:", error);
+          setError("자동완성 로드에 실패했습니다.");
           setSuggestions([]);
           setShowSuggestions(true);
         } finally {
@@ -93,21 +108,25 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
     }
 
     return () => {
-      if (searchTimeoutRef.current !== undefined) window.clearTimeout(searchTimeoutRef.current);
+      if (searchTimeoutRef.current !== undefined)
+        window.clearTimeout(searchTimeoutRef.current);
     };
   }, [query]);
 
   useEffect(() => {
     // 외부 클릭 시 자동완성 닫기
     const handleClickOutside = (event: MouseEvent) => {
-      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node)
+      ) {
         setShowSuggestions(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
 
@@ -118,7 +137,7 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
       const searches = await fetchRecentSearches();
       setRecentSearches(searches);
     } catch (error) {
-      console.error('최근 검색어 로드 실패:', error);
+      console.error("최근 검색어 로드 실패:", error);
     } finally {
       setIsRecentLoading(false);
     }
@@ -128,14 +147,17 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
   const handleAddRecentSearch = async (term: string) => {
     try {
       // 낙관적 업데이트
-      const optimisticSearches = [term, ...recentSearches.filter(s => s !== term)].slice(0, 10);
+      const optimisticSearches = [
+        term,
+        ...recentSearches.filter((s) => s !== term),
+      ].slice(0, 10);
       setRecentSearches(optimisticSearches);
-      
+
       // 서버 동기화
       const updatedSearches = await addRecentSearch(term);
       setRecentSearches(updatedSearches);
     } catch (error) {
-      console.error('최근 검색어 추가 실패:', error);
+      console.error("최근 검색어 추가 실패:", error);
       // 롤백
       loadRecentSearches();
     }
@@ -145,14 +167,14 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
   const handleRemoveRecentSearch = async (term: string) => {
     try {
       // 낙관적 업데이트
-      const optimisticSearches = recentSearches.filter(s => s !== term);
+      const optimisticSearches = recentSearches.filter((s) => s !== term);
       setRecentSearches(optimisticSearches);
-      
+
       // 서버 동기화
       const updatedSearches = await removeRecentSearch(term);
       setRecentSearches(updatedSearches);
     } catch (error) {
-      console.error('최근 검색어 삭제 실패:', error);
+      console.error("최근 검색어 삭제 실패:", error);
       // 롤백
       loadRecentSearches();
     }
@@ -160,16 +182,16 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
 
   // 전체 삭제
   const handleClearRecentSearches = async () => {
-    if (!confirm('모든 최근 검색어를 삭제하시겠습니까?')) return;
-    
+    if (!confirm("모든 최근 검색어를 삭제하시겠습니까?")) return;
+
     try {
       // 낙관적 업데이트
       setRecentSearches([]);
-      
+
       // 서버 동기화
       await clearRecentSearches();
     } catch (error) {
-      console.error('최근 검색어 전체 삭제 실패:', error);
+      console.error("최근 검색어 전체 삭제 실패:", error);
       // 롤백
       loadRecentSearches();
     }
@@ -192,7 +214,10 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
   };
 
   return (
-    <div className={`${styles.searchContainer} ${align === 'right' ? styles.alignRight : styles.alignLeft} ${className}`} ref={suggestionsRef}>
+    <div
+      className={`${styles.searchContainer} ${align === "right" ? styles.alignRight : styles.alignLeft} ${className}`}
+      ref={suggestionsRef}
+    >
       <form className={styles.searchForm} onSubmit={handleSubmit}>
         <input
           type="text"
@@ -208,7 +233,12 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
         />
         <button type="submit" className={styles.searchButton}>
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
           </svg>
         </button>
       </form>
@@ -220,9 +250,7 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
             // 검색어가 있을 때: 자동완성
             <>
               {isLoading ? (
-                <div className={styles.searchLoading}>
-                  검색 중...
-                </div>
+                <div className={styles.searchLoading}>검색 중...</div>
               ) : error ? (
                 <div className={styles.searchError}>
                   {error}
@@ -232,11 +260,13 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
                       setError(null);
                       setIsLoading(true);
                       getSearchSuggestions(query, 8)
-                        .then(results => {
-                          const titles = Array.isArray(results) ? results.map((item) => item.title) : [];
+                        .then((results) => {
+                          const titles = Array.isArray(results)
+                            ? results.map((item) => item.title)
+                            : [];
                           setSuggestions(titles.filter(Boolean));
                         })
-                        .catch(() => setError('자동완성 로드에 실패했습니다.'))
+                        .catch(() => setError("자동완성 로드에 실패했습니다."))
                         .finally(() => setIsLoading(false));
                     }}
                   >
@@ -251,8 +281,17 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
                     onClick={() => handleSuggestionClick(suggestion)}
                   >
                     <div className={styles.searchSuggestionContent}>
-                      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      <svg
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
                       </svg>
                       <span>{suggestion}</span>
                     </div>
@@ -287,8 +326,17 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
                           onClick={() => handleSuggestionClick(search)}
                         >
                           <div className={styles.recentItemContent}>
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <svg
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                              />
                             </svg>
                             <span>{search}</span>
                           </div>
@@ -301,8 +349,17 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
                             type="button"
                             aria-label={`${search} 삭제`}
                           >
-                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
                             </svg>
                           </button>
                         </div>
@@ -314,7 +371,9 @@ export default function SearchBar({ onSearch, placeholder = "검색어를 입력
 
               {/* 인기 검색어 섹션 */}
               <div className={styles.popularSection}>
-                <h3 className={styles.popularTitle}>지금 사람들이 많이 보는 작품</h3>
+                <h3 className={styles.popularTitle}>
+                  지금 사람들이 많이 보는 작품
+                </h3>
                 <div className={styles.popularList}>
                   {(trending.length > 0 ? trending : []).map((item, index) => (
                     <div

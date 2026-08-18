@@ -8,7 +8,11 @@ type ListResponse = {
 };
 
 async function getBaseOrigin() {
-  return process.env.BACKEND_ORIGIN || process.env.NEXT_PUBLIC_BACKEND_ORIGIN || "http://localhost:8090";
+  return (
+    process.env.BACKEND_ORIGIN ||
+    process.env.NEXT_PUBLIC_BACKEND_ORIGIN ||
+    "http://localhost:8090"
+  );
 }
 
 async function fetchJson<T>(path: string): Promise<T | null> {
@@ -34,20 +38,32 @@ async function fetchJson<T>(path: string): Promise<T | null> {
 }
 
 function normalizeAnimeList(input: unknown): Anime[] {
-  const list = ((input as ListResponse)?.items || (input as ListResponse)?.content || []) as Anime[];
+  const list = ((input as ListResponse)?.items ||
+    (input as ListResponse)?.content ||
+    []) as Anime[];
   if (!Array.isArray(list)) return [];
-  return list.filter((anime) => (anime.title && anime.title.trim()) || (anime.titleEn && anime.titleEn.trim()) || (anime.titleJp && anime.titleJp.trim()));
+  return list.filter(
+    (anime) =>
+      (anime.title && anime.title.trim()) ||
+      (anime.titleEn && anime.titleEn.trim()) ||
+      (anime.titleJp && anime.titleJp.trim()),
+  );
 }
 
 export default async function Home() {
   const days = ["월", "화", "수", "목", "금", "토", "일"];
 
-  const [animeListData, recommendedData, popularData, ...weeklyResponses] = await Promise.all([
-    fetchJson<ListResponse>("/api/anime?status=ONGOING&size=50&sort=id"),
-    fetchJson<Anime[]>("/api/anime/recommended?size=20"),
-    fetchJson<ListResponse>("/api/anime?isPopular=true&size=20&sort=id"),
-    ...days.map((day) => fetchJson<Anime[]>(`/api/anime/weekly/${encodeURIComponent(day)}?limit=20`)),
-  ]);
+  const [animeListData, recommendedData, popularData, ...weeklyResponses] =
+    await Promise.all([
+      fetchJson<ListResponse>("/api/anime?status=ONGOING&size=50&sort=id"),
+      fetchJson<Anime[]>("/api/anime/recommended?size=20"),
+      fetchJson<ListResponse>("/api/anime?isPopular=true&size=20&sort=id"),
+      ...days.map((day) =>
+        fetchJson<Anime[]>(
+          `/api/anime/weekly/${encodeURIComponent(day)}?limit=20`,
+        ),
+      ),
+    ]);
 
   // Backend fetch failure returns null (vs. [] / {items:[]} for a genuinely empty list).
   // At runtime, throwing on null makes Next.js keep serving the last good ISR page instead of
@@ -56,19 +72,29 @@ export default async function Home() {
   // ISR fills it in on the first revalidation after deploy. Weekly is supplementary, so its
   // failures are tolerated.
   const isBuildPrerender = process.env.NEXT_PHASE === "phase-production-build";
-  if (!isBuildPrerender && (animeListData === null || recommendedData === null || popularData === null)) {
+  if (
+    !isBuildPrerender &&
+    (animeListData === null || recommendedData === null || popularData === null)
+  ) {
     throw new Error("Home data fetch failed; preserving last-good ISR page");
   }
 
   const initialWeeklyAnime: Record<string, Anime[]> = {};
   days.forEach((day, index) => {
     const dayList = weeklyResponses[index];
-    initialWeeklyAnime[day] = Array.isArray(dayList) ? dayList.filter((anime) => anime?.isNew === true) : [];
+    initialWeeklyAnime[day] = Array.isArray(dayList)
+      ? dayList.filter((anime) => anime?.isNew === true)
+      : [];
   });
 
   const initialAnimeList = normalizeAnimeList(animeListData);
   const initialRecommendedAnime = Array.isArray(recommendedData)
-    ? recommendedData.filter((anime) => (anime.title && anime.title.trim()) || (anime.titleEn && anime.titleEn.trim()) || (anime.titleJp && anime.titleJp.trim()))
+    ? recommendedData.filter(
+        (anime) =>
+          (anime.title && anime.title.trim()) ||
+          (anime.titleEn && anime.titleEn.trim()) ||
+          (anime.titleJp && anime.titleJp.trim()),
+      )
     : [];
   const initialPopularAnime = normalizeAnimeList(popularData);
 

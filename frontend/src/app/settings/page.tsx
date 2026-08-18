@@ -2,7 +2,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Header from "@/components/layout/Header";
-import { getUserSettings, updateUserSettings, changePassword } from "@/lib/api/user";
+import {
+  getUserSettings,
+  updateUserSettings,
+  changePassword,
+} from "@/lib/api/user";
 import { withdraw } from "@/lib/api/auth";
 import { getErrorMessage } from "@/lib/errorMessage";
 import { useAuth } from "@/lib/AuthContext";
@@ -14,9 +18,18 @@ import styles from "./settings.module.css";
  */
 export default function SettingsPage() {
   const { logout } = useAuth();
-  type Notifications = { workUpdates?: boolean; communityActivity?: boolean; eventBenefits?: boolean };
+  type Notifications = {
+    workUpdates?: boolean;
+    communityActivity?: boolean;
+    eventBenefits?: boolean;
+  };
   type EmailNotifications = { eventBenefits?: boolean };
-  type Settings = { theme?: string; language?: string; notifications?: Notifications | boolean; emailNotifications?: EmailNotifications };
+  type Settings = {
+    theme?: string;
+    language?: string;
+    notifications?: Notifications | boolean;
+    emailNotifications?: EmailNotifications;
+  };
   const [userSettings, setUserSettings] = useState<Settings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,31 +37,31 @@ export default function SettingsPage() {
 
   // 다크모드 적용
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', 'dark');
+    document.documentElement.setAttribute("data-theme", "dark");
   }, []);
-  
+
   // 폼 상태
   const [settingsForm, setSettingsForm] = useState({
     notifications: {
       workUpdates: false,
       communityActivity: false,
-      eventBenefits: false
+      eventBenefits: false,
     },
     emailNotifications: {
-      eventBenefits: true
+      eventBenefits: true,
     },
-    theme: 'light' // light, dark, system
+    theme: "light", // light, dark, system
   });
-  
+
   const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
-  
+
   const [userInfo, setUserInfo] = useState({
-    email: 'kgh9806@naver.com',
-    name: '김규현'
+    email: "kgh9806@naver.com",
+    name: "김규현",
   });
 
   // 사용자 설정 로드
@@ -57,26 +70,43 @@ export default function SettingsPage() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const settingsData = await getUserSettings();
-        const settings = (settingsData as Settings) || { theme: 'light', language: 'ko', notifications: { workUpdates: false, communityActivity: false, eventBenefits: false }, emailNotifications: { eventBenefits: true } };
-        
+        const settings = (settingsData as Settings) || {
+          theme: "light",
+          language: "ko",
+          notifications: {
+            workUpdates: false,
+            communityActivity: false,
+            eventBenefits: false,
+          },
+          emailNotifications: { eventBenefits: true },
+        };
+
         setUserSettings(settings);
         setSettingsForm({
           notifications: {
-            workUpdates: (typeof settings.notifications === 'object' && settings.notifications?.workUpdates) || false,
-            communityActivity: (typeof settings.notifications === 'object' && settings.notifications?.communityActivity) || false,
-            eventBenefits: (typeof settings.notifications === 'object' && settings.notifications?.eventBenefits) || false
+            workUpdates:
+              (typeof settings.notifications === "object" &&
+                settings.notifications?.workUpdates) ||
+              false,
+            communityActivity:
+              (typeof settings.notifications === "object" &&
+                settings.notifications?.communityActivity) ||
+              false,
+            eventBenefits:
+              (typeof settings.notifications === "object" &&
+                settings.notifications?.eventBenefits) ||
+              false,
           },
           emailNotifications: {
-            eventBenefits: settings.emailNotifications?.eventBenefits !== false
+            eventBenefits: settings.emailNotifications?.eventBenefits !== false,
           },
-          theme: settings.theme || 'light'
+          theme: settings.theme || "light",
         });
-        
       } catch (err) {
-        console.error('사용자 설정 로드 실패:', err);
-        setError('사용자 설정을 불러오는데 실패했습니다.');
+        console.error("사용자 설정 로드 실패:", err);
+        setError("사용자 설정을 불러오는데 실패했습니다.");
       } finally {
         setIsLoading(false);
       }
@@ -90,10 +120,10 @@ export default function SettingsPage() {
     try {
       setIsSaving(true);
       await updateUserSettings(settingsForm);
-      alert('설정이 저장되었습니다.');
+      alert("설정이 저장되었습니다.");
     } catch (err) {
-      console.error('설정 저장 실패:', err);
-      alert('설정 저장에 실패했습니다.');
+      console.error("설정 저장 실패:", err);
+      alert("설정 저장에 실패했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -102,26 +132,26 @@ export default function SettingsPage() {
   // 비밀번호 변경
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      alert('새 비밀번호가 일치하지 않습니다.');
+      alert("새 비밀번호가 일치하지 않습니다.");
       return;
     }
-    
+
     try {
       setIsSaving(true);
       await changePassword({
         currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
+        newPassword: passwordForm.newPassword,
       });
-      
-      alert('비밀번호가 변경되었습니다.');
+
+      alert("비밀번호가 변경되었습니다.");
       setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
       });
     } catch (err) {
-      console.error('비밀번호 변경 실패:', err);
-      alert('비밀번호 변경에 실패했습니다.');
+      console.error("비밀번호 변경 실패:", err);
+      alert("비밀번호 변경에 실패했습니다.");
     } finally {
       setIsSaving(false);
     }
@@ -136,7 +166,7 @@ export default function SettingsPage() {
   // 되돌릴 수 없는 작업이라 실행 전에 결과를 명시한 확인을 한 번 받는다.
   const handleWithdraw = async () => {
     const confirmed = window.confirm(
-      '회원탈퇴 시 계정 정보가 삭제되고 다시 로그인할 수 없습니다.\n이용 중인 멤버십은 즉시 종료되며 남은 기간은 환불되지 않습니다.\n되돌릴 수 없습니다. 정말 탈퇴하시겠습니까?'
+      "회원탈퇴 시 계정 정보가 삭제되고 다시 로그인할 수 없습니다.\n이용 중인 멤버십은 즉시 종료되며 남은 기간은 환불되지 않습니다.\n되돌릴 수 없습니다. 정말 탈퇴하시겠습니까?",
     );
     if (!confirmed) return;
 
@@ -145,22 +175,22 @@ export default function SettingsPage() {
       await withdraw();
       // 서버가 세션을 무효화했으므로 클라이언트에 남은 로그인 흔적도 지우고 로그인 화면으로 보낸다
       // (지우지 않으면 다음 화면이 잠깐 로그인 상태로 보인다)
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      localStorage.removeItem("user");
+      window.location.href = "/login";
     } catch (err) {
-      console.error('회원탈퇴 실패:', err);
+      console.error("회원탈퇴 실패:", err);
       // 구독이 남아 있어도 서버가 즉시 해지하고 진행하므로 구독 때문에 실패하지는 않는다.
       // 세션 만료 등 남은 실패 사유는 서버 메시지를 그대로 보여준다
-      alert(getErrorMessage(err) ?? '회원탈퇴에 실패했습니다.');
+      alert(getErrorMessage(err) ?? "회원탈퇴에 실패했습니다.");
       setIsSaving(false); // 성공 시에는 페이지를 떠나므로 실패 경로에서만 되돌린다
     }
   };
 
   // 테마 변경
   const handleThemeChange = (theme: string) => {
-    setSettingsForm({...settingsForm, theme});
+    setSettingsForm({ ...settingsForm, theme });
     // 테마 변경 로직 구현
-    console.log('테마 변경:', theme);
+    console.log("테마 변경:", theme);
   };
 
   if (isLoading) {
@@ -188,7 +218,7 @@ export default function SettingsPage() {
   return (
     <div className={styles.settingsPageContainer}>
       <Header />
-      
+
       <main className={styles.settingsMain}>
         <div className={styles.settingsContent}>
           {/* 페이지 제목 */}
@@ -197,40 +227,37 @@ export default function SettingsPage() {
           {/* 계정 섹션 */}
           <div className={styles.settingsSection}>
             <h2 className={styles.settingsSectionTitle}>계정</h2>
-            
+
             <div className={styles.accountItem}>
               <div className={styles.accountInfo}>
                 <span className={styles.accountLabel}>이메일</span>
                 <span className={styles.accountValue}>{userInfo.email}</span>
               </div>
             </div>
-            
+
             <div className={styles.accountItem}>
               <div className={styles.accountInfo}>
                 <div className={styles.passwordRow}>
                   <span className={styles.accountLabel}>비밀번호</span>
                   <div className={styles.passwordContent}>
                     <div className={styles.passwordValue}>*********</div>
-                  <Link
-                    href="/settings/password"
-                    className={styles.passwordChangeButton}
-                  >
-                    비밀번호 변경
-                  </Link>
+                    <Link
+                      href="/settings/password"
+                      className={styles.passwordChangeButton}
+                    >
+                      비밀번호 변경
+                    </Link>
                   </div>
                 </div>
               </div>
             </div>
-            
+
             <div className={styles.accountItem}>
               <div className={styles.accountInfo}>
                 <span className={styles.accountLabel}>로그아웃</span>
               </div>
               <div className={styles.accountButtons}>
-                <button
-                  onClick={handleLogout}
-                  className={styles.logoutButton}
-                >
+                <button onClick={handleLogout} className={styles.logoutButton}>
                   로그아웃
                 </button>
                 <button
@@ -245,7 +272,9 @@ export default function SettingsPage() {
             <div className={styles.accountItem}>
               <div className={styles.accountInfo}>
                 <span className={styles.accountLabel}>회원탈퇴</span>
-                <span className={styles.accountDescription}>계정 정보가 삭제되며 되돌릴 수 없습니다.</span>
+                <span className={styles.accountDescription}>
+                  계정 정보가 삭제되며 되돌릴 수 없습니다.
+                </span>
               </div>
               <div className={styles.accountButtons}>
                 <button
@@ -262,7 +291,7 @@ export default function SettingsPage() {
           {/* 알림 섹션 */}
           <div className={styles.settingsSection}>
             <h2 className={styles.settingsSectionTitle}>알림</h2>
-            
+
             <div className={styles.notificationGroup}>
               <h3 className={styles.notificationGroupTitle}>알림 수신</h3>
               <div className={styles.checkboxGroup}>
@@ -270,43 +299,64 @@ export default function SettingsPage() {
                   <input
                     type="checkbox"
                     checked={settingsForm.notifications.workUpdates}
-                    onChange={(e) => setSettingsForm({
-                      ...settingsForm,
-                      notifications: {...settingsForm.notifications, workUpdates: e.target.checked}
-                    })}
+                    onChange={(e) =>
+                      setSettingsForm({
+                        ...settingsForm,
+                        notifications: {
+                          ...settingsForm.notifications,
+                          workUpdates: e.target.checked,
+                        },
+                      })
+                    }
                     className={styles.checkbox}
                   />
-                  <span className={styles.checkboxLabel}>관심있는 작품의 업데이트 소식</span>
+                  <span className={styles.checkboxLabel}>
+                    관심있는 작품의 업데이트 소식
+                  </span>
                 </label>
-                
+
                 <label className={styles.checkboxItem}>
                   <input
                     type="checkbox"
                     checked={settingsForm.notifications.communityActivity}
-                    onChange={(e) => setSettingsForm({
-                      ...settingsForm,
-                      notifications: {...settingsForm.notifications, communityActivity: e.target.checked}
-                    })}
+                    onChange={(e) =>
+                      setSettingsForm({
+                        ...settingsForm,
+                        notifications: {
+                          ...settingsForm.notifications,
+                          communityActivity: e.target.checked,
+                        },
+                      })
+                    }
                     className={styles.checkbox}
                   />
-                  <span className={styles.checkboxLabel}>커뮤니티 활동 소식</span>
+                  <span className={styles.checkboxLabel}>
+                    커뮤니티 활동 소식
+                  </span>
                 </label>
-                
+
                 <label className={styles.checkboxItem}>
                   <input
                     type="checkbox"
                     checked={settingsForm.notifications.eventBenefits}
-                    onChange={(e) => setSettingsForm({
-                      ...settingsForm,
-                      notifications: {...settingsForm.notifications, eventBenefits: e.target.checked}
-                    })}
+                    onChange={(e) =>
+                      setSettingsForm({
+                        ...settingsForm,
+                        notifications: {
+                          ...settingsForm.notifications,
+                          eventBenefits: e.target.checked,
+                        },
+                      })
+                    }
                     className={styles.checkbox}
                   />
-                  <span className={styles.checkboxLabel}>이벤트 및 혜택 정보 소식</span>
+                  <span className={styles.checkboxLabel}>
+                    이벤트 및 혜택 정보 소식
+                  </span>
                 </label>
               </div>
             </div>
-            
+
             <div className={styles.notificationGroup}>
               <h3 className={styles.notificationGroupTitle}>이메일 알림</h3>
               <div className={styles.checkboxGroup}>
@@ -314,18 +364,24 @@ export default function SettingsPage() {
                   <input
                     type="checkbox"
                     checked={settingsForm.emailNotifications.eventBenefits}
-                    onChange={(e) => setSettingsForm({
-                      ...settingsForm,
-                      emailNotifications: {...settingsForm.emailNotifications, eventBenefits: e.target.checked}
-                    })}
+                    onChange={(e) =>
+                      setSettingsForm({
+                        ...settingsForm,
+                        emailNotifications: {
+                          ...settingsForm.emailNotifications,
+                          eventBenefits: e.target.checked,
+                        },
+                      })
+                    }
                     className={styles.checkbox}
                   />
-                  <span className={styles.checkboxLabel}>이벤트 및 혜택 정보 소식</span>
+                  <span className={styles.checkboxLabel}>
+                    이벤트 및 혜택 정보 소식
+                  </span>
                 </label>
               </div>
             </div>
           </div>
-
         </div>
       </main>
     </div>

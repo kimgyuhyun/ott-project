@@ -3,7 +3,8 @@
 // - unknown 을 좁혀 읽으므로 `as any` 없이 타입 안전하다.
 export function getErrorMessage(err: unknown): string | undefined {
   if (err && typeof err === "object") {
-    const resp = (err as { response?: { data?: { message?: unknown } } }).response;
+    const resp = (err as { response?: { data?: { message?: unknown } } })
+      .response;
     if (resp?.data?.message != null) return String(resp.data.message);
     const message = (err as { message?: unknown }).message;
     if (message != null) return String(message);
@@ -17,7 +18,8 @@ export function getErrorStatus(err: unknown): number | undefined {
   if (err && typeof err === "object") {
     const direct = (err as { status?: unknown }).status;
     if (typeof direct === "number") return direct;
-    const respStatus = (err as { response?: { status?: unknown } }).response?.status;
+    const respStatus = (err as { response?: { status?: unknown } }).response
+      ?.status;
     if (typeof respStatus === "number") return respStatus;
   }
   return undefined;

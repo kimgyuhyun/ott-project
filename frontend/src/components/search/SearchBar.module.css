@@ -14,7 +14,9 @@
   border-radius: 0.5rem;
   font-size: 1rem;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
 .searchInput:focus {
@@ -131,7 +133,7 @@
 }
 
 .searchSuggestionContent span {
-  color: #ABABAB;
+  color: #ababab;
 }
 
 /* 최근 검색어 섹션 */

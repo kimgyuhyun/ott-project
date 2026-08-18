@@ -16,7 +16,11 @@ type ResultState = { ok: boolean; text: string } | null;
 
 const TYPES: { key: ContentType; label: string; hint: string }[] = [
   { key: "FAQ", label: "FAQ", hint: "자주 묻는 질문(제목=질문, 본문=답변)" },
-  { key: "BENEFIT", label: "혜택", hint: "구독 혜택 소개(제목=혜택명, 본문=설명)" },
+  {
+    key: "BENEFIT",
+    label: "혜택",
+    hint: "구독 혜택 소개(제목=혜택명, 본문=설명)",
+  },
   { key: "CTA", label: "CTA", hint: "행동 유도 배너(버튼 텍스트/URL 포함)" },
 ];
 
@@ -125,7 +129,10 @@ export default function AdminContentsPage() {
       closeForm();
       load(type, localeFilter);
     } catch (e) {
-      setResult({ ok: false, text: e instanceof Error ? e.message : "저장 실패" });
+      setResult({
+        ok: false,
+        text: e instanceof Error ? e.message : "저장 실패",
+      });
     } finally {
       setSaving(false);
     }
@@ -136,18 +143,25 @@ export default function AdminContentsPage() {
       await setContentPublish(it.id, !it.published);
       load(type, localeFilter);
     } catch (e) {
-      setResult({ ok: false, text: e instanceof Error ? e.message : "공개 상태 변경 실패" });
+      setResult({
+        ok: false,
+        text: e instanceof Error ? e.message : "공개 상태 변경 실패",
+      });
     }
   };
 
   const handleDelete = async (it: AdminContent) => {
-    if (!window.confirm(`"${it.title}" 을(를) 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(`"${it.title}" 을(를) 삭제할까요? 되돌릴 수 없습니다.`))
+      return;
     try {
       await deleteContent(it.id);
       if (editingId === it.id) closeForm();
       load(type, localeFilter);
     } catch (e) {
-      setResult({ ok: false, text: e instanceof Error ? e.message : "삭제 실패" });
+      setResult({
+        ok: false,
+        text: e instanceof Error ? e.message : "삭제 실패",
+      });
     }
   };
 
@@ -157,7 +171,9 @@ export default function AdminContentsPage() {
   return (
     <div>
       <h1 className={styles.pageTitle}>콘텐츠 관리</h1>
-      <p className={styles.pageSubtitle}>랜딩 페이지의 FAQ · 혜택 · CTA를 코드 수정 없이 DB로 관리합니다.</p>
+      <p className={styles.pageSubtitle}>
+        랜딩 페이지의 FAQ · 혜택 · CTA를 코드 수정 없이 DB로 관리합니다.
+      </p>
 
       {/* 유형 탭 */}
       <div className={styles.tabs}>
@@ -165,7 +181,10 @@ export default function AdminContentsPage() {
           <button
             key={t.key}
             className={`${styles.tab} ${type === t.key ? styles.tabActive : ""}`}
-            onClick={() => { setType(t.key); closeForm(); }}
+            onClick={() => {
+              setType(t.key);
+              closeForm();
+            }}
           >
             {t.label}
           </button>
@@ -174,8 +193,13 @@ export default function AdminContentsPage() {
 
       {/* 목록 */}
       <section className={styles.panel}>
-        <div className={styles.row} style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <h2 className={styles.panelTitle} style={{ margin: 0 }}>{activeType.label} 목록</h2>
+        <div
+          className={styles.row}
+          style={{ justifyContent: "space-between", alignItems: "center" }}
+        >
+          <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+            {activeType.label} 목록
+          </h2>
           <div className={styles.row}>
             <select
               className={styles.input}
@@ -185,9 +209,15 @@ export default function AdminContentsPage() {
               disabled={listLoading}
             >
               <option value="">전체 언어</option>
-              {LOCALES.map((l) => <option key={l} value={l}>{l}</option>)}
+              {LOCALES.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
             </select>
-            <button className={styles.button} onClick={openCreate}>+ 새로 만들기</button>
+            <button className={styles.button} onClick={openCreate}>
+              + 새로 만들기
+            </button>
           </div>
         </div>
         <p className={styles.panelHint}>{activeType.hint}</p>
@@ -204,9 +234,31 @@ export default function AdminContentsPage() {
             </thead>
             <tbody>
               {listLoading ? (
-                <tr><td colSpan={5} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>불러오는 중...</td></tr>
+                <tr>
+                  <td
+                    colSpan={5}
+                    style={{
+                      textAlign: "center",
+                      color: "#9aa0aa",
+                      padding: 24,
+                    }}
+                  >
+                    불러오는 중...
+                  </td>
+                </tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={5} style={{ textAlign: "center", color: "#9aa0aa", padding: 24 }}>등록된 콘텐츠가 없습니다.</td></tr>
+                <tr>
+                  <td
+                    colSpan={5}
+                    style={{
+                      textAlign: "center",
+                      color: "#9aa0aa",
+                      padding: 24,
+                    }}
+                  >
+                    등록된 콘텐츠가 없습니다.
+                  </td>
+                </tr>
               ) : (
                 items.map((it) => (
                   <tr key={it.id}>
@@ -223,8 +275,18 @@ export default function AdminContentsPage() {
                       </button>
                     </td>
                     <td>
-                      <button className={styles.pagerBtn} onClick={() => openEdit(it)}>수정</button>{" "}
-                      <button className={styles.pagerBtn} onClick={() => handleDelete(it)}>삭제</button>
+                      <button
+                        className={styles.pagerBtn}
+                        onClick={() => openEdit(it)}
+                      >
+                        수정
+                      </button>{" "}
+                      <button
+                        className={styles.pagerBtn}
+                        onClick={() => handleDelete(it)}
+                      >
+                        삭제
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -237,8 +299,14 @@ export default function AdminContentsPage() {
       {/* 생성/수정 폼 */}
       {form && (
         <section className={styles.panel}>
-          <h2 className={styles.panelTitle}>{editingId === null ? `${activeType.label} 새로 만들기` : `${activeType.label} 수정 (#${editingId})`}</h2>
-          <p className={styles.panelHint}>제목·본문은 필수입니다. 순서(0 이상)는 오름차순으로 노출됩니다.</p>
+          <h2 className={styles.panelTitle}>
+            {editingId === null
+              ? `${activeType.label} 새로 만들기`
+              : `${activeType.label} 수정 (#${editingId})`}
+          </h2>
+          <p className={styles.panelHint}>
+            제목·본문은 필수입니다. 순서(0 이상)는 오름차순으로 노출됩니다.
+          </p>
 
           <div className={styles.formGrid}>
             <label className={styles.field}>
@@ -248,7 +316,11 @@ export default function AdminContentsPage() {
                 value={form.locale}
                 onChange={(e) => setForm({ ...form, locale: e.target.value })}
               >
-                {LOCALES.map((l) => <option key={l} value={l}>{l}</option>)}
+                {LOCALES.map((l) => (
+                  <option key={l} value={l}>
+                    {l}
+                  </option>
+                ))}
               </select>
             </label>
             <label className={styles.field}>
@@ -258,7 +330,9 @@ export default function AdminContentsPage() {
                 type="number"
                 min={0}
                 value={form.position}
-                onChange={(e) => setForm({ ...form, position: Number(e.target.value) })}
+                onChange={(e) =>
+                  setForm({ ...form, position: Number(e.target.value) })
+                }
               />
             </label>
             <label className={styles.field}>
@@ -266,7 +340,9 @@ export default function AdminContentsPage() {
               <select
                 className={styles.input}
                 value={form.published ? "1" : "0"}
-                onChange={(e) => setForm({ ...form, published: e.target.value === "1" })}
+                onChange={(e) =>
+                  setForm({ ...form, published: e.target.value === "1" })
+                }
               >
                 <option value="0">비공개</option>
                 <option value="1">공개</option>
@@ -304,7 +380,9 @@ export default function AdminContentsPage() {
                   className={styles.input}
                   style={{ width: "100%" }}
                   value={form.actionText ?? ""}
-                  onChange={(e) => setForm({ ...form, actionText: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, actionText: e.target.value })
+                  }
                   placeholder="예: 지금 시작하기"
                 />
               </label>
@@ -314,7 +392,9 @@ export default function AdminContentsPage() {
                   className={styles.input}
                   style={{ width: "100%" }}
                   value={form.actionUrl ?? ""}
-                  onChange={(e) => setForm({ ...form, actionUrl: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, actionUrl: e.target.value })
+                  }
                   placeholder="예: /membership"
                 />
               </label>
@@ -322,16 +402,28 @@ export default function AdminContentsPage() {
           )}
 
           <div className={styles.row} style={{ marginTop: 16 }}>
-            <button className={styles.button} onClick={handleSave} disabled={saving}>
+            <button
+              className={styles.button}
+              onClick={handleSave}
+              disabled={saving}
+            >
               {saving ? "저장 중..." : "저장"}
             </button>
-            <button className={styles.pagerBtn} onClick={closeForm} disabled={saving}>취소</button>
+            <button
+              className={styles.pagerBtn}
+              onClick={closeForm}
+              disabled={saving}
+            >
+              취소
+            </button>
           </div>
         </section>
       )}
 
       {result && (
-        <div className={`${styles.result} ${result.ok ? styles.resultOk : styles.resultErr}`}>
+        <div
+          className={`${styles.result} ${result.ok ? styles.resultOk : styles.resultErr}`}
+        >
           {result.text}
         </div>
       )}

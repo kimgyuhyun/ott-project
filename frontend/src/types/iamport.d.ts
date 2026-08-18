@@ -4,7 +4,7 @@ declare global {
       init: (impCode: string) => void;
       request_pay: (
         data: IamportRequestPayData,
-        callback: (response: IamportResponse) => void
+        callback: (response: IamportResponse) => void,
       ) => void;
     };
   }

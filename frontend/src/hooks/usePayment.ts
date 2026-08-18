@@ -1,12 +1,16 @@
-import { useState } from 'react';
-import { createCheckout, checkPaymentStatus, completePayment } from '@/lib/api/membership';
+import { useState } from "react";
+import {
+  createCheckout,
+  checkPaymentStatus,
+  completePayment,
+} from "@/lib/api/membership";
 import {
   loadPortOne,
   preferPortOnePopup,
   getPortOneMerchantCode,
-} from '@/lib/portone/loadPortOne';
-import { useAuth } from '@/lib/AuthContext';
-import type { IamportRequestPayData, IamportResponse } from '@/types/iamport';
+} from "@/lib/portone/loadPortOne";
+import { useAuth } from "@/lib/AuthContext";
+import type { IamportRequestPayData, IamportResponse } from "@/types/iamport";
 import {
   PaymentError,
   PaymentErrorCode,
@@ -14,8 +18,8 @@ import {
   PaymentState,
   isRetryableError,
   delay,
-  validatePaymentResponse
-} from '@/types/payment';
+  validatePaymentResponse,
+} from "@/types/payment";
 
 interface PaymentRequest {
   planCode: string;
@@ -33,8 +37,8 @@ interface PaymentResult {
 
 export const usePayment = () => {
   const [paymentState, setPaymentState] = useState<PaymentState>({
-    status: 'idle',
-    retryCount: 0
+    status: "idle",
+    retryCount: 0,
   });
   const { user } = useAuth();
 
@@ -43,16 +47,22 @@ export const usePayment = () => {
     console.log(`[Payment] ${event}:`, {
       timestamp: new Date().toISOString(),
       userId: user?.id,
-      ...data
+      ...data,
     });
   };
 
-  const processPayment = async (request: PaymentRequest): Promise<PaymentResult> => {
-    setPaymentState(prev => ({ ...prev, status: 'loading', error: undefined }));
-    
-    logPaymentEvent('Payment initiated', {
+  const processPayment = async (
+    request: PaymentRequest,
+  ): Promise<PaymentResult> => {
+    setPaymentState((prev) => ({
+      ...prev,
+      status: "loading",
+      error: undefined,
+    }));
+
+    logPaymentEvent("Payment initiated", {
       planCode: request.planCode,
-      paymentService: request.paymentService
+      paymentService: request.paymentService,
     });
 
     try {
@@ -62,40 +72,40 @@ export const usePayment = () => {
         request.successUrl,
         request.cancelUrl,
         undefined,
-        request.paymentService
+        request.paymentService,
       );
 
-      logPaymentEvent('Checkout created', {
+      logPaymentEvent("Checkout created", {
         paymentId: checkoutResponse.paymentId,
         amount: checkoutResponse.amount,
-        providerSessionId: checkoutResponse.providerSessionId
+        providerSessionId: checkoutResponse.providerSessionId,
       });
 
       // 2. 아임포트 SDK 로드 대기
-      logPaymentEvent('Waiting for SDK to load', {});
+      logPaymentEvent("Waiting for SDK to load", {});
       const IMP = await loadPortOne();
-      
+
       if (!IMP) {
-        logPaymentEvent('SDK load failed', {});
+        logPaymentEvent("SDK load failed", {});
         throw new PaymentError(
           PaymentErrorCode.SDK_NOT_LOADED,
-          '아임포트 SDK를 불러올 수 없습니다. 페이지를 새로고침해주세요.'
+          "아임포트 SDK를 불러올 수 없습니다. 페이지를 새로고침해주세요.",
         );
       }
 
-      logPaymentEvent('SDK loaded successfully', { hasIMP: !!IMP });
+      logPaymentEvent("SDK loaded successfully", { hasIMP: !!IMP });
 
       // 3. SDK 초기화
       try {
         const merchantCode = getPortOneMerchantCode();
         IMP.init(merchantCode);
-        logPaymentEvent('SDK initialized', { merchantCode });
+        logPaymentEvent("SDK initialized", { merchantCode });
       } catch (initError) {
-        logPaymentEvent('SDK initialization failed', { error: initError });
+        logPaymentEvent("SDK initialization failed", { error: initError });
         throw new PaymentError(
           PaymentErrorCode.SDK_NOT_LOADED,
-          '아임포트 SDK 초기화에 실패했습니다.',
-          initError as Error
+          "아임포트 SDK 초기화에 실패했습니다.",
+          initError as Error,
         );
       }
 
@@ -108,116 +118,132 @@ export const usePayment = () => {
 
         const paymentData: IamportRequestPayData = {
           pg,
-          pay_method: 'card',
+          pay_method: "card",
           merchant_uid: checkoutResponse.providerSessionId,
           amount: checkoutResponse.amount,
-          name: 'OTT 멤버십 구독',
-          buyer_email: user?.email || '',
-          buyer_name: user?.username || '',
+          name: "OTT 멤버십 구독",
+          buyer_email: user?.email || "",
+          buyer_name: user?.username || "",
           // 모바일 리다이렉트 흐름에서는 이 콜백이 실행되지 않으므로, success 페이지가
           // paymentId/type + 아임포트가 붙여주는 imp_uid로 확정 API를 호출한다.
-          m_redirect_url: window.location.origin + '/membership/success?paymentId=' + checkoutResponse.paymentId + '&type=membership',
+          m_redirect_url:
+            window.location.origin +
+            "/membership/success?paymentId=" +
+            checkoutResponse.paymentId +
+            "&type=membership",
           popup: preferPortOnePopup(),
           // 정기결제 채널일 때만 채워진다. 이 값이 있어야 결제창이 결제와 동시에 빌링키를 발급해
           // 이 이름에 묶어 두고, 이후 자동 청구가 그 이름으로 재청구한다. 없으면 단건 결제로 끝난다.
-          ...(checkoutResponse.customerUid ? { customer_uid: checkoutResponse.customerUid } : {}),
+          ...(checkoutResponse.customerUid
+            ? { customer_uid: checkoutResponse.customerUid }
+            : {}),
         };
 
-        logPaymentEvent('Payment data prepared', {
+        logPaymentEvent("Payment data prepared", {
           pg,
           amount: paymentData.amount,
-          merchant_uid: paymentData.merchant_uid
+          merchant_uid: paymentData.merchant_uid,
         });
 
         IMP.request_pay(paymentData, async (response: IamportResponse) => {
-            // 응답 타입 검증
-            const validation = validatePaymentResponse(response);
-            if (!validation.isValid) {
-              logPaymentEvent('Invalid payment response', { response, error: validation.error });
-              const error = new PaymentError(
-                PaymentErrorCode.INVALID_PAYMENT_DATA,
-                validation.error || '유효하지 않은 결제 응답입니다.'
-              );
-              setPaymentState(prev => ({ ...prev, status: 'error', error }));
-              resolve({
-                success: false,
-                errorMessage: error.message
-              });
-              return;
-            }
-
-            logPaymentEvent('Payment response received', {
-              success: response.success,
-              error_msg: response.error_msg,
-              imp_uid: response.imp_uid
+          // 응답 타입 검증
+          const validation = validatePaymentResponse(response);
+          if (!validation.isValid) {
+            logPaymentEvent("Invalid payment response", {
+              response,
+              error: validation.error,
             });
-            
-            if (response.success) {
-              // 클라이언트 결제 확정(동기 주 경로): imp_uid로 서버가 아임포트에 재검증 후 멤버십 즉시 지급
-              try {
-                if (response.imp_uid) {
-                  await completePayment(checkoutResponse.paymentId, response.imp_uid);
-                }
-                logPaymentEvent('Payment confirmed', {
-                  paymentId: checkoutResponse.paymentId
-                });
-              } catch (confirmError) {
-                // 확정 호출이 실패해도 웹훅/대사 배치가 백업으로 확정하므로 성공으로 간주하고 진행
-                logPaymentEvent('Confirm call failed (webhook/batch backup)', {
-                  error: confirmError,
-                  paymentId: checkoutResponse.paymentId
-                });
+            const error = new PaymentError(
+              PaymentErrorCode.INVALID_PAYMENT_DATA,
+              validation.error || "유효하지 않은 결제 응답입니다.",
+            );
+            setPaymentState((prev) => ({ ...prev, status: "error", error }));
+            resolve({
+              success: false,
+              errorMessage: error.message,
+            });
+            return;
+          }
+
+          logPaymentEvent("Payment response received", {
+            success: response.success,
+            error_msg: response.error_msg,
+            imp_uid: response.imp_uid,
+          });
+
+          if (response.success) {
+            // 클라이언트 결제 확정(동기 주 경로): imp_uid로 서버가 아임포트에 재검증 후 멤버십 즉시 지급
+            try {
+              if (response.imp_uid) {
+                await completePayment(
+                  checkoutResponse.paymentId,
+                  response.imp_uid,
+                );
               }
-              setPaymentState(prev => ({
-                ...prev,
-                status: 'success',
-                paymentId: checkoutResponse.paymentId
-              }));
-              resolve({
-                success: true,
+              logPaymentEvent("Payment confirmed", {
                 paymentId: checkoutResponse.paymentId,
-                redirectUrl: checkoutResponse.redirectUrl
               });
-            } else {
-              logPaymentEvent('Payment failed', { 
-                error_msg: response.error_msg,
-                imp_uid: response.imp_uid 
-              });
-              const error = new PaymentError(
-                PaymentErrorCode.PAYMENT_FAILED,
-                response.error_msg || '결제에 실패했습니다.'
-              );
-              setPaymentState(prev => ({ ...prev, status: 'error', error }));
-              resolve({
-                success: false,
-                errorMessage: error.message
+            } catch (confirmError) {
+              // 확정 호출이 실패해도 웹훅/대사 배치가 백업으로 확정하므로 성공으로 간주하고 진행
+              logPaymentEvent("Confirm call failed (webhook/batch backup)", {
+                error: confirmError,
+                paymentId: checkoutResponse.paymentId,
               });
             }
-          });
+            setPaymentState((prev) => ({
+              ...prev,
+              status: "success",
+              paymentId: checkoutResponse.paymentId,
+            }));
+            resolve({
+              success: true,
+              paymentId: checkoutResponse.paymentId,
+              redirectUrl: checkoutResponse.redirectUrl,
+            });
+          } else {
+            logPaymentEvent("Payment failed", {
+              error_msg: response.error_msg,
+              imp_uid: response.imp_uid,
+            });
+            const error = new PaymentError(
+              PaymentErrorCode.PAYMENT_FAILED,
+              response.error_msg || "결제에 실패했습니다.",
+            );
+            setPaymentState((prev) => ({ ...prev, status: "error", error }));
+            resolve({
+              success: false,
+              errorMessage: error.message,
+            });
+          }
         });
+      });
     } catch (err) {
-      logPaymentEvent('Payment process error', { error: err });
-      
+      logPaymentEvent("Payment process error", { error: err });
+
       let paymentError: PaymentError;
       if (err instanceof PaymentError) {
         paymentError = err;
       } else if (err instanceof Error) {
         paymentError = new PaymentError(
           PaymentErrorCode.NETWORK_ERROR,
-          '결제 처리 중 오류가 발생했습니다.',
-          err
+          "결제 처리 중 오류가 발생했습니다.",
+          err,
         );
       } else {
         paymentError = new PaymentError(
           PaymentErrorCode.NETWORK_ERROR,
-          '알 수 없는 오류가 발생했습니다.'
+          "알 수 없는 오류가 발생했습니다.",
         );
       }
-      
-      setPaymentState(prev => ({ ...prev, status: 'error', error: paymentError }));
+
+      setPaymentState((prev) => ({
+        ...prev,
+        status: "error",
+        error: paymentError,
+      }));
       return {
         success: false,
-        errorMessage: paymentError.message
+        errorMessage: paymentError.message,
       };
     }
     // 로딩 상태는 결제 콜백(성공/실패)과 catch에서 종료시킨다.
@@ -228,54 +254,63 @@ export const usePayment = () => {
   const checkPayment = async (paymentId: number): Promise<boolean> => {
     try {
       const status = await checkPaymentStatus(paymentId);
-      logPaymentEvent('Payment status checked', { paymentId, status: status.status });
-      return status.status === 'SUCCEEDED';
+      logPaymentEvent("Payment status checked", {
+        paymentId,
+        status: status.status,
+      });
+      return status.status === "SUCCEEDED";
     } catch (err) {
-      logPaymentEvent('Payment status check failed', { paymentId, error: err });
+      logPaymentEvent("Payment status check failed", { paymentId, error: err });
       return false;
     }
   };
 
   // 재시도 로직이 포함된 결제 처리
-  const processPaymentWithRetry = async (request: PaymentRequest, maxRetries = 3): Promise<PaymentResult> => {
+  const processPaymentWithRetry = async (
+    request: PaymentRequest,
+    maxRetries = 3,
+  ): Promise<PaymentResult> => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        setPaymentState(prev => ({ ...prev, retryCount: attempt - 1 }));
+        setPaymentState((prev) => ({ ...prev, retryCount: attempt - 1 }));
         const result = await processPayment(request);
-        
+
         if (result.success) {
-          setPaymentState(prev => ({ ...prev, retryCount: 0 }));
+          setPaymentState((prev) => ({ ...prev, retryCount: 0 }));
           return result;
         }
-        
+
         // 실패한 경우 재시도 가능한지 확인
         if (attempt === maxRetries) {
           return result;
         }
-        
+
         // 재시도 가능한 에러인지 확인 (현재는 단순히 attempt < maxRetries로 처리)
-        logPaymentEvent('Retrying payment', { attempt, maxRetries });
+        logPaymentEvent("Retrying payment", { attempt, maxRetries });
         await delay(1000 * attempt); // 지수 백오프
-        
       } catch (error) {
         if (attempt === maxRetries) {
           throw error;
         }
-        logPaymentEvent('Payment attempt failed, retrying', { attempt, error });
+        logPaymentEvent("Payment attempt failed, retrying", { attempt, error });
         await delay(1000 * attempt);
       }
     }
-    
-    throw new PaymentError(PaymentErrorCode.PAYMENT_FAILED, '최대 재시도 횟수를 초과했습니다.');
+
+    throw new PaymentError(
+      PaymentErrorCode.PAYMENT_FAILED,
+      "최대 재시도 횟수를 초과했습니다.",
+    );
   };
 
   return {
     processPayment,
     processPaymentWithRetry,
     checkPayment,
-    isLoading: paymentState.status === 'loading',
+    isLoading: paymentState.status === "loading",
     error: paymentState.error?.message || null,
     paymentState,
-    clearError: () => setPaymentState(prev => ({ ...prev, error: undefined }))
+    clearError: () =>
+      setPaymentState((prev) => ({ ...prev, error: undefined })),
   };
 };

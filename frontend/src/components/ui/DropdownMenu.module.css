@@ -14,7 +14,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6B7280;
+  color: #6b7280;
   transition: color 0.2s ease;
 }
 
@@ -24,7 +24,7 @@
 
 .dropdownTrigger:focus {
   outline: none;
-  box-shadow: 0 0 0 2px #8B5CF6;
+  box-shadow: 0 0 0 2px #8b5cf6;
 }
 
 /* 세 점 아이콘 */
@@ -41,7 +41,9 @@
   background: #1a1a1a;
   border: 1px solid #404040;
   border-radius: 8px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.4),
+    0 2px 4px -1px rgba(0, 0, 0, 0.3);
   z-index: 1000;
   min-width: 120px;
   overflow: hidden;
@@ -57,7 +59,7 @@
   text-align: left;
   cursor: pointer;
   font-size: 14px;
-  color: #F7F7F7;
+  color: #f7f7f7;
   transition: background-color 0.2s ease;
   display: flex;
   align-items: center;
@@ -75,22 +77,22 @@
 
 /* 수정 아이템 */
 .dropdownItem.edit {
-  color: #10B981;
+  color: #10b981;
 }
 
 .dropdownItem.edit:hover {
   background-color: #404040;
-  color: #34D399;
+  color: #34d399;
 }
 
 /* 삭제 아이템 */
 .dropdownItem.delete {
-  color: #EF4444;
+  color: #ef4444;
 }
 
 .dropdownItem.delete:hover {
   background-color: #404040;
-  color: #F87171;
+  color: #f87171;
 }
 
 /* 아이콘 스타일 */

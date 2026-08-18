@@ -8,7 +8,7 @@ import styles from "./MainBanner.module.css";
  */
 export default function MainBanner() {
   const [currentSlide, setCurrentSlide] = useState(0);
-  
+
   // 임시 데이터 (실제로는 API에서 가져올 데이터)
   const bannerItems = [
     {
@@ -16,17 +16,19 @@ export default function MainBanner() {
       title: "귀멸의 칼날",
       subtitle: "무한성편",
       description: "8월 22일, 전국 극장 대개봉",
-      backgroundImage: "https://placehold.co/1200x600/1a1a1a/ffffff?text=귀멸의+칼날",
-      badge: "극장판"
+      backgroundImage:
+        "https://placehold.co/1200x600/1a1a1a/ffffff?text=귀멸의+칼날",
+      badge: "극장판",
     },
     {
       id: 2,
       title: "원피스",
       subtitle: "와노쿠니편",
       description: "새로운 에피소드 공개",
-      backgroundImage: "https://placehold.co/1200x600/2a2a2a/ffffff?text=원피스",
-      badge: "신작"
-    }
+      backgroundImage:
+        "https://placehold.co/1200x600/2a2a2a/ffffff?text=원피스",
+      badge: "신작",
+    },
   ];
 
   // 자동 슬라이드
@@ -42,10 +44,10 @@ export default function MainBanner() {
   return (
     <div className={styles.bannerContainer}>
       {/* 배경 이미지 */}
-      <div 
+      <div
         className={styles.bannerBackground}
-        style={{ 
-          backgroundImage: `url('${currentItem.backgroundImage}')`
+        style={{
+          backgroundImage: `url('${currentItem.backgroundImage}')`,
         }}
       />
 
@@ -53,31 +55,19 @@ export default function MainBanner() {
       <div className={styles.bannerInfo}>
         <div className={styles.bannerContent}>
           {/* 배지 */}
-          <div className={styles.bannerBadge}>
-            {currentItem.badge}
-          </div>
+          <div className={styles.bannerBadge}>{currentItem.badge}</div>
 
           {/* 제목 */}
-          <h1 className={styles.bannerTitle}>
-            {currentItem.title}
-          </h1>
-          <p className={styles.bannerSubtitle}>
-            {currentItem.subtitle}
-          </p>
+          <h1 className={styles.bannerTitle}>{currentItem.title}</h1>
+          <p className={styles.bannerSubtitle}>{currentItem.subtitle}</p>
 
           {/* 설명 */}
-          <p className={styles.bannerDescription}>
-            {currentItem.description}
-          </p>
+          <p className={styles.bannerDescription}>{currentItem.description}</p>
 
           {/* 버튼 */}
           <div className={styles.bannerButtonGroup}>
-            <button className={styles.bannerButton}>
-              보러가기 ▷
-            </button>
-            <button className={styles.bannerMoreButton}>
-              더보기
-            </button>
+            <button className={styles.bannerButton}>보러가기 ▷</button>
+            <button className={styles.bannerMoreButton}>더보기</button>
           </div>
         </div>
       </div>
@@ -87,7 +77,7 @@ export default function MainBanner() {
         {bannerItems.map((_, index) => (
           <div
             key={index}
-            className={`${styles.bannerDot} ${index === currentSlide ? styles.active : ''}`}
+            className={`${styles.bannerDot} ${index === currentSlide ? styles.active : ""}`}
             onClick={() => setCurrentSlide(index)}
           />
         ))}
@@ -96,13 +86,19 @@ export default function MainBanner() {
       {/* 화살표 네비게이션 */}
       <button
         className={`${styles.bannerArrow} ${styles.bannerArrowLeft}`}
-        onClick={() => setCurrentSlide((prev) => (prev - 1 + bannerItems.length) % bannerItems.length)}
+        onClick={() =>
+          setCurrentSlide(
+            (prev) => (prev - 1 + bannerItems.length) % bannerItems.length,
+          )
+        }
       >
         ‹
       </button>
       <button
         className={`${styles.bannerArrow} ${styles.bannerArrowRight}`}
-        onClick={() => setCurrentSlide((prev) => (prev + 1) % bannerItems.length)}
+        onClick={() =>
+          setCurrentSlide((prev) => (prev + 1) % bannerItems.length)
+        }
       >
         ›
       </button>

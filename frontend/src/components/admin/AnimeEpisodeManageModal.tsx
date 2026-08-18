@@ -46,7 +46,11 @@ function toForm(episode: AdminEpisode): FormState {
  *
  * episodeNumber 는 편집 대상이 아니다. 시청 기록·진행률·댓글이 에피소드에 붙어 있어 화수를 바꾸면 어긋난다.
  */
-export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }: Props) {
+export default function AnimeEpisodeManageModal({
+  animeId,
+  animeTitle,
+  onClose,
+}: Props) {
   const [episodes, setEpisodes] = useState<AdminEpisode[] | null>(null);
   const [forms, setForms] = useState<Record<number, FormState>>({});
   const [loading, setLoading] = useState(true);
@@ -63,16 +67,26 @@ export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }
         setEpisodes(list);
         setForms(Object.fromEntries(list.map((e) => [e.id, toForm(e)])));
       } catch (e) {
-        if (alive) setError(e instanceof Error ? e.message : "불러오지 못했습니다.");
+        if (alive)
+          setError(e instanceof Error ? e.message : "불러오지 못했습니다.");
       } finally {
         if (alive) setLoading(false);
       }
     })();
-    return () => { alive = false; }; // 응답 도착 전에 닫으면 setState 하지 않는다
+    return () => {
+      alive = false;
+    }; // 응답 도착 전에 닫으면 setState 하지 않는다
   }, [animeId]);
 
-  const setField = <K extends keyof FormState>(episodeId: number, key: K, value: FormState[K]) =>
-    setForms((prev) => ({ ...prev, [episodeId]: { ...prev[episodeId], [key]: value } }));
+  const setField = <K extends keyof FormState>(
+    episodeId: number,
+    key: K,
+    value: FormState[K],
+  ) =>
+    setForms((prev) => ({
+      ...prev,
+      [episodeId]: { ...prev[episodeId], [key]: value },
+    }));
 
   /** 바뀐 값만 담는다. 빈 문자열은 백엔드가 400 이므로 아예 넣지 않는다. */
   const buildRequest = (episode: AdminEpisode): EpisodeUpdateRequest => {
@@ -103,7 +117,9 @@ export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }
     try {
       const updated = await updateEpisodeForAdmin(animeId, episode.id, request);
       // 저장된 값을 기준값으로 갱신해야 다음 "변경된 내용" 판정이 맞는다.
-      setEpisodes((prev) => prev?.map((e) => (e.id === updated.id ? updated : e)) ?? prev);
+      setEpisodes(
+        (prev) => prev?.map((e) => (e.id === updated.id ? updated : e)) ?? prev,
+      );
       setForms((prev) => ({ ...prev, [updated.id]: toForm(updated) }));
       setSavedId(updated.id);
     } catch (e) {
@@ -113,7 +129,11 @@ export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }
     }
   };
 
-  const textField = (episode: AdminEpisode, label: string, key: typeof TEXT_KEYS[number]) => (
+  const textField = (
+    episode: AdminEpisode,
+    label: string,
+    key: (typeof TEXT_KEYS)[number],
+  ) => (
     <div className={styles.modalField}>
       <label className={styles.filterLabel}>{label}</label>
       <input
@@ -125,7 +145,12 @@ export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }
     </div>
   );
 
-  const checkbox = (episode: AdminEpisode, label: string, key: typeof BOOLEAN_KEYS[number], hint?: string) => (
+  const checkbox = (
+    episode: AdminEpisode,
+    label: string,
+    key: (typeof BOOLEAN_KEYS)[number],
+    hint?: string,
+  ) => (
     <label className={styles.checkLabel} title={hint}>
       <input
         type="checkbox"
@@ -140,16 +165,26 @@ export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }
   return (
     <div className={styles.modalOverlay} onClick={onClose}>
       {/* 모달 내부 클릭이 오버레이까지 올라가 창을 닫아버리지 않게 한다 */}
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()} style={{ maxWidth: 720 }}>
-        <h3 className={styles.modalTitle}>에피소드 관리 — {animeTitle || `ID ${animeId}`}</h3>
+      <div
+        className={styles.modal}
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 720 }}
+      >
+        <h3 className={styles.modalTitle}>
+          에피소드 관리 — {animeTitle || `ID ${animeId}`}
+        </h3>
 
         {loading ? (
           <p className={styles.modalHint}>불러오는 중...</p>
         ) : !episodes ? (
           <>
-            <div className={`${styles.result} ${styles.resultErr}`}>{error ?? "불러오지 못했습니다."}</div>
+            <div className={`${styles.result} ${styles.resultErr}`}>
+              {error ?? "불러오지 못했습니다."}
+            </div>
             <div className={styles.modalActions}>
-              <button className={styles.pagerBtn} onClick={onClose}>닫기</button>
+              <button className={styles.pagerBtn} onClick={onClose}>
+                닫기
+              </button>
             </div>
           </>
         ) : (
@@ -160,7 +195,11 @@ export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }
               화수 번호는 시청 기록·댓글이 붙어 있어 수정할 수 없습니다.
             </p>
 
-            {error && <div className={`${styles.result} ${styles.resultErr}`}>{error}</div>}
+            {error && (
+              <div className={`${styles.result} ${styles.resultErr}`}>
+                {error}
+              </div>
+            )}
 
             {episodes.length === 0 ? (
               <p className={styles.modalHint} style={{ padding: "18px 0" }}>
@@ -170,16 +209,33 @@ export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }
               episodes.map((episode) => (
                 <div
                   key={episode.id}
-                  style={{ borderTop: "1px solid #2c2f38", paddingTop: 14, marginTop: 14 }}
+                  style={{
+                    borderTop: "1px solid #2c2f38",
+                    paddingTop: 14,
+                    marginTop: 14,
+                  }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 8,
+                    }}
+                  >
                     <strong>{episode.episodeNumber}화</strong>
-                    <span style={{ color: "#6f7681", fontSize: 11 }}>ID {episode.id}</span>
-                    <span className={`${styles.badge} ${episode.isReleased ? styles.badgeOn : styles.badgeOff}`}>
+                    <span style={{ color: "#6f7681", fontSize: 11 }}>
+                      ID {episode.id}
+                    </span>
+                    <span
+                      className={`${styles.badge} ${episode.isReleased ? styles.badgeOn : styles.badgeOff}`}
+                    >
                       {episode.isReleased ? "공개" : "비공개"}
                     </span>
                     {savedId === episode.id && (
-                      <span style={{ color: "#4ade80", fontSize: 11 }}>저장됨</span>
+                      <span style={{ color: "#4ade80", fontSize: 11 }}>
+                        저장됨
+                      </span>
                     )}
                   </div>
 
@@ -188,17 +244,32 @@ export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }
                   {textField(episode, "썸네일 URL", "thumbnailUrl")}
 
                   <div className={styles.checkGrid} style={{ marginTop: 6 }}>
-                    {checkbox(episode, "사용자에게 노출", "isActive", "끄면 목록에서 사라집니다")}
-                    {checkbox(episode, "공개", "isReleased", "끄면 재생할 수 없습니다")}
+                    {checkbox(
+                      episode,
+                      "사용자에게 노출",
+                      "isActive",
+                      "끄면 목록에서 사라집니다",
+                    )}
+                    {checkbox(
+                      episode,
+                      "공개",
+                      "isReleased",
+                      "끄면 재생할 수 없습니다",
+                    )}
                   </div>
 
-                  <div className={styles.modalActions} style={{ marginTop: 10 }}>
+                  <div
+                    className={styles.modalActions}
+                    style={{ marginTop: 10 }}
+                  >
                     <button
                       className={styles.button}
                       onClick={() => handleSave(episode)}
                       disabled={savingId !== null}
                     >
-                      {savingId === episode.id ? "저장 중..." : `${episode.episodeNumber}화 저장`}
+                      {savingId === episode.id
+                        ? "저장 중..."
+                        : `${episode.episodeNumber}화 저장`}
                     </button>
                   </div>
                 </div>
@@ -206,7 +277,11 @@ export default function AnimeEpisodeManageModal({ animeId, animeTitle, onClose }
             )}
 
             <div className={styles.modalActions} style={{ marginTop: 18 }}>
-              <button className={styles.pagerBtn} onClick={onClose} disabled={savingId !== null}>
+              <button
+                className={styles.pagerBtn}
+                onClick={onClose}
+                disabled={savingId !== null}
+              >
                 닫기
               </button>
             </div>

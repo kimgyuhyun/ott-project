@@ -31,7 +31,8 @@ export interface CurrentUser {
   oauth2User?: boolean;
 }
 
-export interface User { // 다른 파일에서 import로 사용 가능
+export interface User {
+  // 다른 파일에서 import로 사용 가능
   // TypeScript 타입 정의
   // ?가 있으면 선택 필드, 없으면 필수 필드
   id: number; // id는 number 타입이고 필수 필드
@@ -46,7 +47,8 @@ export interface User { // 다른 파일에서 import로 사용 가능
   // 날짜도 문자열로 받음 백엔드에서 LocalDateTime -> JSON 변환 시 문자열로 전송 "2024-01-15ㅆ10:30:00" 형태
 }
 
-export interface Anime { // 다른 파일에서 import로 사용 가능
+export interface Anime {
+  // 다른 파일에서 import로 사용 가능
   // TypeScript 타입 정의
   // ?가 있으면 선택 필드, 없으면 필수 필드
   id: number; // id는 number 타입이고 필수 필드
@@ -59,7 +61,7 @@ export interface Anime { // 다른 파일에서 import로 사용 가능
   status?: string; // status는 string 타입이고 선택 필드 / 방영 상태 없는 애니도 있기에 / 못가져올수도있고
   type?: string; // type는 string 타입이고 선택 필드 / 타입 없는 애니도 있기에 / 못가져올수도있고 // TV / 영화 / OVA / OAD 등등
   genres?: string[]; // genres는 string 타입이고 선택 필드 / 장르 없는 애니도 있기에 / 못가져올수도있고 // 예: #가족, #일상
-  studios?: string[]; // studios는 string 타입이고 선택 필드 / 제작사 없는 애니도 있기에 / 못가져올수도있고 
+  studios?: string[]; // studios는 string 타입이고 선택 필드 / 제작사 없는 애니도 있기에 / 못가져올수도있고
   rating?: number; // rating는 number 타입이고 선택 필드 / 평점 없는 애니도 있기에 / 못가져올수도있고 // 0.0 ~ 5.0
   episodeCount?: number; // episodeCount는 number 타입이고 선택 필드 / 에피소드 수 없는 애니도 있기에 / 못가져올수도있고 // 1 ~ 100
   duration?: number; // duration는 number 타입이고 선택 필드 / 러닝타임 없는 애니도 있기에 / 못가져올수도있고 // 1 ~ 100
@@ -149,6 +151,12 @@ export interface ApiError {
 
 // 이벤트 핸들러 타입
 export type EventHandler<T = Event> = (event: T) => void;
-export type MouseEventHandler<T = HTMLButtonElement> = (event: React.MouseEvent<T>) => void;
-export type ChangeEventHandler<T = HTMLInputElement> = (event: React.ChangeEvent<T>) => void;
-export type KeyboardEventHandler<T = HTMLInputElement> = (event: React.KeyboardEvent<T>) => void;
+export type MouseEventHandler<T = HTMLButtonElement> = (
+  event: React.MouseEvent<T>,
+) => void;
+export type ChangeEventHandler<T = HTMLInputElement> = (
+  event: React.ChangeEvent<T>,
+) => void;
+export type KeyboardEventHandler<T = HTMLInputElement> = (
+  event: React.KeyboardEvent<T>,
+) => void;

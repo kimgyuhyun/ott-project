@@ -60,7 +60,9 @@ export default function HomeClient({
   initialWeeklyAnime,
 }: HomeClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(null);
+  const [selectedAnime, setSelectedAnime] = useState<AnimeListItem | null>(
+    null,
+  );
   const [animeList] = useState<Anime[]>(initialAnimeList);
   const [recommendedAnime] = useState<Anime[]>(initialRecommendedAnime);
   const [popularAnime] = useState<Anime[]>(initialPopularAnime);
@@ -90,12 +92,19 @@ export default function HomeClient({
   const [recommendedScrollable, setRecommendedScrollable] = useState(false);
   const [popularScrollable, setPopularScrollable] = useState(false);
 
-  const scrollByCard = (ref: React.RefObject<HTMLDivElement>, direction: number) => {
+  const scrollByCard = (
+    ref: React.RefObject<HTMLDivElement>,
+    direction: number,
+  ) => {
     const container = ref.current;
     if (!container) return;
-    const firstItem = container.querySelector(`.${styles.carouselItem}`) as HTMLElement | null;
+    const firstItem = container.querySelector(
+      `.${styles.carouselItem}`,
+    ) as HTMLElement | null;
     const gapPx = 16;
-    const scrollAmount = firstItem ? (firstItem.getBoundingClientRect().width + gapPx) : Math.max(240, container.clientWidth * 0.8);
+    const scrollAmount = firstItem
+      ? firstItem.getBoundingClientRect().width + gapPx
+      : Math.max(240, container.clientWidth * 0.8);
     container.scrollBy({ left: direction * scrollAmount, behavior: "smooth" });
   };
 
@@ -109,10 +118,15 @@ export default function HomeClient({
   useEffect(() => {
     const updateScrollability = () => {
       if (recommendedRef.current) {
-        setRecommendedScrollable(recommendedRef.current.scrollWidth > recommendedRef.current.clientWidth + 4);
+        setRecommendedScrollable(
+          recommendedRef.current.scrollWidth >
+            recommendedRef.current.clientWidth + 4,
+        );
       }
       if (popularRef.current) {
-        setPopularScrollable(popularRef.current.scrollWidth > popularRef.current.clientWidth + 4);
+        setPopularScrollable(
+          popularRef.current.scrollWidth > popularRef.current.clientWidth + 4,
+        );
       }
     };
 
@@ -125,7 +139,9 @@ export default function HomeClient({
     const setTheme = async () => {
       if (isAuthenticated && user) {
         try {
-          const response = await fetch("/api/users/me/settings", { credentials: "include" });
+          const response = await fetch("/api/users/me/settings", {
+            credentials: "include",
+          });
           if (response.ok) {
             const contentType = response.headers.get("content-type");
             if (contentType && contentType.includes("application/json")) {
@@ -133,10 +149,19 @@ export default function HomeClient({
               if (text.trim()) {
                 try {
                   const settings = JSON.parse(text);
-                  if (settings.theme && (settings.theme === "light" || settings.theme === "dark")) {
-                    document.documentElement.setAttribute("data-theme", settings.theme);
+                  if (
+                    settings.theme &&
+                    (settings.theme === "light" || settings.theme === "dark")
+                  ) {
+                    document.documentElement.setAttribute(
+                      "data-theme",
+                      settings.theme,
+                    );
                   } else {
-                    document.documentElement.setAttribute("data-theme", "light");
+                    document.documentElement.setAttribute(
+                      "data-theme",
+                      "light",
+                    );
                   }
                 } catch {
                   document.documentElement.setAttribute("data-theme", "light");
@@ -170,10 +195,18 @@ export default function HomeClient({
           const localResponse = await api.get("/api/users/me");
           if (localResponse) {
             const userData = {
-              id: String((localResponse as { id?: string | number }).id || "unknown"),
-              username: String((localResponse as { username?: string }).username || ""),
+              id: String(
+                (localResponse as { id?: string | number }).id || "unknown",
+              ),
+              username: String(
+                (localResponse as { username?: string }).username || "",
+              ),
               email: String((localResponse as { email?: string }).email || ""),
-              profileImage: typeof (localResponse as { profileImage?: string }).profileImage === "string" ? (localResponse as { profileImage?: string }).profileImage : undefined,
+              profileImage:
+                typeof (localResponse as { profileImage?: string })
+                  .profileImage === "string"
+                  ? (localResponse as { profileImage?: string }).profileImage
+                  : undefined,
             };
             login(userData);
             return;
@@ -182,18 +215,44 @@ export default function HomeClient({
           // fallback to oauth status
         }
 
-        const oauthResponse = await api.get<OAuthUserInfoResponse>("/oauth2/user-info");
-        if (oauthResponse.authenticated && (oauthResponse.attributes || oauthResponse.username)) {
+        const oauthResponse =
+          await api.get<OAuthUserInfoResponse>("/oauth2/user-info");
+        if (
+          oauthResponse.authenticated &&
+          (oauthResponse.attributes || oauthResponse.username)
+        ) {
           const userData = {
-            id: String((oauthResponse as { id?: string }).id || oauthResponse.attributes?.userId || oauthResponse.attributes?.id || "unknown"),
-            username: String(oauthResponse.username || oauthResponse.attributes?.userName || oauthResponse.attributes?.name || ""),
-            email: String((oauthResponse as { email?: string }).email || oauthResponse.attributes?.userEmail || oauthResponse.attributes?.email || oauthResponse.username || ""),
-            profileImage: typeof oauthResponse.attributes?.picture === "string" ? oauthResponse.attributes.picture : undefined,
+            id: String(
+              (oauthResponse as { id?: string }).id ||
+                oauthResponse.attributes?.userId ||
+                oauthResponse.attributes?.id ||
+                "unknown",
+            ),
+            username: String(
+              oauthResponse.username ||
+                oauthResponse.attributes?.userName ||
+                oauthResponse.attributes?.name ||
+                "",
+            ),
+            email: String(
+              (oauthResponse as { email?: string }).email ||
+                oauthResponse.attributes?.userEmail ||
+                oauthResponse.attributes?.email ||
+                oauthResponse.username ||
+                "",
+            ),
+            profileImage:
+              typeof oauthResponse.attributes?.picture === "string"
+                ? oauthResponse.attributes.picture
+                : undefined,
           };
           login(userData);
         }
       } catch (error: unknown) {
-        if ((error as Error & { response?: { status?: number } }).response?.status !== 401) {
+        if (
+          (error as Error & { response?: { status?: number } }).response
+            ?.status !== 401
+        ) {
           console.error("로그인 상태 확인 실패:", error);
         }
       }
@@ -214,10 +273,22 @@ export default function HomeClient({
   };
 
   const handleAnimeClick = async (
-    anime: Anime | { aniId?: number; id?: number; title?: string; titleEn?: string; titleJp?: string; posterUrl?: string; isNew?: boolean },
+    anime:
+      | Anime
+      | {
+          aniId?: number;
+          id?: number;
+          title?: string;
+          titleEn?: string;
+          titleJp?: string;
+          posterUrl?: string;
+          isNew?: boolean;
+        },
   ) => {
     // 모달 오픈에 필요한 최소 정보(AnimeListItem)로 변환한다.
-    const coerceToAnime = (src: Partial<AnimeListItem> & { id?: number }): AnimeListItem => {
+    const coerceToAnime = (
+      src: Partial<AnimeListItem> & { id?: number },
+    ): AnimeListItem => {
       const aniId = Number(src?.aniId ?? src?.id ?? 0);
       return {
         aniId,
@@ -272,7 +343,10 @@ export default function HomeClient({
 
         <section className={styles.contentSection}>
           <div className={styles.contentContainer}>
-            <WeeklySchedule onAnimeClick={(anime) => handleAnimeClick(anime)} animeData={weeklyAnime} />
+            <WeeklySchedule
+              onAnimeClick={(anime) => handleAnimeClick(anime)}
+              animeData={weeklyAnime}
+            />
           </div>
 
           {recommendedAnime.length > 0 && (
@@ -299,11 +373,21 @@ export default function HomeClient({
                         <Image
                           className={styles.animeGridPoster}
                           src={anime.posterUrl || "/placeholder-anime.jpg"}
-                          alt={anime.title || anime.titleEn || anime.titleJp || "애니메이션 포스터"}
+                          alt={
+                            anime.title ||
+                            anime.titleEn ||
+                            anime.titleJp ||
+                            "애니메이션 포스터"
+                          }
                           width={200}
                           height={280}
                         />
-                        <div className={styles.animeGridTitle}>{anime.title || anime.titleEn || anime.titleJp || "제목 없음"}</div>
+                        <div className={styles.animeGridTitle}>
+                          {anime.title ||
+                            anime.titleEn ||
+                            anime.titleJp ||
+                            "제목 없음"}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -345,11 +429,21 @@ export default function HomeClient({
                         <Image
                           className={styles.animeGridPoster}
                           src={anime.posterUrl || "/placeholder-anime.jpg"}
-                          alt={anime.title || anime.titleEn || anime.titleJp || "애니메이션 포스터"}
+                          alt={
+                            anime.title ||
+                            anime.titleEn ||
+                            anime.titleJp ||
+                            "애니메이션 포스터"
+                          }
                           width={200}
                           height={280}
                         />
-                        <div className={styles.animeGridTitle}>{anime.title || anime.titleEn || anime.titleJp || "제목 없음"}</div>
+                        <div className={styles.animeGridTitle}>
+                          {anime.title ||
+                            anime.titleEn ||
+                            anime.titleJp ||
+                            "제목 없음"}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -370,7 +464,11 @@ export default function HomeClient({
       </main>
 
       {isModalOpen && selectedAnime && (
-        <AnimeDetailModal anime={selectedAnime} isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+        <AnimeDetailModal
+          anime={selectedAnime}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+        />
       )}
 
       <Footer />

@@ -2,5 +2,3 @@
 import MyPage from "./page";
 
 export default MyPage;
-
-

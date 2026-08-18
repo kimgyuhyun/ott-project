@@ -165,8 +165,14 @@ export default function ProfilesPage() {
               type="button"
               className={styles.avatarButton}
               disabled={isBusy}
-              onClick={() => (isEditing ? startEditingName(profile) : handleSelect(profile.id))}
-              aria-label={isEditing ? `${profile.name} 이름 변경` : `${profile.name} 프로필 사용`}
+              onClick={() =>
+                isEditing ? startEditingName(profile) : handleSelect(profile.id)
+              }
+              aria-label={
+                isEditing
+                  ? `${profile.name} 이름 변경`
+                  : `${profile.name} 프로필 사용`
+              }
             >
               <Image
                 src="/icons/default-avatar.png"
@@ -183,7 +189,11 @@ export default function ProfilesPage() {
                 className={styles.deleteButton}
                 onClick={() => handleDelete(profile.id)}
                 disabled={isBusy || profiles.length <= 1}
-                title={profiles.length <= 1 ? "마지막 프로필은 삭제할 수 없습니다." : "프로필 삭제"}
+                title={
+                  profiles.length <= 1
+                    ? "마지막 프로필은 삭제할 수 없습니다."
+                    : "프로필 삭제"
+                }
                 aria-label={`${profile.name} 프로필 삭제`}
               >
                 ×
@@ -216,7 +226,9 @@ export default function ProfilesPage() {
           <div className={styles.profileItem}>
             {isAdding ? (
               <>
-                <div className={`${styles.avatarButton} ${styles.addButton}`}>+</div>
+                <div className={`${styles.avatarButton} ${styles.addButton}`}>
+                  +
+                </div>
                 <input
                   className={styles.nameInput}
                   value={draftName}
@@ -254,13 +266,17 @@ export default function ProfilesPage() {
         )}
       </div>
 
-      <button type="button" className={styles.editButton} onClick={toggleEditMode}>
+      <button
+        type="button"
+        className={styles.editButton}
+        onClick={toggleEditMode}
+      >
         {isEditing ? "완료" : "프로필 편집"}
       </button>
 
       <p className={styles.notice}>
-        지금은 프로필을 골라도 시청기록·보고싶다·별점은 계정 하나로 함께 쌓입니다.
-        프로필별로 나누는 작업은 아직입니다.
+        지금은 프로필을 골라도 시청기록·보고싶다·별점은 계정 하나로 함께
+        쌓입니다. 프로필별로 나누는 작업은 아직입니다.
       </p>
     </div>
   );

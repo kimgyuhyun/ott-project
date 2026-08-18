@@ -2,7 +2,7 @@ import type { CurrentUser, UserResponse } from "@/types/common";
 // 동일 오리진 경유 // 프론트엔드와 백엔드가 같은 도메인/포트에서 서비스된다는 뜻
 // 1. 클라이언트가 http://example.com/ -> nginx (80/443 포트)
 // http://exmaple.com/api/auth/login -> nginx (80/443 포트)
-// 2. nginx가 내부로 분기: 
+// 2. nginx가 내부로 분기:
 // /api/로 시작하면 백앤드(ott-app:8090)로 프록시
 // 그 외는 프론트엔드(ott-frontend:3000)로 프록시
 // 클라이언트 관점에서는 모든 요청이 같은 도메인(80/443)으로 보이고 실제로로는 nginx가 내부에서 분기함
@@ -12,7 +12,7 @@ import type { CurrentUser, UserResponse } from "@/types/common";
 // 로그인 관련 API 함수들
 
 // API 기본 설정: 항상 동일 오리진 프록시 사용
-const API_BASE = ''; // 상대 경로로 요청하면 nginx가 자동으로 백엔드로 프록시
+const API_BASE = ""; // 상대 경로로 요청하면 nginx가 자동으로 백엔드로 프록시
 // featch('/api/auth/login') -> nginx (80/443 포트) -> ott-app:8090/api/auth/login으로 전달
 // API_BASE = '' → /api/auth/login → nginx가 백엔드로 전달
 // API_BASE = 'apple' → apple/api/auth/login → 404 에러
@@ -32,7 +32,10 @@ const API_BASE = ''; // 상대 경로로 요청하면 nginx가 자동으로 백�
 // 호이스팅이란 변수/함수 선언이 스코프 상단으로 끌어올려지는 동작 즉 코드를 실행하기 전에 함수 선언식이 메모리에 먼저 등록됨
 // 그래서 선언 전에도 호출가능
 // let/const는 선언 전 접근 불가임
-async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiCall<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
   // 제네릭, 호이스팅이 가능한 비동기함수 apiCall<T> 선언
   // endpoint에는 '/api/auth/login' 이렇게 문자열로 전달되고 API 경로 문자열임 즉, 백엔드 API 경로임
   // options에는 HTTP 요청을 초기화할 때 필요한 설정 정보들이 객체 형태로 들어오는데
@@ -52,24 +55,27 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
   // 재할당 불가 변수고 백틱 + ${...}는 "템플릿 리터럴"이라고 해서, 문자열 안에 변수나 표현식을 쉽게 넣을수 있게 해줌
   // API_BASE 변수는 빈 문자열이고 endpoint에 'api/auth/login' 이렇게 들어오면 두 값을 붙여서
   // 최종 URL로 '/api/auth/login' 이렇게 만들어지고 이걸 url에 할당함
-  
-  const response = await fetch(url, { // HTTP 요청 옵션에 세션 쿠키, 헤더 기본 정보 포함해서 서버에 요청 전송하고
+
+  const response = await fetch(url, {
+    // HTTP 요청 옵션에 세션 쿠키, 헤더 기본 정보 포함해서 서버에 요청 전송하고
     // 응답이오면 재할당 불가 response 변수에 저장함
     // fetch 함수로 url에 요청을 보내고 응답을 받음
     // 재할당 불가 변수 response에 결과(응답)을 저장함 awit은 비동기 처리임임
     ...options, // ...은 스프레드 문법이고 options 객체 안의 모든 속성을 여기에 펼쳐서(복사해서) 추가해준다는 뜻
-    credentials: 'include', // 세션 쿠키 포함
+    credentials: "include", // 세션 쿠키 포함
     // HTTP 요청에 "쿠키"와 같은 인증정보를 보내는 옵션, 'include'는 반드시 브라우저 쿠키(로그인 세션)를 포함해서 요청한다는뜻
     // 로그인/인증이 필요한 AJAX 요청에서 자주씀, 여긴 fetch를 사용했음음
-    headers: { // 요청 헤더 정보 지정
-      'Content-Type': 'application/json', // 요청 본문(body)이 JSON임을 서버에 알리는것임
+    headers: {
+      // 요청 헤더 정보 지정
+      "Content-Type": "application/json", // 요청 본문(body)이 JSON임을 서버에 알리는것임
       ...options.headers, // 전달받은 options에 추가/수정된 headers가 있으면 덮어씌움
       // options에서 기본으로 제공되는 헤더가 없기에 여기서 headers 정보를 지정하고 기본정보를 추가함
       // 기본 헤더는 함수 내부에서 자동으로 주입해주고 필요시 직접 추가할수있게하면 실수를 줄일수있음
     },
   });
 
-  if (!response.ok) { // 만약 response.ok가 false(=응답이 성공하지 않음)이면 아래 코드 실행
+  if (!response.ok) {
+    // 만약 response.ok가 false(=응답이 성공하지 않음)이면 아래 코드 실행
     const errorText = await response.text(); // 응답 본문(body)을 문자열로 읽어와서 errorText에 저장함
     throw new Error(`API Error: ${response.status} ${errorText}`); // Http 상태 코드랑 응답 본문(body)를 문자열로 합쳐서
     // 에러 객체를 만들고 던짐
@@ -81,13 +87,18 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 // 로그인 API
 // turnstileToken: 직전 로그인 실패로 사람 확인이 요구될 때만 채워서 보냄(그 외엔 undefined)
-export async function login(email: string, password: string, turnstileToken?: string): Promise<UserResponse> {
+export async function login(
+  email: string,
+  password: string,
+  turnstileToken?: string,
+): Promise<UserResponse> {
   // 외부에서 import해서 사용가능한 비동기 함수 function이 붙으면 호이스팅,제네릭이 가능하지만 export여서 호이스팅 불가함
   // email 파라미터는 String 형식으로 받아야함, password 파라미터도 string 형식으로 받아야함
   // 참고로 자바스크립트 함수는 리턴 타입이 지정 불가하고 타입스크립트는 리턴타입을 타입추론해서 생략 가능함
-  return apiCall<UserResponse>('/api/auth/login', { // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
+  return apiCall<UserResponse>("/api/auth/login", {
+    // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
     // 파라미터로 백엔드 api 경로, 요청 본문을 apiCall 함수에 태워보냄
-    method: 'POST', // 요청형식 POST로 지정
+    method: "POST", // 요청형식 POST로 지정
     body: JSON.stringify({ email, password, turnstileToken }), // JSON.stringify는 Javascript 내장 함수임
     // {email, password}는 객체 리터럴 문법이고 축약식임 이걸로 JavaScript 객체를 만들고 그걸 함수에 넘겨주면
     // JSON 문자열이 반환되고 그게 요청 본문으로 저장됨
@@ -97,11 +108,16 @@ export async function login(email: string, password: string, turnstileToken?: st
 }
 
 // 회원가입 API
-export async function register(email: string, password: string, name: string): Promise<UserResponse> {
+export async function register(
+  email: string,
+  password: string,
+  name: string,
+): Promise<UserResponse> {
   // import 해서 사용 가능한 비동기 함수 호이스팅은 불가
   // 파라미터로 email, password, name을 받고 이건 모두 String 타입이어야함 함수명은 register
-  return apiCall<UserResponse>('/api/auth/register', { // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
-    method: 'POST', // 요청형식 POST로 
+  return apiCall<UserResponse>("/api/auth/register", {
+    // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
+    method: "POST", // 요청형식 POST로
     body: JSON.stringify({ email, password, name }),
     // 함수 호출할때 파라미터로 받은 email, password, name을 Javascript 객체로 만들고 이걸 문자열로 변환해서 요청본문(Body)에 저장
     // 이 register 함수는 회원가입 폼에서 email, password, name을 보내면 그걸 Javascript 객체로 만들고 문자열로 변환한뒤
@@ -113,7 +129,9 @@ export async function register(email: string, password: string, name: string): P
 export async function checkEmailDuplicate(email: string) {
   // import 해서 사용 가능한 비동기 함수 호이스팅은 불가
   // 파라미터로 email을 받고 이건 String 타입이어야함 함수명은 checkEmailDuplicate
-  return apiCall<boolean>(`/api/auth/check-email?email=${encodeURIComponent(email)}`);
+  return apiCall<boolean>(
+    `/api/auth/check-email?email=${encodeURIComponent(email)}`,
+  );
   // URL 쿼리 파라미터로 데이터를 포함해서 보내는 URL 쿼리 파라미터 형식임
   // URL 쿼리 파라미터는 경로 뒤에 ?로 시작하는것 key=value 형태임
   // 형식은 ?key=value 이거고 예시는 ?email=test@example.com 이거고 여기서 email이 key고 test@example.com이 value임
@@ -128,23 +146,24 @@ export async function checkEmailDuplicate(email: string) {
   // 회원가입 폼에서 이메일 입력하고 중복확인 버튼 누르면 유저가 입력한 email값이 여기로 전달되고 그 값을
   // 백엔드 API 경로에 인코딩해서 문자열로 합치고 apiCall 함수에 태워보내면 true 혹은 false가 반환되고
   // 그 결과로 중복여부를 알 수 있음 true면 중복 false면 중복이 아님
-
 }
 
 // 로그아웃 API
 export async function logout() {
   // import 해서 사용 가능한 비동기 함수 호이스팅은 불가
-  const response = await fetch('/api/auth/logout', { // fetch함수에 백엔드경로랑 HTTP 요청 방식과 헤더 정보를 태워보내면
+  const response = await fetch("/api/auth/logout", {
+    // fetch함수에 백엔드경로랑 HTTP 요청 방식과 헤더 정보를 태워보내면
     // 응답값을 재할당 불가 변수 response에 저장함
-    method: 'POST', // 요청형식 POST로 지정정
-    credentials: 'include',// 세션 쿠키 포함
+    method: "POST", // 요청형식 POST로 지정정
+    credentials: "include", // 세션 쿠키 포함
     headers: {
-      'Content-Type': 'application/json', // 요청 본문(body)이 JSON임을 서버에 알리는것임
+      "Content-Type": "application/json", // 요청 본문(body)이 JSON임을 서버에 알리는것임
       // 로그아웃은 사실 요청본문이없어서 헤더 정보가 불필요 세션 쿠키만 보내면됨됨
     },
   });
 
-  if (!response.ok) { // 만약 response.ok가 false(=응답이 성공하지 않음)이면 아래 코드 실행
+  if (!response.ok) {
+    // 만약 response.ok가 false(=응답이 성공하지 않음)이면 아래 코드 실행
     const errorText = await response.text(); // 응답 본문(body)을 문자열로 읽어와서 errorText에 저장함
     throw new Error(`API Error: ${response.status} ${errorText}`); // Http 상태 코드랑 응답 본문(body)를 문자열로 합쳐서
     // 에러 객체를 만들고 던짐
@@ -166,15 +185,16 @@ export async function logout() {
 // 성공하면 서버가 계정을 익명화하고 세션을 무효화한다(되돌릴 수 없음) — 호출부는 로그인 화면으로 보내야 한다.
 // logout 과 같은 모양으로 만든 이유: 응답이 JSON 이 아니라 텍스트라 apiCall(response.json())을 쓸 수 없다.
 export async function withdraw(): Promise<string> {
-  const response = await fetch('/api/auth/withdraw', {
-    method: 'DELETE', // 백엔드 엔드포인트가 DELETE /api/auth/withdraw
-    credentials: 'include', // 세션 쿠키 포함 — 세션의 이메일로 탈퇴 대상을 찾는다
+  const response = await fetch("/api/auth/withdraw", {
+    method: "DELETE", // 백엔드 엔드포인트가 DELETE /api/auth/withdraw
+    credentials: "include", // 세션 쿠키 포함 — 세션의 이메일로 탈퇴 대상을 찾는다
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   });
 
-  if (!response.ok) { // 실패(활성 구독 400, 미로그인 400 등)
+  if (!response.ok) {
+    // 실패(활성 구독 400, 미로그인 400 등)
     const errorText = await response.text(); // 응답 본문을 문자열로 읽음
     // 400 본문은 두 형태로 온다: 전역 예외 처리기의 JSON({code, message})과 컨트롤러가 직접 만든 평문.
     // 사용자에게 보여줄 수 있는 문구는 서버가 준 message 이므로 JSON 이면 거기서 꺼낸다.
@@ -192,16 +212,20 @@ export async function withdraw(): Promise<string> {
 }
 
 // 현재 사용자 정보 가져오기
-export async function getCurrentUser(): Promise<CurrentUser | null> { // import 해서 사용 가능한 비동기 함수 호이스팅은 불가
-  try { // 에외처리할려고 try catch문 사용
-    return await apiCall<CurrentUser>('/api/oauth2/user-info'); // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
+export async function getCurrentUser(): Promise<CurrentUser | null> {
+  // import 해서 사용 가능한 비동기 함수 호이스팅은 불가
+  try {
+    // 에외처리할려고 try catch문 사용
+    return await apiCall<CurrentUser>("/api/oauth2/user-info"); // apiCall 함수를 호출해서 return 값을 바로 반환하는 형태임
     // apiCall이 성공하면 JavaSCript 객체를 그대로 반환함
     // credentials: 'include', // 세션 쿠키 포함 이 옵션이 있으면 브라우저가 자동으로 세션 쿠키를 포함해서 요청을 보내서
     // 서버는 이 쿠키로 현재 로그인한 사용자를 식별 가능. 그래서 여기서는 따로 HTTP 요청 정보를 안보내줘도됨.
-  } catch (error) { // apiCall 함수에서 응답오류가나면 error 객체를 던지는데 이걸 catch문에서 처리함
+  } catch (error) {
+    // apiCall 함수에서 응답오류가나면 error 객체를 던지는데 이걸 catch문에서 처리함
     // 401 에러는 로그인하지 않은 상태
-    if (error instanceof Error && error.message.includes('401')) { // error 객체가 Error 타입이고
-    //  message 속성에 '401'이 포함되어있으면 아래 코드 실행
+    if (error instanceof Error && error.message.includes("401")) {
+      // error 객체가 Error 타입이고
+      //  message 속성에 '401'이 포함되어있으면 아래 코드 실행
       return null; // 401 에러는 로그인하지 않은 상태이므로 null을 반환
     }
     throw error; // 그 외 에러는 그대로 던짐
@@ -211,24 +235,31 @@ export async function getCurrentUser(): Promise<CurrentUser | null> { // import 
 
 // 이메일 인증 코드 발송
 // turnstileToken: 사람 확인 위젯 통과 후 발급된 토큰(발송은 항상 사람 확인 요구)
-export const sendVerificationCode = async (email: string, turnstileToken?: string): Promise<void> => {
-  // 파라미터로 email을 받고 이건 string 타입이어야하고 
+export const sendVerificationCode = async (
+  email: string,
+  turnstileToken?: string,
+): Promise<void> => {
+  // 파라미터로 email을 받고 이건 string 타입이어야하고
   // Promise<void>는 리턴값이 없다는 뜻이고 이 함수는 리턴값이 void 타입이어야한다고 약속한것
   // () => {} 는 익명 함수이자 화살표 함수고 함수 정의할 때 사용
   // 아래 동작 정의를 import 해서 사용 가능한 재할당 불가 변수 sendVerificationCode에 할당함
   // sendVerificationCOde는 import 가능 재할당 불가 비동기 함수가됨됨
   // 이메일과 함께 turnstileToken 을 쿼리 파라미터로 붙인다(토큰은 비밀값이 아니고 1회용임)
-  const query = `email=${encodeURIComponent(email)}${turnstileToken ? `&turnstileToken=${encodeURIComponent(turnstileToken)}` : ''}`;
-  const response = await fetch(`${API_BASE}/api/auth/send-verification-code?${query}`, {
-    //  유저가 회원가입 폼에서 입력한 email값이 여기에 전달되고 그걸 URL 쿼리 파라미터에 추가함
-    // fetch 함수에 상대경로랑 쿼리 파라미터에 추가한값을 합쳐서 전달
-    method: 'POST', // 요청형식 POST로 지정
-    headers: {
-      'Content-Type': 'application/json', // 요청 본문(body)이 JSON임을 서버에 알리는것임
+  const query = `email=${encodeURIComponent(email)}${turnstileToken ? `&turnstileToken=${encodeURIComponent(turnstileToken)}` : ""}`;
+  const response = await fetch(
+    `${API_BASE}/api/auth/send-verification-code?${query}`,
+    {
+      //  유저가 회원가입 폼에서 입력한 email값이 여기에 전달되고 그걸 URL 쿼리 파라미터에 추가함
+      // fetch 함수에 상대경로랑 쿼리 파라미터에 추가한값을 합쳐서 전달
+      method: "POST", // 요청형식 POST로 지정
+      headers: {
+        "Content-Type": "application/json", // 요청 본문(body)이 JSON임을 서버에 알리는것임
+      },
     },
-  });
+  );
 
-  if (!response.ok) { // 만약 response.ok가 false(=응답이 성공하지 않음)이면 아래 코드 실행
+  if (!response.ok) {
+    // 만약 response.ok가 false(=응답이 성공하지 않음)이면 아래 코드 실행
     const errorText = await response.text(); // 응답 본문(body)을 문자열로 읽어와서 errorText에 저장함
     throw new Error(`인증코드 발송 실패: ${errorText}`); // Http 상태 코드랑 응답 본문(body)를 문자열로 합쳐서
     // 에러 객체를 만들고 던짐
@@ -236,20 +267,27 @@ export const sendVerificationCode = async (email: string, turnstileToken?: strin
 };
 
 // 이메일 인증 코드 검증 // response.ok가 true면 즉 성공한 응답이면 여기가 실행
-export const verifyCode = async (email: string, code: string): Promise<boolean> => {
+export const verifyCode = async (
+  email: string,
+  code: string,
+): Promise<boolean> => {
   // 파라미터로 email, code를 받는데 이건 string 타입이어야함
   // Promise<boolean>는 리턴값이 boolean 타입이어야한다고 약속한것 true, false 둘 중 하나를 반환하게됨
   // 화살표 함수로 함수 정의하고 이걸 verifyCode에 할당함
   // verifyCode는 import 해서 사용 가능한 재할당 불가 비동기 함수가됨
-  const response = await fetch(`${API_BASE}/api/auth/verify-code?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`, {
-    // fetch 함수에 상대경로랑 쿼리파라미터에 유저가 입력한 이메일이랑 인증코드를 추가해서 전달
-    method: 'POST', // 요청형식 POST로 지정
-    headers: {
-      'Content-Type': 'application/json', // 요청 본문(body)이 JSON임을 서버에 알리는것임
+  const response = await fetch(
+    `${API_BASE}/api/auth/verify-code?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}`,
+    {
+      // fetch 함수에 상대경로랑 쿼리파라미터에 유저가 입력한 이메일이랑 인증코드를 추가해서 전달
+      method: "POST", // 요청형식 POST로 지정
+      headers: {
+        "Content-Type": "application/json", // 요청 본문(body)이 JSON임을 서버에 알리는것임
+      },
     },
-  });
+  );
 
-  if (!response.ok) { // 만약 response.ok가 false(=응답이 성공하지 않음)이면 아래 코드 실행
+  if (!response.ok) {
+    // 만약 response.ok가 false(=응답이 성공하지 않음)이면 아래 코드 실행
     const errorText = await response.text(); // 응답 본문(body)을 문자열로 읽어와서 errorText에 저장함
     throw new Error(`인증코드 검증 실패: ${errorText}`); // Http 상태 코드랑 응답 본문(body)를 문자열로 합쳐서'
     // 에러 객체를 만들고 던짐

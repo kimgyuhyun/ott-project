@@ -3,8 +3,10 @@
 // nginx 리버스 프록시를 사용하므로 동일 오리진 상대 경로로 호출
 
 // 새로운 명명 규칙 (camelCase)
-export const backendOrigin = process.env.NEXT_PUBLIC_BACKEND_ORIGIN || 'http://ott-app:8090';
-export const frontendOrigin = process.env.NEXT_PUBLIC_FRONTEND_ORIGIN || 'http://127.0.0.1';
+export const backendOrigin =
+  process.env.NEXT_PUBLIC_BACKEND_ORIGIN || "http://ott-app:8090";
+export const frontendOrigin =
+  process.env.NEXT_PUBLIC_FRONTEND_ORIGIN || "http://127.0.0.1";
 
 // 기존 호환성을 위한 export (deprecated)
 export const BACKEND_ORIGIN = backendOrigin;

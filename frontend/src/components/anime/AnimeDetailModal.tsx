@@ -3,11 +3,11 @@ import { useState, useEffect } from "react"; // React Hooks
 import { useRouter } from "next/navigation"; // Next.js 라우터
 // useRoter는 next.js 13+ (App Router)에서 제공하는 클라이언트 라우팅 훅임
 // 주요 기능으로는 페이지 이동, 뒤로가기, 현재 페이지 새로로고침, 히스토리 없이 이동이 있음
-// 참고로 Pages Router(pages 디렉토리)에서는 next/router의 useRouter를 사용하지만, 
+// 참고로 Pages Router(pages 디렉토리)에서는 next/router의 useRouter를 사용하지만,
 // APp Router(app 디렉토리)에서는 next/navigation의 useRouter를 사용함
 // 내 프로젝트는 pages 디렉토리를 안만들고 app 디렉토리에서 도메인별로 폴더를 만들고 거기안에 page.tsx 파일을 사용하는
 // App Router 방식을 사용하고있음 = next/navigation
-// App Router를 선택한 이유는 
+// App Router를 선택한 이유는
 // 서버 컴포넌트 지원, React 18+ 기능 활용, 더 나은 데이터 패칭, Next.js의 권장 방식이기 떄문
 // 서버 컴포넌트 ㅣ원은 서버에서 랜더링해 성능향상해주는것
 // 더 나은 데이터 패칭은 서버 컴포넌트에서 직접 데이터 가져오는것을 뜻함
@@ -28,8 +28,8 @@ import { AnimeDetail, AnimeListItem, Episode } from "@/types/anime"; // 애니 �
 import styles from "./AnimeDetailModal.module.css"; // 스타일 정의
 import AnimeFullInfoModal from "@/components/anime/AnimeFullInfoModal"; // 애니메이션 상세 정보 모달
 
-
-interface AnimeDetailModalProps { // 여기 컴포넌트가 받을 props의 타입을 정의
+interface AnimeDetailModalProps {
+  // 여기 컴포넌트가 받을 props의 타입을 정의
   anime: AnimeListItem; // 목록에서 열 때 넘어오는 애니 목록 아이템(aniId 기준)
   isOpen: boolean; // isOpen은 boolean 타입의 값을 받음 / 모달이 열려있는지 여부를 나타냄
   onClose: () => void; // 매개변수 없이 호출하고, 아무것도 반환하지 않는 함수
@@ -39,7 +39,11 @@ interface AnimeDetailModalProps { // 여기 컴포넌트가 받을 props의 타�
  * 애니메이션 상세 정보 모달
  * 평점, 제목, 장르, 액션 버튼, 시놉시스, 탭 메뉴, 에피소드 목록 포함
  */
-export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetailModalProps) {
+export default function AnimeDetailModal({
+  anime,
+  isOpen,
+  onClose,
+}: AnimeDetailModalProps) {
   // import해서 사용할 수 있는 함수 default는 기본 내보기이고 이름 변경해서 사용 가능함
   // default가 없으면 다른 파일에서 가져올때 { AnimeDetailModal } 이렇게 정확한 이름을 사용해야함
   // 파라미터로 전달받은 props 객체 값에 구조 분해 할당 문법을 사용해서 anime, isOpen, onClose 속성을 추출해 각각 변수에 할당함
@@ -49,7 +53,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // TypeScript에서는 : AnmimeDetailModalProps로 타입 체크가 가능함
   // 상세 데이터는 캐노니컬 AnimeDetail 로 다룬다. 목록 아이템(anime prop)은 AnimeListItem 이며
   // AnimeDetail 의 필수 필드(aniId/title)를 모두 가지므로 초기값으로 그대로 넣을 수 있다.
-  type WatchHistory = { // WatchHistory 타입을 정의의
+  type WatchHistory = {
+    // WatchHistory 타입을 정의의
     episodeId: number; // episodeId는 number 타입이고 필수 필드 / 에피소드 고유 식별자
     episodeNumber: number; // episodeNumber는 number 타입이고 필수 필드 / 에피소드 번호
     positionSec: number; // positionSec는 number 타입이고 필수 필드 / 시청 위치 (초)
@@ -59,7 +64,9 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   } | null; // | null의 의미는 유니온 타입. WatchHistory는 객체이거나 null일 수 있다는것
   // 시청기록이 있으면 객체, 없으면 null
   const router = useRouter(); // useRouter() 함수를 호출해 반환된 router 객체를 재할당 불가 변수 roter에 저장함
-  const [activeTab, setActiveTab] = useState<'episodes' | 'reviews' | 'shop' | 'similar'>('episodes');
+  const [activeTab, setActiveTab] = useState<
+    "episodes" | "reviews" | "shop" | "similar"
+  >("episodes");
   // useState는 React Hooks중 하나이고 [값, 함수]를 반환해주고 이때 반환해주는 함수는 상태 변경 함수임
   // useState<'episodes' | 'reviews' | 'shop' | 'similar'>('episodes')의 뜻은
   // usetState 리턴 값의 타입은 episodes, reviews, shop, similar 중 하나만 가능하고 기본값은 'episodes'로 설정한다는뜻
@@ -81,7 +88,9 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // useState()는 [상태 값, 상태 변경 함수]를 반환함 이해하기 편하게
   const [watchHistory, setWatchHistory] = useState<WatchHistory>(null);
   // 에피소드별 진행률 맵 { episodeId: { positionSec, durationSec } } — 목록에 시청 표시용
-  const [episodeProgress, setEpisodeProgress] = useState<Record<number, { positionSec: number; durationSec: number }>>({});
+  const [episodeProgress, setEpisodeProgress] = useState<
+    Record<number, { positionSec: number; durationSec: number }>
+  >({});
   // useState 함수의 반환값은 WatchHistory 타입의 객체 또는 null이 올꺼고 기본값은 null로 설정됨
   // WatchHistory 타입의 객체 또는 null 이란건 타입 정의할때 | null을 사용해서 유니온 타입으로 정의했기 때문
   // [null, 상태 변경 함수]로 리턴되고 첫 번 째 요소 null은 watchHistory에
@@ -171,8 +180,9 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // 시청 기록 초기화 핸들러
   const handleDeleteWatchHistory = async () => {
     // 화살표 함수로 async 비동기 함수를 정의해서 재할당 불가 변수 handleDeleteWatchHistory에 비동기 함수를 할당함
-    try { // try-catch 문으로 예외 처리를 함
-      console.log('🗑️ 시청 기록 초기화 시작 - aniId:', detail?.aniId);
+    try {
+      // try-catch 문으로 예외 처리를 함
+      console.log("🗑️ 시청 기록 초기화 시작 - aniId:", detail?.aniId);
       // '시청 기록 초기화 시작 - aniId:' 메시지에 (detal as any)?.aniId값을 추가해서 콘솔로 출력함
       // detail는 타입 단언을 사용한것이고 detail을 any 타입으로 취급한다는 뜻
       // ci/cd에서 오류가나서 as any로 타입 체크 우회했는데
@@ -202,8 +212,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       // 관심사 분리: API 호출과 UI 로직 분리
       // 재사용성: deleteFromBinge를 여러 곳에서 사용 가능
       // 유지보수: API 함수 수정 시 원본이 되는 한 곳만 수정하면됨
-      console.log('🗑️ 시청 기록 초기화 완료'); // '시청 기록 초기화 완료' 메시지를 콘솔로 출력함
-      
+      console.log("🗑️ 시청 기록 초기화 완료"); // '시청 기록 초기화 완료' 메시지를 콘솔로 출력함
+
       // 시청 기록 상태 초기화
       setWatchHistory(null); // 시청기록을 null로 초기화
       setShowDeleteConfirm(false); // 삭제 확인 모달 닫기
@@ -212,10 +222,11 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       // 여기는 별도 컴포넌트가 아니라 같은 컴포넌트 내부에서
       // 드롭다운 메뉴 -> 삭제 버튼 클릭하면 DB 값 변경이되는 방식이라
       // 콜백 필요없이 직접 상태 변경해주면됨
-      alert('시청 기록이 초기화되었습니다.'); // '시청 기록이 초기화되었습니다.' 메시지를 팝업창으로 알려줌
-    } catch (error) { // try 블록에서 error 발생 시 실행행
-      console.error('시청 기록 초기화 실패:', error); // '시청 기록 초기화 실패:' 메시지에 error 객체값을 추가해서 콘솔로 출력함
-      alert('시청 기록 초기화에 실패했습니다.'); // '시청 기록 초기화에 실패했습니다.' 메시지를 팝업창으로 알려줌
+      alert("시청 기록이 초기화되었습니다."); // '시청 기록이 초기화되었습니다.' 메시지를 팝업창으로 알려줌
+    } catch (error) {
+      // try 블록에서 error 발생 시 실행행
+      console.error("시청 기록 초기화 실패:", error); // '시청 기록 초기화 실패:' 메시지에 error 객체값을 추가해서 콘솔로 출력함
+      alert("시청 기록 초기화에 실패했습니다."); // '시청 기록 초기화에 실패했습니다.' 메시지를 팝업창으로 알려줌
     }
   };
 
@@ -286,7 +297,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     // 만약 isOpen이 false면 !로  true 치환해서 조건성립후 return 즉, 모달이 닫혀있으면 return 해서 바로 종료
     const id = anime?.aniId;
     // anime로 anime를 any타입으로 취급한다음 ?.aniId 옵셔널 체이닝걸어서 객체가 있는지 확인하고
-    // 객체가 있고 aniId 값이 있으면 그걸 사용 만약에 aniId 속성값이 없으면 id를 사용함 
+    // 객체가 있고 aniId 값이 있으면 그걸 사용 만약에 aniId 속성값이 없으면 id를 사용함
     // ??는 Nullish Coalescing Operator(널 병합 연산자)고 "truth면 왼쪽, falsh면 오른쪽"
     // 만약 anime 객체가 null / undefiend면 둘다 조건 성립이 안되면 undefiend가 반환되고 그 값이 id에 할당됨
     // const needsFetch = !Array.isArray(anime?.genres) || anime.genres.length === 0 || !Array.isArray(anime?.episodes);
@@ -303,40 +314,39 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     // 즉 API를 호출하는 조건은 id가 truthy고 genres가 배열이아니고고 0이 아니고 epsidoes가 배열이 아닐때 애니 상세정보를 가져옴
     // 이 조건때문에 Anime 정보가 DB에 새롭게 저장되도 API를 호출을 안해서 주석처리
     // AnimeDetailModal이 열릴때마다 API를 매번 호출해서 최신 정보를 가져옴
-    if (!id) return;  // id가 없으면 함수 실행 종료 가드
-      getAnimeDetail(Number(id))
+    if (!id) return; // id가 없으면 함수 실행 종료 가드
+    getAnimeDetail(Number(id))
       // id값을 Number 타입으로 캐스팅한뒤  getAnimeDetail 함수에 태워보냄
       // getAnimeDetail 함수는 animeId를 number 타입으로 보내면 그 id에 해당하는 애니메이션의 상세 정보를 반환해주는 함수/ Promise를 반환
       // Promise는 비동기 작업의 결과를 나타내는 객체. 즉시 값을 반환하지 않고, 나중에 완료되면 값을 제공. async 함수는 항상 Promise를 반환
       // apiCall() 내부에서 response.json()이 any를 반환하므로 T는 명시적으로 지정히지않으면 Unknown이 됨
       // 사용하는 곳에서 타입 단언(as)를 사용해야함
-        .then((d) => setDetail((prev) => ({ ...prev, ...d })))
-        // then(() => ...) 는 Promise가 성공하면 d에 API 응답 데이터가 들어옴
-        // setDetail(..) 호출 - SetDetail의 인자는 함수임
-        // setDetail이 내부적으로 이전 상태 prev를 인자로 함수를 호출함
-        // { ...prev, ...(d as Partial<ExtendAnime) } 객체 생성
-        // ...prev: 이전 detail 상태의 모든 속성을 펼침
-        // ...(d as Partial<ExtendAnim): API에서 받은 d의 속성을 펼침
-        // 뒤에 오는 속성이 앞의 속성을 덮어씀(병합)
-        // 생성된 객체로 detail state 업데이트
-        // d에는 Promise가 성공적으로(resolve)되었을때 반환된 값이 들어감 / animeId로 가져온 애니메이션의 상세 정보가 있는 객체
-        // 그니까 상태 변경 함수는 인자로 함수를 받으면 React가 해당 상태 변경 함수에 state 값을 가져오고 그 값을 함수의 첫 번째 인자로 전달한뒤 함수를 호출함
-        // 그 다음 함수가 반환한 값을 새로운 state로 설정함
+      .then((d) => setDetail((prev) => ({ ...prev, ...d })))
+      // then(() => ...) 는 Promise가 성공하면 d에 API 응답 데이터가 들어옴
+      // setDetail(..) 호출 - SetDetail의 인자는 함수임
+      // setDetail이 내부적으로 이전 상태 prev를 인자로 함수를 호출함
+      // { ...prev, ...(d as Partial<ExtendAnime) } 객체 생성
+      // ...prev: 이전 detail 상태의 모든 속성을 펼침
+      // ...(d as Partial<ExtendAnim): API에서 받은 d의 속성을 펼침
+      // 뒤에 오는 속성이 앞의 속성을 덮어씀(병합)
+      // 생성된 객체로 detail state 업데이트
+      // d에는 Promise가 성공적으로(resolve)되었을때 반환된 값이 들어감 / animeId로 가져온 애니메이션의 상세 정보가 있는 객체
+      // 그니까 상태 변경 함수는 인자로 함수를 받으면 React가 해당 상태 변경 함수에 state 값을 가져오고 그 값을 함수의 첫 번째 인자로 전달한뒤 함수를 호출함
+      // 그 다음 함수가 반환한 값을 새로운 state로 설정함
 
-        // Promise가 성공하면 Promise의 .then 메서드를 호출함
-        // Promise가 reslove한 객체를 첫 번째 인자로 전달함 그럼 d에 전달되는것
-        // 여기에 함수본문을 작성하는데 setDetail() 함수 호출을함
-        // 익명함수는 prev 인자를 ExtendAnime 타입으로 받겠다는 거고 prev에는 React가 자동으로 상태 변경 함수에 state값을 가져오고
-        // 그 값을 함수의 첫 번째 인자로 전달한뒤 함수를 호출하고 반환한 값을 새로운 state로 설정
-        // Partial<T>는 타입 T의 모든 속성을 선택적(Optional)으로 만든다는것
-        // 그니까 d를 모든 속성이 Otpinal인 ExtendAnime 타입으로 취급하는 타입 단언임
-        // 따라서 d가 일부 속성만 있어도 타입 체크를 통과
-        // id로 가져온 애니메이션 상세정보에 모든 속성을 Optional로 만들어줌 이 값을 prev값과 병합해서 반환함
-        // prev는 전에 있던 값이고 현재 아직 안바뀐 anime 객체임 현재 state / d는 API로 새로 받아온 값
+      // Promise가 성공하면 Promise의 .then 메서드를 호출함
+      // Promise가 reslove한 객체를 첫 번째 인자로 전달함 그럼 d에 전달되는것
+      // 여기에 함수본문을 작성하는데 setDetail() 함수 호출을함
+      // 익명함수는 prev 인자를 ExtendAnime 타입으로 받겠다는 거고 prev에는 React가 자동으로 상태 변경 함수에 state값을 가져오고
+      // 그 값을 함수의 첫 번째 인자로 전달한뒤 함수를 호출하고 반환한 값을 새로운 state로 설정
+      // Partial<T>는 타입 T의 모든 속성을 선택적(Optional)으로 만든다는것
+      // 그니까 d를 모든 속성이 Otpinal인 ExtendAnime 타입으로 취급하는 타입 단언임
+      // 따라서 d가 일부 속성만 있어도 타입 체크를 통과
+      // id로 가져온 애니메이션 상세정보에 모든 속성을 Optional로 만들어줌 이 값을 prev값과 병합해서 반환함
+      // prev는 전에 있던 값이고 현재 아직 안바뀐 anime 객체임 현재 state / d는 API로 새로 받아온 값
 
-        .catch(() => {}); // Promise가 실패(recject)되면 호출되고 인자 없는 빈 함수를 전달 / 에러를 무시하고 아무 동작도 하지 않음
-        // 이렇게 하는 이유는 API 호출 실패 시 에러를 무시하고 조용히 처리하기 위해
-    
+      .catch(() => {}); // Promise가 실패(recject)되면 호출되고 인자 없는 빈 함수를 전달 / 에러를 무시하고 아무 동작도 하지 않음
+    // 이렇게 하는 이유는 API 호출 실패 시 에러를 무시하고 조용히 처리하기 위해
   }, [isOpen, anime?.aniId]); // 의존성 배열
   // anime prop에 새로운 anime 객체가 들어오면 감지하고 실행
   // isOpen이 변경되면 실행
@@ -348,11 +358,11 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // - needsFetch 조건 제거하여 모달 열릴 때마다 최신 데이터 가져오기
   // - 의존성 배열을 [isOpen, anime?.id]로 최적화 - 2025-11-29
   // 나중에 Redis 캐싱 전략 추가할것
-  
+
   // 비슷한 작품 로드
   useEffect(() => {
-    if (activeTab === 'similar' && similarAnimes.length === 0) {
-        // 만약 activeTab이 similar고 similarAnimes.length가 0이면 즉, similarAnimes가 아직 비어있으면
+    if (activeTab === "similar" && similarAnimes.length === 0) {
+      // 만약 activeTab이 similar고 similarAnimes.length가 0이면 즉, similarAnimes가 아직 비어있으면
       loadSimilarAnimes(); // 작품 로딩
     }
   }, [activeTab]); // activateTab이 변경될 때마다 이 useEffect가 다시 실행되고, 조건을 만족하면 loadSimilarAnimes 함수를 호출함
@@ -364,16 +374,17 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     // 이 함수는 비동기 함수임
     setIsLoadingSimilar(true); // 탭이 Simaila고 similarAnimes가 비어있을때 setIsLoadingSimilar 함수를 호출해서
     // 로딩 상태를 true로 설정함 그 다음 loadSimilarAnimes 호출해서 비슷한 작품 목록을 가져옴
-    try { // try 블록은 예외가 발생할 수 있는 코드 블록임
+    try {
+      // try 블록은 예외가 발생할 수 있는 코드 블록임
       // 현재 작품과 장르가 겹치는 작품 목록을 조회
       const genreIds: number[] = Array.isArray(detail?.genres)
-      // detail?.genres가 배열이면 그 배열을 number 배열에 넘기고 genereIds 변수에 할당
-      // detail.genres가 객체 배열 일수도, 문자열이 섞여 있을 수도 있는데
-      // listAnime는 gerneIds에 숫자 배열만 오기를 원하니 깨끗한 number[] 배열로 변환해서 넘겨줘야함
-      // 배열이 아니면 Array.isArray에서 fasle가 나와서 number는 빈 배열 상태 그대로 유지
-        ? detail.genres
-        // 여기서 쓰인 ?은 삼항 연산자
-        // detail.genres 는 GenreSimple[] 이므로 id 만 뽑아 number[] 로 만든다
+        ? // detail?.genres가 배열이면 그 배열을 number 배열에 넘기고 genereIds 변수에 할당
+          // detail.genres가 객체 배열 일수도, 문자열이 섞여 있을 수도 있는데
+          // listAnime는 gerneIds에 숫자 배열만 오기를 원하니 깨끗한 number[] 배열로 변환해서 넘겨줘야함
+          // 배열이 아니면 Array.isArray에서 fasle가 나와서 number는 빈 배열 상태 그대로 유지
+          detail.genres
+            // 여기서 쓰인 ?은 삼항 연산자
+            // detail.genres 는 GenreSimple[] 이므로 id 만 뽑아 number[] 로 만든다
             .map((g) => g.id)
             // .map 함수는 배열의 각 요소를 변환해서 새 배열을 만드는 함수
             // JavaSCript에서 Array.prototype.map (배열 메서드)로 사용
@@ -384,44 +395,50 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             // g가 객체면 g.id를 사용 / g가 숫자면 숫자 그대로 사용한다는 의미
             // 그리고 이 조건식을 Number 함수로 감싸뒀으니 객체든 숫자돈 마지막에 Number로 숫자로 변환함
             .filter((v: number) => Number.isFinite(v))
-            // filter는 조건에 맞는 값만 넘기는 함수
-            // 파라미터 v는 number 타입임
-            // v는 map(..)의 결과로 나온 number[] 배열을 filter가 다시 순회하면서 각 욧를 v에 넣고 콜백을 호출하는 형식
-            //  Number.isFinite(v) 는 v가 유한한 숫자(finite number)일 때만 ture
-            // NaN, Infinity, -Infinity같은 값은 fasle
-            // filter는 콜백이 true를 반환하는 요소만 넘기고, false인 요소는 제거함
-            // 전체 흐름은
-            // .map(...)에서 g를 숫자로 변환해서 number[] 배열을 얻음
-            // 그 다음 이 배열에서 이상한 숫자들을 제거하고 깨끗한 number[] (정상적인 장르 ID들만) 남김
+        : // filter는 조건에 맞는 값만 넘기는 함수
+          // 파라미터 v는 number 타입임
+          // v는 map(..)의 결과로 나온 number[] 배열을 filter가 다시 순회하면서 각 욧를 v에 넣고 콜백을 호출하는 형식
+          //  Number.isFinite(v) 는 v가 유한한 숫자(finite number)일 때만 ture
+          // NaN, Infinity, -Infinity같은 값은 fasle
+          // filter는 콜백이 true를 반환하는 요소만 넘기고, false인 요소는 제거함
+          // 전체 흐름은
+          // .map(...)에서 g를 숫자로 변환해서 number[] 배열을 얻음
+          // 그 다음 이 배열에서 이상한 숫자들을 제거하고 깨끗한 number[] (정상적인 장르 ID들만) 남김
 
-            // Genres는 백엔드에서 객체배열로 내려와서 map으로 id만 추출해서 숫자 배열로 변환해줘야함
-            //왜냐하면 listAnime는 숫자 배열만 받기때문에 객체배열로 주면 받지를 못함
-        : []; // detail?.genres가 배열이 아니면 빈배열만 반환
+          // Genres는 백엔드에서 객체배열로 내려와서 map으로 id만 추출해서 숫자 배열로 변환해줘야함
+          //왜냐하면 listAnime는 숫자 배열만 받기때문에 객체배열로 주면 받지를 못함
+          []; // detail?.genres가 배열이 아니면 빈배열만 반환
 
-      if (genreIds.length === 0) { // 만약 detail?gneres가 배열이 아니면 genreIds에 빈 배열이 들어가게 되는데 이때 실행됨
-        console.log('⚠️ 비슷한 작품 로드: 장르 정보 없음'); // 콘솔 로그 출력
+      if (genreIds.length === 0) {
+        // 만약 detail?gneres가 배열이 아니면 genreIds에 빈 배열이 들어가게 되는데 이때 실행됨
+        console.log("⚠️ 비슷한 작품 로드: 장르 정보 없음"); // 콘솔 로그 출력
         setSimilarAnimes([]); // 비슷한 작품 목록을 빈 배열로 초기화
         return; // 함수 실행을 여기서 바로 종료료
       }
       // gerneIds 배열에 하나 이상에 값이 있으면 실행
-      const response = await listAnime({ genreIds, sort: 'rating', page: 0, size: 30 });
+      const response = await listAnime({
+        genreIds,
+        sort: "rating",
+        page: 0,
+        size: 30,
+      });
       // listAnime는 Promise를 반환하는 비동기 함수고 Promise가 완료될 때까지 기다렸다가 결과값이 오면 response에 할당함
       // listAnime에 파라미터로 아까 만든 깨끗한 number[] (장르 ID)들을 넘기고
       // 정령른 평점 기준으로 page는 0번 size는 한 번에 30개 가져와라고 기본값 세팅해서 태워보냄
       // response는 any 타입으로 선언해둠
-      
+
       // 응답이 대기하다가 응답이 오면 실행
       const rawItems: AnimeListItem[] = Array.isArray(response?.items)
-      // response?.items가 배열이면 ExtendedAnime[] 타입으로 단언해서 rawItems에 할당함
-      // 그리고 ?.은 옵셔널 체인을 건것으로 response가 null이나 undefiend면 undefined를 반환해서 오류가안뜨게함 방어코딩임
-      // 1차로 response가 null / unidefined인지 아닌지 검증하고 2차로 resposne.items이 배열인지 아닌지 검증해서 반환해주는것
-      // 재할당 불가 변수 rawImtes는 ExtendedAMNime[] 타입으로 정의
-        ? response.items // PagedResponse<AnimeListItem>.items = AnimeListItem[]
+        ? // response?.items가 배열이면 ExtendedAnime[] 타입으로 단언해서 rawItems에 할당함
+          // 그리고 ?.은 옵셔널 체인을 건것으로 response가 null이나 undefiend면 undefined를 반환해서 오류가안뜨게함 방어코딩임
+          // 1차로 response가 null / unidefined인지 아닌지 검증하고 2차로 resposne.items이 배열인지 아닌지 검증해서 반환해주는것
+          // 재할당 불가 변수 rawImtes는 ExtendedAMNime[] 타입으로 정의
+          response.items // PagedResponse<AnimeListItem>.items = AnimeListItem[]
         : []; // items 가 없으면 빈 배열
-        // response.items가 배열인 경우는
-        // 백앤드가 { imtes: [...], total, page, size } 이런 DTO를 보내는 경우에 해당
-        // response 자체가 배열인 경우는
-        // 백앤드가 그냥 [...] 배열만 보내는 경우(옜날 코드거나, 다른 API일 수도 있음)
+      // response.items가 배열인 경우는
+      // 백앤드가 { imtes: [...], total, page, size } 이런 DTO를 보내는 경우에 해당
+      // response 자체가 배열인 경우는
+      // 백앤드가 그냥 [...] 배열만 보내는 경우(옜날 코드거나, 다른 API일 수도 있음)
 
       const baseId = Number(detail?.aniId);
       // 여기서 쓰인 ??는 Nulish Coalescing이고 왼쪽이 null 또는 undefind일 떄만 오른쪽 사용함 flasy 전체가 아니라 null/undefined만 체크
@@ -437,10 +454,10 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       // 만약 가져온 애니의 ID가 baseId와 같으면 fasle로 필터링되고 제거됨 비슷한 작품 목록에서 제외
       // filter는 콜백함수가 true를 반환하면 그 요소를 남기고 false를 반환하면 그 요소를 제거함
       // 그러면 filtered에는 현재 열려있는 애니와 겹치지 않는 비슷한 작품 목록이 들어가게됨
-    // 여기는 현재 띄워둔 애니메이션을 비슷한 작품 목록에서 제외시키는 로직
+      // 여기는 현재 띄워둔 애니메이션을 비슷한 작품 목록에서 제외시키는 로직
 
       // 중복 제거 (aniId 기준)
-    // 가져온 비슷한 작품목록에서 같은 작품이 여러 번 나올 경우 하나만 남기는 로직
+      // 가져온 비슷한 작품목록에서 같은 작품이 여러 번 나올 경우 하나만 남기는 로직
       const seen = new Set<number>();
       // Number 타입만 받을수 있는 Set 자료 구조를 seen 변수에 할당
       // Set은 중복 없는 값들의 집합을 표현할때 사용
@@ -451,7 +468,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
         // ture면 포함 false면 제거하는 식으로해서 조건을 통과해 true가 나온 요소를 unique 변수에 할당함
         const id = Number(a?.aniId);
         // ?.은 옵셔널 체인이고 설명은 생략
-        // a가 있다고 가정시 aniId가 있으면 aniID를 사용 없으면 id를 사용함 
+        // a가 있다고 가정시 aniId가 있으면 aniID를 사용 없으면 id를 사용함
         // ??는 Nulish Coalescing 연산자고 왼쪽이 null 또는 undefiend 일 때 오른쪽 사용함
         // a에서 aniId 또는 id꺼내서 Number 타입으로 캐스팅후 재할당 불가 변수 id에 할당
         if (!Number.isFinite(id) || seen.has(id)) return false;
@@ -472,13 +489,14 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       const limited = unique.slice(0, 6);
       // slice 함수는 첫번째 인자를 여기서부터 자르라는 기준으로 쓰고, 두 번째 인자를 여기 인덱스 '앞'까지 잘라낸다는 의미로 사용
       // unique 배열에 0번 인겍스부터 6번 인덱스에 앞까지 자르란뜻 그러면 0 1 2 3 4 5 즉 6개가 짤려나옴
-      // 그러면 비슷한 작품 목록이 13개가 불려와도 앞에 최대 6개까지만 제한되서 나오게됨 
-      console.log('📦 비슷한 작품 로드 결과:', limited.length, '(장르 기반)');
+      // 그러면 비슷한 작품 목록이 13개가 불려와도 앞에 최대 6개까지만 제한되서 나오게됨
+      console.log("📦 비슷한 작품 로드 결과:", limited.length, "(장르 기반)");
       setSimilarAnimes(limited); // 비슷한 작품 목록 상태에 최종적으로 화면에 보여줄 작품 목록 limited 배열을 할당함
     } catch (error) {
-      console.error('비슷한 작품 로드 실패:', error);
+      console.error("비슷한 작품 로드 실패:", error);
       setSimilarAnimes([]); // 빈 배열로 초기화
-    } finally { // try/catch가 성공하든 실패하든 무조건 마지막에 실행됨
+    } finally {
+      // try/catch가 성공하든 실패하든 무조건 마지막에 실행됨
       setIsLoadingSimilar(false); // 로딩 상태를 false로 세팅하고 함수 마무리
     }
   };
@@ -488,25 +506,25 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     // 익명함수 정의해서 useEffect에게 넘기는 형식
     if (!isOpen || !detail?.aniId) return;
     // 만약 isOpen이 false이거나 detail.aniId가 없으면 함수 종료
-    console.log('🔍 시청 기록 조회 시작 - animeId:', detail.aniId);
+    console.log("🔍 시청 기록 조회 시작 - animeId:", detail.aniId);
     setIsLoadingHistory(true);
     // 시청기록 로딩 상태를 true로 설정
     getAnimeWatchHistory(Number(detail.aniId))
-    // user.ts 파일에 getAnimeWatchHistory 함수에 detail.aniId를 넘겨서 호출함 이 함수는 비동기함수임
+      // user.ts 파일에 getAnimeWatchHistory 함수에 detail.aniId를 넘겨서 호출함 이 함수는 비동기함수임
       .then((history) => {
         // .then()은 Promise가 성공적으로 끝난 다음 그 결과값을 가지고 추가 작업(콜백 함수)을 실행할 때 사용하는 함수임
         // 비동기 함수는 항상 Promise를 리턴하고 .then() 함수 체인연결이 가능함
         // 인자로 익며함수를 정의해서 보내는 형식
         // history를 any타입으로 받을것임
         // history에는 특정 애니의 여러 에피소드 시청기록이 배열로 들어오는 구조임
-        console.log('🔍 시청 기록 조회 결과:', history);
+        console.log("🔍 시청 기록 조회 결과:", history);
         // 시청기록 상태를 업데이트하고 화면에 보여줌
         setWatchHistory(history as WatchHistory);
         // 가져온 특정 애니의 시청기록을 WatchHistory 타입으로 단언한뒤 watchHistory 상태에 할당함
       })
       .catch((error) => {
         // .catch()는 Promise가 실패한 다음 그 에러를 가지고 추가 작업(콜백 함수)을 실행할 때 사용하는 함수임
-        console.error('시청 기록 조회 실패:', error);
+        console.error("시청 기록 조회 실패:", error);
         setWatchHistory(null);
         // 시청기록 상태를 null로 초기화
       })
@@ -521,30 +539,43 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // 에피소드별 시청 진행률 벌크 조회 (목록에 "몇 화까지 봤는지" 표시)
   useEffect(() => {
     if (!isOpen) return;
-    const ids = (detail?.episodes ?? []).map((e) => e.id).filter(Boolean) as number[];
-    if (ids.length === 0) { setEpisodeProgress({}); return; }
+    const ids = (detail?.episodes ?? [])
+      .map((e) => e.id)
+      .filter(Boolean) as number[];
+    if (ids.length === 0) {
+      setEpisodeProgress({});
+      return;
+    }
     getBulkEpisodeProgress(ids)
-      .then((res) => setEpisodeProgress((res as Record<number, { positionSec: number; durationSec: number }>) ?? {}))
+      .then((res) =>
+        setEpisodeProgress(
+          (res as Record<
+            number,
+            { positionSec: number; durationSec: number }
+          >) ?? {},
+        ),
+      )
       .catch(() => setEpisodeProgress({})); // 비로그인/오류는 표시 없음
   }, [isOpen, detail?.aniId, detail?.episodes?.length]);
 
   // 보고싶다 상태 확인
   useEffect(() => {
-      // 익명함수 만들어서 useEffect에 넘기는 형식
+    // 익명함수 만들어서 useEffect에 넘기는 형식
     if (!isOpen || !detail?.aniId) return;
     // 만약 isOpen이 false로 들어오거나 또는 detail.aniId가 없을때 함수 종료
     isFavorited(Number(detail.aniId)) // isOpen이 true 또는 detail.aniId가 있으면 여기부터 실행
-    // 특정 애니메이션의 보고싶다 상태를 확인하는 함수 isFavorited에 detail.aniId를 any 타입으로 단언하고 Number로 캐스팅해서 넘김
+      // 특정 애니메이션의 보고싶다 상태를 확인하는 함수 isFavorited에 detail.aniId를 any 타입으로 단언하고 Number로 캐스팅해서 넘김
       .then((favorited) => {
-          // 비동기 함수가 올바른 응답에 성공해 Promise가 resolve되면 그 값이
-          // .then 콜백의 첫 번째 인자로 전달됨 즉, isFavorited에 응답값이 favorited 인자에 값이 전달됨 
-          // .then 함수에 익명함수를 정의해서 넘기는 형식임
-          // 익명함수는 인자로 favorited를 받고 화살표 함수를 사용해 함수 본문을 작성
+        // 비동기 함수가 올바른 응답에 성공해 Promise가 resolve되면 그 값이
+        // .then 콜백의 첫 번째 인자로 전달됨 즉, isFavorited에 응답값이 favorited 인자에 값이 전달됨
+        // .then 함수에 익명함수를 정의해서 넘기는 형식임
+        // 익명함수는 인자로 favorited를 받고 화살표 함수를 사용해 함수 본문을 작성
         setIsFavoritedState(favorited);
         // 보고싶다 상태값에 favorited 값을 할당함 / ture / false
       })
-      .catch((error) => { // .catch()는 Promise가 실패한 다음 그 에러를 가지고 추가 작업(콜백 함수)을 실행할 때 사용하는 함수임
-        console.error('보고싶다 상태 조회 실패:', error); // 보고싶다 상태 조회 실패 에러 출력
+      .catch((error) => {
+        // .catch()는 Promise가 실패한 다음 그 에러를 가지고 추가 작업(콜백 함수)을 실행할 때 사용하는 함수임
+        console.error("보고싶다 상태 조회 실패:", error); // 보고싶다 상태 조회 실패 에러 출력
         setIsFavoritedState(false);
         // 보고싶다 상태값을 false로 설정함
       });
@@ -555,20 +586,20 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   useEffect(() => {
     // 화살표 함수로 익명 함수 만들어서 useEffect에 넘기는 형식
     if (isOpen) {
-        // 만약 모달이 열려있으면
-      document.documentElement.setAttribute('data-theme', 'light');
+      // 만약 모달이 열려있으면
+      document.documentElement.setAttribute("data-theme", "light");
       // document: DOM(Document Object Model)에서 웹페이지 전체 문서를 가리키는 전역 객체
       // 자바스크립트 실행환경(특히 브라우저)에서 현재 웹페이지의 HTML을 조작할 때 사용함
       // document.docuemntElement: document의 최상위(html) 요소 즉, <html> 태그 자체를 의미
       // setAttribute: 특정 DOM 요소에 새로운 속성(attribute)을 추가하거나, 기존 속성 값을 변경할 때 사용하는 메서드
       // theme 속성 이름에 light라는 속성값을 추가한다는 의미
       // 즉, 이 코드는 웹페이지의 <html> 태그에 theme="lgiht"라는 값을 동적으로 추가하거나 있으면 속성값을 "light"로 변경한다는 의미
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
       // document.body: document의 최상위(html) 요소인 <html> 태그 안에 있는 <body> 태그 자체를 의미
       // style: 특정 DOM 요소의 CSS 스타일을 조작할 때 사용하는 속성
-      // overflow: CSS 속성 중 하나로, 요소의 콘텐츠가 박스보다 커질 때내용을 어떻게 보여줄지 결정함 
+      // overflow: CSS 속성 중 하나로, 요소의 콘텐츠가 박스보다 커질 때내용을 어떻게 보여줄지 결정함
       // 기본값은 visible: 넘치는 내용이 그대로 보임
-      // hidden: 넘치는 내용이 숨겨짐 
+      // hidden: 넘치는 내용이 숨겨짐
       // scroll: 넘치는 내용이 있든 없든 스크롤바가 항상 표시됨 /auto: 넘치는 경우에만자동으로 스크롤이 생김
       // 즉, 이 코드는 스크롤바가 사라지고 body의 모든 넘치는 콘텐츠가 화면에 보이지 않게한다는 의미
       // 주로 모달, 팝입이 열렸을때 배경 스크롤을 막으려고 많이 쓰는 패턴
@@ -577,37 +608,38 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
       // 일부 CSS 속성에는 바로 접근할 수 없음 예:CSS 변수, 커스텀 속성 등등
       // 일반적인 CSS 속성 조작은 .style.속성명 사용하면됨
       // CSS 변수나 속성명을 문자열 그대로 쓰고 싶거나 중요도를 지정해야하면 setProperty 사용해야함
-      document.body.style.setProperty('overflow', 'hidden', 'important');
+      document.body.style.setProperty("overflow", "hidden", "important");
       // setProperty:CSSStyleDeclaration의 메서드임
       // CSS 변수(property)나 원래 그대로의 속성명을 직접 지정할 수 있음
       // 주로 커스텀 속성(변수)을 사용할 때 꼭 필여ㅛ하고, 기존 CSS 속성도 문자열 그대로 지정 가능
       // 이 코드는 body 태그의 overflow 속성을 hidden으로, 그리고 important를적용해서 어떤 다른 CSS 설정보다 우선적으로 스크롤을 막는다는 의미
     } else {
-        // 모달이 열려있지 않으면
-      document.documentElement.removeAttribute('data-theme');
+      // 모달이 열려있지 않으면
+      document.documentElement.removeAttribute("data-theme");
       // <html> 태그에 theme에 속성값을 제거함
       // 즉 <html data-theme="light"> -> <html> 태그로 변경하는 코드
       // 이러면 기본 테마 스타일이적용되거나 테마 관련 부수효과를 없에기 가능
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = "auto";
       // <html> 태그 안에 <body> 태그에 ovverflow 속성을 auto로 변경함
       // 그럼 요소의 컨텐츠가 박스보다 커질경우에만 스크롤이 보여지게함
       // 배경의 스크롤을 원상 복구하려고 "auto"로 바꾼것
       // 그 뒤에 바로 removeProperty를 사용해 인라인 스타일로 덧씌웠던던 속성을 삭제해서 style 속성이 깔끔하게 정리됨
       // 인라인 스타일로 덮어쓰는 방식은 강제로 UI 효과를 원할 때 자주 쓰이고 모달이 닫힌 상태 즉, 정상 상태에선
       // 임의의 인라인(즉JS가 수동으로 지정했던 값)을 아예 없에서 원래의 CSS 상태로 정확히 들어가도록 한 번 더 안전장치를 거는 것임
-      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty("overflow");
       // <html> 태그 안에 <body> 태그에 overflow 속성을 제거함
     }
     // 컴포넌트 언마운트 시 정리
     // 컴포넌트 마운트: 모달 컴포넌트가 화면에 처음나타날 때, 즉 DOM에 렌더링될때
     // 컴포넌트 언마운트: 모달 컴포넌트가 화면에서 사라질 때, 즉 DOM에서 제거될때
     // 위에서 등록했던 스타일, 이벤트, 타이머 등을 정리해서 원상복구해야함
-    return () => { // 익명함수를 그대로 리턴 / 언마운트용 클린업 함수
-      document.documentElement.removeAttribute('data-theme');
+    return () => {
+      // 익명함수를 그대로 리턴 / 언마운트용 클린업 함수
+      document.documentElement.removeAttribute("data-theme");
       // <html>태그에 data-theme 속성을 제거함
-      document.body.style.overflow = 'auto';
+      document.body.style.overflow = "auto";
       // <html> 태그 안에 <body> 태그에 overflow 속성을 auto로 변경함
-      document.body.style.removeProperty('overflow');
+      document.body.style.removeProperty("overflow");
       // <html> 태그 안에 <body> 태그에 overflow 속성을 제거함
     };
   }, [isOpen]); // 의존성 배열로 isOen을 받음 isPoen 값이 변경될때마다 내부 useEffect 함수가 실행됨
@@ -617,36 +649,38 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // else와 클린업 함수는 중복이라고 볼수도있지만
   // 기대흐름은 isOpen이 false로 변경시 의존성 배열이 감지해서 useEffect 함수 호출해서 else 본문 실행해서 코드정리를 기대하지만
   // React의 조건부 렌더링 구조, 부모 컴포넌트의 상태 변화, 최적화/빠른 삭제 등이 개입되면 else 본문이 실행되지않고 곧바로 언마운트가
-  // 되는 상황이 발생할 수 있어서 안전장치로 return에 클린업함수를 작성해둬야함 
+  // 되는 상황이 발생할 수 있어서 안전장치로 return에 클린업함수를 작성해둬야함
   // 클린업 함수는 언마운트시 반드시 호출되는 함수기때문
 
   // 디버깅: anime 객체 확인
-  console.log('🔍 AnimeDetailModal - anime 객체:', detail);
+  console.log("🔍 AnimeDetailModal - anime 객체:", detail);
   // anime 객체체
-  console.log('🔍 AnimeDetailModal - anime.aniId:', detail?.aniId);
+  console.log("🔍 AnimeDetailModal - anime.aniId:", detail?.aniId);
   // as any로 타입체크 우회한 상태에서 detal.aniId 속성값을 출력
   // ?.은 옵셔널 체이닝이고 객체가 null,undefined 일 경우 오류 없이 안전하게 하위 속성에 접근할수 있는 자바/타입스크립트 문법
   // detail이 존재하면 detail.aniId 값을 반환하고
   // detail이 undefiend거나 null이면 오류 없이 undefined 반환
-  console.log('🔍 AnimeDetailModal - anime 타입:', typeof detail);
+  console.log("🔍 AnimeDetailModal - anime 타입:", typeof detail);
   // typeof는 자바스크립트에서 변수의자료형을 확인할 때 쓰는 연산자임 // stirng, number object, boolean 등등
   // 근데 배열도 objec로 나오고 null도 object로나오기 때문에 정확히 객체인지, 어떤 타입인지 확인에 한계가 있음
   // 정확하게 확인하려면  Array.isArray(something) 혹은
   // something !== null && typeof something === 'object을 사용해서 확인해야함
-  console.log('🔍 장르 정보:', detail?.genres);
-  console.log('🔍 평점 정보:', detail?.rating);
-  console.log('🔍 관람등급:', detail?.ageRating);
-  console.log('🔍 줄거리:', detail?.fullSynopsis);
-  console.log('🔍 에피소드:', detail?.episodes);
-  console.log('🔍 시청 기록 상태:', {
+  console.log("🔍 장르 정보:", detail?.genres);
+  console.log("🔍 평점 정보:", detail?.rating);
+  console.log("🔍 관람등급:", detail?.ageRating);
+  console.log("🔍 줄거리:", detail?.fullSynopsis);
+  console.log("🔍 에피소드:", detail?.episodes);
+  console.log("🔍 시청 기록 상태:", {
     watchHistory,
     isLoadingHistory,
     hasWatchHistory: !!watchHistory,
     isCompleted: watchHistory?.completed,
     episodeNumber: watchHistory?.episodeNumber,
     positionSec: watchHistory?.positionSec,
-    shouldShowContinue: !isLoadingHistory && !!watchHistory && !watchHistory.completed,
-    shouldShowPlay: !isLoadingHistory && (!watchHistory || watchHistory.completed)
+    shouldShowContinue:
+      !isLoadingHistory && !!watchHistory && !watchHistory.completed,
+    shouldShowPlay:
+      !isLoadingHistory && (!watchHistory || watchHistory.completed),
   });
 
   if (!isOpen) return null;
@@ -655,17 +689,21 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
   // 클린업함수는 프로그래밍적으로 남아 있을 수 있는 사이드이펙트(인라인 스타일, 이벤트, setTimeout 등)를 직접 코드로 정리
   // null 반환은 DOM 트리에서 컴포넌트에 해당하는 DOM 요소를 완전히 지워주는것
 
-  const tabs: { id: 'episodes' | 'reviews' | 'shop' | 'similar'; label: string; count: number | null }[] = [
+  const tabs: {
+    id: "episodes" | "reviews" | "shop" | "similar";
+    label: string;
+    count: number | null;
+  }[] = [
     // 재할당 불가한 tabs를 선언 tabs는 객체들의 배열임
     // tabs에 들어올 객체를 여러개 허락해야해서 객체 리터롤로 감싸서 작성해야함
     // id 값은 오직 episodes, reviews, shop, similar 타입 중 하나만 가능
     // lable 값은 string 타입만 가능
     // count 값은 nulber 또는 null만 가능
     // id, lable, count 값을 객체 리터럴로 묶어서 타입 단언해두고 배열을 정의해서 tabs 객체배열에 할당한것
-    { id: 'episodes', label: '에피소드', count: null },
-    { id: 'reviews', label: '사용자 평', count: null },
-    { id: 'shop', label: '상점', count: null },
-    { id: 'similar', label: '비슷한 작품', count: null }
+    { id: "episodes", label: "에피소드", count: null },
+    { id: "reviews", label: "사용자 평", count: null },
+    { id: "shop", label: "상점", count: null },
+    { id: "similar", label: "비슷한 작품", count: null },
   ];
 
   const episodes: Episode[] = detail?.episodes ?? [];
@@ -687,31 +725,37 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
     // 괄호 안에 들어온 값을 숫자타입(nubmer)으로 변환하는 역할을함
     // 위에 인자부분에 타입단언을 해뒀지만 타입스크립트는 컴파일시에만 체크하므로 실제 호출 시에 즉, 런타임 타입이 다를 수 있으니
     // 항상 Number()로 한 번 더 "숫자 변환"을 통해 방어하는 코드임
-    if (n === 1) return 'https://placehold.co/120x80/111827/ffffff?text=EP1+Thumbnail';
+    if (n === 1)
+      return "https://placehold.co/120x80/111827/ffffff?text=EP1+Thumbnail";
     // 에피소드 1일때
-    if (n === 2) return 'https://placehold.co/120x80/1f2937/ffffff?text=EP2+Thumbnail';
+    if (n === 2)
+      return "https://placehold.co/120x80/1f2937/ffffff?text=EP2+Thumbnail";
     // 에피소드 2일때
-    return 'https://placehold.co/120x80/374151/ffffff?text=Episode';
+    return "https://placehold.co/120x80/374151/ffffff?text=Episode";
     // 그 외 에피소드에 기본 이미지 적용
   };
 
-  return ( // JSX 반환 구문, 즉 AnimeDetailModal 컴포넌트의 화면(UI, DOM 구조 등)을 실제로 만들어내는 JSX 반환부에 해당
+  return (
+    // JSX 반환 구문, 즉 AnimeDetailModal 컴포넌트의 화면(UI, DOM 구조 등)을 실제로 만들어내는 JSX 반환부에 해당
     // JSX는 JavaScript XML의 줄임말로 자바스크립트 코드에서 HTML 같은 구조를 직접 작성할 수 있게 해주는 React의 특별한 문법임
-    <div className={styles.animeDetailModalOverlay}>  {/* 최상단 div에 animeDetailModalOverlay css 클래스 적용 */}
-      <div 
-        className={styles.animeDetailModalBackdrop}
-        onClick={onClose}
-      /> {/* 이 div에 배경(반투명, 흐려진 효과, 본문과 분리된 느낌)을 주는 CSS 클래스 적용
+    <div className={styles.animeDetailModalOverlay}>
+      {" "}
+      {/* 최상단 div에 animeDetailModalOverlay css 클래스 적용 */}
+      <div className={styles.animeDetailModalBackdrop} onClick={onClose} />{" "}
+      {/* 이 div에 배경(반투명, 흐려진 효과, 본문과 분리된 느낌)을 주는 CSS 클래스 적용
       onClick={oncCLose}는 이 div=백드롭을 클릭하면 onClsoe 함수가 실행됨
       즉, 모달이 열렸을 때 사용자가 바깥(배경)을 클릭하면 onCLsoe가 호출되어 모달이 닫히는 구조임
       onCLose는 부모나 props로 받은 "모달 닫기"용 함수*/}
-      
       {/* 모달 컨테이너 */}
-      <div className={`${styles.animeDetailModalContainer} ${isFullInfoOpen ? styles.dimTabs : ''}`}>
+      <div
+        className={`${styles.animeDetailModalContainer} ${isFullInfoOpen ? styles.dimTabs : ""}`}
+      >
         {/* 템플릿 리터럴 `${}을 사용하고 있고 그 안에 변수나 표현식을 넣을 수 있음 여기선 기본 스타일과 조건부 스타일을 적용하기 위해 사용*/}
         {/* 삼항 연산자를 사용해서 isFullInfoOpen 값이 true면 dimTabs 클래스를 추가해서 탭 메뉴를 어둡게 만듬 false면 빈 문자열이 들어감*/}
         {/* isFullInfoOpen이 true가 되는 순간 상세정보 모달이 열리고 모달 본체에 dimTabs 스타일 클래스가 추가됨*/}
-        <div className={styles.menuButtonContainer}> {/* 메뉴 버튼 컨테이너 div에 menuButtonContainer css 클래스 적용  
+        <div className={styles.menuButtonContainer}>
+          {" "}
+          {/* 메뉴 버튼 컨테이너 div에 menuButtonContainer css 클래스 적용  
         점 3개 드롭다운 버튼임*/}
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
@@ -719,14 +763,13 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             aria-label="메뉴" // 스크린 리더 등 보조기기에 메뉴 버튼이라고 알림 실제 화면에 나타나지는 않음
           >
             <svg fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
+              <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
             </svg>
           </button>
           {/* onCLick은 버튼이 클릭될 때 실행되는 이벤트 리스너임 사용할려면 꼭 콜백 함수를 넘겨야함 
           isDropdownOpen은 드롭다운 메뉴 버튼이 열려있냐 닫혀있냐 여부를 나타냄
           닫혀있으면 false인 상태 닫혀있는 상태에서 클릭하면 부정연산자로 true로바뀌고 상태변경함수로 변경되서 드롭다운 메뉴가 열리게됨
           열려있는 상테면 isDroptdownOpen이 true인 상태에서 부정연산자로 false로 바뀌고 상태변경함수로 변경해서 드롭다운 메뉴가 닫힘 */}
-          
           {/* &&는 앞의 값이true면, 뒤에 JSX(코드 블록)가 렌더링 되고
           앞의 값이 false면 Reactr가 아예 뒤에 JSX를 스크린에 렌더링하지않고 무시함 
           즉, 점 3개 누른상태면 보이고 안눌렀으면 안보임*/}
@@ -757,10 +800,14 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
           aria-label="닫기"
         >
           <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </button>
-
 
         <div className={styles.topInfoSection}>
           {/* 상단 정보 섹션 */}
@@ -770,7 +817,9 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             <div className={styles.backgroundContainer}>
               {/* 여기가 실제 이미지가 들어가는 div*/}
               {/* AnimeDetailDto 에는 배경(backdrop) 필드가 없어 항상 기본 배경을 사용한다 */}
-              <div className={`${styles.characterImage} ${styles.noBackdrop}`} />
+              <div
+                className={`${styles.characterImage} ${styles.noBackdrop}`}
+              />
             </div>
           </div>
           {/* 삼항 연산자를사용해서 
@@ -785,9 +834,12 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
           {/* 작은 포스터 - 오른쪽 중간에 위치 */}
           <div className={styles.smallPoster}>
             <div className={styles.posterContainer}>
-              <img 
-                src={detail?.posterUrl || "https://placehold.co/96x128/ff69b4/ffffff?text=LAFTEL+ONLY"} 
-                alt={`${(detail?.title || detail?.titleEn || detail?.titleJp || '애니메이션')} 포스터`}
+              <img
+                src={
+                  detail?.posterUrl ||
+                  "https://placehold.co/96x128/ff69b4/ffffff?text=LAFTEL+ONLY"
+                }
+                alt={`${detail?.title || detail?.titleEn || detail?.titleJp || "애니메이션"} 포스터`}
                 className={styles.posterImage}
               />
             </div>
@@ -801,19 +853,19 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
           {/* 상단 정보 오버레이 */}
           <div className={styles.topInfoOverlay}>
-              {/* 평점 및 배지 - 왼쪽 상단 */}
-              <div className={styles.ratingSection}>
-                <div className={styles.ratingContainer}>
-                  <span className={styles.ratingStar}>★</span>
-                  <span className={styles.ratingValue}>
-                    {typeof currentRating === 'number' ? currentRating.toFixed(1) : 'N/A'}
-                  </span>
-                </div>
-                <span className={styles.ratingBadge}>
-                  {'ONLY'}
+            {/* 평점 및 배지 - 왼쪽 상단 */}
+            <div className={styles.ratingSection}>
+              <div className={styles.ratingContainer}>
+                <span className={styles.ratingStar}>★</span>
+                <span className={styles.ratingValue}>
+                  {typeof currentRating === "number"
+                    ? currentRating.toFixed(1)
+                    : "N/A"}
                 </span>
               </div>
-              {/* div 2겹으로 만들고 각각 css 모듈 적용함
+              <span className={styles.ratingBadge}>{"ONLY"}</span>
+            </div>
+            {/* div 2겹으로 만들고 각각 css 모듈 적용함
               span은 inline 요소라 텍스트나 아이콘등을 자연스럽게 이어 붙이기 좋음 각각의 span에 적용한 className으로
               색상, 크기, 여백 폰트 스타일등 세부디자인을 개별적으로 다르게 할 수 있음
               보통 div로 만들기엔 너무 크거나 줄바꿈이 생길때나
@@ -823,173 +875,220 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               number 타입이 아니면 N/A를 보여줌 
               그 다음 관람등급뱃지 부분인데 detail.badges가 존재하고 배열이면 detail.badges[0]을 사용하고
               아니면 ONLY를 사용함*/}
+            {/* 애니메이션 제목 */}
+            <h1 className={styles.animeTitle}>
+              {(() => {
+                // {(() => { ... })()} 구조
+                // () => { ... } 로 콜백함수 정의하고
+                // (() => { ... }) 로 위에서 만든 함수를 괄호로 한 번 감싼것 "이게 하나의 표현식이야"라고 묶어준 상태임
+                // (() => { ... })() 방금 만든 함수 표현식 뒤에 ()를 붙여서 "지금 당장 실행" 그래서 이 전체의 결과값이 return 값이됨
+                // { ... } (JSX 중괄호) JSX 입장에서 보면, { ... } 안에는 "어떤 자바스크립트 표현식의 값"이 들어가야하는데
+                // 우리가 만든(() => { ... }()의 실행 결과가 그대로 들어가는 것
+                // 즉, 매개변수 없는 화살표 함수를 하나 정의하고, 그걸 즉시 실행해서 나온 값을 JSX의 {} 안에 넣는다 라고 보면됨
+                // ()가 즉시 실행인 이유는 함수 이름(또는 함수 표현식)뒤에 ()를 붙이면 "그 함수를 실행한다"는 자바스크립트 문법이기 때문
+                const isDub = detail?.isDub === true; // 더빙여부
+                // detail.isDub 속성이 true면 === true로 비교연산을 하고 isDub 변수에 true를 할당함 false면 false를 할당
+                const isSubtitle = detail?.isSubtitle === true; // 자막여부
+                // detail.isSubtitle 속성이 true면 === true로 비교연산을 하고 isSubtitle 변수에 true를 할당함 false면 false를 할당
+                let prefix = ""; // 재할당 가능한 변수를 선언하고 빈문자열로 초기화
+                if (isDub && isSubtitle) {
+                  // 만약 isDub과 isSubtitle 둘 다 true면 prefix에 '(자막) '을 할당
+                  prefix = "(자막) ";
+                } else if (isDub) {
+                  // 만약 isDub가 true이고 isSubtitle가 false면 prefix에 '(더빙) '을 할당
+                  prefix = "(더빙) ";
+                } else if (isSubtitle) {
+                  // 만약 isSubtitle가 true이고 isDub가 false면 prefix에 '(자막) '을 할당
+                  prefix = "(자막) ";
+                }
 
-              {/* 애니메이션 제목 */}
-              <h1 className={styles.animeTitle}>
-                {(() => {
-                  // {(() => { ... })()} 구조
-                  // () => { ... } 로 콜백함수 정의하고
-                  // (() => { ... }) 로 위에서 만든 함수를 괄호로 한 번 감싼것 "이게 하나의 표현식이야"라고 묶어준 상태임
-                  // (() => { ... })() 방금 만든 함수 표현식 뒤에 ()를 붙여서 "지금 당장 실행" 그래서 이 전체의 결과값이 return 값이됨
-                  // { ... } (JSX 중괄호) JSX 입장에서 보면, { ... } 안에는 "어떤 자바스크립트 표현식의 값"이 들어가야하는데
-                  // 우리가 만든(() => { ... }()의 실행 결과가 그대로 들어가는 것
-                  // 즉, 매개변수 없는 화살표 함수를 하나 정의하고, 그걸 즉시 실행해서 나온 값을 JSX의 {} 안에 넣는다 라고 보면됨
-                  // ()가 즉시 실행인 이유는 함수 이름(또는 함수 표현식)뒤에 ()를 붙이면 "그 함수를 실행한다"는 자바스크립트 문법이기 때문
-                  const isDub = detail?.isDub === true; // 더빙여부
-                  // detail.isDub 속성이 true면 === true로 비교연산을 하고 isDub 변수에 true를 할당함 false면 false를 할당
-                  const isSubtitle = detail?.isSubtitle === true; // 자막여부
-                  // detail.isSubtitle 속성이 true면 === true로 비교연산을 하고 isSubtitle 변수에 true를 할당함 false면 false를 할당                  
-                  let prefix = ''; // 재할당 가능한 변수를 선언하고 빈문자열로 초기화
-                  if (isDub && isSubtitle) {
-                    // 만약 isDub과 isSubtitle 둘 다 true면 prefix에 '(자막) '을 할당
-                    prefix = '(자막) ';
-                  } else if (isDub) {
-                    // 만약 isDub가 true이고 isSubtitle가 false면 prefix에 '(더빙) '을 할당
-                    prefix = '(더빙) ';
-                  } else if (isSubtitle) {
-                    // 만약 isSubtitle가 true이고 isDub가 false면 prefix에 '(자막) '을 할당
-                    prefix = '(자막) ';
-                  }
-                  
-                  const title = 
-                  detail?.title || 
-                  detail?.titleEn || 
+                const title =
+                  detail?.title ||
+                  detail?.titleEn ||
                   detail?.titleJp ||
-                   '제목 없음';
-                   // 옵셔널 체인걸어서 한국어 제목 있으면 한국어 없으면 영어제목
-                   // 영어 제목도 없으면 일본어 제목
-                   // 일본어 제목도 없으면 제목 없음을 사용하는 구조조
-                  return `${prefix}${title}`;
-                  // 접두어와 타이틀을 템플릿 리터럴로 감싸서 retunrn 해주는 구조
-                })()}
-              </h1> {/* 그럼 JSX에서 받아서 h1 안의 텍스트로 사용함*/}
-
-              {/* 장르 및 정보 */}
-              <div className={styles.genreSection}> {/* CSS 모듈 적용*/}
-                {Array.isArray(detail?.genres) && detail.genres.length > 0 ? (
-                  // Array.isArray 함수로 detail.gernes가 배열인지 아닌지 확인하고 배열이면 true, 아니면 false를 반환해줌
-                  // 만약 false면 %% 특성 때문에 뒤는 아예 평가도 안하고 전체 결과를 false로 결정함
-                  // 만약 true면 그 다음 detail.geners.length > 0를 평가하고 그 결과값(boolean)이 최종 값이됨
-                  // detail.geners가 배열이면서, 그 길이가 0보다 큰 경우에만 true가 나오게되는거임
-                  detail.genres.slice(0, 6).map((g, idx) => (
-                    // () => {}는 일반적인 화살표 함수
-                    // 여기서 사용한 () => ()는 "바로 이 표현식을 return 하겠다"라는 축약 문법임
-                    // detail.genres는 배열이고 {'액션', { name: '코미디' }, ...} 처럼 문자열이랑 객체가 섞여 있을 수 있는 배열이라고 타입 단언함
-                    // name?: string은 정확히 ?라는 옵셔널을 걸었기때문에 name이라는 프로퍼티가 있을 수도 있고, 없을 수도 있다라는 뜻
-                    // 그 다음 .slice(0, 6)은 그 배열에 대해 앞에서부터 최대 6개만 잘라서 새 배열을 만듬
-                    // 새 배열이 ['액션', name: '코미디' , '판타지'] 라고 가정을 해서 이해를 해보면
-                    // 위에 배열에 .map을 돌리면 배열의 각 요소가 하나씩 들어가게 되는데
-                    // 첫번째 요소인 '액션'이 g로 들어가고 idx = 0
-                    // 두 번째 요소 'name: 코미디'가 g, idx = 1
-                    // 세 번째 요소 '판타지'가 g, idx = 2
-                    // 이런식으로 요소 하나하나가 g로 들어가서 가공됨
-                    // .map은 JS에서 배열 전용 메서드고 어떤배열.map(콜백) 형태로만 사용하고고
-                    // 배열에 각 요소를 하나씩 꺼내서 가공해주고 그 가공값을 새배열로 만들어주는것 콜백함수는 꼭 넘겨야함
-                    <span key={idx} className={styles.genreTag}> {/* CSS 모듈 적용*/}
-                      {g?.name || ''}
-                    </span>
-                    // g에 타입이 string이면 g를 사용하고 string이 아니면 g.name을 사용 없으면 ''를 사용함
-                  ))
-                ) : (
-                  <span className={styles.genreTag}>장르 정보 없음</span>
-                )} {/* 만약 detail.geners가 배열이 아니거나 길이가0이면 장르 정보 없음을 출력
+                  "제목 없음";
+                // 옵셔널 체인걸어서 한국어 제목 있으면 한국어 없으면 영어제목
+                // 영어 제목도 없으면 일본어 제목
+                // 일본어 제목도 없으면 제목 없음을 사용하는 구조조
+                return `${prefix}${title}`;
+                // 접두어와 타이틀을 템플릿 리터럴로 감싸서 retunrn 해주는 구조
+              })()}
+            </h1>{" "}
+            {/* 그럼 JSX에서 받아서 h1 안의 텍스트로 사용함*/}
+            {/* 장르 및 정보 */}
+            <div className={styles.genreSection}>
+              {" "}
+              {/* CSS 모듈 적용*/}
+              {Array.isArray(detail?.genres) && detail.genres.length > 0 ? (
+                // Array.isArray 함수로 detail.gernes가 배열인지 아닌지 확인하고 배열이면 true, 아니면 false를 반환해줌
+                // 만약 false면 %% 특성 때문에 뒤는 아예 평가도 안하고 전체 결과를 false로 결정함
+                // 만약 true면 그 다음 detail.geners.length > 0를 평가하고 그 결과값(boolean)이 최종 값이됨
+                // detail.geners가 배열이면서, 그 길이가 0보다 큰 경우에만 true가 나오게되는거임
+                detail.genres.slice(0, 6).map((g, idx) => (
+                  // () => {}는 일반적인 화살표 함수
+                  // 여기서 사용한 () => ()는 "바로 이 표현식을 return 하겠다"라는 축약 문법임
+                  // detail.genres는 배열이고 {'액션', { name: '코미디' }, ...} 처럼 문자열이랑 객체가 섞여 있을 수 있는 배열이라고 타입 단언함
+                  // name?: string은 정확히 ?라는 옵셔널을 걸었기때문에 name이라는 프로퍼티가 있을 수도 있고, 없을 수도 있다라는 뜻
+                  // 그 다음 .slice(0, 6)은 그 배열에 대해 앞에서부터 최대 6개만 잘라서 새 배열을 만듬
+                  // 새 배열이 ['액션', name: '코미디' , '판타지'] 라고 가정을 해서 이해를 해보면
+                  // 위에 배열에 .map을 돌리면 배열의 각 요소가 하나씩 들어가게 되는데
+                  // 첫번째 요소인 '액션'이 g로 들어가고 idx = 0
+                  // 두 번째 요소 'name: 코미디'가 g, idx = 1
+                  // 세 번째 요소 '판타지'가 g, idx = 2
+                  // 이런식으로 요소 하나하나가 g로 들어가서 가공됨
+                  // .map은 JS에서 배열 전용 메서드고 어떤배열.map(콜백) 형태로만 사용하고고
+                  // 배열에 각 요소를 하나씩 꺼내서 가공해주고 그 가공값을 새배열로 만들어주는것 콜백함수는 꼭 넘겨야함
+                  <span key={idx} className={styles.genreTag}>
+                    {" "}
+                    {/* CSS 모듈 적용*/}
+                    {g?.name || ""}
+                  </span>
+                  // g에 타입이 string이면 g를 사용하고 string이 아니면 g.name을 사용 없으면 ''를 사용함
+                ))
+              ) : (
+                <span className={styles.genreTag}>장르 정보 없음</span>
+              )}{" "}
+              {/* 만약 detail.geners가 배열이 아니거나 길이가0이면 장르 정보 없음을 출력
                 값이 있어도 배열이 아니면 fail, 배열이여도 값이 0이면 fail이라는 뜻*/}
-                
-                {/* 애니메이션 타입·상태 */}
-                <span className={styles.typeStatusBadge}> {/* CSS 모듈 적용 */}
-                  {detail?.type || 'TV'}·{detail?.animeStatus === 'COMPLETED' ? '완결' : 
-                  // 중첩 삼항연산자를 사용한식임
-                  // detail.type이 truthy면 그 값을 사용하고 값이 없거나 falsy(undefiend, null, '')면 'TV'를사용
-                  // 중간에 .은 그냥 화면에 표시하는것. detail.animeStatus가 'COMPLETED'이면 '완결'을 사용하고
-                  // 아니면 false부분에 삼항연산자를 다시쓴 구조를 사용함
-                  // 자바의 case/ switch문을 자바스크립트에서 삼항연산자로 구현한 느낌
-                   detail?.animeStatus === 'ONGOING' ? '방영중' : 
-                   // detail.animeStatus가 'ONGOING'이면 '방영중'을 사용하고
-                   detail?.animeStatus === 'UPCOMING' ? '예정' :
-                   // detail.animeStatus가 'UPCOMING'이면 '예정'을 사용하고
-                   detail?.animeStatus === 'HIATUS' ? '중단' : '완결'}
-                   {/* detail.animeStatus가 'CANCELLED'이면 '중단'을 사용하고 그 외에는 '완결'을 사용함*/}
-                </span>
-                
-                {/* 관람등급 */}
-                <div className={styles.ageRatingBadge}> {/* CSS 모듈 적용 */}
-                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="10" cy="10" r="9" fill="#E9B62F" stroke="#FFFFFF" strokeWidth="2" />
-                    <text x="10" y="10" textAnchor="middle" dominantBaseline="central" fill="#000" fontSize="7" fontWeight="700">
-                      {/* 관름등급 뱃지를 인라인으로 동그란 뱃지(SVG)로 만들고 그 안에 텍스트로등급을 적는 형식*/}
-                      {(() => {
-                        const rating = detail?.ageRating; // detail.ageRating 값을 rating 변수에 할당함
-                        if (rating === '전체 이용가') return 'ALL'; // rating 값이 '전체 이용가'이면 'ALL'을 반환함
-                        if (rating === '15세이상') return '15'; // rating 값이 '15세이상'이면 '15'을 반환함
-                        if (rating === '12세이상') return '12'; // rating 값이 '12세이상'이면 '12'을 반환함
-                        if (rating === '19세이상') return '19'; // rating 값이 '19세이상'이면 '19'을 반환함
-                        if (rating === 'ALL') return 'ALL';
-                        return 'ALL'; // 그 외에는 'ALL'을 반환함
-                      })()}
-                      {/* {(() => { ... })()} 형식이고
+              {/* 애니메이션 타입·상태 */}
+              <span className={styles.typeStatusBadge}>
+                {" "}
+                {/* CSS 모듈 적용 */}
+                {detail?.type || "TV"}·
+                {detail?.animeStatus === "COMPLETED"
+                  ? "완결"
+                  : // 중첩 삼항연산자를 사용한식임
+                    // detail.type이 truthy면 그 값을 사용하고 값이 없거나 falsy(undefiend, null, '')면 'TV'를사용
+                    // 중간에 .은 그냥 화면에 표시하는것. detail.animeStatus가 'COMPLETED'이면 '완결'을 사용하고
+                    // 아니면 false부분에 삼항연산자를 다시쓴 구조를 사용함
+                    // 자바의 case/ switch문을 자바스크립트에서 삼항연산자로 구현한 느낌
+                    detail?.animeStatus === "ONGOING"
+                    ? "방영중"
+                    : // detail.animeStatus가 'ONGOING'이면 '방영중'을 사용하고
+                      detail?.animeStatus === "UPCOMING"
+                      ? "예정"
+                      : // detail.animeStatus가 'UPCOMING'이면 '예정'을 사용하고
+                        detail?.animeStatus === "HIATUS"
+                        ? "중단"
+                        : "완결"}
+                {/* detail.animeStatus가 'CANCELLED'이면 '중단'을 사용하고 그 외에는 '완결'을 사용함*/}
+              </span>
+              {/* 관람등급 */}
+              <div className={styles.ageRatingBadge}>
+                {" "}
+                {/* CSS 모듈 적용 */}
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle
+                    cx="10"
+                    cy="10"
+                    r="9"
+                    fill="#E9B62F"
+                    stroke="#FFFFFF"
+                    strokeWidth="2"
+                  />
+                  <text
+                    x="10"
+                    y="10"
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="#000"
+                    fontSize="7"
+                    fontWeight="700"
+                  >
+                    {/* 관름등급 뱃지를 인라인으로 동그란 뱃지(SVG)로 만들고 그 안에 텍스트로등급을 적는 형식*/}
+                    {(() => {
+                      const rating = detail?.ageRating; // detail.ageRating 값을 rating 변수에 할당함
+                      if (rating === "전체 이용가") return "ALL"; // rating 값이 '전체 이용가'이면 'ALL'을 반환함
+                      if (rating === "15세이상") return "15"; // rating 값이 '15세이상'이면 '15'을 반환함
+                      if (rating === "12세이상") return "12"; // rating 값이 '12세이상'이면 '12'을 반환함
+                      if (rating === "19세이상") return "19"; // rating 값이 '19세이상'이면 '19'을 반환함
+                      if (rating === "ALL") return "ALL";
+                      return "ALL"; // 그 외에는 'ALL'을 반환함
+                    })()}
+                    {/* {(() => { ... })()} 형식이고
                       (() => { ... }): 화살표 함수로 콜백함수 정의
                       ()는 그 함수를 즉시 호출하기 위해 사용
                       젤 바깥{ ... } 는 JSX 안에서 자바스크립트 표현식을 쓰기 위한 중괄호임
                       IIFE(함수 표현식 + 즉시 실행)로 감싸고 그 안에서 중첩 if + 각각의 return로 분기 처리를 한것
                       바로 위에처럼 삼항 연산자로 분기문 작성도 가능*/}
-                    </text>
-                  </svg>
-                </div>
+                  </text>
+                </svg>
               </div>
-
-              {/* 액션 버튼들 */}
-              <div className={styles.animeDetailModalActionButtons}> {/* CSS 모듈 적용 */}
-                {/* 로딩 중일 때 */}
-                {isLoadingHistory && ( // isLoadingHistory가 true면 여기가 렌더링되고 false면 렌더링 안됨
-                  <div className={styles.loadingMessage}>시청 기록을 불러오는 중...</div>
-                )}
-                
-                {/* 이어보기 버튼 - 시청 기록이 있고 다 보지 않은 경우*/}
-                {!isLoadingHistory && watchHistory && !watchHistory.completed && (
-                  // isLoadingHistory가 false, watchHistory가 truthy, wathchHistory.completed가 false인걸 다 성립하면 여기가 렌더링됨
-                  // 즉 로딩중이지 않고, 시청기록이 있으며, 시청기록이 완료되지 않은 경우(이어볼 게 있음) 모든 조건을 성립함
-                  <div className={styles.playButtonContainer}> {/* CSS 모듈 적용 */}
-                    <button 
-                      onClick={() => { // 이어보기 버튼 클릭시 실행되는 콜백함수를 화살표 함수로 작성해서 onClick에 넘겨주는 형식
-                        console.log('🎬 이어보기 버튼 클릭:', { // 이어보기 버튼 클릭시 콘솔에 출력되는 메시지
-                          episodeId: watchHistory.episodeId, // watchHistory.episodeId 값을 콘솔에 출력
-                          animeId: detail?.aniId, // detail.aniId 값을 콘솔에 출력
-                          positionSec: watchHistory.positionSec, // watchHistory.positionSec 값을 콘솔에 출력
-                          episodeNumber: watchHistory.episodeNumber // watchHistory.episodeNumber 값을 콘솔에 출력
-                        });
-                        // 이어보기: 마지막으로 본 에피소드부터 재생
-                        const position = watchHistory.positionSec > 0 ? `&position=${watchHistory.positionSec}` : '';
-                        // positionSec이 0보다크면 &position=positionSec 형식으로 쿼리 파라미터에 추가하고 아니면  빈 문자열로 초기화해서 변수에 할당
-                        // 백틱으로 감싼 템플릿 리터러에 뜻은 문자열 %position= 뒤에 positionSec 값을 이어 붙인다는 뜻
-                        // 예를 들어 positionSec이 120이면 변수에는 %position=120 형식으로 추가됨
-                        const url = `/player?episodeId=${watchHistory.episodeId}&animeId=${detail?.aniId}${position}`;
-                        // player 페이지로 이동 url를 생성하는 구조임
-                        // /player?episodeId=13&animeId=50&position=120 형식으로 추가됨
-                        console.log('🔗 이동할 URL:', url);
-                        router.push(url); // roter.push()에 url을넘겨주면 브라우저가 그 주소로 이동함
-                        // 보통 전체 새로고침 없이SPA처럼 전환됨
-                        onClose(); // 사용자가 이어보기 버튼 클릭 -> player 페이지로 이동 -> 지금 떠있는 애니 상세 모달을 닫기위해 onClose() 함수를 호출한것
-                      }}
-                      className={styles.playButton} // 이어보기 버튼에 CSS 모듈 적용
-                    >
-                      <div className={styles.playButtonIcon}> {/* svg로 그린 ▶ 아이콘 감싸기 위한 컨테이너임 */} 
-                        <svg fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z"/>
-                        </svg>
-                      </div>
-                      <span className={styles.playButtonText}>{watchHistory.episodeNumber}화 이어보기</span>
-                      {/* watchHistory.episodeNumber 값을 화면에 출력함 3화 이어보기 이런식으로 출력됨*/}
-                    </button>
-                  </div>
-                )}
-                
-                {/* 처음보기 또는 시청완료된 경우 보러가기 버튼 */}
-                {!isLoadingHistory && (!watchHistory || watchHistory.completed) && (
+            </div>
+            {/* 액션 버튼들 */}
+            <div className={styles.animeDetailModalActionButtons}>
+              {" "}
+              {/* CSS 모듈 적용 */}
+              {/* 로딩 중일 때 */}
+              {isLoadingHistory && ( // isLoadingHistory가 true면 여기가 렌더링되고 false면 렌더링 안됨
+                <div className={styles.loadingMessage}>
+                  시청 기록을 불러오는 중...
+                </div>
+              )}
+              {/* 이어보기 버튼 - 시청 기록이 있고 다 보지 않은 경우*/}
+              {!isLoadingHistory && watchHistory && !watchHistory.completed && (
+                // isLoadingHistory가 false, watchHistory가 truthy, wathchHistory.completed가 false인걸 다 성립하면 여기가 렌더링됨
+                // 즉 로딩중이지 않고, 시청기록이 있으며, 시청기록이 완료되지 않은 경우(이어볼 게 있음) 모든 조건을 성립함
+                <div className={styles.playButtonContainer}>
+                  {" "}
+                  {/* CSS 모듈 적용 */}
+                  <button
+                    onClick={() => {
+                      // 이어보기 버튼 클릭시 실행되는 콜백함수를 화살표 함수로 작성해서 onClick에 넘겨주는 형식
+                      console.log("🎬 이어보기 버튼 클릭:", {
+                        // 이어보기 버튼 클릭시 콘솔에 출력되는 메시지
+                        episodeId: watchHistory.episodeId, // watchHistory.episodeId 값을 콘솔에 출력
+                        animeId: detail?.aniId, // detail.aniId 값을 콘솔에 출력
+                        positionSec: watchHistory.positionSec, // watchHistory.positionSec 값을 콘솔에 출력
+                        episodeNumber: watchHistory.episodeNumber, // watchHistory.episodeNumber 값을 콘솔에 출력
+                      });
+                      // 이어보기: 마지막으로 본 에피소드부터 재생
+                      const position =
+                        watchHistory.positionSec > 0
+                          ? `&position=${watchHistory.positionSec}`
+                          : "";
+                      // positionSec이 0보다크면 &position=positionSec 형식으로 쿼리 파라미터에 추가하고 아니면  빈 문자열로 초기화해서 변수에 할당
+                      // 백틱으로 감싼 템플릿 리터러에 뜻은 문자열 %position= 뒤에 positionSec 값을 이어 붙인다는 뜻
+                      // 예를 들어 positionSec이 120이면 변수에는 %position=120 형식으로 추가됨
+                      const url = `/player?episodeId=${watchHistory.episodeId}&animeId=${detail?.aniId}${position}`;
+                      // player 페이지로 이동 url를 생성하는 구조임
+                      // /player?episodeId=13&animeId=50&position=120 형식으로 추가됨
+                      console.log("🔗 이동할 URL:", url);
+                      router.push(url); // roter.push()에 url을넘겨주면 브라우저가 그 주소로 이동함
+                      // 보통 전체 새로고침 없이SPA처럼 전환됨
+                      onClose(); // 사용자가 이어보기 버튼 클릭 -> player 페이지로 이동 -> 지금 떠있는 애니 상세 모달을 닫기위해 onClose() 함수를 호출한것
+                    }}
+                    className={styles.playButton} // 이어보기 버튼에 CSS 모듈 적용
+                  >
+                    <div className={styles.playButtonIcon}>
+                      {" "}
+                      {/* svg로 그린 ▶ 아이콘 감싸기 위한 컨테이너임 */}
+                      <svg fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
+                    <span className={styles.playButtonText}>
+                      {watchHistory.episodeNumber}화 이어보기
+                    </span>
+                    {/* watchHistory.episodeNumber 값을 화면에 출력함 3화 이어보기 이런식으로 출력됨*/}
+                  </button>
+                </div>
+              )}
+              {/* 처음보기 또는 시청완료된 경우 보러가기 버튼 */}
+              {!isLoadingHistory &&
+                (!watchHistory || watchHistory.completed) && (
                   // isLoadingHistory가 false, watchHistory가 falsy(null, undefined, '') 또는 watchHistory.completed가 true인걸 다 성립하면 여기가 렌더링됨
                   <div className={styles.playButtonContainer}>
-                    <button 
-                      onClick={() => { // 재생하기 버튼 클릭시 실행되는 콜백함수를 화살표 함수로 작성해서 onClick에 넘겨주는 형식
-                        console.log('🎬 재생하기 버튼 클릭:', {
+                    <button
+                      onClick={() => {
+                        // 재생하기 버튼 클릭시 실행되는 콜백함수를 화살표 함수로 작성해서 onClick에 넘겨주는 형식
+                        console.log("🎬 재생하기 버튼 클릭:", {
                           watchHistory, // watchHistory 값을 콘솔에 출력
                           hasWatchHistory: !!watchHistory, // !!는 자바스크립트에서 값을 boolean으로 바꿀 때 쓰는 패턴임
                           // !watchHistory는 watchHistory가 truthy면 false, falsy면 true를 반환함
@@ -1000,7 +1099,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                           isCompleted: watchHistory?.completed, // watchHistory.completed 값을 콘솔에 출력
                           animeId: detail?.aniId, // detail.aniId 값을 콘솔에 출력
                         });
-                        
+
                         // 시청 기록이 있지만 완료된 경우: 다음 에피소드부터 시작
                         // 시청 기록이 없는 경우: 1화부터 시작
                         let nextEpisodeId = 1; // 시청기록이 없는 상태면 여기를 사용 1화부터 시작
@@ -1009,12 +1108,12 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                           nextEpisodeId = watchHistory.episodeNumber + 1;
                           // 현재 시청기록에있는 에피소드번호에 +1해서 nextEpisodeId 변수에 할당함
                         }
-                        
+
                         const url = `/player?episodeId=${nextEpisodeId}&animeId=${detail?.aniId}`;
                         // player 페이지로 이동 url를 생성하는 구조임
                         // /player?episodeId=14%anmieId=50 형식으로 추가됨
                         // 만약 처음 시청하는거면 /player?epsodeId=1%anmieId=50 형식으로 추가됨
-                        console.log('🔗 이동할 URL:', url);
+                        console.log("🔗 이동할 URL:", url);
                         router.push(url); // roter.push()에 url을넘겨주면 브라우저가 그 주소로 이동함
                         // 보통 전체 새로고침 없이SPA처럼 전환됨
                         onClose(); // 사용자가 재생하기 버튼 클릭 -> player 페이지로 이동 -> 지금 떠있는 애니 상세 모달을 닫기위해 onClose() 함수를 호출한것
@@ -1023,115 +1122,136 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                     >
                       <div className={styles.playButtonIcon}>
                         <svg fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M8 5v14l11-7z"/>
+                          <path d="M8 5v14l11-7z" />
                         </svg>
                       </div>
                       <span className={styles.playButtonText}>
-                        {watchHistory && watchHistory.completed 
+                        {watchHistory && watchHistory.completed
                           ? `${watchHistory.episodeNumber + 1}화 재생하기`
-                          : '1화 재생하기'
-                        }
+                          : "1화 재생하기"}
                         {/* 시청기록이 있고 정주행 완료한 상태면 시청기록에 있는 에피소드 번호에 +1하고 그 값+화 재생하기라고 랜더링
                         시청기록이 없으면 1화 재생하기 텍스트를 렌더링해줌*/}
                       </span>
                     </button>
                   </div>
                 )}
-                
-                {/* 보고싶다 버튼 */}
-                <div className={styles.favoriteButtonContainer}> {/* CSS 모듈 적용 */}
-                  <button 
-                    onClick={async () => { // 보고싶다 버튼 클릭시 실행되는 콜백함수를 비동기 화살표 함수로 작성해서 onClick에 넘겨주는 형식
-                      if (isLoadingFavorite) return; // 로딩중이면 바로 return해서 함수 종료 중복 중복 요청을 막는것임
-                      
-                      try {
-                        setIsLoadingFavorite(true); // 로딩 상태를 true로 설정해서 로딩중으로 표시함
-                        const newState = await toggleFavorite(Number(detail?.aniId));
-                        // toggleFavorite 함수는 다른곳에 작성해서 import해서 쓰는 비동기 함수고
-                        // 여기에 detail.aniId를 Number 타입으로 캐스팅해서 넘겨주면 그 aniId로 API가 호출되고
-                        // 서버가 보고싶다를 토글한 뒤 새 boolean 상태를 반환하고 그 값이 newState에 할당됨
-                        setIsFavoritedState(newState); // newState 값을 isFavoritedState 상태값에 할당함
-                        console.log('보고싶다 토글 완료:', newState);
-                      } catch (error) { // try 블록에서 예외가 발생하면 catch 블록이 실행되고 error 인자에 예외 객체가 전달됨
-                        console.error('보고싶다 토글 실패:', error);
-                        alert('보고싶다 기능을 사용할 수 없습니다.'); // 예외 발생시 알림 메시지를 띄움
-                      } finally {
-                        setIsLoadingFavorite(false); // 로딩 상태를 false로 설정해서 로딩중이 아닌 상태로 표시함
-                      }
-                    }}
-                    disabled={isLoadingFavorite} // 로딩중이면 버튼 비활성화 상태로 표시함
-                    className={`${styles.favoriteButton} ${isFavoritedState ? styles.favorited : ''}`}
-                    // 템플릿 리털로 감싸서 기본 css favoriteButton 적용
-                    // 만약 isFavoriteState가 true면 favorited css까지 붙여서 적용 false면 ''빈 문자열 적용해서 기본 css만 사용
-                  >
-                    <div className={styles.favoriteButtonContent}> {/* CSS 모듈 적용 */}
-                      {isFavoritedState ? ( // 삼항연산자를 사용 isFavoriteState가 true면 여기가 렌더링
-                        <svg 
-                          className={styles.checkIcon} 
-                          fill="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                        </svg>
-                      ) : ( // isFavoriteState가 false면 여기가 렌더링됨
-                        <span className={styles.plusIcon}>+</span>
-                      )}
-                      <span className={styles.favoriteButtonText}>
-                        {isFavoritedState ? '보관중' : '보고싶다'} 
-                        {/*isFavoriteState가 true면 '보관중' 텍스트를 false면 '보고싶다' 텍스트를 렌더링 */}
-                      </span>
-                    </div>
-                  </button>
-                  <div className={styles.favoriteTooltip}>
-                    {isFavoritedState ? '보관함에서 제거' : '보관함에 추가'}
-                    {/* isFavoritedState가 true면 '보관함에서 제거' 텍스트를, false면 '보관함에 추가' 텍스트를 렌더링*/}
+              {/* 보고싶다 버튼 */}
+              <div className={styles.favoriteButtonContainer}>
+                {" "}
+                {/* CSS 모듈 적용 */}
+                <button
+                  onClick={async () => {
+                    // 보고싶다 버튼 클릭시 실행되는 콜백함수를 비동기 화살표 함수로 작성해서 onClick에 넘겨주는 형식
+                    if (isLoadingFavorite) return; // 로딩중이면 바로 return해서 함수 종료 중복 중복 요청을 막는것임
+
+                    try {
+                      setIsLoadingFavorite(true); // 로딩 상태를 true로 설정해서 로딩중으로 표시함
+                      const newState = await toggleFavorite(
+                        Number(detail?.aniId),
+                      );
+                      // toggleFavorite 함수는 다른곳에 작성해서 import해서 쓰는 비동기 함수고
+                      // 여기에 detail.aniId를 Number 타입으로 캐스팅해서 넘겨주면 그 aniId로 API가 호출되고
+                      // 서버가 보고싶다를 토글한 뒤 새 boolean 상태를 반환하고 그 값이 newState에 할당됨
+                      setIsFavoritedState(newState); // newState 값을 isFavoritedState 상태값에 할당함
+                      console.log("보고싶다 토글 완료:", newState);
+                    } catch (error) {
+                      // try 블록에서 예외가 발생하면 catch 블록이 실행되고 error 인자에 예외 객체가 전달됨
+                      console.error("보고싶다 토글 실패:", error);
+                      alert("보고싶다 기능을 사용할 수 없습니다."); // 예외 발생시 알림 메시지를 띄움
+                    } finally {
+                      setIsLoadingFavorite(false); // 로딩 상태를 false로 설정해서 로딩중이 아닌 상태로 표시함
+                    }
+                  }}
+                  disabled={isLoadingFavorite} // 로딩중이면 버튼 비활성화 상태로 표시함
+                  className={`${styles.favoriteButton} ${isFavoritedState ? styles.favorited : ""}`}
+                  // 템플릿 리털로 감싸서 기본 css favoriteButton 적용
+                  // 만약 isFavoriteState가 true면 favorited css까지 붙여서 적용 false면 ''빈 문자열 적용해서 기본 css만 사용
+                >
+                  <div className={styles.favoriteButtonContent}>
+                    {" "}
+                    {/* CSS 모듈 적용 */}
+                    {isFavoritedState ? ( // 삼항연산자를 사용 isFavoriteState가 true면 여기가 렌더링
+                      <svg
+                        className={styles.checkIcon}
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+                      </svg>
+                    ) : (
+                      // isFavoriteState가 false면 여기가 렌더링됨
+                      <span className={styles.plusIcon}>+</span>
+                    )}
+                    <span className={styles.favoriteButtonText}>
+                      {isFavoritedState ? "보관중" : "보고싶다"}
+                      {/*isFavoriteState가 true면 '보관중' 텍스트를 false면 '보고싶다' 텍스트를 렌더링 */}
+                    </span>
                   </div>
-                </div>
-                
-                {/* 공유 버튼 */}
-                <button className={`${styles.animeDetailModalActionButton} ${styles.animeDetailModalActionButtonSecondary}`}>
-                  <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                  </svg>
-                  <span>공유</span>
                 </button>
+                <div className={styles.favoriteTooltip}>
+                  {isFavoritedState ? "보관함에서 제거" : "보관함에 추가"}
+                  {/* isFavoritedState가 true면 '보관함에서 제거' 텍스트를, false면 '보관함에 추가' 텍스트를 렌더링*/}
+                </div>
               </div>
-              {/* animeDetailModalActionButton은 베이스 css로 버튼 형태
+              {/* 공유 버튼 */}
+              <button
+                className={`${styles.animeDetailModalActionButton} ${styles.animeDetailModalActionButtonSecondary}`}
+              >
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z"
+                  />
+                </svg>
+                <span>공유</span>
+              </button>
+            </div>
+            {/* animeDetailModalActionButton은 베이스 css로 버튼 형태
               animeDetailModalActionButton은 베이스는 그대로 놔두고 버튼마다 다른 스타일을 적용하기위해 만든것것
               onClick()과 api 로직이 없는건 임시로 만들어둔 버튼이기 때문임*/}
-
-              {/* 줄거리 */}
-              <div className={styles.synopsisSection}>
-                {(() => {
-                  const raw = ((detail?.fullSynopsis ?? "")).toString().trim();
-                  const isLong = raw.length > MAX_SYNOPSIS_CHARS;
-                  const text = showFullSynopsis || !isLong ? raw : `${raw.slice(0, MAX_SYNOPSIS_CHARS)}…`;
-                  return (
-                    <div className={styles.synopsisInlineRow}>
-                      <span className={styles.synopsisText}>{text || "줄거리 정보가 없습니다."}</span>
-                      {isLong && (
-                        <button
-                          type="button"
-                          className={styles.synopsisToggle}
-                          onClick={() => {
-                            if (!showFullSynopsis) {
-                              // 처음 '더보기' 누르면 별도 전체 정보 모달을 띄움
-                              setIsFullInfoOpen(true);
-                            } else {
-                              setShowFullSynopsis(false);
-                            }
-                          }}
-                          aria-expanded={showFullSynopsis}
-                        >
-                          {showFullSynopsis ? '접기' : '더보기'}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })()}
-              </div>
+            {/* 줄거리 */}
+            <div className={styles.synopsisSection}>
+              {(() => {
+                const raw = (detail?.fullSynopsis ?? "").toString().trim();
+                const isLong = raw.length > MAX_SYNOPSIS_CHARS;
+                const text =
+                  showFullSynopsis || !isLong
+                    ? raw
+                    : `${raw.slice(0, MAX_SYNOPSIS_CHARS)}…`;
+                return (
+                  <div className={styles.synopsisInlineRow}>
+                    <span className={styles.synopsisText}>
+                      {text || "줄거리 정보가 없습니다."}
+                    </span>
+                    {isLong && (
+                      <button
+                        type="button"
+                        className={styles.synopsisToggle}
+                        onClick={() => {
+                          if (!showFullSynopsis) {
+                            // 처음 '더보기' 누르면 별도 전체 정보 모달을 띄움
+                            setIsFullInfoOpen(true);
+                          } else {
+                            setShowFullSynopsis(false);
+                          }
+                        }}
+                        aria-expanded={showFullSynopsis}
+                      >
+                        {showFullSynopsis ? "접기" : "더보기"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
             {/* 전체 작품 정보 모달 */}
-            <AnimeFullInfoModal isOpen={isFullInfoOpen} onClose={() => setIsFullInfoOpen(false)} detail={detail} />
+            <AnimeFullInfoModal
+              isOpen={isFullInfoOpen}
+              onClose={() => setIsFullInfoOpen(false)}
+              detail={detail}
+            />
           </div>
         </div>
 
@@ -1141,7 +1261,8 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             <div className={styles.confirmModal}>
               <h3 className={styles.confirmModalTitle}>시청 기록 초기화</h3>
               <p className={styles.confirmModalMessage}>
-                이 작품의 모든 시청 기록이 완전히 삭제됩니다.<br/>
+                이 작품의 모든 시청 기록이 완전히 삭제됩니다.
+                <br />
                 정말로 초기화하시겠습니까?
               </p>
               <div className={styles.confirmModalButtons}>
@@ -1169,7 +1290,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`${styles.tabButton} ${activeTab === tab.id ? styles.active : ''}`}
+                className={`${styles.tabButton} ${activeTab === tab.id ? styles.active : ""}`}
               >
                 <span className={styles.tabLabel}>{tab.label}</span>
                 {tab.count !== null && (
@@ -1182,75 +1303,101 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
 
         {/* 탭 콘텐츠 */}
         <div className={styles.tabContent}>
-          {activeTab === 'episodes' && (
+          {activeTab === "episodes" && (
             <div className={styles.episodesSection}>
               <h3 className={styles.episodesTitle}>에피소드 목록</h3>
               <div className={styles.episodesList}>
                 {episodes.length > 0 ? (
                   episodes.map((episode: Episode) => {
                     const prog = episodeProgress[episode.id];
-                    const pct = prog && prog.durationSec > 0 ? Math.min(1, prog.positionSec / prog.durationSec) : 0;
+                    const pct =
+                      prog && prog.durationSec > 0
+                        ? Math.min(1, prog.positionSec / prog.durationSec)
+                        : 0;
                     const watched = pct >= 0.9;
                     return (
-                  <div
-                    key={episode.id}
-                    className={styles.episodeItem}
-                    onClick={() => {
-                      // 플레이어 페이지로 이동 (현재 탭에서)
-                      router.push(`/player?episodeId=${episode.id}&animeId=${detail?.aniId}`);
-                      onClose(); // 모달 닫기
-                    }}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <div className={styles.episodeThumbnail}>
-                      <img
-                        src={episode.thumbnailUrl || getFallbackEpisodeThumb(episode.episodeNumber)}
-                        alt={episode.title}
-                        className={styles.episodeThumbnailImage}
-                      />
-                      {watched ? (
-                        <span className={styles.episodeWatchedBadge}>시청 완료</span>
-                      ) : pct > 0 ? (
-                        <div className={styles.episodeProgressBar}>
-                          <div className={styles.episodeProgressFill} style={{ width: `${pct * 100}%` }} />
+                      <div
+                        key={episode.id}
+                        className={styles.episodeItem}
+                        onClick={() => {
+                          // 플레이어 페이지로 이동 (현재 탭에서)
+                          router.push(
+                            `/player?episodeId=${episode.id}&animeId=${detail?.aniId}`,
+                          );
+                          onClose(); // 모달 닫기
+                        }}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <div className={styles.episodeThumbnail}>
+                          <img
+                            src={
+                              episode.thumbnailUrl ||
+                              getFallbackEpisodeThumb(episode.episodeNumber)
+                            }
+                            alt={episode.title}
+                            className={styles.episodeThumbnailImage}
+                          />
+                          {watched ? (
+                            <span className={styles.episodeWatchedBadge}>
+                              시청 완료
+                            </span>
+                          ) : pct > 0 ? (
+                            <div className={styles.episodeProgressBar}>
+                              <div
+                                className={styles.episodeProgressFill}
+                                style={{ width: `${pct * 100}%` }}
+                              />
+                            </div>
+                          ) : null}
                         </div>
-                      ) : null}
-                    </div>
-                    <div className={styles.episodeInfo}>
-                      <div className={styles.episodeHeader}>
-                        <h4 className={styles.episodeTitle}>
-                          {episode.episodeNumber}화
-                        </h4>
-                        <div className={styles.episodeMeta}>
-                          <span>{episode.duration ? `${episode.duration}분` : ''}</span>
-                          <span>{episode.createdAt ? String(episode.createdAt).slice(0,10) : ''}</span>
+                        <div className={styles.episodeInfo}>
+                          <div className={styles.episodeHeader}>
+                            <h4 className={styles.episodeTitle}>
+                              {episode.episodeNumber}화
+                            </h4>
+                            <div className={styles.episodeMeta}>
+                              <span>
+                                {episode.duration
+                                  ? `${episode.duration}분`
+                                  : ""}
+                              </span>
+                              <span>
+                                {episode.createdAt
+                                  ? String(episode.createdAt).slice(0, 10)
+                                  : ""}
+                              </span>
+                            </div>
+                          </div>
+                          <p className={styles.episodeDescription}>{""}</p>
                         </div>
                       </div>
-                      <p className={styles.episodeDescription}>
-                        {''}
-                      </p>
-                    </div>
-                  </div>
-                  );
-                })
+                    );
+                  })
                 ) : (
-                  <div className={styles.emptyState}>에피소드 정보가 없습니다.</div>
+                  <div className={styles.emptyState}>
+                    에피소드 정보가 없습니다.
+                  </div>
                 )}
               </div>
             </div>
           )}
 
           {/* 리뷰 탭: ReviewList 항상 마운트되도록 렌더링, 탭 아닐 때는 hidden 처리 */}
-          <div className={styles.reviewsSection} style={{ display: activeTab === 'reviews' ? 'block' : 'none' }}>
+          <div
+            className={styles.reviewsSection}
+            style={{ display: activeTab === "reviews" ? "block" : "none" }}
+          >
             {detail?.aniId ? (
-              <ReviewList 
+              <ReviewList
                 key={detail?.aniId}
-                animeId={detail?.aniId as number} 
+                animeId={detail?.aniId as number}
                 onRatingChange={handleRatingChange}
               />
             ) : (
               <div className={styles.reviewsError}>
-                <p className={styles.reviewsErrorMessage}>⚠️ 애니메이션 ID를 찾을 수 없습니다.</p>
+                <p className={styles.reviewsErrorMessage}>
+                  ⚠️ 애니메이션 ID를 찾을 수 없습니다.
+                </p>
                 <p className={styles.reviewsErrorDetails}>
                   anime 객체: {JSON.stringify(detail, null, 2)}
                 </p>
@@ -1258,13 +1405,11 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
             )}
           </div>
 
-          {activeTab === 'shop' && (
-            <div className={styles.shopSection}>
-              상점 기능은 준비 중입니다
-            </div>
+          {activeTab === "shop" && (
+            <div className={styles.shopSection}>상점 기능은 준비 중입니다</div>
           )}
 
-          {activeTab === 'similar' && (
+          {activeTab === "similar" && (
             <div className={styles.similarSection}>
               {isLoadingSimilar ? (
                 <div className={styles.loadingContainer}>
@@ -1274,8 +1419,13 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                 <div className={styles.similarGrid}>
                   {similarAnimes.map((anime, index) => {
                     const itemId = Number(anime?.aniId ?? index);
-                    const title = anime?.title || anime?.titleEn || anime?.titleJp || '제목 없음';
-                    const posterUrl = anime?.posterUrl || '/icons/default-avatar.svg';
+                    const title =
+                      anime?.title ||
+                      anime?.titleEn ||
+                      anime?.titleJp ||
+                      "제목 없음";
+                    const posterUrl =
+                      anime?.posterUrl || "/icons/default-avatar.svg";
 
                     return (
                       <AnimeCard
@@ -1283,7 +1433,11 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                         aniId={itemId}
                         title={title}
                         posterUrl={posterUrl}
-                        rating={typeof anime?.rating === 'number' ? anime.rating : null}
+                        rating={
+                          typeof anime?.rating === "number"
+                            ? anime.rating
+                            : null
+                        }
                         onClick={() => {
                           onClose();
                           router.push(`/player?animeId=${itemId}`);
@@ -1293,9 +1447,7 @@ export default function AnimeDetailModal({ anime, isOpen, onClose }: AnimeDetail
                   })}
                 </div>
               ) : (
-                <div className={styles.emptyState}>
-                  추천할 작품이 없습니다.
-                </div>
+                <div className={styles.emptyState}>추천할 작품이 없습니다.</div>
               )}
             </div>
           )}

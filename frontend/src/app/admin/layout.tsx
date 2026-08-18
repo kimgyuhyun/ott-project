@@ -11,7 +11,11 @@ import styles from "./admin.module.css";
  * - 실제 권한 차단은 백엔드(SecurityConfig: /api/admin/** → ROLE_ADMIN)가 수행한다.
  * - 여기서는 UX 차원에서 비관리자를 홈으로 돌려보내고, 관리자 네비게이션을 제공한다.
  */
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { isInitialized, isAuthenticated, isAdmin } = useAuth();
   const router = useRouter();
 
@@ -35,12 +39,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className={styles.adminSidebar}>
         <div className={styles.adminBrand}>OTT Admin</div>
         <nav className={styles.adminNav}>
-          <Link href="/admin" className={styles.adminNavLink}>대시보드</Link>
-          <Link href="/admin/anime" className={styles.adminNavLink}>애니 카탈로그/동기화</Link>
-          <Link href="/admin/stats" className={styles.adminNavLink}>통계/감사 로그</Link>
-          <Link href="/admin/contents" className={styles.adminNavLink}>콘텐츠 관리</Link>
+          <Link href="/admin" className={styles.adminNavLink}>
+            대시보드
+          </Link>
+          <Link href="/admin/anime" className={styles.adminNavLink}>
+            애니 카탈로그/동기화
+          </Link>
+          <Link href="/admin/stats" className={styles.adminNavLink}>
+            통계/감사 로그
+          </Link>
+          <Link href="/admin/contents" className={styles.adminNavLink}>
+            콘텐츠 관리
+          </Link>
         </nav>
-        <Link href="/" className={styles.adminBackLink}>← 서비스로 돌아가기</Link>
+        <Link href="/" className={styles.adminBackLink}>
+          ← 서비스로 돌아가기
+        </Link>
       </aside>
       <main className={styles.adminMain}>{children}</main>
     </div>

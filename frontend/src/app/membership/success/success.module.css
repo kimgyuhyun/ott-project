@@ -28,14 +28,14 @@
 }
 
 .title {
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   font-size: 28px;
   font-weight: bold;
   margin-bottom: 16px;
 }
 
 .message {
-  color: var(--foreground-2, #CCCCCC);
+  color: var(--foreground-2, #cccccc);
   font-size: 16px;
   line-height: 1.6;
   margin-bottom: 32px;
@@ -61,12 +61,12 @@
 }
 
 .label {
-  color: var(--foreground-3, #ABABAB);
+  color: var(--foreground-3, #ababab);
   font-size: 14px;
 }
 
 .value {
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   font-size: 14px;
   font-weight: 500;
 }
@@ -79,7 +79,7 @@
 }
 
 .primaryButton {
-  background-color: var(--foreground-slight, #816BFF);
+  background-color: var(--foreground-slight, #816bff);
   color: white;
   border: none;
   border-radius: 8px;
@@ -91,12 +91,12 @@
 }
 
 .primaryButton:hover {
-  background-color: #6B5BC7;
+  background-color: #6b5bc7;
 }
 
 .secondaryButton {
   background-color: var(--button-slight-1, #323232);
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   border: 1px solid var(--border-1, #323232);
   border-radius: 8px;
   padding: 12px 24px;
@@ -112,7 +112,7 @@
 }
 
 .redirectMessage {
-  color: var(--foreground-3, #ABABAB);
+  color: var(--foreground-3, #ababab);
   font-size: 14px;
   margin: 0;
 }
@@ -121,11 +121,11 @@
   .successCard {
     padding: 32px 24px;
   }
-  
+
   .actions {
     flex-direction: column;
   }
-  
+
   .title {
     font-size: 24px;
   }

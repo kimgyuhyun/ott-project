@@ -25,10 +25,11 @@ export default function PlayerSettingsModal({
   onQualityChange,
   onPlaybackRateChange,
   onAutoSkipIntroChange,
-  onAutoSkipOutroChange
+  onAutoSkipOutroChange,
 }: PlayerSettingsModalProps) {
   const [localQuality, setLocalQuality] = useState(currentQuality);
-  const [localPlaybackRate, setLocalPlaybackRate] = useState(currentPlaybackRate);
+  const [localPlaybackRate, setLocalPlaybackRate] =
+    useState(currentPlaybackRate);
   const [localAutoSkipIntro, setLocalAutoSkipIntro] = useState(autoSkipIntro);
   const [localAutoSkipOutro, setLocalAutoSkipOutro] = useState(autoSkipOutro);
   const [showQualityOptions, setShowQualityOptions] = useState(false);
@@ -38,7 +39,7 @@ export default function PlayerSettingsModal({
     { value: "auto", label: "자동" },
     { value: "1080p", label: "1080p" },
     { value: "720p", label: "720p" },
-    { value: "480p", label: "480p" }
+    { value: "480p", label: "480p" },
   ];
 
   const playbackRateOptions = [
@@ -47,7 +48,7 @@ export default function PlayerSettingsModal({
     { value: 1, label: "1x (정상)" },
     { value: 1.25, label: "1.25x" },
     { value: 1.5, label: "1.5x" },
-    { value: 2, label: "2x" }
+    { value: 2, label: "2x" },
   ];
 
   const handleSave = () => {
@@ -74,8 +75,16 @@ export default function PlayerSettingsModal({
         <div className={styles.modalHeader}>
           <h3 className={styles.modalTitle}>플레이어 설정</h3>
           <button className={styles.closeButton} onClick={onClose}>
-            <svg className={styles.closeIcon} fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            <svg
+              className={styles.closeIcon}
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
             </svg>
           </button>
         </div>
@@ -83,12 +92,26 @@ export default function PlayerSettingsModal({
         <div className={styles.modalBody}>
           {/* 화질 설정 */}
           <div className={styles.settingSection}>
-            <div className={styles.settingItem} onClick={() => setShowQualityOptions(!showQualityOptions)}>
+            <div
+              className={styles.settingItem}
+              onClick={() => setShowQualityOptions(!showQualityOptions)}
+            >
               <span className={styles.settingLabel}>화질 설정</span>
               <div className={styles.settingValue}>
-                <span>{qualityOptions.find(opt => opt.value === localQuality)?.label || '자동'}</span>
-                <svg className={styles.arrowIcon} fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                <span>
+                  {qualityOptions.find((opt) => opt.value === localQuality)
+                    ?.label || "자동"}
+                </span>
+                <svg
+                  className={styles.arrowIcon}
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </div>
             </div>
@@ -97,7 +120,7 @@ export default function PlayerSettingsModal({
                 {qualityOptions.map((option) => (
                   <button
                     key={option.value}
-                    className={`${styles.optionButton} ${localQuality === option.value ? styles.selected : ''}`}
+                    className={`${styles.optionButton} ${localQuality === option.value ? styles.selected : ""}`}
                     onClick={() => {
                       setLocalQuality(option.value);
                       setShowQualityOptions(false);
@@ -112,12 +135,29 @@ export default function PlayerSettingsModal({
 
           {/* 재생 속도 설정 */}
           <div className={styles.settingSection}>
-            <div className={styles.settingItem} onClick={() => setShowPlaybackRateOptions(!showPlaybackRateOptions)}>
+            <div
+              className={styles.settingItem}
+              onClick={() =>
+                setShowPlaybackRateOptions(!showPlaybackRateOptions)
+              }
+            >
               <span className={styles.settingLabel}>재생 속도</span>
               <div className={styles.settingValue}>
-                <span>{playbackRateOptions.find(opt => opt.value === localPlaybackRate)?.label || '1x (정상)'}</span>
-                <svg className={styles.arrowIcon} fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                <span>
+                  {playbackRateOptions.find(
+                    (opt) => opt.value === localPlaybackRate,
+                  )?.label || "1x (정상)"}
+                </span>
+                <svg
+                  className={styles.arrowIcon}
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                    clipRule="evenodd"
+                  />
                 </svg>
               </div>
             </div>
@@ -126,7 +166,7 @@ export default function PlayerSettingsModal({
                 {playbackRateOptions.map((option) => (
                   <button
                     key={option.value}
-                    className={`${styles.optionButton} ${localPlaybackRate === option.value ? styles.selected : ''}`}
+                    className={`${styles.optionButton} ${localPlaybackRate === option.value ? styles.selected : ""}`}
                     onClick={() => {
                       setLocalPlaybackRate(option.value);
                       setShowPlaybackRateOptions(false);

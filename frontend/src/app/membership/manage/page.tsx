@@ -4,7 +4,13 @@ import Link from "next/link";
 import Image from "next/image";
 import Header from "@/components/layout/Header";
 import { useMembershipData } from "@/hooks/useMembershipData";
-import { cancelMembership, cancelScheduledPlanChange, resumeMembership, requestRefund, PaymentHistoryItem } from "@/lib/api/membership";
+import {
+  cancelMembership,
+  cancelScheduledPlanChange,
+  resumeMembership,
+  requestRefund,
+  PaymentHistoryItem,
+} from "@/lib/api/membership";
 import CancelPlanChangeModal from "@/components/membership/CancelPlanChangeModal";
 import PaymentMethodChangeModal from "@/components/membership/PaymentMethodChangeModal";
 import CancelMembershipModal from "@/components/membership/CancelMembershipModal";
@@ -12,30 +18,46 @@ import { useAuth } from "@/lib/AuthContext";
 import styles from "./manage.module.css";
 
 export default function MembershipManagePage() {
-  const { membershipPlans, userMembership, paymentMethods, paymentHistory, isLoading, error, reloadUserMembership, reloadPaymentHistory } = useMembershipData();
+  const {
+    membershipPlans,
+    userMembership,
+    paymentMethods,
+    paymentHistory,
+    isLoading,
+    error,
+    reloadUserMembership,
+    reloadPaymentHistory,
+  } = useMembershipData();
   const { user } = useAuth();
   const [isCancelling, setIsCancelling] = useState(false);
-  const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] = useState(false);
+  const [isPaymentMethodModalOpen, setIsPaymentMethodModalOpen] =
+    useState(false);
   const [showCancelChangeModal, setShowCancelChangeModal] = useState(false);
   const [isCancellingChange, setIsCancellingChange] = useState(false);
-  const [showCancelMembershipModal, setShowCancelMembershipModal] = useState(false);
+  const [showCancelMembershipModal, setShowCancelMembershipModal] =
+    useState(false);
   // 해지 요청의 멱등 키. 모달을 여는 시점(= 해지 의도 1회)에 한 번만 만들고 재시도에도 같은 값을 보낸다.
   // 요청할 때마다 새로 만들면 재시도가 서로 다른 키가 돼 서버 멱등 판정이 아무것도 막지 못한다.
-  const [cancelIdempotencyKey, setCancelIdempotencyKey] = useState<string | null>(null);
+  const [cancelIdempotencyKey, setCancelIdempotencyKey] = useState<
+    string | null
+  >(null);
   const [isResuming, setIsResuming] = useState(false);
-  const [notice, setNotice] = useState<{ type: 'success' | 'error', title: string, message: string } | null>(null);
-  
+  const [notice, setNotice] = useState<{
+    type: "success" | "error";
+    title: string;
+    message: string;
+  } | null>(null);
+
   // 환불 관련 상태
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isRefunding, setIsRefunding] = useState<number | null>(null);
 
-  
   // 플랜 이름 한국어 매핑
   const translatePlanName = (name?: string | null) => {
-    if (!name) return '';
+    if (!name) return "";
     const map: Record<string, string> = {
-      'Basic Monthly': '베이직',
-      'Premium Monthly': '프리미엄',
+      "Basic Monthly": "베이직",
+      "Premium Monthly": "프리미엄",
     };
     return map[name] || name;
   };
@@ -43,11 +65,11 @@ export default function MembershipManagePage() {
   // 결제수단 타입 한국어 매핑
   const translatePaymentMethodType = (type: string) => {
     const map: Record<string, string> = {
-      'CARD': '카드',
-      'KAKAO_PAY': '카카오페이',
-      'TOSS_PAY': '토스페이',
-      'NICE_PAY': '나이스페이',
-      'BANK_TRANSFER': '계좌이체',
+      CARD: "카드",
+      KAKAO_PAY: "카카오페이",
+      TOSS_PAY: "토스페이",
+      NICE_PAY: "나이스페이",
+      BANK_TRANSFER: "계좌이체",
     };
     return map[type] || type;
   };
@@ -55,39 +77,39 @@ export default function MembershipManagePage() {
   // 결제수단 아이콘 매핑
   const getPaymentMethodIcon = (type: string) => {
     const map: Record<string, string> = {
-      'CARD': '/images/logos/card.png',
-      'KAKAO_PAY': '/images/logos/kakao.svg',
-      'TOSS_PAY': '/images/logos/tosspaylogo.jpg',
-      'NICE_PAY': '/images/logos/nicepay.png',
-      'BANK_TRANSFER': '/images/logos/bank.png',
+      CARD: "/images/logos/card.png",
+      KAKAO_PAY: "/images/logos/kakao.svg",
+      TOSS_PAY: "/images/logos/tosspaylogo.jpg",
+      NICE_PAY: "/images/logos/nicepay.png",
+      BANK_TRANSFER: "/images/logos/bank.png",
     };
-    return map[type] || '/images/logos/default.png';
+    return map[type] || "/images/logos/default.png";
   };
 
   // 사용자의 현재 플랜 정보
   const planForUser = useMemo(() => {
     if (!userMembership) return null;
-    const matched = membershipPlans.find(p => {
-      const byCode = p.code && userMembership.planCode && p.code === userMembership.planCode;
-      const byName = p.name && userMembership.planName && p.name === userMembership.planName;
+    const matched = membershipPlans.find((p) => {
+      const byCode =
+        p.code && userMembership.planCode && p.code === userMembership.planCode;
+      const byName =
+        p.name && userMembership.planName && p.name === userMembership.planName;
       return byCode || byName;
     });
     return matched;
   }, [userMembership, membershipPlans]);
-
-
 
   // 결제 예정일 계산 (다음 결제일)
   const nextBillingDate = useMemo(() => {
     if (!userMembership?.nextBillingAt) return null;
     const d = new Date(userMembership.nextBillingAt);
     const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
     return `${y}.${m}.${day}`;
   }, [userMembership]);
 
-  // 결제 수단 변경 핸들러 (모달 열기)  
+  // 결제 수단 변경 핸들러 (모달 열기)
   const handleChangePaymentMethod = () => {
     setIsPaymentMethodModalOpen(true);
   };
@@ -100,15 +122,21 @@ export default function MembershipManagePage() {
       await cancelScheduledPlanChange();
       setShowCancelChangeModal(false);
       await reloadUserMembership();
-      setNotice({ type: 'success', title: '전환 예약 취소', message: '플랜 전환 예약이 취소되었습니다.' });
+      setNotice({
+        type: "success",
+        title: "전환 예약 취소",
+        message: "플랜 전환 예약이 취소되었습니다.",
+      });
     } catch (e) {
-      setNotice({ type: 'error', title: '실패', message: '전환 예약 취소에 실패했습니다. 다시 시도해주세요.' });
+      setNotice({
+        type: "error",
+        title: "실패",
+        message: "전환 예약 취소에 실패했습니다. 다시 시도해주세요.",
+      });
     } finally {
       setIsCancellingChange(false);
     }
   };
-
-
 
   // 멤버십 해지 핸들러
   const handleCancelMembership = async () => {
@@ -119,10 +147,18 @@ export default function MembershipManagePage() {
       await cancelMembership(cancelIdempotencyKey ?? undefined);
       await reloadUserMembership();
       setShowCancelMembershipModal(false);
-      setNotice({ type: 'success', title: '해지 완료', message: '멤버십 해지에 성공했습니다.' });
+      setNotice({
+        type: "success",
+        title: "해지 완료",
+        message: "멤버십 해지에 성공했습니다.",
+      });
     } catch (error) {
-      console.error('멤버십 해지 실패:', error);
-      setNotice({ type: 'error', title: '실패', message: '멤버십 해지에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+      console.error("멤버십 해지 실패:", error);
+      setNotice({
+        type: "error",
+        title: "실패",
+        message: "멤버십 해지에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      });
     } finally {
       setIsCancelling(false);
     }
@@ -131,15 +167,23 @@ export default function MembershipManagePage() {
   // 멤버십 정기결제 재시작 핸들러
   const handleResumeMembership = async () => {
     if (isResuming) return;
-    
+
     setIsResuming(true);
     try {
       await resumeMembership();
       await reloadUserMembership();
-      setNotice({ type: 'success', title: '정기결제 재시작', message: '멤버십 정기결제가 다시 시작되었습니다.' });
+      setNotice({
+        type: "success",
+        title: "정기결제 재시작",
+        message: "멤버십 정기결제가 다시 시작되었습니다.",
+      });
     } catch (error) {
-      console.error('멤버십 재시작 실패:', error);
-      setNotice({ type: 'error', title: '실패', message: '정기결제 재시작에 실패했습니다. 잠시 후 다시 시도해주세요.' });
+      console.error("멤버십 재시작 실패:", error);
+      setNotice({
+        type: "error",
+        title: "실패",
+        message: "정기결제 재시작에 실패했습니다. 잠시 후 다시 시도해주세요.",
+      });
     } finally {
       setIsResuming(false);
     }
@@ -151,7 +195,7 @@ export default function MembershipManagePage() {
     try {
       await reloadPaymentHistory();
     } catch (error) {
-      console.error('결제 내역 로드 실패:', error);
+      console.error("결제 내역 로드 실패:", error);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -159,32 +203,38 @@ export default function MembershipManagePage() {
 
   // 환불 가능 여부 확인
   const isRefundable = (payment: PaymentHistoryItem) => {
-    if (payment.status !== 'SUCCEEDED' || payment.refundedAt) return false;
-    
-    const paidAt = new Date(payment.paidAt || '');
+    if (payment.status !== "SUCCEEDED" || payment.refundedAt) return false;
+
+    const paidAt = new Date(payment.paidAt || "");
     const now = new Date();
     const daysDiff = (now.getTime() - paidAt.getTime()) / (1000 * 60 * 60 * 24);
-    
+
     return daysDiff <= 7; // 7일 이내
   };
 
   // 환불 요청 핸들러
   const handleRefund = async (paymentId: number) => {
     if (isRefunding) return;
-    
+
     setIsRefunding(paymentId);
     try {
       await requestRefund(paymentId);
       await loadPaymentHistory(); // 내역 새로고침
-      setNotice({ type: 'success', title: '환불 완료', message: '환불이 성공적으로 처리되었습니다.' });
+      setNotice({
+        type: "success",
+        title: "환불 완료",
+        message: "환불이 성공적으로 처리되었습니다.",
+      });
     } catch (error: unknown) {
-      console.error('환불 실패:', error);
-      const errorMessage = (error as Error).message?.includes('환불 가능 기간을 초과') 
-        ? '환불 가능 기간(7일)을 초과했습니다.'
-        : (error as Error).message?.includes('콘텐츠를 시청한 경우')
-        ? '콘텐츠를 시청한 경우 환불이 불가합니다.'
-        : '환불 처리 중 오류가 발생했습니다.';
-      setNotice({ type: 'error', title: '환불 실패', message: errorMessage });
+      console.error("환불 실패:", error);
+      const errorMessage = (error as Error).message?.includes(
+        "환불 가능 기간을 초과",
+      )
+        ? "환불 가능 기간(7일)을 초과했습니다."
+        : (error as Error).message?.includes("콘텐츠를 시청한 경우")
+          ? "콘텐츠를 시청한 경우 환불이 불가합니다."
+          : "환불 처리 중 오류가 발생했습니다.";
+      setNotice({ type: "error", title: "환불 실패", message: errorMessage });
     } finally {
       setIsRefunding(null);
     }
@@ -195,12 +245,12 @@ export default function MembershipManagePage() {
     if (!paymentHistory || paymentHistory.length === 0) return false;
     // 최근 결제가 환불된 상태인지 확인
     const latestPayment = paymentHistory[0];
-    return latestPayment.status === 'REFUNDED';
+    return latestPayment.status === "REFUNDED";
   }, [paymentHistory]);
 
   // 환불 + 해지 상태 확인
   const isRefundedAndCancelled = useMemo(() => {
-    return isRefunded && userMembership?.status === 'CANCELED';
+    return isRefunded && userMembership?.status === "CANCELED";
   }, [isRefunded, userMembership?.status]);
 
   // 컴포넌트 마운트 시 결제 내역 로드
@@ -233,7 +283,7 @@ export default function MembershipManagePage() {
         <div className={styles.mainContent}>
           <div className={styles.errorContainer}>
             <p className={styles.errorText}>{error}</p>
-            <button 
+            <button
               className={styles.retryButton}
               onClick={() => window.location.reload()}
             >
@@ -272,13 +322,26 @@ export default function MembershipManagePage() {
         <Header />
         <div className={styles.mainContent}>
           {notice && (
-            <div className={styles.centerNoticeOverlay} onClick={() => setNotice(null)}>
-              <div className={`${styles.centerNoticeBox} ${notice.type === 'success' ? styles.centerNoticeSuccess : styles.centerNoticeError}`} onClick={(e) => e.stopPropagation()}>
+            <div
+              className={styles.centerNoticeOverlay}
+              onClick={() => setNotice(null)}
+            >
+              <div
+                className={`${styles.centerNoticeBox} ${notice.type === "success" ? styles.centerNoticeSuccess : styles.centerNoticeError}`}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className={styles.centerNoticeHeader}>
                   <h4 className={styles.centerNoticeTitle}>{notice.title}</h4>
-                  <button className={styles.centerNoticeClose} onClick={() => setNotice(null)}>✕</button>
+                  <button
+                    className={styles.centerNoticeClose}
+                    onClick={() => setNotice(null)}
+                  >
+                    ✕
+                  </button>
                 </div>
-                <div className={styles.centerNoticeMessage}>{notice.message}</div>
+                <div className={styles.centerNoticeMessage}>
+                  {notice.message}
+                </div>
               </div>
             </div>
           )}
@@ -292,10 +355,12 @@ export default function MembershipManagePage() {
             <div className={styles.refundedContainer}>
               <h2 className={styles.refundedTitle}>환불이 완료되었습니다</h2>
               <p className={styles.refundedDesc}>
-                멤버십 결제가 환불되었고, 멤버십이 해지되었습니다.<br/>
-                새로운 멤버십을 구독하시려면 멤버십 페이지에서 플랜을 선택해주세요.
+                멤버십 결제가 환불되었고, 멤버십이 해지되었습니다.
+                <br />
+                새로운 멤버십을 구독하시려면 멤버십 페이지에서 플랜을
+                선택해주세요.
               </p>
-              
+
               <div className={styles.refundedActions}>
                 <Link href="/membership" className={styles.subscribeButton}>
                   새로운 멤버십 구독하기
@@ -312,19 +377,36 @@ export default function MembershipManagePage() {
   }
 
   // 멤버십이 해지된 경우 (autoRenew: false AND status가 CANCELED)
-  if (userMembership && !userMembership.autoRenew && userMembership.status === 'CANCELED') {
+  if (
+    userMembership &&
+    !userMembership.autoRenew &&
+    userMembership.status === "CANCELED"
+  ) {
     return (
       <div className={styles.manageContainer}>
         <Header />
         <div className={styles.mainContent}>
           {notice && (
-            <div className={styles.centerNoticeOverlay} onClick={() => setNotice(null)}>
-              <div className={`${styles.centerNoticeBox} ${notice.type === 'success' ? styles.centerNoticeSuccess : styles.centerNoticeError}`} onClick={(e) => e.stopPropagation()}>
+            <div
+              className={styles.centerNoticeOverlay}
+              onClick={() => setNotice(null)}
+            >
+              <div
+                className={`${styles.centerNoticeBox} ${notice.type === "success" ? styles.centerNoticeSuccess : styles.centerNoticeError}`}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <div className={styles.centerNoticeHeader}>
                   <h4 className={styles.centerNoticeTitle}>{notice.title}</h4>
-                  <button className={styles.centerNoticeClose} onClick={() => setNotice(null)}>✕</button>
+                  <button
+                    className={styles.centerNoticeClose}
+                    onClick={() => setNotice(null)}
+                  >
+                    ✕
+                  </button>
                 </div>
-                <div className={styles.centerNoticeMessage}>{notice.message}</div>
+                <div className={styles.centerNoticeMessage}>
+                  {notice.message}
+                </div>
               </div>
             </div>
           )}
@@ -335,29 +417,35 @@ export default function MembershipManagePage() {
 
           {/* 해지 완료 화면 */}
           <div className={styles.cancelledContainer}>
-            <h2 className={styles.cancelledTitle}>멤버십 정기결제가 해지되었습니다.</h2>
-            <p className={styles.cancelledDesc}>만료 예정일까지 이용이 가능합니다.</p>
-            
-            <button 
+            <h2 className={styles.cancelledTitle}>
+              멤버십 정기결제가 해지되었습니다.
+            </h2>
+            <p className={styles.cancelledDesc}>
+              만료 예정일까지 이용이 가능합니다.
+            </p>
+
+            <button
               className={styles.restartButton}
               onClick={handleResumeMembership}
               disabled={isResuming}
             >
-              {isResuming ? '처리 중...' : '멤버십 다시 시작하기'}
+              {isResuming ? "처리 중..." : "멤버십 다시 시작하기"}
             </button>
-            
+
             <div className={styles.expirationInfo}>
               <p className={styles.expirationText}>
-                멤버십 만료 예정일 : {(() => {
-                  const endDate = userMembership.endAt || userMembership.nextBillingAt;
+                멤버십 만료 예정일 :{" "}
+                {(() => {
+                  const endDate =
+                    userMembership.endAt || userMembership.nextBillingAt;
                   if (endDate) {
                     const d = new Date(endDate);
                     const y = d.getFullYear();
-                    const m = String(d.getMonth() + 1).padStart(2, '0');
-                    const day = String(d.getDate()).padStart(2, '0');
+                    const m = String(d.getMonth() + 1).padStart(2, "0");
+                    const day = String(d.getDate()).padStart(2, "0");
                     return `${y}.${m}.${day}`;
                   }
-                  return '정보 없음';
+                  return "정보 없음";
                 })()}
               </p>
             </div>
@@ -368,18 +456,32 @@ export default function MembershipManagePage() {
   }
 
   // 해지 예약 상태 (autoRenew: false AND status가 ACTIVE)
-  const isCancellationScheduled = userMembership && !userMembership.autoRenew && userMembership.status === 'ACTIVE';
+  const isCancellationScheduled =
+    userMembership &&
+    !userMembership.autoRenew &&
+    userMembership.status === "ACTIVE";
 
   return (
     <div className={styles.manageContainer}>
       <Header />
       <div className={styles.mainContent}>
         {notice && (
-          <div className={styles.centerNoticeOverlay} onClick={() => setNotice(null)}>
-            <div className={`${styles.centerNoticeBox} ${notice.type === 'success' ? styles.centerNoticeSuccess : styles.centerNoticeError}`} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={styles.centerNoticeOverlay}
+            onClick={() => setNotice(null)}
+          >
+            <div
+              className={`${styles.centerNoticeBox} ${notice.type === "success" ? styles.centerNoticeSuccess : styles.centerNoticeError}`}
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className={styles.centerNoticeHeader}>
                 <h4 className={styles.centerNoticeTitle}>{notice.title}</h4>
-                <button className={styles.centerNoticeClose} onClick={() => setNotice(null)}>✕</button>
+                <button
+                  className={styles.centerNoticeClose}
+                  onClick={() => setNotice(null)}
+                >
+                  ✕
+                </button>
               </div>
               <div className={styles.centerNoticeMessage}>{notice.message}</div>
             </div>
@@ -397,13 +499,17 @@ export default function MembershipManagePage() {
             <div className={styles.cancellationNotice}>
               <div className={styles.cancellationNoticeText}>
                 <strong>멤버십 해지 예약됨</strong>
-                <p>다음 결제일({nextBillingDate})에 멤버십이 해지됩니다.<br />정기결제를 다시 시작하려면 아래 버튼을 클릭하세요.</p>
-                <button 
+                <p>
+                  다음 결제일({nextBillingDate})에 멤버십이 해지됩니다.
+                  <br />
+                  정기결제를 다시 시작하려면 아래 버튼을 클릭하세요.
+                </p>
+                <button
                   className={styles.resumeButton}
                   onClick={handleResumeMembership}
                   disabled={isResuming}
                 >
-                  {isResuming ? '처리 중...' : '정기결제 다시 시작'}
+                  {isResuming ? "처리 중..." : "정기결제 다시 시작"}
                 </button>
               </div>
             </div>
@@ -414,13 +520,13 @@ export default function MembershipManagePage() {
             <h3 className={styles.sectionTitle}>결제 예정 멤버십</h3>
             <div className={styles.planInfo}>
               <h4 className={styles.planName}>
-                {userMembership.nextPlanName 
+                {userMembership.nextPlanName
                   ? translatePlanName(userMembership.nextPlanName)
-                  : translatePlanName(planForUser?.name) || userMembership.planName
-                }
+                  : translatePlanName(planForUser?.name) ||
+                    userMembership.planName}
               </h4>
               {userMembership.nextPlanCode && (
-                <button 
+                <button
                   className={styles.changePaymentMethodButton}
                   onClick={() => setShowCancelChangeModal(true)}
                 >
@@ -438,7 +544,7 @@ export default function MembershipManagePage() {
               {paymentMethods.length > 0 ? (
                 <div className={styles.currentPaymentMethod}>
                   <div className={styles.paymentMethodIcon}>
-                    <Image 
+                    <Image
                       src={getPaymentMethodIcon(paymentMethods[0].type)}
                       alt={translatePaymentMethodType(paymentMethods[0].type)}
                       width={24}
@@ -447,20 +553,21 @@ export default function MembershipManagePage() {
                     />
                   </div>
                   <span className={styles.paymentMethodText}>
-                    {paymentMethods[0].type === 'CARD' 
-                      ? `${paymentMethods[0].brand || '카드'} ${paymentMethods[0].last4 ? `****${paymentMethods[0].last4}` : ''}`
-                      : translatePaymentMethodType(paymentMethods[0].type)
-                    }
+                    {paymentMethods[0].type === "CARD"
+                      ? `${paymentMethods[0].brand || "카드"} ${paymentMethods[0].last4 ? `****${paymentMethods[0].last4}` : ""}`
+                      : translatePaymentMethodType(paymentMethods[0].type)}
                   </span>
                 </div>
               ) : (
                 <div className={styles.noPaymentMethod}>
-                  <span className={styles.noPaymentMethodText}>등록된 결제 수단이 없습니다</span>
+                  <span className={styles.noPaymentMethodText}>
+                    등록된 결제 수단이 없습니다
+                  </span>
                 </div>
               )}
-              
+
               {/* 결제 수단 변경 버튼 */}
-              <button 
+              <button
                 className={styles.changePaymentMethodButton}
                 onClick={handleChangePaymentMethod}
               >
@@ -476,34 +583,32 @@ export default function MembershipManagePage() {
               {nextBillingDate ? (
                 userMembership.nextPlanName ? (
                   <>
-                    {nextBillingDate} {translatePlanName(userMembership.nextPlanName)} 결제 예정
+                    {nextBillingDate}{" "}
+                    {translatePlanName(userMembership.nextPlanName)} 결제 예정
                   </>
                 ) : (
                   nextBillingDate
                 )
               ) : (
-                '정보 없음'
+                "정보 없음"
               )}
             </div>
           </div>
-
-
         </div>
-
-
 
         {/* 환불 가능한 결제 내역 섹션 */}
         <div className={styles.refundSection}>
           <h3 className={styles.sectionTitle}>환불 가능한 결제 내역</h3>
           <div className={styles.refundNotice}>
             <p className={styles.refundNoticeText}>
-              • 환불은 결제일로부터 7일 이내에 서비스를 전혀 이용하지 않았을 때만 가능합니다.
+              • 환불은 결제일로부터 7일 이내에 서비스를 전혀 이용하지 않았을
+              때만 가능합니다.
             </p>
             <p className={styles.refundNoticeText}>
               • 감상하신 작품이 있는 경우 환불이 제한됩니다.
             </p>
           </div>
-          
+
           {isLoadingHistory ? (
             <div className={styles.loadingContainer}>
               <div className={styles.loadingSpinner}></div>
@@ -511,44 +616,59 @@ export default function MembershipManagePage() {
             </div>
           ) : (
             <div className={styles.paymentHistoryList}>
-              {paymentHistory.filter(payment => payment.status === 'SUCCEEDED' || payment.status === 'REFUNDED').map((payment) => (
-                <div key={payment.paymentId} className={styles.paymentItem}>
-                  <div className={styles.paymentInfo}>
-                    <div className={styles.paymentDescription}>
-                      {payment.planName ? translatePlanName(payment.planName) : '멤버십 결제'}
+              {paymentHistory
+                .filter(
+                  (payment) =>
+                    payment.status === "SUCCEEDED" ||
+                    payment.status === "REFUNDED",
+                )
+                .map((payment) => (
+                  <div key={payment.paymentId} className={styles.paymentItem}>
+                    <div className={styles.paymentInfo}>
+                      <div className={styles.paymentDescription}>
+                        {payment.planName
+                          ? translatePlanName(payment.planName)
+                          : "멤버십 결제"}
+                      </div>
+                      <div className={styles.paymentAmount}>
+                        {payment.amount.toLocaleString()}원
+                      </div>
+                      <div className={styles.paymentDate}>
+                        {new Date(payment.paidAt || "").toLocaleDateString(
+                          "ko-KR",
+                        )}
+                      </div>
                     </div>
-                    <div className={styles.paymentAmount}>
-                      {payment.amount.toLocaleString()}원
-                    </div>
-                    <div className={styles.paymentDate}>
-                      {new Date(payment.paidAt || '').toLocaleDateString('ko-KR')}
+
+                    <div className={styles.paymentActions}>
+                      {payment.refundedAt ? (
+                        <span className={styles.refundedBadge}>환불 완료</span>
+                      ) : isRefundable(payment) ? (
+                        <button
+                          className={styles.refundButton}
+                          onClick={() => handleRefund(payment.paymentId)}
+                          disabled={isRefunding === payment.paymentId}
+                        >
+                          {isRefunding === payment.paymentId
+                            ? "환불 처리 중..."
+                            : "환불하기"}
+                        </button>
+                      ) : (
+                        <span className={styles.nonRefundableBadge}>
+                          {new Date(payment.paidAt || "").getTime() +
+                            7 * 24 * 60 * 60 * 1000 <
+                          new Date().getTime()
+                            ? "환불 기간 만료"
+                            : "환불 불가"}
+                        </span>
+                      )}
                     </div>
                   </div>
-                  
-                  <div className={styles.paymentActions}>
-                    {payment.refundedAt ? (
-                      <span className={styles.refundedBadge}>환불 완료</span>
-                    ) : isRefundable(payment) ? (
-                      <button
-                        className={styles.refundButton}
-                        onClick={() => handleRefund(payment.paymentId)}
-                        disabled={isRefunding === payment.paymentId}
-                      >
-                        {isRefunding === payment.paymentId ? '환불 처리 중...' : '환불하기'}
-                      </button>
-                    ) : (
-                      <span className={styles.nonRefundableBadge}>
-                        {new Date(payment.paidAt || '').getTime() + (7 * 24 * 60 * 60 * 1000) < new Date().getTime()
-                          ? '환불 기간 만료'
-                          : '환불 불가'
-                        }
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-              
-              {paymentHistory.filter(payment => payment.status === 'SUCCEEDED').length === 0 && (
+                ))}
+
+              {paymentHistory.filter(
+                (payment) => payment.status === "SUCCEEDED",
+              ).length === 0 && (
                 <div className={styles.noPaymentHistory}>
                   <p>환불 가능한 결제 내역이 없습니다.</p>
                 </div>
@@ -559,7 +679,7 @@ export default function MembershipManagePage() {
 
         {/* 멤버십 해지 버튼 */}
         <div className={styles.cancelSection}>
-          <button 
+          <button
             className={styles.cancelMembershipButton}
             onClick={() => {
               setCancelIdempotencyKey(crypto.randomUUID()); // 이 해지 의도에 대한 키를 여기서 한 번만 만든다
@@ -567,7 +687,7 @@ export default function MembershipManagePage() {
             }}
             disabled={isCancelling}
           >
-            {isCancelling ? '처리 중...' : '멤버십 해지'}
+            {isCancelling ? "처리 중..." : "멤버십 해지"}
           </button>
         </div>
 
@@ -590,7 +710,9 @@ export default function MembershipManagePage() {
       <CancelPlanChangeModal
         isOpen={showCancelChangeModal}
         nextPlanName={translatePlanName(userMembership.nextPlanName)}
-        currentPlanName={translatePlanName(planForUser?.name || userMembership.planName)}
+        currentPlanName={translatePlanName(
+          planForUser?.name || userMembership.planName,
+        )}
         onCancel={() => setShowCancelChangeModal(false)}
         onConfirm={handleCancelScheduledChange}
         isProcessing={isCancellingChange}
@@ -600,10 +722,11 @@ export default function MembershipManagePage() {
         isOpen={showCancelMembershipModal}
         onClose={() => setShowCancelMembershipModal(false)}
         onConfirm={handleCancelMembership}
-        planName={translatePlanName(userMembership?.planName || planForUser?.name)}
+        planName={translatePlanName(
+          userMembership?.planName || planForUser?.name,
+        )}
         primaryProfileName={user?.username}
       />
-
     </div>
   );
 }

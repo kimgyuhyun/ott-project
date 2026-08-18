@@ -1,18 +1,22 @@
 // 차액 결제 관련 API 함수들
-import { PaymentService } from '@/types/payment';
+import { PaymentService } from "@/types/payment";
 
 // API 기본 설정: 항상 동일 오리진 프록시 사용
-const API_BASE = '';
+const API_BASE = "";
 
 // 공통 fetch 함수
-async function apiCall<T>(endpoint: string, options: RequestInit = {}, expectJson: boolean = true): Promise<T> {
+async function apiCall<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  expectJson: boolean = true,
+): Promise<T> {
   const url = `${API_BASE}${endpoint}`;
-  
+
   const response = await fetch(url, {
     ...options,
-    credentials: 'include', // 세션 쿠키 포함
+    credentials: "include", // 세션 쿠키 포함
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
@@ -28,8 +32,8 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}, expectJso
   }
 
   // 응답이 비어있으면 undefined 반환 (환불 API 등)
-  const contentType = response.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
+  const contentType = response.headers.get("content-type");
+  if (!contentType || !contentType.includes("application/json")) {
     return undefined as T;
   }
 
@@ -43,33 +47,41 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}, expectJso
 
 // 차액 결제 세션 생성
 export async function createProrationCheckout(
-  planCode: string, 
-  successUrl?: string, 
-  cancelUrl?: string, 
-  paymentService?: PaymentService
+  planCode: string,
+  successUrl?: string,
+  cancelUrl?: string,
+  paymentService?: PaymentService,
 ) {
-  return apiCall<ProrationCheckoutResponse>('/api/payments/proration', {
-    method: 'POST',
-    body: JSON.stringify({ 
-      planCode, 
-      successUrl, 
-      cancelUrl, 
-      paymentService 
+  return apiCall<ProrationCheckoutResponse>("/api/payments/proration", {
+    method: "POST",
+    body: JSON.stringify({
+      planCode,
+      successUrl,
+      cancelUrl,
+      paymentService,
     }),
   });
 }
 
 // 차액 결제 완료 처리 (imp_uid로 서버가 아임포트 재검증 후 플랜 즉시 변경)
-export async function processProrationPayment(paymentId: number, impUid: string) {
-  return apiCall<ProrationPaymentResponse>(`/api/payments/proration/${paymentId}/complete`, {
-    method: 'POST',
-    body: JSON.stringify({ impUid }),
-  });
+export async function processProrationPayment(
+  paymentId: number,
+  impUid: string,
+) {
+  return apiCall<ProrationPaymentResponse>(
+    `/api/payments/proration/${paymentId}/complete`,
+    {
+      method: "POST",
+      body: JSON.stringify({ impUid }),
+    },
+  );
 }
 
 // 차액 계산 조회
 export async function calculateProrationAmount(planCode: string) {
-  return apiCall<ProrationAmountResponse>(`/api/payments/proration/calculate?planCode=${planCode}`);
+  return apiCall<ProrationAmountResponse>(
+    `/api/payments/proration/calculate?planCode=${planCode}`,
+  );
 }
 
 // 타입 정의
@@ -85,7 +97,7 @@ export interface ProrationPaymentResponse {
   success: boolean;
   paymentId: number;
   planChangeResult?: {
-    changeType: 'UPGRADE';
+    changeType: "UPGRADE";
     effectiveDate: string;
     prorationAmount: number;
     message: string;

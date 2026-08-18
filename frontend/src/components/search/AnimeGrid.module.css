@@ -24,8 +24,12 @@
 }
 
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* 에러 상태 */
@@ -100,7 +104,7 @@
 .searchTitle {
   font-size: 1.25rem;
   font-weight: 600;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 정렬 옵션 */
@@ -113,7 +117,7 @@
 
 .sortLabel {
   font-size: 0.875rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 /* 커스텀 셀렉트 */
@@ -128,7 +132,7 @@
   justify-content: center;
   padding: 0.5rem 0.5rem;
   background-color: transparent;
-  color: #F7F7F7;
+  color: #f7f7f7;
   border: none;
   border-radius: 0.5rem;
   font-size: 0.875rem;
@@ -147,7 +151,7 @@
   width: 1rem;
   height: 1rem;
   transition: transform 0.2s;
-  color: #ABABAB;
+  color: #ababab;
   transform: rotate(0deg);
 }
 
@@ -176,7 +180,7 @@
   padding: 0.75rem;
   cursor: pointer;
   transition: background-color 0.2s;
-  color: #F7F7F7;
+  color: #f7f7f7;
   font-size: 0.875rem;
   white-space: nowrap;
 }
@@ -198,7 +202,7 @@
 }
 
 .selectOption.selected .checkIcon {
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 검색 조건 표시 */

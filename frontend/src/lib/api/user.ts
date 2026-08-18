@@ -17,17 +17,20 @@ import type {
 } from "@/types/mypage";
 
 // API 기본 설정: 항상 동일 오리진 프록시 사용
-const API_BASE = '';
+const API_BASE = "";
 
 // 공통 fetch 함수
-async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function apiCall<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
   const url = `${API_BASE}${endpoint}`; // '' + '/api/...' => '/api/...'
-  
+
   const response = await fetch(url, {
     ...options,
-    credentials: 'include', // 세션 쿠키 포함
+    credentials: "include", // 세션 쿠키 포함
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
@@ -36,7 +39,10 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
     const errorText = await response.text();
     if (response.status === 401) {
       // 401 에러는 리다이렉트하지 않고 에러로만 처리
-      throw Object.assign(new Error('UNAUTHORIZED'), { status: 401, body: errorText });
+      throw Object.assign(new Error("UNAUTHORIZED"), {
+        status: 401,
+        body: errorText,
+      });
     }
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
@@ -46,62 +52,84 @@ async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<
 
 // 사용자 프로필 정보 조회
 export async function getUserProfile(): Promise<UserProfile> {
-  return apiCall<UserProfile>('/api/users/me/profile');
+  return apiCall<UserProfile>("/api/users/me/profile");
 }
 
 // 사용자 프로필 정보 수정
 export async function updateUserProfile(profileData: Record<string, unknown>) {
-  return apiCall('/api/users/me/profile', {
-    method: 'PUT',
+  return apiCall("/api/users/me/profile", {
+    method: "PUT",
     body: JSON.stringify(profileData),
   });
 }
 
 // 사용자 설정 조회
 export async function getUserSettings() {
-  return apiCall('/api/users/me/settings');
+  return apiCall("/api/users/me/settings");
 }
 
 // 사용자 설정 수정
 export async function updateUserSettings(settings: Record<string, unknown>) {
-  return apiCall('/api/users/me/settings', {
-    method: 'PUT',
+  return apiCall("/api/users/me/settings", {
+    method: "PUT",
     body: JSON.stringify(settings),
   });
 }
 
 // 사용자 시청 기록 조회
-export async function getUserWatchHistory(page: number = 0, size: number = 20): Promise<WatchHistoryPage> {
+export async function getUserWatchHistory(
+  page: number = 0,
+  size: number = 20,
+): Promise<WatchHistoryPage> {
   try {
     // 캐시 방지를 위해 타임스탬프 추가
     const timestamp = Date.now();
-    return await apiCall<WatchHistoryPage>(`/api/episodes/mypage/watch-history?page=${page}&size=${size}&t=${timestamp}`);
+    return await apiCall<WatchHistoryPage>(
+      `/api/episodes/mypage/watch-history?page=${page}&size=${size}&t=${timestamp}`,
+    );
   } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 시청 기록 조회 실패: 로그인 필요 (401)');
-      return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+      console.log("🔍 시청 기록 조회 실패: 로그인 필요 (401)");
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size,
+        number: page,
+        first: true,
+        last: true,
+      };
     }
     throw error;
   }
 }
 
 // 사용자 최근 본(애니별 최신 1건)
-export async function getUserRecentAnime(params?: { page?: number; size?: number; cursorUpdatedAt?: string; cursorAnimeId?: number }): Promise<RecentAnimeResponse> {
+export async function getUserRecentAnime(params?: {
+  page?: number;
+  size?: number;
+  cursorUpdatedAt?: string;
+  cursorAnimeId?: number;
+}): Promise<RecentAnimeResponse> {
   try {
     const page = params?.page ?? 0;
     const size = params?.size ?? 20;
     const qp = new URLSearchParams();
-    qp.append('page', String(page));
-    qp.append('size', String(size));
-    if (params?.cursorUpdatedAt) qp.append('cursorUpdatedAt', params.cursorUpdatedAt);
-    if (params?.cursorAnimeId != null) qp.append('cursorAnimeId', String(params.cursorAnimeId));
-    qp.append('t', String(Date.now()));
-    return await apiCall<RecentAnimeResponse>(`/api/episodes/mypage/recent-anime?${qp.toString()}`);
+    qp.append("page", String(page));
+    qp.append("size", String(size));
+    if (params?.cursorUpdatedAt)
+      qp.append("cursorUpdatedAt", params.cursorUpdatedAt);
+    if (params?.cursorAnimeId != null)
+      qp.append("cursorAnimeId", String(params.cursorAnimeId));
+    qp.append("t", String(Date.now()));
+    return await apiCall<RecentAnimeResponse>(
+      `/api/episodes/mypage/recent-anime?${qp.toString()}`,
+    );
   } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 최근 본 목록 조회 실패: 로그인 필요 (401)');
+      console.log("🔍 최근 본 목록 조회 실패: 로그인 필요 (401)");
       return { items: [] };
     }
     throw error;
@@ -109,26 +137,31 @@ export async function getUserRecentAnime(params?: { page?: number; size?: number
 }
 
 // 특정 애니메이션의 시청 기록 조회
-export async function getAnimeWatchHistory(animeId: number) { // Promise<number>를 명시하는게 더 편의성을 높이기 가능
+export async function getAnimeWatchHistory(animeId: number) {
+  // Promise<number>를 명시하는게 더 편의성을 높이기 가능
   try {
     // 캐시 방지를 위해 타임스탬프 추가
     const history = await getUserWatchHistory(0, 1000);
-    console.log('🔍 전체 시청 기록:', history);
-    
-    const animeHistory = history.content?.filter((item) => item.animeId === animeId) || [];
-    console.log('🔍 해당 애니메이션 시청 기록:', animeHistory);
-    console.log('🔍 시청 기록 상세:', animeHistory.map((item) => ({
-      episodeId: item.episodeId,
-      episodeNumber: item.episodeNumber,
-      positionSec: item.positionSec,
-      completed: item.completed,
-      updatedAt: item.updatedAt,
-      watchedAt: item.watchedAt,
-      createdAt: item.createdAt,
-      durationSec: item.durationSec,
-      전체데이터: item
-    })));
-    
+    console.log("🔍 전체 시청 기록:", history);
+
+    const animeHistory =
+      history.content?.filter((item) => item.animeId === animeId) || [];
+    console.log("🔍 해당 애니메이션 시청 기록:", animeHistory);
+    console.log(
+      "🔍 시청 기록 상세:",
+      animeHistory.map((item) => ({
+        episodeId: item.episodeId,
+        episodeNumber: item.episodeNumber,
+        positionSec: item.positionSec,
+        completed: item.completed,
+        updatedAt: item.updatedAt,
+        watchedAt: item.watchedAt,
+        createdAt: item.createdAt,
+        durationSec: item.durationSec,
+        전체데이터: item,
+      })),
+    );
+
     // 각 시청 기록의 상세 정보를 개별적으로 출력
     animeHistory.forEach((item, index: number) => {
       console.log(`🔍 시청 기록 ${index + 1}:`, {
@@ -138,74 +171,90 @@ export async function getAnimeWatchHistory(animeId: number) { // Promise<number>
         durationSec: item.durationSec,
         updatedAt: item.updatedAt,
         모든필드: Object.keys(item),
-        원본데이터: item
+        원본데이터: item,
       });
     });
-    
+
     if (animeHistory.length === 0) return null;
-    
+
     // 가장 최근에 본 에피소드 찾기 (마지막 시청 시간 기준)
-    const latestEpisode = animeHistory.sort((a, b) =>
-      new Date(b.updatedAt || b.watchedAt || b.createdAt || 0).getTime() -
-      new Date(a.updatedAt || a.watchedAt || a.createdAt || 0).getTime()
+    const latestEpisode = animeHistory.sort(
+      (a, b) =>
+        new Date(b.updatedAt || b.watchedAt || b.createdAt || 0).getTime() -
+        new Date(a.updatedAt || a.watchedAt || a.createdAt || 0).getTime(),
     )[0];
-    
-    console.log('🔍 가장 최근 에피소드:', latestEpisode);
-    
+
+    console.log("🔍 가장 최근 에피소드:", latestEpisode);
+
     // episodeNumber를 여러 필드에서 찾기
-    const episodeNumber = latestEpisode.episodeNumber || 
-                         latestEpisode.episode?.episodeNumber || 
-                         latestEpisode.episodeNumber || 
-                         1;
-    
-    console.log('🔍 에피소드 번호 찾기:', {
+    const episodeNumber =
+      latestEpisode.episodeNumber ||
+      latestEpisode.episode?.episodeNumber ||
+      latestEpisode.episodeNumber ||
+      1;
+
+    console.log("🔍 에피소드 번호 찾기:", {
       episodeNumber: latestEpisode.episodeNumber,
       episode_episodeNumber: latestEpisode.episode?.episodeNumber,
-      최종결정: episodeNumber
+      최종결정: episodeNumber,
     });
-    
+
     // 완료 상태 계산 (진행률이 90% 이상이면 완료로 간주)
     const durationSec = latestEpisode.durationSec || 0;
     const positionSec = latestEpisode.positionSec || 0;
-    const isCompleted = durationSec > 0 && positionSec > 0 && (positionSec / durationSec) >= 0.9;
-    
+    const isCompleted =
+      durationSec > 0 && positionSec > 0 && positionSec / durationSec >= 0.9;
+
     const result = {
       episodeId: latestEpisode.episodeId,
       episodeNumber: episodeNumber,
       positionSec: positionSec,
       duration: durationSec,
       completed: isCompleted,
-      watchedAt: latestEpisode.updatedAt || latestEpisode.watchedAt || latestEpisode.createdAt
+      watchedAt:
+        latestEpisode.updatedAt ||
+        latestEpisode.watchedAt ||
+        latestEpisode.createdAt,
     };
-    
-    console.log('🔍 반환할 시청 기록:', result);
+
+    console.log("🔍 반환할 시청 기록:", result);
     return result;
   } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 null 반환
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 시청 기록 조회 실패: 로그인 필요 (401)');
+      console.log("🔍 시청 기록 조회 실패: 로그인 필요 (401)");
       return null;
     }
-    console.error('애니메이션 시청 기록 조회 중 오류:', error);
+    console.error("애니메이션 시청 기록 조회 중 오류:", error);
     return null;
   }
 }
 
 // 사용자 보고싶다 작품 조회
-export async function getUserWantList(page: number = 0, size: number = 20): Promise<PagedResponse<FavoriteAnime>> {
-  console.log('🌐 [FRONTEND] getUserWantList 호출 - page:', page, 'size:', size);
+export async function getUserWantList(
+  page: number = 0,
+  size: number = 20,
+): Promise<PagedResponse<FavoriteAnime>> {
+  console.log(
+    "🌐 [FRONTEND] getUserWantList 호출 - page:",
+    page,
+    "size:",
+    size,
+  );
 
   try {
-    const result = await apiCall<PagedResponse<FavoriteAnime>>(`/api/mypage/favorites/anime?page=${page}&size=${size}`);
-    console.log('🌐 [FRONTEND] getUserWantList 응답:', result);
+    const result = await apiCall<PagedResponse<FavoriteAnime>>(
+      `/api/mypage/favorites/anime?page=${page}&size=${size}`,
+    );
+    console.log("🌐 [FRONTEND] getUserWantList 응답:", result);
     return result;
   } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 보고싶다 목록 조회 실패: 로그인 필요 (401)');
+      console.log("🔍 보고싶다 목록 조회 실패: 로그인 필요 (401)");
       return { items: [], total: 0, page, size };
     }
-    console.error('🌐 [FRONTEND] getUserWantList 에러:', error);
+    console.error("🌐 [FRONTEND] getUserWantList 에러:", error);
     throw error;
   }
 }
@@ -214,11 +263,11 @@ export async function getUserWantList(page: number = 0, size: number = 20): Prom
 export async function getUserStats(): Promise<MypageStats> {
   try {
     // 백엔드 집계 API 호출
-    return await apiCall<MypageStats>('/api/mypage/stats');
+    return await apiCall<MypageStats>("/api/mypage/stats");
   } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 통계 반환
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 사용자 통계 조회 실패: 로그인 필요 (401)');
+      console.log("🔍 사용자 통계 조회 실패: 로그인 필요 (401)");
       return { ratingCount: 0, reviewCount: 0, commentCount: 0 };
     }
     throw error;
@@ -226,135 +275,147 @@ export async function getUserStats(): Promise<MypageStats> {
 }
 
 // 비밀번호 변경
-export async function changePassword(passwordData: { currentPassword: string; newPassword: string }) {
-  return apiCall('/api/settings/change-password', {
-    method: 'PUT',
+export async function changePassword(passwordData: {
+  currentPassword: string;
+  newPassword: string;
+}) {
+  return apiCall("/api/settings/change-password", {
+    method: "PUT",
     body: JSON.stringify(passwordData),
   });
 }
 
 // 이메일 변경
 export async function changeEmail(emailData: Record<string, unknown>) {
-  return apiCall('/api/user/change-email', {
-    method: 'POST',
+  return apiCall("/api/user/change-email", {
+    method: "POST",
     body: JSON.stringify(emailData),
   });
 }
 
 // 사용자 정주행 완료 작품 조회
 export async function getUserBingeList(): Promise<BingeWatch[]> {
-  console.log('🌐 [FRONTEND] getUserBingeList 호출');
+  console.log("🌐 [FRONTEND] getUserBingeList 호출");
 
   try {
-    const result = await apiCall<BingeWatch[]>('/api/mypage/binge');
-    console.log('🌐 [FRONTEND] getUserBingeList 응답:', result);
+    const result = await apiCall<BingeWatch[]>("/api/mypage/binge");
+    console.log("🌐 [FRONTEND] getUserBingeList 응답:", result);
     return result;
   } catch (error: unknown) {
     // 401 에러인 경우 로그인하지 않은 상태로 간주하고 빈 결과 반환
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 정주행 목록 조회 실패: 로그인 필요 (401)');
+      console.log("🔍 정주행 목록 조회 실패: 로그인 필요 (401)");
       return [];
     }
-    console.error('🌐 [FRONTEND] getUserBingeList 에러:', error);
+    console.error("🌐 [FRONTEND] getUserBingeList 에러:", error);
     throw error;
   }
 }
 
 // 최근본 목록에서 숨김 처리
 export async function hideFromRecent(aniId: number) {
-  console.log('🌐 [FRONTEND] hideFromRecent 호출 - aniId:', aniId);
-  
+  console.log("🌐 [FRONTEND] hideFromRecent 호출 - aniId:", aniId);
+
   try {
     await apiCall(`/api/mypage/recent/anime/${aniId}`, {
-      method: 'DELETE'
+      method: "DELETE",
     });
-    console.log('🌐 [FRONTEND] hideFromRecent 성공');
+    console.log("🌐 [FRONTEND] hideFromRecent 성공");
   } catch (error: unknown) {
-    console.error('🌐 [FRONTEND] hideFromRecent 에러:', error);
+    console.error("🌐 [FRONTEND] hideFromRecent 에러:", error);
     throw error;
   }
 }
 
 // 찜 취소 (보고싶다 목록에서 삭제)
 export async function removeFromWantList(aniId: number) {
-  console.log('🌐 [FRONTEND] removeFromWantList 호출 - aniId:', aniId);
-  
+  console.log("🌐 [FRONTEND] removeFromWantList 호출 - aniId:", aniId);
+
   try {
     await apiCall(`/api/anime/${aniId}/favorite`, {
-      method: 'POST'
+      method: "POST",
     });
-    console.log('🌐 [FRONTEND] removeFromWantList 성공');
+    console.log("🌐 [FRONTEND] removeFromWantList 성공");
   } catch (error: unknown) {
-    console.error('🌐 [FRONTEND] removeFromWantList 에러:', error);
+    console.error("🌐 [FRONTEND] removeFromWantList 에러:", error);
     throw error;
   }
 }
 
 // 정주행 목록에서 완전 삭제 (시청 기록 완전 삭제)
 export async function deleteFromBinge(aniId: number) {
-  console.log('🌐 [FRONTEND] deleteFromBinge 호출 - aniId:', aniId);
-  
+  console.log("🌐 [FRONTEND] deleteFromBinge 호출 - aniId:", aniId);
+
   try {
     await apiCall(`/api/mypage/binge/anime/${aniId}`, {
-      method: 'DELETE'
+      method: "DELETE",
     });
-    console.log('🌐 [FRONTEND] deleteFromBinge 성공');
+    console.log("🌐 [FRONTEND] deleteFromBinge 성공");
   } catch (error: unknown) {
-    console.error('🌐 [FRONTEND] deleteFromBinge 에러:', error);
+    console.error("🌐 [FRONTEND] deleteFromBinge 에러:", error);
     throw error;
   }
 }
 
 // 내 활동: 별점 목록
-export async function getMyRatings(page: number = 0, size: number = 20): Promise<MyRating[]> {
+export async function getMyRatings(
+  page: number = 0,
+  size: number = 20,
+): Promise<MyRating[]> {
   const qs = `page=${page}&size=${size}&t=${Date.now()}`;
-  console.log('🌐 [FRONTEND] getMyRatings 요청:', qs);
+  console.log("🌐 [FRONTEND] getMyRatings 요청:", qs);
   try {
     const res = await apiCall<MyRating[]>(`/api/mypage/ratings?${qs}`);
-    console.log('🌐 [FRONTEND] getMyRatings 응답:', res);
+    console.log("🌐 [FRONTEND] getMyRatings 응답:", res);
     return res;
   } catch (error: unknown) {
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 내 별점 조회 실패: 로그인 필요 (401)');
+      console.log("🔍 내 별점 조회 실패: 로그인 필요 (401)");
       return [];
     }
-    console.error('🌐 [FRONTEND] getMyRatings 에러:', error);
+    console.error("🌐 [FRONTEND] getMyRatings 에러:", error);
     throw error;
   }
 }
 
 // 내 활동: 리뷰 목록
-export async function getMyReviews(page: number = 0, size: number = 20): Promise<MyReview[]> {
+export async function getMyReviews(
+  page: number = 0,
+  size: number = 20,
+): Promise<MyReview[]> {
   const qs = `page=${page}&size=${size}&t=${Date.now()}`;
-  console.log('🌐 [FRONTEND] getMyReviews 요청:', qs);
+  console.log("🌐 [FRONTEND] getMyReviews 요청:", qs);
   try {
     const res = await apiCall<MyReview[]>(`/api/mypage/reviews?${qs}`);
-    console.log('🌐 [FRONTEND] getMyReviews 응답:', res);
+    console.log("🌐 [FRONTEND] getMyReviews 응답:", res);
     return res;
   } catch (error: unknown) {
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 내 리뷰 조회 실패: 로그인 필요 (401)');
+      console.log("🔍 내 리뷰 조회 실패: 로그인 필요 (401)");
       return [];
     }
-    console.error('🌐 [FRONTEND] getMyReviews 에러:', error);
+    console.error("🌐 [FRONTEND] getMyReviews 에러:", error);
     throw error;
   }
 }
 
 // 내 활동: 댓글 목록
-export async function getMyComments(page: number = 0, size: number = 20): Promise<MyComment[]> {
+export async function getMyComments(
+  page: number = 0,
+  size: number = 20,
+): Promise<MyComment[]> {
   const qs = `page=${page}&size=${size}&t=${Date.now()}`;
-  console.log('🌐 [FRONTEND] getMyComments 요청:', qs);
+  console.log("🌐 [FRONTEND] getMyComments 요청:", qs);
   try {
     const res = await apiCall<MyComment[]>(`/api/mypage/comments?${qs}`);
-    console.log('🌐 [FRONTEND] getMyComments 응답:', res);
+    console.log("🌐 [FRONTEND] getMyComments 응답:", res);
     return res;
   } catch (error: unknown) {
     if (getErrorStatus(error) === 401) {
-      console.log('🔍 내 댓글 조회 실패: 로그인 필요 (401)');
+      console.log("🔍 내 댓글 조회 실패: 로그인 필요 (401)");
       return [];
     }
-    console.error('🌐 [FRONTEND] getMyComments 에러:', error);
+    console.error("🌐 [FRONTEND] getMyComments 에러:", error);
     throw error;
   }
 }

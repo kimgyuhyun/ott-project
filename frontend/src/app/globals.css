@@ -1,4 +1,3 @@
-
 :root {
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 0, 0, 0;
@@ -6,7 +5,8 @@
 }
 
 /* 강제 다크 배경 적용 */
-html, body {
+html,
+body {
   background-color: #000000;
   color: rgb(var(--foreground-rgb));
 }
@@ -21,7 +21,7 @@ body {
   .anime-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .weekly-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -31,7 +31,7 @@ body {
   .anime-grid {
     grid-template-columns: repeat(4, 1fr);
   }
-  
+
   .weekly-grid {
     grid-template-columns: repeat(4, 1fr);
   }
@@ -41,12 +41,8 @@ body {
   .anime-grid {
     grid-template-columns: repeat(6, 1fr);
   }
-  
+
   .weekly-grid {
     grid-template-columns: repeat(6, 1fr);
   }
 }
-
-
-
-

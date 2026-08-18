@@ -19,7 +19,7 @@ export async function loadPortOne(): Promise<Window["IMP"] | null> {
 
   const start = Date.now();
   const existing = document.querySelector<HTMLScriptElement>(
-    `script[src="${PORTONE_SCRIPT_URL}"]`
+    `script[src="${PORTONE_SCRIPT_URL}"]`,
   );
 
   if (!existing) {
@@ -45,7 +45,5 @@ export async function loadPortOne(): Promise<Window["IMP"] | null> {
 }
 
 export function getPortOneMerchantCode(): string {
-  return (
-    process.env.NEXT_PUBLIC_PORTONE_MERCHANT_CODE?.trim() || "imp45866522"
-  );
+  return process.env.NEXT_PUBLIC_PORTONE_MERCHANT_CODE?.trim() || "imp45866522";
 }

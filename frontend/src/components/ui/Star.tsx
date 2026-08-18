@@ -10,7 +10,14 @@ interface StarProps {
   title?: string;
 }
 
-export default function Star({ value, size = 28, color = "#A855F7", emptyColor = "#D1D5DB", className, title }: StarProps) {
+export default function Star({
+  value,
+  size = 28,
+  color = "#A855F7",
+  emptyColor = "#D1D5DB",
+  className,
+  title,
+}: StarProps) {
   const id = useId();
   const clamped = Math.max(0, Math.min(1, value || 0));
   const gradId = `grad-${id}`;
@@ -31,12 +38,13 @@ export default function Star({ value, size = 28, color = "#A855F7", emptyColor =
           <stop offset={`${clamped * 100}%`} stopColor={color} />
           <stop offset={`${clamped * 100}%`} stopColor={emptyColor} />
         </linearGradient>
-        <path id={pathId} d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        <path
+          id={pathId}
+          d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"
+        />
       </defs>
       <use href={`#${pathId}`} fill={emptyColor} />
       <use href={`#${pathId}`} fill={`url(#${gradId})`} />
     </svg>
   );
 }
-
-

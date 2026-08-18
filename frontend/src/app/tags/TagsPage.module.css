@@ -3,7 +3,7 @@
   /* 페이지 전체 스코프 래퍼 */
   min-height: 100vh;
   background-color: var(--background-1, #121212);
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   overflow-x: hidden;
 }
 
@@ -42,5 +42,3 @@
 }
 
 /* 필요 시 태그 페이지 전용 섹션/컴포넌트용 클래스 확장 예정 */
-
-

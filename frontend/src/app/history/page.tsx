@@ -52,7 +52,9 @@ export default function HistoryPage() {
       <h2 className={styles.title}>이용내역</h2>
 
       {loading && <div className={styles.stateText}>로딩 중...</div>}
-      {error && <div className={`${styles.stateText} ${styles.error}`}>{error}</div>}
+      {error && (
+        <div className={`${styles.stateText} ${styles.error}`}>{error}</div>
+      )}
 
       {!loading && !error && (
         <div className={styles.listContainer}>
@@ -64,16 +66,25 @@ export default function HistoryPage() {
             const dateText = formatDate(it.paidAt || it.refundedAt || "");
             const nameText = mapPlanName(it.planName);
             const methodText = mapMethod(undefined, undefined);
-            const amountText = typeof it.amount === "number" ? `${it.amount.toLocaleString()}원` : "";
+            const amountText =
+              typeof it.amount === "number"
+                ? `${it.amount.toLocaleString()}원`
+                : "";
             return (
               <div key={String(it.paymentId)} className={styles.itemRow}>
                 <div className={styles.colLeft}>
-                  {dateText && <span className={styles.colDate}>{dateText}</span>}
+                  {dateText && (
+                    <span className={styles.colDate}>{dateText}</span>
+                  )}
                   {nameText && <span className={styles.plan}>{nameText}</span>}
                 </div>
                 <div className={styles.colRight}>
-                  {methodText && <span className={styles.method}>{methodText}</span>}
-                  {amountText && <span className={styles.price}>{amountText}</span>}
+                  {methodText && (
+                    <span className={styles.method}>{methodText}</span>
+                  )}
+                  {amountText && (
+                    <span className={styles.price}>{amountText}</span>
+                  )}
                 </div>
               </div>
             );
@@ -89,5 +100,3 @@ export default function HistoryPage() {
     </main>
   );
 }
-
-

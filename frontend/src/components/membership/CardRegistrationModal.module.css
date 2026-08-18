@@ -32,7 +32,7 @@
 
 .backButton {
   font-size: 1.25rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
   transition: opacity 0.2s ease;
 }
 
@@ -43,12 +43,12 @@
 .modalTitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .closeButton {
   font-size: 1.25rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
   transition: opacity 0.2s ease;
 }
 
@@ -64,7 +64,7 @@
 .cardInfoTitle {
   font-weight: 600;
   margin-bottom: 0.75rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 카드 번호 */
@@ -76,7 +76,7 @@
   display: block;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .cardNumberInputs {
@@ -91,11 +91,11 @@
   outline: none;
   background-color: #000000;
   border-bottom: 2px solid #323232;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .cardNumberSeparator {
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 유효기간 */
@@ -107,7 +107,7 @@
   display: block;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .expiryInput {
@@ -117,7 +117,7 @@
   outline: none;
   background-color: #000000;
   border-bottom: 2px solid #323232;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 생년월일 */
@@ -129,7 +129,7 @@
   display: block;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .birthInput {
@@ -139,7 +139,7 @@
   outline: none;
   background-color: #000000;
   border-bottom: 2px solid #323232;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 카드 비밀번호 */
@@ -151,13 +151,13 @@
   display: block;
   font-size: 0.875rem;
   margin-bottom: 0.5rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .passwordHint {
   font-size: 0.75rem;
   margin-bottom: 0.5rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .passwordInput {
@@ -167,7 +167,7 @@
   outline: none;
   background-color: #000000;
   border-bottom: 2px solid #323232;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 동의 체크박스 */
@@ -184,12 +184,12 @@
 .agreementCheckbox {
   margin-right: 0.75rem;
   margin-top: 0.25rem;
-  accent-color: #816BFF;
+  accent-color: #816bff;
 }
 
 .agreementText {
   font-size: 0.875rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 /* 등록하기 버튼 */
@@ -203,5 +203,5 @@
 }
 
 .registerButtonText {
-  color: #F7F7F7;
+  color: #f7f7f7;
 }

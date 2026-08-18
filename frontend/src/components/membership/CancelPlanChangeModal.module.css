@@ -17,12 +17,12 @@
   border: 1px solid var(--border-1, #323232);
   border-radius: 12px;
   padding: 28px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   text-align: center;
 }
 
 .title {
-  color: var(--foreground-1, #F7F7F7);
+  color: var(--foreground-1, #f7f7f7);
   font-size: 24px;
   font-weight: 800;
   margin: 0 0 12px 0;
@@ -30,7 +30,7 @@
 }
 
 .desc {
-  color: var(--foreground-2, #CFCFCF);
+  color: var(--foreground-2, #cfcfcf);
   font-size: 16px;
   line-height: 1.6;
   margin: 0 0 24px 0;
@@ -45,7 +45,7 @@
 
 .cancelBtn {
   background: transparent;
-  color: #8B7CFF;
+  color: #8b7cff;
   border: none;
   font-weight: 700;
   padding: 12px 20px;
@@ -53,7 +53,7 @@
 }
 
 .confirmBtn {
-  background: #8B7CFF;
+  background: #8b7cff;
   color: #ffffff;
   border: none;
   font-weight: 700;
@@ -67,9 +67,13 @@
 }
 
 @media (max-width: 640px) {
-  .container { padding: 20px; }
-  .title { font-size: 20px; }
-  .desc { font-size: 14px; }
+  .container {
+    padding: 20px;
+  }
+  .title {
+    font-size: 20px;
+  }
+  .desc {
+    font-size: 14px;
+  }
 }
-
-

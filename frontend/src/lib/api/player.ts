@@ -3,55 +3,62 @@
 // 플레이어 관련 API 함수들
 
 import type { Episode } from "@/types/anime";
-import type { StreamUrlResponse, EpisodeProgress, SkipMeta } from "@/types/player";
+import type {
+  StreamUrlResponse,
+  EpisodeProgress,
+  SkipMeta,
+} from "@/types/player";
 
 // API 기본 설정: 항상 동일 오리진 프록시 사용
-const API_BASE = '';
+const API_BASE = "";
 
 // 공통 fetch 함수
-async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  console.log('🌐 API 호출:', {
+async function apiCall<T>(
+  endpoint: string,
+  options: RequestInit = {},
+): Promise<T> {
+  console.log("🌐 API 호출:", {
     endpoint,
-    method: options.method || 'GET',
-    body: options.body
+    method: options.method || "GET",
+    body: options.body,
   });
-  
+
   const response = await fetch(endpoint, {
     ...options,
-    credentials: 'include', // 세션 쿠키 포함
+    credentials: "include", // 세션 쿠키 포함
     headers: {
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
       ...options.headers,
     },
   });
 
-  console.log('🌐 API 응답:', {
+  console.log("🌐 API 응답:", {
     status: response.status,
     statusText: response.statusText,
-    ok: response.ok
+    ok: response.ok,
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('🌐 API 에러:', {
+    console.error("🌐 API 에러:", {
       status: response.status,
       statusText: response.statusText,
-      errorText
+      errorText,
     });
     throw new Error(`API Error: ${response.status} ${errorText}`);
   }
 
   // 응답이 비어있는지 확인 (Content-Length가 0이거나 빈 응답)
-  const contentLength = response.headers.get('content-length');
-  const contentType = response.headers.get('content-type');
-  
-  if (contentLength === '0' || !contentType?.includes('application/json')) {
-    console.log('🌐 API 성공 (빈 응답):', { status: response.status });
+  const contentLength = response.headers.get("content-length");
+  const contentType = response.headers.get("content-type");
+
+  if (contentLength === "0" || !contentType?.includes("application/json")) {
+    console.log("🌐 API 성공 (빈 응답):", { status: response.status });
     return {} as T; // 빈 객체 반환
   }
 
   const result = await response.json();
-  console.log('🌐 API 성공:', result);
+  console.log("🌐 API 성공:", result);
   return result;
 }
 
@@ -64,7 +71,10 @@ export async function getDefaultSubtitle(episodeId: number) {
   return apiCall(`/api/player/episodes/${episodeId}/subtitles/default`);
 }
 
-export async function getSubtitleByLanguage(episodeId: number, language: string) {
+export async function getSubtitleByLanguage(
+  episodeId: number,
+  language: string,
+) {
   return apiCall(`/api/player/episodes/${episodeId}/subtitles/${language}`);
 }
 
@@ -75,7 +85,7 @@ export async function getSkips(episodeId: number): Promise<SkipMeta> {
 
 // 사용자 재생 설정 API
 export async function getUserPlaybackSettings() {
-  return apiCall('/api/player/users/me/settings');
+  return apiCall("/api/player/users/me/settings");
 }
 
 export async function updateUserPlaybackSettings(settings: {
@@ -84,14 +94,16 @@ export async function updateUserPlaybackSettings(settings: {
   defaultQuality: string;
   playbackSpeed: number;
 }) {
-  return apiCall('/api/users/me/settings', {
-    method: 'PUT',
+  return apiCall("/api/users/me/settings", {
+    method: "PUT",
     body: JSON.stringify(settings),
   });
 }
 
 // 에피소드 스트림 URL 발급
-export async function getEpisodeStreamUrl(episodeId: number): Promise<StreamUrlResponse> {
+export async function getEpisodeStreamUrl(
+  episodeId: number,
+): Promise<StreamUrlResponse> {
   return apiCall<StreamUrlResponse>(`/api/episodes/${episodeId}/stream-url`);
 }
 
@@ -102,7 +114,7 @@ const MAX_TIMEOUTS = 100; // 최대 타이머 수 제한
 // 메모리 정리 함수
 function cleanupTimeouts() {
   if (saveProgressTimeouts.size > MAX_TIMEOUTS) {
-    console.warn('⚠️ saveProgressTimeouts Map 크기 초과, 정리 중...');
+    console.warn("⚠️ saveProgressTimeouts Map 크기 초과, 정리 중...");
     for (const [episodeId, timeout] of saveProgressTimeouts.entries()) {
       clearTimeout(timeout);
       saveProgressTimeouts.delete(episodeId);
@@ -111,78 +123,90 @@ function cleanupTimeouts() {
 }
 
 // 시청 진행률 저장 (디바운싱 적용 + 재시도 로직)
-export async function saveEpisodeProgress(episodeId: number, progressData: {
-  positionSec: number;
-  durationSec: number;
-}, retryCount: number = 0): Promise<unknown> {
-  console.log('🌐 saveEpisodeProgress API 호출:', {
+export async function saveEpisodeProgress(
+  episodeId: number,
+  progressData: {
+    positionSec: number;
+    durationSec: number;
+  },
+  retryCount: number = 0,
+): Promise<unknown> {
+  console.log("🌐 saveEpisodeProgress API 호출:", {
     url: `/api/episodes/${episodeId}/progress`,
-    method: 'POST',
+    method: "POST",
     data: progressData,
-    retryCount
+    retryCount,
   });
-  
+
   // 메모리 정리
   cleanupTimeouts();
-  
+
   // 기존 타이머 취소
   const existingTimeout = saveProgressTimeouts.get(episodeId);
   if (existingTimeout) {
     clearTimeout(existingTimeout);
   }
-  
+
   // 2초 후에 실제 저장 (디바운싱)
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(async () => {
       try {
         const result = await apiCall(`/api/episodes/${episodeId}/progress`, {
-          method: 'POST',
+          method: "POST",
           body: JSON.stringify(progressData),
         });
-        console.log('🌐 saveEpisodeProgress API 성공:', result);
+        console.log("🌐 saveEpisodeProgress API 성공:", result);
         saveProgressTimeouts.delete(episodeId);
         resolve(result);
       } catch (error) {
-        console.error('🌐 saveEpisodeProgress API 실패:', error);
+        console.error("🌐 saveEpisodeProgress API 실패:", error);
         saveProgressTimeouts.delete(episodeId);
-        
+
         // 재시도 로직 (최대 2회)
         if (retryCount < 2) {
           console.log(`🔄 재시도 ${retryCount + 1}/2`);
-          setTimeout(() => {
-            saveEpisodeProgress(episodeId, progressData, retryCount + 1)
-              .then(resolve)
-              .catch(reject);
-          }, 1000 * (retryCount + 1)); // 지수 백오프
+          setTimeout(
+            () => {
+              saveEpisodeProgress(episodeId, progressData, retryCount + 1)
+                .then(resolve)
+                .catch(reject);
+            },
+            1000 * (retryCount + 1),
+          ); // 지수 백오프
         } else {
           reject(error);
         }
       }
     }, 2000);
-    
+
     saveProgressTimeouts.set(episodeId, timeout);
   });
 }
 
 // 시청 진행률 조회
-export async function getEpisodeProgress(episodeId: number): Promise<EpisodeProgress | null> {
+export async function getEpisodeProgress(
+  episodeId: number,
+): Promise<EpisodeProgress | null> {
   return apiCall<EpisodeProgress | null>(`/api/episodes/${episodeId}/progress`);
 }
 
 // 여러 에피소드 진행률 벌크 조회
 export async function getBulkEpisodeProgress(episodeIds: number[]) {
   return apiCall(`/api/episodes/progress`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ episodeIds }),
   });
 }
 // 다음 에피소드 조회
-export async function getNextEpisode(episodeId: number): Promise<Episode | null> {
+export async function getNextEpisode(
+  episodeId: number,
+): Promise<Episode | null> {
   return apiCall<Episode | null>(`/api/episodes/${episodeId}/next`);
 }
 
 // 마이페이지 시청 기록 조회
 export async function getWatchHistory(page: number = 0, size: number = 20) {
-  return apiCall(`/api/episodes/mypage/watch-history?page=${page}&size=${size}`);
+  return apiCall(
+    `/api/episodes/mypage/watch-history?page=${page}&size=${size}`,
+  );
 }
-

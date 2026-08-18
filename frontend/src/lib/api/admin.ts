@@ -36,7 +36,9 @@ export async function syncAnime(malId: number): Promise<SyncResult> {
  * 인기 애니메이션 일괄 동기화
  * POST /api/admin/anime/sync-popular?limit=
  */
-export async function syncPopularAnime(limit: number = 50): Promise<BulkSyncResult> {
+export async function syncPopularAnime(
+  limit: number = 50,
+): Promise<BulkSyncResult> {
   return api.post<BulkSyncResult>(`/admin/anime/sync-popular?limit=${limit}`);
 }
 
@@ -95,7 +97,7 @@ export interface AdminAnimeDetail extends AdminAnimeItem {
 
 // 검색 조건 (AnimeCurationSearchCondition) — 모든 필드가 선택이며 자유 조합된다
 export interface AnimeCurationSearchCondition {
-  titleKeyword?: string;   // 한/영/일 제목 통합 부분일치
+  titleKeyword?: string; // 한/영/일 제목 통합 부분일치
   status?: AnimeStatus;
   year?: number;
   isActive?: boolean;
@@ -158,7 +160,11 @@ export interface BulkCurationResult {
  * 조건 객체를 쿼리스트링으로 편다.
  * 값이 없는 조건은 아예 빼야 한다 — 백엔드는 파라미터 부재를 "이 조건은 걸지 않음"으로 읽는다.
  */
-function toQueryString(condition: AnimeCurationSearchCondition, page: number, size: number): string {
+function toQueryString(
+  condition: AnimeCurationSearchCondition,
+  page: number,
+  size: number,
+): string {
   const params = new URLSearchParams();
   Object.entries(condition).forEach(([key, value]) => {
     if (value !== undefined && value !== null && value !== "") {
@@ -190,7 +196,9 @@ export async function searchAnimeForCuration(
  * GET /api/admin/anime/{animeId}
  * - 목록에 없는 줄거리/배경이미지까지 준다. 수정 폼은 목록 항목이 아니라 이걸로 채워야 한다.
  */
-export async function getAnimeForCuration(animeId: number): Promise<AdminAnimeDetail> {
+export async function getAnimeForCuration(
+  animeId: number,
+): Promise<AdminAnimeDetail> {
   return api.get<AdminAnimeDetail>(`/admin/anime/${animeId}`);
 }
 
@@ -215,7 +223,10 @@ export async function updateAnimeCuration(
 export async function previewBulkCuration(
   condition: AnimeCurationSearchCondition,
 ): Promise<AnimeBulkCurationPreview> {
-  return api.post<AnimeBulkCurationPreview>(`/admin/anime/bulk/preview`, condition);
+  return api.post<AnimeBulkCurationPreview>(
+    `/admin/anime/bulk/preview`,
+    condition,
+  );
 }
 
 /**
@@ -264,7 +275,9 @@ export interface EpisodeUpdateRequest {
  * GET /api/admin/animes/{animeId}/episodes
  * - 화수 오름차순으로 온다.
  */
-export async function listEpisodesForAdmin(animeId: number): Promise<AdminEpisode[]> {
+export async function listEpisodesForAdmin(
+  animeId: number,
+): Promise<AdminEpisode[]> {
   return api.get<AdminEpisode[]>(`/admin/animes/${animeId}/episodes`);
 }
 
@@ -278,7 +291,10 @@ export async function updateEpisodeForAdmin(
   episodeId: number,
   request: EpisodeUpdateRequest,
 ): Promise<AdminEpisode> {
-  return api.patch<AdminEpisode>(`/admin/animes/${animeId}/episodes/${episodeId}`, request);
+  return api.patch<AdminEpisode>(
+    `/admin/animes/${animeId}/episodes/${episodeId}`,
+    request,
+  );
 }
 
 // ===== 통계 / 감사 로그 =====
@@ -301,7 +317,8 @@ export interface AuthEvent {
   id: number;
   userId: number | null;
   email: string | null;
-  eventType: "LOGIN_SUCCESS" | "LOGIN_FAIL" | "LOGOUT" | "SESSION_EXPIRED" | "WITHDRAW";
+  eventType:
+    "LOGIN_SUCCESS" | "LOGIN_FAIL" | "LOGOUT" | "SESSION_EXPIRED" | "WITHDRAW";
   provider: "LOCAL" | "GOOGLE" | "NAVER" | "KAKAO" | null;
   ipAddress: string | null;
   userAgent: string | null;
@@ -370,7 +387,10 @@ export interface AdminContentRequest {
  * 관리자용 콘텐츠 목록 (locale 미지정 시 전체 로케일)
  * GET /api/admin/contents?type=&locale=
  */
-export async function getContents(type: ContentType, locale?: string): Promise<AdminContent[]> {
+export async function getContents(
+  type: ContentType,
+  locale?: string,
+): Promise<AdminContent[]> {
   const q = locale ? `?type=${type}&locale=${locale}` : `?type=${type}`;
   return api.get<AdminContent[]>(`/admin/contents${q}`);
 }
@@ -379,7 +399,9 @@ export async function getContents(type: ContentType, locale?: string): Promise<A
  * 콘텐츠 생성
  * POST /api/admin/contents
  */
-export async function createContent(dto: AdminContentRequest): Promise<AdminContent> {
+export async function createContent(
+  dto: AdminContentRequest,
+): Promise<AdminContent> {
   return api.post<AdminContent>(`/admin/contents`, dto);
 }
 
@@ -387,7 +409,10 @@ export async function createContent(dto: AdminContentRequest): Promise<AdminCont
  * 콘텐츠 수정 (부분 수정: 전달된 필드만 반영)
  * PUT /api/admin/contents/{id}
  */
-export async function updateContent(id: number, dto: Partial<AdminContentRequest>): Promise<AdminContent> {
+export async function updateContent(
+  id: number,
+  dto: Partial<AdminContentRequest>,
+): Promise<AdminContent> {
   return api.put<AdminContent>(`/admin/contents/${id}`, dto);
 }
 
@@ -403,7 +428,10 @@ export async function deleteContent(id: number): Promise<void> {
  * 공개 여부 토글
  * PUT /api/admin/contents/{id}/publish?value=
  */
-export async function setContentPublish(id: number, value: boolean): Promise<AdminContent> {
+export async function setContentPublish(
+  id: number,
+  value: boolean,
+): Promise<AdminContent> {
   return api.put<AdminContent>(`/admin/contents/${id}/publish?value=${value}`);
 }
 
@@ -411,6 +439,11 @@ export async function setContentPublish(id: number, value: boolean): Promise<Adm
  * 노출 순서 변경
  * PUT /api/admin/contents/{id}/position?position=
  */
-export async function setContentPosition(id: number, position: number): Promise<AdminContent> {
-  return api.put<AdminContent>(`/admin/contents/${id}/position?position=${position}`);
+export async function setContentPosition(
+  id: number,
+  position: number,
+): Promise<AdminContent> {
+  return api.put<AdminContent>(
+    `/admin/contents/${id}/position?position=${position}`,
+  );
 }

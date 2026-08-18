@@ -7,7 +7,7 @@
   background-color: #000000;
   border-bottom: 1px solid #333333;
   backdrop-filter: blur(10px);
-  padding-left: 2rem;   /* 좌측 기준 */
+  padding-left: 2rem; /* 좌측 기준 */
   padding-right: 1rem; /* 우측 살짝 축소로 균형 */
 }
 
@@ -81,15 +81,15 @@
 /* 모바일 네비게이션 드롭다운 (햄버거 클릭 시 헤더 아래로 펼쳐짐) */
 .mobileMenu {
   position: absolute;
-  top: 4rem;            /* 헤더 바(4rem) 바로 아래 */
-  left: -2rem;          /* 컨테이너 좌측 패딩(2rem) 상쇄 → 화면 끝까지 */
-  right: -1rem;         /* 컨테이너 우측 패딩(1rem) 상쇄 */
+  top: 4rem; /* 헤더 바(4rem) 바로 아래 */
+  left: -2rem; /* 컨테이너 좌측 패딩(2rem) 상쇄 → 화면 끝까지 */
+  right: -1rem; /* 컨테이너 우측 패딩(1rem) 상쇄 */
   background-color: #121212;
   border-bottom: 1px solid #333333;
   display: flex;
   flex-direction: column;
   padding: 0.5rem 0;
-  z-index: 1000;        /* 오버레이(998)보다 위 */
+  z-index: 1000; /* 오버레이(998)보다 위 */
 }
 
 .mobileMenuItem {
@@ -210,7 +210,7 @@
   display: none;
   font-size: 12px;
   font-weight: 500;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 @media (min-width: 768px) {
@@ -223,7 +223,7 @@
   width: 1rem;
   height: 1rem;
   transition: transform 0.2s;
-  color: #ABABAB;
+  color: #ababab;
   transform: rotate(0deg);
 }
 
@@ -238,7 +238,7 @@
   margin-top: 0.5rem;
   width: 250px;
   border-radius: 0.5rem;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
   background-color: #121212;
   border: 1px solid #323232;
   z-index: 1000;
@@ -250,7 +250,7 @@
   text-align: left;
   padding: 0.5rem 1rem;
   font-size: 12px;
-  color: #F7F7F7;
+  color: #f7f7f7;
   text-decoration: none;
   transition: opacity 0.2s;
   background: none;
@@ -263,7 +263,7 @@
 }
 
 .headerDropdownItem.logout {
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .headerDropdownDivider {
@@ -276,7 +276,7 @@
   border-radius: 0.5rem;
   font-weight: 500;
   font-size: 12px;
-  background-color: #816BFF; /* 보라색 버튼 */
+  background-color: #816bff; /* 보라색 버튼 */
   color: #ffffff; /* 텍스트 흰색으로 고정 */
   text-decoration: none;
   transition: opacity 0.2s;
@@ -400,13 +400,13 @@
 .userName {
   font-size: 1rem;
   font-weight: 600;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .arrowIcon {
   width: 16px;
   height: 16px;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .userLevelRow {
@@ -422,7 +422,7 @@
 
 .userLevel {
   font-size: 0.875rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .userStats {
@@ -460,12 +460,12 @@
 .statNumber {
   font-size: 1rem;
   font-weight: 700;
-  color: #F7F7F7;
+  color: #f7f7f7;
 }
 
 .statLabel {
   font-size: 0.875rem;
-  color: #ABABAB;
+  color: #ababab;
 }
 
 .archiveButton {
@@ -478,7 +478,7 @@
   background: none;
   border: 1px solid #323232;
   border-radius: 0.5rem;
-  color: #F7F7F7;
+  color: #f7f7f7;
   font-size: 1rem;
   font-weight: 500;
   text-decoration: none;
@@ -510,7 +510,7 @@
   padding: 1rem 1.25rem;
   background: none;
   border: none;
-  color: #F7F7F7;
+  color: #f7f7f7;
   font-size: 1rem;
   text-align: left;
   text-decoration: none;
@@ -520,7 +520,7 @@
 }
 
 .menuItem:hover {
-  background-color: #2A2A2C;
+  background-color: #2a2a2c;
 }
 
 .menuIcon {
@@ -536,13 +536,13 @@
 }
 
 .logoutItem {
-  color: #F7F7F7;
+  color: #f7f7f7;
   transition: background-color 0.2s;
 }
 
 .logoutItem:hover {
-  background-color: #2A2A2C;
-  color: #F7F7F7;
+  background-color: #2a2a2c;
+  color: #f7f7f7;
 }
 
 /* 반응형 스타일 */
@@ -553,28 +553,28 @@
     display: flex;
     justify-content: flex-start; /* 모바일도 좌측 정렬 */
   }
-  
+
   .headerLogo {
     margin: 0; /* 왼쪽에 고정 */
   }
-  
+
   .headerNav {
     display: none;
   }
-  
+
   .headerActions {
-    position: static;      /* 컨테이너 패딩 기준 정렬 */
-    margin-left: auto;     /* 우측으로 밀기 */
+    position: static; /* 컨테이너 패딩 기준 정렬 */
+    margin-left: auto; /* 우측으로 밀기 */
   }
-  
+
   .headerInlineSearch {
     display: none;
   }
-  
+
   .searchToggleMobile {
     display: block;
   }
-  
+
   .mobileSearchDropdown {
     display: block;
   }
@@ -585,28 +585,28 @@
     display: grid;
     grid-template-columns: auto 1fr auto;
   }
-  
+
   .headerLogo {
     margin: 0;
   }
-  
+
   .headerNav {
     display: flex;
   }
-  
+
   .headerActions {
     position: relative;
     justify-self: end;
   }
-  
+
   .headerInlineSearch {
     display: none;
   }
-  
+
   .searchToggleMobile {
     display: block;
   }
-  
+
   .mobileSearchDropdown {
     display: none;
   }

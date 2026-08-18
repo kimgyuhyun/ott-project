@@ -9,7 +9,7 @@
   margin: 0;
   padding-top: 28px;
   padding-bottom: 40px;
-  padding-left: 2rem;  /* 헤더와 동일 좌측 여백 */
+  padding-left: 2rem; /* 헤더와 동일 좌측 여백 */
   padding-right: 1rem; /* 헤더와 동일 우측 여백 */
 }
 
@@ -64,5 +64,3 @@
   color: #ffffff;
   font-weight: 600;
 }
-
-
