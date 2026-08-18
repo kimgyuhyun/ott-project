@@ -1,0 +1,9 @@
+# 대량 포매팅처럼 내용이 아닌 커밋을 git blame 에서 건너뛴다.
+# 로컬에서 한 번 켜야 한다 (GitHub 웹 blame 은 이 파일을 자동으로 읽는다):
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+#
+# 여기에는 "포매팅만 담은 커밋"만 적는다. 한 줄이라도 동작이 바뀐 커밋을 적으면
+# 그 변경의 책임 소재가 영구히 사라진다.
+
+# Format the frontend with Prettier (도구 도입 시 1회 일괄 적용, 143개 파일)
+97afe3dca729c2efc1a14c0b00289f14d3308696

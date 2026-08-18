@@ -240,6 +240,12 @@ jobs:
         run: |
           cd frontend
           npx eslint --max-warnings 116
+      # 포맷은 결정론적이고 자동 수정되므로 차단해도 준수 비용이 0 이다.
+      # 기존 코드는 도입 시 일괄 적용했다(.git-blame-ignore-revs 참고).
+      - name: Check frontend formatting
+        run: |
+          cd frontend
+          npx prettier --check .
       - name: Build frontend
         run: |
           cd frontend
