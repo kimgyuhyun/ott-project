@@ -42,7 +42,26 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	@Value("${iamport.rest.api-secret:}")
 	private String apiSecret; // REST API Secret (application-*.yml: iamport.rest.api-secret)
 
-	private final RestTemplate rest; // 결제 전용 빈. 대부분의 메서드가 getToken 을 먼저 불러 순차 2회다.
+	private final RestTemplate rest; // 결제 전용 빈
+
+	/**
+	 * 액세스 토큰 캐시.
+	 *
+	 * 이 빈은 싱글턴이고 톰캣 요청 스레드와 스케줄러 스레드가 함께 부른다. volatile 참조 +
+	 * 불변 홀더로 두어 읽기는 잠그지 않는다. 두 스레드가 동시에 만료를 보고 각자 발급받는 것은
+	 * 무해하다 — 발급은 부수효과가 없고 아임포트는 이전 토큰을 무효화하지 않는다. 그래서 잠그지 않는다.
+	 */
+	private volatile CachedAccessToken cachedAccessToken;
+
+	/**
+	 * 만료 여유.
+	 *
+	 * expired_at 을 그대로 믿고 만료 직전까지 쓰면, 유효성 검사를 통과한 직후 나간 본 호출이
+	 * 응답을 받기 전에 토큰이 죽어 401 이 된다. 결제용 RestTemplate 한 건의 최악 체류 시간이
+	 * 연결 3초 + 읽기 10초 = 13초이므로(RestTemplateConfig.paymentRestTemplate) 그보다 넉넉한
+	 * 60초로 잡는다. 아임포트 토큰 수명이 30분이라 60초를 버려도 캐시 적중률은 사실상 그대로다.
+	 */
+	private static final long TOKEN_REFRESH_MARGIN_SECONDS = 60L;
 
 	public ImportPaymentGateway(@Qualifier("paymentRestTemplate") RestTemplate rest) {
 		this.rest = rest;
@@ -50,14 +69,15 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 
 	@Override // 인터페이스 구현
 	public CheckoutSession createCheckoutSession(User user, MembershipPlan plan, String successUrl, String cancelUrl, String paymentService, long amount) { // 세션 생성(prepare-only)
-		String token = getAccessToken(); // 토큰 발급
 		String merchantUid = "order_" + System.currentTimeMillis(); // 고유 주문번호
-		HttpHeaders h = bearer(token); // 인증 헤더
-		h.setContentType(MediaType.APPLICATION_JSON); // JSON 바디
 		// NOTE: prepare-only: 서버는 /payments/prepare로 금액을 고정만 합니다. 실제 결제창 호출은 프론트 JS SDK가 수행합니다.
 		// dev 환경에서 payments.test-amount가 설정되면 PaymentCommandService에서 전달된 amount(예: 1원)로 prepare합니다.
 		String prepareBody = String.format("{\"merchant_uid\":\"%s\",\"amount\":%d}", merchantUid, amount); // 준비 바디
-		rest.exchange(apiBase + "/payments/prepare", HttpMethod.POST, new HttpEntity<>(prepareBody, h), String.class); // 결제 준비 등록
+		callWithToken(token -> { // 금액을 고정하는 상태 변경이라 401 재시도 대상이 아니다
+			HttpHeaders h = bearer(token); // 인증 헤더
+			h.setContentType(MediaType.APPLICATION_JSON); // JSON 바디
+			return rest.exchange(apiBase + "/payments/prepare", HttpMethod.POST, new HttpEntity<>(prepareBody, h), String.class); // 결제 준비 등록
+		});
 
 		CheckoutSession session = new CheckoutSession(); // 반환 객체 생성
 		session.sessionId = merchantUid; // 세션 ID
@@ -72,20 +92,22 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	 */
 	@Override
 	public void prepare(String merchantUid, long amount) {
-		String token = getAccessToken(); // 토큰 발급
-		HttpHeaders h = bearer(token); // 인증 헤더
-		h.setContentType(MediaType.APPLICATION_JSON); // JSON 바디
 		String prepareBody = String.format("{\"merchant_uid\":\"%s\",\"amount\":%d}", merchantUid, amount); // 준비 바디
-		rest.exchange(apiBase + "/payments/prepare", HttpMethod.POST, new HttpEntity<>(prepareBody, h), String.class); // 결제 준비 등록
+		callWithToken(token -> { // 금액을 고정하는 상태 변경이라 401 재시도 대상이 아니다
+			HttpHeaders h = bearer(token); // 인증 헤더
+			h.setContentType(MediaType.APPLICATION_JSON); // JSON 바디
+			return rest.exchange(apiBase + "/payments/prepare", HttpMethod.POST, new HttpEntity<>(prepareBody, h), String.class); // 결제 준비 등록
+		});
 	}
 
 	@Override // 인터페이스 구현
 	public RefundResult issueRefund(String providerPaymentId, long amount) { // 환불 실행
-		String token = getAccessToken(); // 토큰 획득
-		HttpHeaders h = bearer(token); // 인증 헤더
-		h.setContentType(MediaType.APPLICATION_JSON); // JSON 바디
 		String body = String.format("{\"imp_uid\":\"%s\",\"amount\":%d}", providerPaymentId, amount); // 환불 바디
-		rest.exchange(apiBase + "/payments/cancel", HttpMethod.POST, new HttpEntity<>(body, h), java.util.Map.class); // 호출
+		callWithToken(token -> { // 환불 실행이라 401 재시도 대상이 아니다 - 다시 부르면 두 번 나갈 수 있다
+			HttpHeaders h = bearer(token); // 인증 헤더
+			h.setContentType(MediaType.APPLICATION_JSON); // JSON 바디
+			return rest.exchange(apiBase + "/payments/cancel", HttpMethod.POST, new HttpEntity<>(body, h), java.util.Map.class); // 호출
+		});
 
 		RefundResult result = new RefundResult(); // 결과
 		result.providerRefundId = providerPaymentId; // 결제 imp_uid 사용
@@ -110,14 +132,13 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 			return RefundStatus.UNKNOWN; // 조회할 식별자가 없다
 		}
 		try {
-			String token = getAccessToken();
-			HttpHeaders headers = bearer(token);
-			ResponseEntity<java.util.Map> response = rest.exchange(
+			// 순수 조회라 401 이면 토큰을 새로 받아 한 번 다시 부른다
+			ResponseEntity<java.util.Map> response = callWithTokenRetryingOnce(token -> rest.exchange(
 				apiBase + "/payments/" + providerPaymentId,
 				HttpMethod.GET,
-				new HttpEntity<>(headers),
+				new HttpEntity<>(bearer(token)),
 				java.util.Map.class
-			);
+			));
 			if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
 				log.warn("환불 역조회 응답 비정상 - imp_uid: {}, status: {}", providerPaymentId, response.getStatusCode());
 				return RefundStatus.UNKNOWN;
@@ -148,6 +169,11 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 			res = rest.exchange(apiBase + "/subscribe/payments/again", HttpMethod.POST, new HttpEntity<>(body, h), String.class); // 호출
 		} catch (org.springframework.web.client.HttpClientErrorException e) {
 			// 4xx: 아임포트가 요청 자체를 거부했다. 승인은 일어나지 않았으므로 확정 실패로 취급해도 된다.
+			// 401 이면 캐시된 토큰이 죽은 것이라 버린다. 다만 이 청구를 다시 부르지는 않는다 —
+			// 재시도 판단은 결정적 merchant_uid 를 쥔 던닝의 몫이고, 여기서 다시 부르면 승인이 두 번 나갈 수 있다.
+			if (e.getStatusCode().value() == 401) {
+				invalidateAccessToken();
+			}
 			throw new ChargeException(FailureType.SOFT_DECLINE, "HTTP_" + e.getStatusCode().value(), e.getMessage());
 		} catch (org.springframework.web.client.RestClientException e) {
 			// 타임아웃/커넥션 리셋/5xx: 요청은 나갔는데 결과를 모른다. 승인됐을 수도 있다.
@@ -202,10 +228,10 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 			return false;
 		}
 		try {
-			String token = getAccessToken();
-			ResponseEntity<String> res = rest.exchange(
+			// 순수 조회라 401 이면 토큰을 새로 받아 한 번 다시 부른다
+			ResponseEntity<String> res = callWithTokenRetryingOnce(token -> rest.exchange(
 					apiBase + "/subscribe/customers/" + customerUid,
-					HttpMethod.GET, new HttpEntity<>(bearer(token)), String.class);
+					HttpMethod.GET, new HttpEntity<>(bearer(token)), String.class));
 			java.util.Map<String, Object> bodyMap = parseJsonToMap(res != null ? res.getBody() : null);
 			Number code = (Number) bodyMap.get("code");
 			// 아임포트는 논리적 실패도 200 + code != 0 으로 주므로 code 와 response 를 함께 본다.
@@ -271,14 +297,13 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	public ReconcileResult findPaymentBySessionId(String merchantUid) {
 		ReconcileResult r = new ReconcileResult();
 		try {
-			String token = getAccessToken();
-			HttpHeaders headers = bearer(token);
-			ResponseEntity<java.util.Map> response = rest.exchange(
+			// 순수 조회라 401 이면 토큰을 새로 받아 한 번 다시 부른다
+			ResponseEntity<java.util.Map> response = callWithTokenRetryingOnce(token -> rest.exchange(
 				apiBase + "/payments/find/" + merchantUid,
 				HttpMethod.GET,
-				new HttpEntity<>(headers),
+				new HttpEntity<>(bearer(token)),
 				java.util.Map.class
-			);
+			));
 			if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
 				return r; // found=false
 			}
@@ -358,13 +383,10 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 	@Override
 	public boolean verifyPayment(String impUid, String merchantUid, long expectedAmount) {
 		try {
-			String token = getAccessToken(); // 액세스 토큰 획득
-			HttpHeaders headers = bearer(token); // 인증 헤더
-			
-			// 결제 상태 조회 API 호출
+			// 결제 상태 조회 API 호출 — 순수 조회라 401 이면 토큰을 새로 받아 한 번 다시 부른다
 			String url = apiBase + "/payments/" + impUid;
-			ResponseEntity<java.util.Map> response = rest.exchange(url, HttpMethod.GET, 
-				new HttpEntity<>(headers), java.util.Map.class);
+			ResponseEntity<java.util.Map> response = callWithTokenRetryingOnce(token -> rest.exchange(
+				url, HttpMethod.GET, new HttpEntity<>(bearer(token)), java.util.Map.class));
 			
 			if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
 				return false; // API 호출 실패
@@ -433,7 +455,22 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 		return null; // 없음
 	}
 
-	private String getAccessToken() { // 액세스 토큰 획득
+	/**
+	 * 액세스 토큰 획득 — 유효한 캐시가 있으면 그것을 쓰고, 없을 때만 발급한다.
+	 *
+	 * 이 클래스의 여덟 메서드가 본 호출 앞에 토큰 발급을 순차로 붙여 왔다. 한 작업의 실제 상한은
+	 * 호출 한 건의 상한에 순차 호출 수를 곱한 값이므로(ARCHITECTURE 12), 준비 호출을 없애면
+	 * 결제 작업 하나의 상한이 20초에서 10초로 내려간다.
+	 */
+	private String getAccessToken() {
+		CachedAccessToken cached = this.cachedAccessToken;
+		if (cached != null && cached.usableAt(System.currentTimeMillis())) {
+			return cached.value;
+		}
+		return fetchAndCacheAccessToken();
+	}
+
+	private String fetchAndCacheAccessToken() {
 		HttpHeaders headers = new HttpHeaders(); // 헤더
 		headers.setContentType(MediaType.APPLICATION_JSON); // JSON
 		String body = String.format("{\"imp_key\":\"%s\",\"imp_secret\":\"%s\"}", apiKey, apiSecret); // 바디
@@ -442,7 +479,81 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
 		if (res == null || !res.getStatusCode().is2xxSuccessful() || tr == null || tr.response == null) {
 			throw new IllegalStateException("Failed to get Iamport access token"); // 실패
 		}
-		return tr.response.access_token; // 토큰
+
+		Token token = tr.response;
+		// 잔여 수명은 아임포트가 함께 준 서버 시각(now)을 기준으로 잰다. 우리 시계가 밀려 있어도
+		// 캐시 기간이 틀어지지 않는다. now 가 없거나 여유 시간보다 짧게 남은 응답은 캐시하지 않고
+		// 매번 새로 받는다 — 캐시 이전의 동작이라 손해가 없다.
+		long lifetimeSeconds = token.expired_at - token.now;
+		if (token.now > 0 && lifetimeSeconds > TOKEN_REFRESH_MARGIN_SECONDS) {
+			long usableUntilMillis = System.currentTimeMillis()
+					+ (lifetimeSeconds - TOKEN_REFRESH_MARGIN_SECONDS) * 1000L;
+			this.cachedAccessToken = new CachedAccessToken(token.access_token, usableUntilMillis);
+		}
+		return token.access_token;
+	}
+
+	private void invalidateAccessToken() {
+		this.cachedAccessToken = null;
+	}
+
+	/**
+	 * 토큰을 붙여 호출하고, 401 이면 캐시를 버린 뒤 정확히 한 번만 다시 받아 재시도한다.
+	 *
+	 * 부수효과가 없는 조회에만 쓴다. 본 호출을 통째로 다시 부르기 때문에, 청구나 환불에 쓰면
+	 * 승인이 두 번 나갈 수 있다(ARCHITECTURE 5). 재시도가 정확히 한 번인 이유는 아임포트가
+	 * 자격증명 자체를 거절할 때 폭주하지 않게 하기 위함이다.
+	 */
+	private <T> T callWithTokenRetryingOnce(java.util.function.Function<String, T> call) {
+		// 발급 자체의 실패는 여기서 잡지 않는다. 본 호출이 나가기 전이므로 그대로 올려보낸다.
+		String token = getAccessToken();
+		try {
+			return call.apply(token);
+		} catch (org.springframework.web.client.HttpClientErrorException e) {
+			if (e.getStatusCode().value() != 401) {
+				throw e;
+			}
+			log.info("아임포트 401 - 캐시된 토큰을 버리고 한 번만 재시도한다");
+			invalidateAccessToken();
+			return call.apply(getAccessToken());
+		}
+	}
+
+	/**
+	 * 토큰을 붙여 호출하고, 401 이면 캐시만 버린 채 이 호출은 그대로 실패시킨다.
+	 *
+	 * 사전등록·환불은 본 호출을 다시 부르면 외부에 두 번 반영될 수 있어 재시도 대상이 아니다.
+	 * 캐시를 버리는 것 자체는 부수효과가 없으므로, 뒤따르는 작업은 새 토큰으로 시작한다.
+	 * 버리지 않으면 서버가 무효화한 토큰을 만료 시각까지 계속 들고 실패한다.
+	 */
+	private <T> T callWithToken(java.util.function.Function<String, T> call) {
+		String token = getAccessToken();
+		try {
+			return call.apply(token);
+		} catch (org.springframework.web.client.HttpClientErrorException e) {
+			if (e.getStatusCode().value() == 401) {
+				log.warn("아임포트 401 - 상태를 바꾸는 호출이라 재시도하지 않고 캐시된 토큰만 버린다");
+				invalidateAccessToken();
+			}
+			throw e;
+		}
+	}
+
+	/**
+	 * 캐시된 토큰과 그 토큰을 쓸 수 있는 시각(여유 시간을 이미 뺀 값).
+	 */
+	private static final class CachedAccessToken {
+		private final String value;
+		private final long usableUntilMillis;
+
+		private CachedAccessToken(String value, long usableUntilMillis) {
+			this.value = value;
+			this.usableUntilMillis = usableUntilMillis;
+		}
+
+		private boolean usableAt(long nowMillis) {
+			return nowMillis < usableUntilMillis;
+		}
 	}
 
 	private HttpHeaders bearer(String token) { // 인증 헤더 생성

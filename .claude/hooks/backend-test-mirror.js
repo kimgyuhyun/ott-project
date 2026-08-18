@@ -5,15 +5,23 @@
 // stop the turn are a red test and code that does not compile, because those are the two
 // states a later CI run would reject and both are cheap to fix while the context is warm.
 //
-// Scope is testFast (see backend/build.gradle), which skips the Testcontainers classes:
-// 28s instead of 570s. CI still runs everything.
+// Scope is testFast (see backend/build.gradle), which skips the Testcontainers classes.
+// Wall time varies a lot by machine - 28s on one, 87s warm and 130s cold on another (the
+// full suite: 104s and 229s) - so treat any single number here as that machine's, not the
+// project's, and re-measure before tuning TIMEOUT_MS. CI still runs everything.
 
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const TIMEOUT_MS = 120_000;
+// A timeout is reported as an infrastructure problem, so it passes silently - a value the
+// suite can actually reach turns the mirror off without anyone noticing. Measured on the
+// kgh98 machine: 130s cold (no daemon), 87s with a warm one; the 120s this used to be was
+// already under the cold run. 300s is 2.3x the slowest measurement. Raising it costs the
+// faster machine nothing, because this fires only when a run is genuinely stuck, never on
+// a normal one.
+const TIMEOUT_MS = 300_000;
 const LOCK_STALE_MS = 10 * 60_000;
 const MAX_REPORTED = 5;
 
@@ -221,7 +229,10 @@ function collectFailures(resultsDir, notOlderThan) {
     } catch {
       continue;
     }
-    const caseRe = /<testcase\b([^>]*)(\/>|>([\s\S]*?)<\/testcase>)/g;
+    // The attribute group must stay lazy. Greedy, it swallows the '/' of a self-closing
+    // <testcase .../>, so the '>' branch matches instead and runs on to the next test's
+    // </testcase> - pinning that test's failure on this earlier, passing one.
+    const caseRe = /<testcase\b([^>]*?)(\/>|>([\s\S]*?)<\/testcase>)/g;
     let m;
     while ((m = caseRe.exec(xml))) {
       const body = m[3] || '';
@@ -237,7 +248,9 @@ function collectFailures(resultsDir, notOlderThan) {
 }
 
 function attr(s, name) {
-  const m = new RegExp(`${name}="([^"]*)"`).exec(s || '');
+  // Anchored to a boundary so that asking for 'name' cannot match the tail of 'classname'.
+  // Gradle happens to emit name first today, which is the only reason it has not bitten.
+  const m = new RegExp(`(?:^|\\s)${name}="([^"]*)"`).exec(s || '');
   return m ? m[1] : '';
 }
 

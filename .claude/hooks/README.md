@@ -16,9 +16,16 @@ instance already running - passes silently, because a mirror that blocks on its 
 plumbing gets switched off.
 
 `testFast` is every test except the 13 Testcontainers-backed classes, which carry
-`@Tag("testcontainers")`: 28s against 104s for the full suite, the difference being one
-PostgreSQL container per class. The `test` task and CI still run all of them. Tag any new
-Testcontainers test the same way, or it lands in the fast set and drags the 28s up with it.
+`@Tag("testcontainers")`, the difference being one PostgreSQL container per class. The
+`test` task and CI still run all of them. Tag any new Testcontainers test the same way, or
+it lands in the fast set and drags it up.
+
+Wall time is machine-specific, so measure yours rather than trusting a number here:
+28s/104s (fast set / full suite) on one machine, 87s warm and 130s cold against 229s on
+another. Measure with `--rerun` - without it Gradle reports UP-TO-DATE and skips the tests
+entirely, and `touch` will not invalidate them either since the check is content-hashed.
+`TIMEOUT_MS` in the mirror is 300s; if a warm run gets close to it, raise it rather than
+letting the mirror time out, because a timeout passes silently.
 
 ## Registering it on a new machine
 
