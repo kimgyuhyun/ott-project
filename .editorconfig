@@ -1,0 +1,30 @@
+# 에디터에 프로젝트 규약을 알려주는 설정. 아무것도 차단하지 않는다 — 게이트가 아니라 기본값이다.
+# 값은 지어낸 것이 아니라 현재 코드 실측치다:
+#   Java 4칸(121개 중 112개), TS/TSX 2칸(99/99), yml·sh 2칸, ps1 4칸, build.gradle 은 탭.
+#
+# end_of_line 은 일부러 비워둔다. 줄바꿈은 이미 git 이 관리한다(core.autocrlf=true 로
+# 워킹트리 CRLF·저장소 LF, 그리고 .gitattributes 가 *.sh 와 proxy/*.conf 를 LF 로 고정).
+# 여기에 또 적으면 같은 것을 정하는 권위가 둘이 되고, 어긋나는 순간 원인 찾기가 어려워진다.
+
+root = true
+
+[*]
+charset = utf-8
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.java]
+indent_size = 4
+
+[*.ps1]
+indent_size = 4
+
+# build.gradle 은 현재 탭이다. Spotless 는 Java 만 보므로 여기가 유일한 근거가 된다.
+[*.gradle]
+indent_style = tab
+
+# 마크다운은 줄 끝 공백 두 칸이 줄바꿈 문법이라 지우면 안 된다.
+[*.md]
+trim_trailing_whitespace = false
