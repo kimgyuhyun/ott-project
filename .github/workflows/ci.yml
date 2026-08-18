@@ -225,10 +225,24 @@ jobs:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
-      - name: Build frontend
+      - name: Install frontend dependencies
         run: |
           cd frontend
           npm ci
+      # 린트를 명시 스텝으로 둔다. next.config.ts 가 eslint.ignoreDuringBuilds=true 라
+      # next build 는 ESLint 를 돌리지 않는다 — 그 부수효과에 기대는 동안 지적 117건이
+      # 쌓였고 그 중 하나는 error 였다. 빌드의 부수효과는 설정 한 줄로 조용히 사라지는데,
+      # 사라져도 빌드는 초록불이라 게이트가 없어진 것을 알 수 없다.
+      # ignoreDuringBuilds 는 그대로 둔다: 린트 실패로 이미지 빌드까지 깨질 이유가 없다.
+      # --max-warnings 는 이 커밋 시점의 실측치다. 기존 지적을 청산하지 않고도 새 지적만
+      # 막기 위한 기준선이므로, 줄어들면 함께 낮춘다. 올리는 방향으로는 고치지 않는다.
+      - name: Lint frontend
+        run: |
+          cd frontend
+          npx eslint --max-warnings 116
+      - name: Build frontend
+        run: |
+          cd frontend
           npm run build
       - name: Compute lowercase image ref
         id: img
