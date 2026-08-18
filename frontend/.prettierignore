@@ -1,0 +1,12 @@
+# 빌드 산출물
+.next/
+out/
+build/
+node_modules/
+
+# 생성 파일
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# 도구가 소유한 파일 — 사람이 포맷할 대상이 아니다
+package-lock.json
