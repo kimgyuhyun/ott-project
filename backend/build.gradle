@@ -17,6 +17,7 @@ plugins {
 	id 'org.springframework.boot' version '3.5.16'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'com.github.spotbugs' version '6.5.10'
+	id 'com.diffplug.spotless' version '7.2.1'
 	// 마이그레이션 검증 전용. 애플리케이션 런타임과는 무관하며 CI 잡에서만 쓴다.
 	id 'org.flywaydb.flyway' version '10.22.0'
 }
@@ -150,6 +151,27 @@ flyway {
 	user = System.getenv('FLYWAY_USER') ?: 'ci'
 	password = System.getenv('FLYWAY_PASSWORD') ?: 'ci'
 	locations = ['filesystem:src/main/resources/db/migration']
+}
+
+// 포매터(Spotless).
+// palantir-java-format 을 쓴다. google-java-format 과 같은 "옵션 없음" 계열이라 설정을
+// 다시 논의할 여지가 없고, 빌더·스트림 체인 줄바꿈이 이 코드베이스의 손글씨에 더 가깝다.
+//
+// ratchetFrom: origin/main 과 다른 파일만 검사한다. 327개 파일 30k 줄을 한꺼번에
+// 재작성하지 않고, 건드린 파일부터 규약에 들어오게 하는 것이 목적이다.
+// 한계를 알고 쓴다 — main 에 직접 push 하면 HEAD 와 origin/main 이 같아 검사 대상이
+// 0건이 된다. 그 경로의 실질 강제는 로컬(IDE·훅)이고, CI 의 이 게이트는 PR 에서 작동한다.
+// spotlessCheck 는 check 에 붙으므로 CI 의 clean build 가 자동으로 실행한다.
+// ratchetFrom 이 git 히스토리를 읽으므로 CI checkout 에 fetch-depth: 0 이 필요하다.
+spotless {
+	java {
+		ratchetFrom 'origin/main'
+		palantirJavaFormat()
+		removeUnusedImports()
+		trimTrailingWhitespace()
+		endWithNewline()
+		// 생성된 Q 클래스는 build/ 아래라 애초에 소스셋 밖이다. 별도 제외가 필요 없다.
+	}
 }
 
 // 정적 분석(SpotBugs).

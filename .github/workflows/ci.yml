@@ -93,6 +93,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           lfs: true
+          # Spotless 의 ratchetFrom 이 origin/main 과의 차이를 보므로 히스토리가 필요하다.
+          # 얕은 클론이면 base ref 를 못 찾아 spotlessCheck 가 빌드를 깨뜨린다.
+          fetch-depth: 0
       # 래퍼 JAR 해시 불일치는 공급망 침해 신호이므로 차단한다.
       # (continue-on-error 로 두면 침해를 탐지하고도 그대로 빌드가 진행된다)
       - name: Validate Gradle wrapper
