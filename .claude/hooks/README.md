@@ -24,6 +24,13 @@ Only formatters belong here. Both are deterministic and auto-fixing, so there is
 to decide. `eslint --fix` deliberately stays out: some of its rules change what the code
 means, and a fix nobody looked at is not something to apply behind Claude's back.
 
+`frontend-type-mirror.js` (mirror, Stop) runs `tsc --noEmit` when a turn ends. The backend
+gets this for free - testFast has to compile before it runs anything - but the frontend has
+no tests, so nothing type-checks it until CI runs `next build`. It re-runs only when
+`frontend/src`, `tsconfig.json`, `package.json` or `next.config.ts` changed since the last
+clean run: gradle skips an unchanged `testFast` by itself, tsc does not and costs the same
+3.9s every time, so the skip has to happen before tsc starts.
+
 `backend-test-mirror.js` (mirror, Stop) runs `./gradlew testFast` when a turn ends and
 hands any failures back to Claude, so a red test is caught in seconds instead of ten
 minutes later in CI. It stops the turn only for a failing test or code that does not
