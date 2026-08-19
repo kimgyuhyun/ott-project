@@ -34,9 +34,9 @@
           {
             "type": "command",
             "shell": "bash",
-            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/java-format.js\"",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/format-on-edit.js\"",
             "timeout": 120,
-            "statusMessage": "formatting java"
+            "statusMessage": "formatting edited file"
           }
         ]
       }

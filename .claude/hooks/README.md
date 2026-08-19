@@ -10,12 +10,19 @@ mechanical enough that nobody would ever want to review it.
 the header comment in the script for why. Deploys must go through `deploy-rolling.ps1` /
 `deploy.ps1`.
 
-`java-format.js` (fixer, PostToolUse) runs `./gradlew spotlessApply` after Claude edits a
-`.java` file under `backend/src`, so the formatter never has anything left to complain
-about. It exists because spotless uses `ratchetFrom 'origin/main'`: on a push straight to
-main the CI checkout *is* `origin/main`, nothing differs, and the CI gate checks zero
-files. Local is the only place that gate holds. The hook blocks nothing - it exits 2 only
-to tell Claude the file on disk changed, since editing a stale copy would fail.
+`format-on-edit.js` (fixer, PostToolUse) formats what Claude just edited, so the
+formatters never have anything left to complain about: `./gradlew spotlessApply` for
+`.java` under `backend/src`, and the local prettier for anything under `frontend/`. It
+exists because spotless uses `ratchetFrom 'origin/main'`: on a push straight to main the
+CI checkout *is* `origin/main`, nothing differs, and the CI gate checks zero files. Local
+is the only place that gate holds. Prettier has no such hole - the frontend half is there
+to keep the two sides symmetric and to stop a red CI over whitespace. The hook blocks
+nothing; it exits 2 only to tell Claude the file on disk changed, since editing a stale
+copy would fail.
+
+Only formatters belong here. Both are deterministic and auto-fixing, so there is nothing
+to decide. `eslint --fix` deliberately stays out: some of its rules change what the code
+means, and a fix nobody looked at is not something to apply behind Claude's back.
 
 `backend-test-mirror.js` (mirror, Stop) runs `./gradlew testFast` when a turn ends and
 hands any failures back to Claude, so a red test is caught in seconds instead of ten
