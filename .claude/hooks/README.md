@@ -1,12 +1,21 @@
 # Claude Code hooks for this repo
 
-Two kinds live here. A **mirror** only reports; a **leash** refuses to let something run.
-Something gets a leash only when finding out afterwards is too late to fix it.
+Three kinds live here. A **mirror** only reports; a **leash** refuses to let something run;
+a **fixer** repairs the thing instead of complaining about it. Something gets a leash only
+when finding out afterwards is too late to fix it, and a fixer only when the repair is
+mechanical enough that nobody would ever want to review it.
 
 `block-bare-compose.js` (leash, PreToolUse) denies `docker compose up` without
 `docker-compose.netlock.yml` (and any `docker run`) when Claude Code tries to run it. See
 the header comment in the script for why. Deploys must go through `deploy-rolling.ps1` /
 `deploy.ps1`.
+
+`java-format.js` (fixer, PostToolUse) runs `./gradlew spotlessApply` after Claude edits a
+`.java` file under `backend/src`, so the formatter never has anything left to complain
+about. It exists because spotless uses `ratchetFrom 'origin/main'`: on a push straight to
+main the CI checkout *is* `origin/main`, nothing differs, and the CI gate checks zero
+files. Local is the only place that gate holds. The hook blocks nothing - it exits 2 only
+to tell Claude the file on disk changed, since editing a stale copy would fail.
 
 `backend-test-mirror.js` (mirror, Stop) runs `./gradlew testFast` when a turn ends and
 hands any failures back to Claude, so a red test is caught in seconds instead of ten

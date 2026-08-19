@@ -26,6 +26,20 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/java-format.js\"",
+            "timeout": 120,
+            "statusMessage": "formatting java"
+          }
+        ]
+      }
     ]
   }
 }
