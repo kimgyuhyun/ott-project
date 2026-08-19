@@ -50,6 +50,24 @@
 - `docs/` deployment.md · messaging.md · operations.md · security.md · streaming.md · incident-2026-06.md (아래 참고, 내용 옮겨적지 말 것)
 - `.deploy/`, `_incident_2026-06-20/` 과거 침해 사고 기록 — 참고용, 손대지 말 것
 
+## 새 기기 세팅
+`git pull` 로 따라오지 않는 것이 넷 있다. 넷 다 빠져도 경고가 없고 검사만 조용히 사라지므로, 클론 직후 한 번에 해둔다.
+
+```powershell
+git config core.hooksPath .githooks            # 없으면 git 훅 2개가 통째로 안 돎
+git config blame.ignoreRevsFile .git-blame-ignore-revs
+winget install gitleaks                        # 없으면 pre-commit 이 커밋을 전부 막는다
+cd frontend; npm ci                            # 없으면 prettier·tsc 훅이 조용히 통과
+```
+
+`.claude/settings.local.json` 은 `.gitignore` 대상이라 직접 만든다. JDK 경로가 기기마다 달라서 분리해 둔 파일이고, 이게 없으면 `backend-test-mirror.js` 가 JAVA_HOME 을 못 찾아 조용히 통과한다.
+
+```json
+{ "env": { "JAVA_HOME": "C:\\Users\\USER\\.jdks\\liberica-21.0.7" } }
+```
+
+확인: `git config core.hooksPath` 가 `.githooks` 를 출력하고 `gitleaks version` 이 돌면 된다.
+
 ## 실행/배포
 - 개발: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`
 - 수동 프로덕션(단일 백엔드): `.\deploy.ps1`
