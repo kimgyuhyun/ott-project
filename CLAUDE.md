@@ -17,21 +17,21 @@
 - 이 프로젝트는 규칙 문서보다 먼저 만들어졌다. 기존 코드가 규칙과 다른 곳이 남아 있으므로, 주변 코드를 근거로 규칙을 판단하지 않는다.
 
 ### 언제 무엇을 읽는가
-아래 작업을 시작하기 전에 해당 절을 먼저 읽는다. 기억에 의존해 규칙을 적용하지 않는다. `C:\dev-standards\standards\RATIONALE.md` 는 통독하지 않고 표에 적힌 절만 읽는다.
+아래 작업을 시작하기 전에 해당 절을 먼저 읽는다. 기억에 의존해 규칙을 적용하지 않는다. 측정·재현 절차는 dev-standards 스킬이 자동으로 열어주므로 이 표에는 규칙 절만 적는다.
 
 | 시작하는 작업 | 먼저 읽을 절 |
 |---|---|
 | 엔티티, DTO, Controller, Service 새로 만들기 | ARCHITECTURE 1, 2, 7 |
 | 트랜잭션 경계 잡기, 데이터 접근 수단 고르기 | ARCHITECTURE 3, 4 |
-| 인덱스 추가·삭제 | ARCHITECTURE 8, RATIONALE 3-1 — 실행 계획과 실측 시간을 전후로 캡처해야 한다. 나중에 만들 수 없으니 착수 전에 읽는다 |
-| 재고·잔액·좌석·쿠폰 차감, 같은 행 동시 갱신 | ARCHITECTURE 9, RATIONALE 3-2 |
-| 결제·주문, 외부 API 호출이 끼는 상태 전이 | ARCHITECTURE 5, 6, RATIONALE 3-3 |
+| 인덱스 추가·삭제 | ARCHITECTURE 8 — 측정 절차는 `index-measurement` 스킬 |
+| 재고·잔액·좌석·쿠폰 차감, 같은 행 동시 갱신 | ARCHITECTURE 9 — 재현 절차는 `defect-repro` 스킬 |
+| 결제·주문, 외부 API 호출이 끼는 상태 전이 | ARCHITECTURE 5, 6 — 재현 절차는 `defect-repro` 스킬 |
 | 목록·상세 조회 성능, 페이징, N+1, 커넥션 풀 | ARCHITECTURE 11, 12 |
 | 캐시 추가 | ARCHITECTURE 10 |
 | 메시지 발행·소비, 브로커 선택 | ARCHITECTURE 13 |
 | 소비자를 별도 서비스로 분리, 데이터 망에 컨테이너 추가 | PLATFORM 3 — 브로커 인증을 걸 시점인지 판단한다 |
 | 예외 처리와 에러 응답 | ARCHITECTURE 14 |
-| 테스트 작성 | ARCHITECTURE 15, RATIONALE 3-6 — 계층이 아니라 로직으로 대상을 정한다. 짠 뒤에는 일부러 깨뜨려 빨간불이 나는지 확인한다 |
+| 테스트 작성 | ARCHITECTURE 15 — 뮤테이션 체크 절차는 `test-writing` 스킬 |
 | 로그인, 인가, 쿠키, CORS, DB 계정 권한 | PLATFORM 4 |
 | 사용자 입력 검증, 파일 업로드, 서버가 보내는 외부 요청 | PLATFORM 5 |
 | compose, Dockerfile, nginx 설정 수정 | PLATFORM 2, 3 |
@@ -39,8 +39,10 @@
 | 마이그레이션 작성과 배포 | PLATFORM 8 — 파괴적 변경은 애플리케이션 배포와 같은 릴리스에 넣지 않는다 |
 | 시크릿 추가·변경, 유출 대응 | PLATFORM 1 |
 | 지표, 로그, 경보 추가 | PLATFORM 9 |
-| 부하 테스트 | PLATFORM 10, RATIONALE 3-4 — 기준선을 먼저 측정하고 합격 기준을 테스트 전에 적는다 |
-| 배포 후 보안 점검 | RATIONALE 3-5 |
+| 부하 테스트 | PLATFORM 10 — 실행 절차는 `load-test` 스킬 |
+| 배포 후 보안 점검 | PLATFORM 1~5 — 점검 절차는 `security-audit` 스킬 |
+
+절차 스킬은 `C:\dev-standards\skills\` 에 있고 `~\.claude\skills` 정션으로 연결돼 있다. 정션이 없으면 스킬이 조용히 사라지므로 새 기기에서는 아래 "새 기기 세팅"을 먼저 본다.
 
 ## 폴더
 - `backend/` Spring Boot (config/controller/dto/entity/repository/security/service 등 표준 레이어드)
@@ -51,13 +53,14 @@
 - `.deploy/`, `_incident_2026-06-20/` 과거 침해 사고 기록 — 참고용, 손대지 말 것
 
 ## 새 기기 세팅
-`git pull` 로 따라오지 않는 것이 넷 있다. 넷 다 빠져도 경고가 없고 검사만 조용히 사라지므로, 클론 직후 한 번에 해둔다.
+`git pull` 로 따라오지 않는 것이 다섯 있다. 다섯 다 빠져도 경고가 없고 검사만 조용히 사라지므로, 클론 직후 한 번에 해둔다.
 
 ```powershell
 git config core.hooksPath .githooks            # 없으면 git 훅 2개가 통째로 안 돎
 git config blame.ignoreRevsFile .git-blame-ignore-revs
 winget install gitleaks                        # 없으면 pre-commit 이 커밋을 전부 막는다
 cd frontend; npm ci                            # 없으면 prettier·tsc 훅이 조용히 통과
+New-Item -ItemType Junction -Path $HOME\.claude\skills -Target C:\dev-standards\skills   # 없으면 절차 스킬이 조용히 사라짐
 ```
 
 `.claude/settings.local.json` 은 `.gitignore` 대상이라 직접 만든다. JDK 경로가 기기마다 달라서 분리해 둔 파일이고, 이게 없으면 `backend-test-mirror.js` 가 JAVA_HOME 을 못 찾아 조용히 통과한다.
