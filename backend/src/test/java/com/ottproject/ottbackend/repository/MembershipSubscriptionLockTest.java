@@ -1,9 +1,18 @@
 package com.ottproject.ottbackend.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.User;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -23,16 +32,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
 
 /**
  * findByIdForUpdate 의 실제 잠금 동작 검증 (실제 PostgreSQL)
@@ -59,12 +58,13 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 @Import(JpaSliceTestSupport.class)
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        // Flyway 마이그레이션 대신 엔티티 기준 스키마를 만든다(이 테스트는 스키마 이력이 아니라 잠금 동작을 본다).
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            // Flyway 마이그레이션 대신 엔티티 기준 스키마를 만든다(이 테스트는 스키마 이력이 아니라 잠금 동작을 본다).
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 @Transactional(propagation = Propagation.NOT_SUPPORTED) // @DataJpaTest 의 감싸는 트랜잭션을 끈다
 class MembershipSubscriptionLockTest {
 
@@ -102,12 +102,12 @@ class MembershipSubscriptionLockTest {
         userRepository.deleteAll();
 
         User user = userRepository.save(User.createLocalUser("billing@example.com", "encoded", "테스터"));
-        MembershipPlan plan = planRepository.save(
-                MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
+        MembershipPlan plan =
+                planRepository.save(MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
 
         LocalDateTime now = LocalDateTime.now();
-        MembershipSubscription sub = MembershipSubscription.createSubscription(
-                user, plan, now.minusDays(30), now.plusDays(10));
+        MembershipSubscription sub =
+                MembershipSubscription.createSubscription(user, plan, now.minusDays(30), now.plusDays(10));
         sub.recordDeclinedCharge(now, "CARD_DECLINED", "1차 청구 실패"); // → PAST_DUE, retryCount=1
         subscriptionId = subscriptionRepository.save(sub).getId();
     }
@@ -128,9 +128,8 @@ class MembershipSubscriptionLockTest {
                 subscriptionRepository.findByIdForUpdate(subscriptionId); // 첫 번째 배달: 락 선점
 
                 // 두 번째 배달을 흉내낸다. 별도 스레드여야 별도 커넥션/트랜잭션이 열린다.
-                Future<Throwable> second = other.submit(() -> catchThrowable(
-                        () -> writeTransaction().execute(inner ->
-                                subscriptionRepository.findByIdForUpdate(subscriptionId))));
+                Future<Throwable> second = other.submit(() -> catchThrowable(() ->
+                        writeTransaction().execute(inner -> subscriptionRepository.findByIdForUpdate(subscriptionId))));
 
                 Throwable thrown;
                 try {
@@ -156,8 +155,8 @@ class MembershipSubscriptionLockTest {
             writeTransaction().execute(status -> {
                 subscriptionRepository.findByIdForUpdate(subscriptionId); // 락 선점
 
-                Future<Optional<MembershipSubscription>> read = other.submit(() ->
-                        writeTransaction().execute(inner -> subscriptionRepository.findById(subscriptionId)));
+                Future<Optional<MembershipSubscription>> read = other.submit(
+                        () -> writeTransaction().execute(inner -> subscriptionRepository.findById(subscriptionId)));
 
                 Optional<MembershipSubscription> found;
                 try {

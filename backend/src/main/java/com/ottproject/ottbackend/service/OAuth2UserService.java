@@ -3,9 +3,13 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.entity.SocialAccount;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
-import com.ottproject.ottbackend.enums.UserRole;
 import com.ottproject.ottbackend.repository.SocialAccountRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
@@ -17,12 +21,6 @@ import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 /**
  * OAuth2UserService
@@ -57,17 +55,22 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
      */
     @Override
     @Transactional
-    public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException { // OAuth2 인증 예외를 던질 수 있음
+    public OAuth2User loadUser(OAuth2UserRequest userRequest)
+            throws OAuth2AuthenticationException { // OAuth2 인증 예외를 던질 수 있음
         try {
-            log.info("OAuth2 사용자 정보 로드 시작 - Provider: {}", userRequest.getClientRegistration().getRegistrationId()); // 로그 출력 - 요청 시작을 알림
+            log.info(
+                    "OAuth2 사용자 정보 로드 시작 - Provider: {}",
+                    userRequest.getClientRegistration().getRegistrationId()); // 로그 출력 - 요청 시작을 알림
 
             // 기본 OAuth2UserService를 통해 사용자 정보 로드
             OAuth2User oAuth2User = super.loadUser(userRequest); // 부모 클래스의 loadUser 메서드 호출하여 기본 사용자 정보 로드
             log.info("OAuth2 사용자 정보 로드 완료 - Attributes: {}", oAuth2User.getAttributes()); // 로그 출력 - 받은 정보 확인
 
             // 소셜 로그인 제공자 정보 추출
-            String provider = userRequest.getClientRegistration().getRegistrationId(); // 등록된 클라이언트 ID (google, kakao, naver)
-            AuthProvider authProvider = AuthProvider.valueOf(provider.toUpperCase()); // String 을 enum 으로 변환 (GOOGLE, KAKAO, NAVER)
+            String provider =
+                    userRequest.getClientRegistration().getRegistrationId(); // 등록된 클라이언트 ID (google, kakao, naver)
+            AuthProvider authProvider =
+                    AuthProvider.valueOf(provider.toUpperCase()); // String 을 enum 으로 변환 (GOOGLE, KAKAO, NAVER)
 
             // OAuth2 사용자 정보에서 필요한 데이터 추출
             // 각 소셜 로그인 제공자의 응답 구조가 다르므로 제공자별로 처리
@@ -77,14 +80,18 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             boolean emailVerified = extractEmailVerified(oAuth2User.getAttributes(), provider); // 제공자의 이메일 검증 여부
 
             // 추출된 정보를 로그로 출력
-            log.info("OAuth2 사용자 정보 추출 - Email: {}, Name: {}, Provider: {}, EmailVerified: {}", email, name, providerId, emailVerified); // 로그 출력 - 추출된 정보 확인
+            log.info(
+                    "OAuth2 사용자 정보 추출 - Email: {}, Name: {}, Provider: {}, EmailVerified: {}",
+                    email,
+                    name,
+                    providerId,
+                    emailVerified); // 로그 출력 - 추출된 정보 확인
 
             // [#6] 이메일 미제공 차단: 임시 이메일을 만들지 않고 로그인을 실패시킨다.
             // (이메일 동의를 받지 않으면 비밀번호 찾기/중복 식별이 불가능한 깨진 계정이 생기므로)
             if (email == null || email.isBlank()) {
                 log.warn("OAuth2 로그인 차단 - 이메일 미제공 (Provider: {})", provider);
-                throw new OAuth2AuthenticationException(new OAuth2Error("email_required"),
-                        "이메일 제공에 동의해야 로그인할 수 있습니다.");
+                throw new OAuth2AuthenticationException(new OAuth2Error("email_required"), "이메일 제공에 동의해야 로그인할 수 있습니다.");
             }
 
             // 사용자 정보 처리 (기존 사용자 조회 또는 신규 사용자 생성)
@@ -97,8 +104,11 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             return createOAuth2User(oAuth2User, user); // OAuth2User 객체 생성 메서드 호출
 
         } catch (Exception e) {
-            log.error("OAuth2 사용자 정보 로드 중 오류 발생 - Provider: {}, Error: {}",
-                    userRequest.getClientRegistration().getRegistrationId(), e.getMessage(), e); // 에러 로그 출력
+            log.error(
+                    "OAuth2 사용자 정보 로드 중 오류 발생 - Provider: {}, Error: {}",
+                    userRequest.getClientRegistration().getRegistrationId(),
+                    e.getMessage(),
+                    e); // 에러 로그 출력
             throw e; // 예외를 다시 던져서 OAuth2FailureHandler에서 처리하도록 함
         } finally {
             // ThreadLocal 누수 방지
@@ -149,7 +159,8 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             switch (provider.toLowerCase()) {
                 case "google": // Google 은 email_verified 플래그 제공
                     Object googleVerified = attributes.get("email_verified");
-                    return Boolean.TRUE.equals(googleVerified) || "true".equalsIgnoreCase(String.valueOf(googleVerified));
+                    return Boolean.TRUE.equals(googleVerified)
+                            || "true".equalsIgnoreCase(String.valueOf(googleVerified));
                 case "kakao": // Kakao 는 kakao_account.is_email_verified 플래그 제공
                     Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account");
                     if (kakaoAccount == null) return false;
@@ -185,24 +196,28 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
                     }
                     return name; // 정상적인 이름 반환
                 case "kakao": // Kakao 의 경우
-                    Map<String, Object> kakaoAccount = (Map<String, Object>) attributes.get("kakao_account"); // Kakao 는 kakao_account 객체 안에 정보가 있음
+                    Map<String, Object> kakaoAccount =
+                            (Map<String, Object>) attributes.get("kakao_account"); // Kakao 는 kakao_account 객체 안에 정보가 있음
                     if (kakaoAccount == null) { // kakao_account가 null인 경우 처리
                         log.warn("Kakao에서 kakao_account 정보를 받지 못했습니다."); // 경고 로그 출력
                         return "Kakao User"; // 기본 이름 반환
                     }
-                    Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile"); // kakao_account 안의 profile 객체에서 프로필 정보 가져옴
+                    Map<String, Object> profile = (Map<String, Object>)
+                            kakaoAccount.get("profile"); // kakao_account 안의 profile 객체에서 프로필 정보 가져옴
                     if (profile == null) { // profile이 null인 경우 처리
                         log.warn("Kakao에서 profile 정보를 받지 못했습니다."); // 경고 로그 출력
                         return "Kakao User"; // 기본 이름 반환
                     }
-                    String nickname = (String) profile.get("nickname"); // profile 안의 nickname 필드에서 이름 추출 (Kakao 는 nickname 을 사용)
+                    String nickname =
+                            (String) profile.get("nickname"); // profile 안의 nickname 필드에서 이름 추출 (Kakao 는 nickname 을 사용)
                     if (nickname == null) { // nickname이 null인 경우 처리
                         log.warn("Kakao에서 nickname 정보를 받지 못했습니다."); // 경고 로그 출력
                         return "Kakao User"; // 기본 이름 반환
                     }
                     return nickname; // 정상적인 이름 반환
                 case "naver": // Naver 의 경우
-                    Map<String, Object> response = (Map<String, Object>) attributes.get("response"); // Naver 는 response 객체 안에 정보가 있음
+                    Map<String, Object> response =
+                            (Map<String, Object>) attributes.get("response"); // Naver 는 response 객체 안에 정보가 있음
                     if (response == null) { // response가 null인 경우 처리
                         log.warn("Naver에서 response 정보를 받지 못했습니다."); // 경고 로그 출력
                         return "Naver User"; // 기본 이름 반환
@@ -248,7 +263,8 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
                     }
                     return String.valueOf(id); // String으로 변환하여 반환
                 case "naver": // Naver 의 경우
-                    Map<String, Object> response = (Map<String, Object>) attributes.get("response"); // Naver 는 response 객체 안에 정보가 있음
+                    Map<String, Object> response =
+                            (Map<String, Object>) attributes.get("response"); // Naver 는 response 객체 안에 정보가 있음
                     if (response == null) { // response가 null인 경우 처리
                         log.warn("Naver에서 response 정보를 받지 못했습니다."); // 경고 로그 출력
                         return "naver_" + System.currentTimeMillis(); // 임시 ID 생성
@@ -279,10 +295,10 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
      * @return 처리된 사용자 정보 (기존 사용자 또는 신규 생성된 사용자)
      */
     @Transactional
-    public User processOAuth2User(String email, String name, String providerId, AuthProvider authProvider, boolean emailVerified) {
+    public User processOAuth2User(
+            String email, String name, String providerId, AuthProvider authProvider, boolean emailVerified) {
         // 1) (provider, providerId)로 연동 우선 조회
-        Optional<SocialAccount> linked =
-                socialAccountRepository.findByProviderAndProviderId(authProvider, providerId);
+        Optional<SocialAccount> linked = socialAccountRepository.findByProviderAndProviderId(authProvider, providerId);
         if (linked.isPresent()) { // 이미 연동된 계정 → 해당 사용자 반환
             Long userId = linked.get().getUser().getId();
             User managed = userRepository.findById(userId).orElseThrow();
@@ -304,15 +320,11 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             if (!socialAccountRepository.existsByUserAndProvider(user, authProvider)) {
                 if (!emailVerified) {
                     log.warn("OAuth2 자동 연동 차단 - 미검증 이메일 (email: {}, provider: {})", email, authProvider);
-                    throw new OAuth2AuthenticationException(new OAuth2Error("email_not_verified"),
+                    throw new OAuth2AuthenticationException(
+                            new OAuth2Error("email_not_verified"),
                             "이미 가입된 이메일입니다. 소셜 제공자에서 이메일이 검증되지 않아 자동 연동할 수 없습니다.");
                 }
-                SocialAccount account = SocialAccount.createSocialAccount(
-                        user,
-                        authProvider,
-                        providerId,
-                        email
-                );
+                SocialAccount account = SocialAccount.createSocialAccount(user, authProvider, providerId, email);
                 socialAccountRepository.save(account);
             }
             // 사용자 프로필 최소 업데이트(닉네임은 사용자 지정값 우선, 덮어쓰지 않음)
@@ -326,22 +338,13 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
 
         // 3) 신규 사용자 + 연동 생성
         User newUser = User.createSocialUser(
-                email,
-                name,
-                authProvider,
-                providerId,
-                null // profileImage는 null로 설정
-        );
+                email, name, authProvider, providerId, null // profileImage는 null로 설정
+                );
         newUser.setEmailVerified(emailVerified); // 제공자의 실제 검증 여부를 반영(기본 팩토리는 true 로 설정함)
         User saved = userRepository.save(newUser);
-        SocialAccount firstLink = SocialAccount.createSocialAccount(
-                saved,
-                authProvider,
-                providerId,
-                email
-        );
+        SocialAccount firstLink = SocialAccount.createSocialAccount(saved, authProvider, providerId, email);
         socialAccountRepository.save(firstLink);
-        
+
         log.info("신규 소셜 사용자 생성됨 - ID: {}, 이메일: {}", saved.getId(), saved.getEmail());
         isNewUserFlag.set(Boolean.TRUE);
         return saved;
@@ -385,7 +388,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
                 authorities, // 제공자 기본 권한 + DB 역할(ROLE_USER/ROLE_ADMIN)
                 attributes, // 사용자 속성 정보 (소셜 로그인 정보 + 애플리케이션 정보)
                 "userEmail" // nameAttributeKey - Spring Security 에서 사용자 식별에 사용할 키 (이메일 사용)
-        );
+                );
     }
 
     /**

@@ -4,11 +4,12 @@
 // deterministic and auto-fixing, so there is nothing to decide and nothing to report -
 // the file is simply correct afterwards.
 //
-// Why it exists at all, when CI already checks both: spotless is configured with
-// ratchetFrom 'origin/main', and on a push straight to main the CI checkout IS
-// origin/main, so nothing differs and the CI gate checks zero files. Local is the only
-// place that gate holds. Prettier has no such hole, but the hook keeps the two sides
-// symmetric and stops a red CI over whitespace.
+// Why it exists at all, when CI already checks both: not to plug a gap. Spotless used
+// to run with ratchetFrom 'origin/main', which checked zero files on a push straight to
+// main - the hook was the only gate on that path. That ratchet is gone and CI now checks
+// every file on every push, so this hook is purely a convenience: it fixes formatting on
+// the spot instead of letting it come back as a red CI over whitespace. Same reason
+// prettier runs here.
 //
 // It never blocks an edit. The only thing it hands back is a note that the file on disk
 // changed, because Claude's copy is then stale and the next edit would be built on text

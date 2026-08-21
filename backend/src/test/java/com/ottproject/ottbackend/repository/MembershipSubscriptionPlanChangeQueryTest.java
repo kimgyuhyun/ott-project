@@ -1,5 +1,7 @@
 package com.ottproject.ottbackend.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.Money;
@@ -7,6 +9,8 @@ import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PlanChangeType;
 import com.ottproject.ottbackend.mybatis.MembershipSubscriptionQueryMapper;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -22,11 +26,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * findSubscriptionsWithScheduledPlanChanges 의 대상 선정 검증 (실제 PostgreSQL, 실제 매퍼 XML)
@@ -47,11 +46,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Import(MyBatisSliceTestSupport.class) // 껍데기가 아니라 실제로 매퍼 XML 을 물린 SqlSessionFactory
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 class MembershipSubscriptionPlanChangeQueryTest {
 
     @Container
@@ -74,25 +74,28 @@ class MembershipSubscriptionPlanChangeQueryTest {
     private TestEntityManager entityManager;
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 9, 12, 0);
-    private static final List<String> TARGET_STATUSES = List.of(
-            MembershipSubscriptionStatus.ACTIVE.name(), MembershipSubscriptionStatus.PAST_DUE.name());
+    private static final List<String> TARGET_STATUSES =
+            List.of(MembershipSubscriptionStatus.ACTIVE.name(), MembershipSubscriptionStatus.PAST_DUE.name());
 
     private MembershipPlan persistPlan(String name) {
-        return entityManager.persist(
-                MembershipPlan.createBasicPlan(name, "설명", new Money(9900L, "KRW"), 1));
+        return entityManager.persist(MembershipPlan.createBasicPlan(name, "설명", new Money(9900L, "KRW"), 1));
     }
 
     /**
      * 플랜 변경이 예약된 구독을 만든다. 상태와 해지 플래그는 이 쿼리가 걸러야 할 대상이라 직접 주입한다
      * (도메인 전이 메서드는 부수 필드까지 함께 바꿔 검증 대상이 흐려진다).
      */
-    private MembershipSubscription persistScheduled(String email, MembershipPlan plan, MembershipPlan nextPlan,
-                                                    MembershipSubscriptionStatus status,
-                                                    boolean autoRenew, boolean cancelAtPeriodEnd,
-                                                    LocalDateTime nextBillingAt) {
+    private MembershipSubscription persistScheduled(
+            String email,
+            MembershipPlan plan,
+            MembershipPlan nextPlan,
+            MembershipSubscriptionStatus status,
+            boolean autoRenew,
+            boolean cancelAtPeriodEnd,
+            LocalDateTime nextBillingAt) {
         User user = entityManager.persist(User.createLocalUser(email, "encoded-password", "테스터"));
-        MembershipSubscription sub = MembershipSubscription.createSubscription(
-                user, plan, NOW.minusDays(30), NOW.plusDays(1));
+        MembershipSubscription sub =
+                MembershipSubscription.createSubscription(user, plan, NOW.minusDays(30), NOW.plusDays(1));
         if (nextPlan != null) {
             sub.schedulePlanChange(nextPlan, nextBillingAt, PlanChangeType.DOWNGRADE);
         }
@@ -109,14 +112,32 @@ class MembershipSubscriptionPlanChangeQueryTest {
         MembershipPlan plan = persistPlan("Basic");
         MembershipPlan nextPlan = persistPlan("Lite");
 
-        MembershipSubscription eligible = persistScheduled("eligible@example.com", plan, nextPlan,
-                MembershipSubscriptionStatus.ACTIVE, true, false, NOW.minusMinutes(1));
+        MembershipSubscription eligible = persistScheduled(
+                "eligible@example.com",
+                plan,
+                nextPlan,
+                MembershipSubscriptionStatus.ACTIVE,
+                true,
+                false,
+                NOW.minusMinutes(1));
         // 탈퇴/환불로 즉시 해지된 구독. 예약을 지우지 않던 시절의 데이터도 여기 걸린다
-        persistScheduled("canceled@example.com", plan, nextPlan,
-                MembershipSubscriptionStatus.CANCELED, false, false, NOW.minusMinutes(1));
+        persistScheduled(
+                "canceled@example.com",
+                plan,
+                nextPlan,
+                MembershipSubscriptionStatus.CANCELED,
+                false,
+                false,
+                NOW.minusMinutes(1));
         // 말일 해지 예약. 만료로 끝나므로 플랜을 바꿀 이유가 없다(재개하면 다시 대상이 된다)
-        persistScheduled("atperiodend@example.com", plan, nextPlan,
-                MembershipSubscriptionStatus.ACTIVE, false, true, NOW.minusMinutes(1));
+        persistScheduled(
+                "atperiodend@example.com",
+                plan,
+                nextPlan,
+                MembershipSubscriptionStatus.ACTIVE,
+                false,
+                true,
+                NOW.minusMinutes(1));
         entityManager.flush();
 
         List<MembershipSubscription> found =
@@ -131,12 +152,30 @@ class MembershipSubscriptionPlanChangeQueryTest {
         MembershipPlan plan = persistPlan("Basic");
         MembershipPlan nextPlan = persistPlan("Lite");
 
-        MembershipSubscription due = persistScheduled("due@example.com", plan, nextPlan,
-                MembershipSubscriptionStatus.ACTIVE, true, false, NOW.minusMinutes(1));
-        persistScheduled("notdue@example.com", plan, nextPlan,
-                MembershipSubscriptionStatus.ACTIVE, true, false, NOW.plusDays(3));
-        persistScheduled("unscheduled@example.com", plan, null,
-                MembershipSubscriptionStatus.ACTIVE, true, false, NOW.minusMinutes(1));
+        MembershipSubscription due = persistScheduled(
+                "due@example.com",
+                plan,
+                nextPlan,
+                MembershipSubscriptionStatus.ACTIVE,
+                true,
+                false,
+                NOW.minusMinutes(1));
+        persistScheduled(
+                "notdue@example.com",
+                plan,
+                nextPlan,
+                MembershipSubscriptionStatus.ACTIVE,
+                true,
+                false,
+                NOW.plusDays(3));
+        persistScheduled(
+                "unscheduled@example.com",
+                plan,
+                null,
+                MembershipSubscriptionStatus.ACTIVE,
+                true,
+                false,
+                NOW.minusMinutes(1));
         entityManager.flush();
 
         List<MembershipSubscription> found =

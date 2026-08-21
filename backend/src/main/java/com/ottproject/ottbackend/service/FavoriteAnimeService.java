@@ -2,20 +2,19 @@ package com.ottproject.ottbackend.service; // 서비스 패키지
 
 import com.ottproject.ottbackend.dto.FavoriteAnimeDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
-import com.ottproject.ottbackend.entity.AnimeFavorite;
 import com.ottproject.ottbackend.entity.Anime;
+import com.ottproject.ottbackend.entity.AnimeFavorite;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.mybatis.FavoriteQueryMapper;
 import com.ottproject.ottbackend.repository.AnimeFavoriteRepository;
 import com.ottproject.ottbackend.repository.AnimeRepository; // NEW
 import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.util.PageLimitUtil;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * FavoriteAnimeService
@@ -53,21 +52,23 @@ public class FavoriteAnimeService { // 보고싶다 도메인 서비스
     @Transactional(readOnly = true) // 읽기 전용
     public PagedResponse<FavoriteAnimeDto> list(Long userId, int page, int size, String sort) { // 내 보고싶다 목록 조회
         System.out.println("🔧 [SERVICE] FavoriteAnimeService.list 시작");
-        System.out.println("🔧 [SERVICE] 파라미터 - userId: " + userId + ", page: " + page + ", size: " + size + ", sort: " + sort);
-        
+        System.out.println(
+                "🔧 [SERVICE] 파라미터 - userId: " + userId + ", page: " + page + ", size: " + size + ", sort: " + sort);
+
         size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
         int limit = size; // limit 계산
         int offset = Math.max(page, 0) * size; // offset 계산
         System.out.println("🔧 [SERVICE] 계산된 limit: " + limit + ", offset: " + offset);
-        
+
         System.out.println("🔧 [SERVICE] MyBatis 쿼리 호출 시작 - findFavoriteAnimesByUser");
-        List<FavoriteAnimeDto> items = favoriteQueryMapper.findFavoriteAnimesByUser(userId, sort, limit, offset); // 항목 조회
+        List<FavoriteAnimeDto> items =
+                favoriteQueryMapper.findFavoriteAnimesByUser(userId, sort, limit, offset); // 항목 조회
         System.out.println("🔧 [SERVICE] MyBatis 쿼리 호출 완료 - findFavoriteAnimesByUser");
-        
+
         System.out.println("🔧 [SERVICE] MyBatis 카운트 쿼리 호출 시작 - countFavoriteAnimesByUser");
         long total = favoriteQueryMapper.countFavoriteAnimesByUser(userId); // 총 개수 조회
         System.out.println("🔧 [SERVICE] MyBatis 카운트 쿼리 호출 완료 - countFavoriteAnimesByUser");
-        
+
         System.out.println("🔧 [SERVICE] 조회 결과 - items 개수: " + items.size() + ", total: " + total);
         if (!items.isEmpty()) {
             System.out.println("🔧 [SERVICE] 첫 번째 아이템 상세:");
@@ -80,10 +81,11 @@ public class FavoriteAnimeService { // 보고싶다 도메인 서비스
         } else {
             System.out.println("🔧 [SERVICE] 조회된 아이템이 없습니다.");
         }
-        
+
         PagedResponse<FavoriteAnimeDto> response = new PagedResponse<>(items, total, page, size); // 페이지 응답 래핑
-        System.out.println("🔧 [SERVICE] PagedResponse 생성 완료 - total: " + response.getTotal() + ", items: " + response.getItems().size());
-        
+        System.out.println("🔧 [SERVICE] PagedResponse 생성 완료 - total: " + response.getTotal() + ", items: "
+                + response.getItems().size());
+
         return response; // 페이지 응답 래핑
     }
 

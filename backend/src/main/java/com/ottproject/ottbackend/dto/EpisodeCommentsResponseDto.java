@@ -20,21 +20,21 @@ import lombok.*;
 @AllArgsConstructor
 public class EpisodeCommentsResponseDto {
 
-	private Long id; // 에피소드 댓글 ID
-	private Long episodeId; // 대상 에피소드 ID
-	private Long parentId; // 부모 댓글 ID(최상위면 null)
+    private Long id; // 에피소드 댓글 ID
+    private Long episodeId; // 대상 에피소드 ID
+    private Long parentId; // 부모 댓글 ID(최상위면 null)
 
-	private Long userId; // 작성자 ID
-	private String userName; // 작성자 이름/닉네임
-	private String userProfileImage; // 작성자 프로필 이미지 URL
+    private Long userId; // 작성자 ID
+    private String userName; // 작성자 이름/닉네임
+    private String userProfileImage; // 작성자 프로필 이미지 URL
 
-	private String content; // 댓글 내용
-	private com.ottproject.ottbackend.enums.CommentStatus commentStatus; // 댓글 상태
+    private String content; // 댓글 내용
+    private com.ottproject.ottbackend.enums.CommentStatus commentStatus; // 댓글 상태
 
-	private Integer repliesCount; // 대댓글 개수(옵션)
-	private Integer likeCount; // 댓글 좋아요 개수
-	private Boolean isLikedByCurrentUser; // 현재 사용자 좋아요 여부
-	
-	private java.time.LocalDateTime createdAt; // 생성일시
-	private java.time.LocalDateTime updatedAt; // 수정일시
+    private Integer repliesCount; // 대댓글 개수(옵션)
+    private Integer likeCount; // 댓글 좋아요 개수
+    private Boolean isLikedByCurrentUser; // 현재 사용자 좋아요 여부
+
+    private java.time.LocalDateTime createdAt; // 생성일시
+    private java.time.LocalDateTime updatedAt; // 수정일시
 }

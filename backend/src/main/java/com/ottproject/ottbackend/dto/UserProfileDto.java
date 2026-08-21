@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.dto;
 
 import com.ottproject.ottbackend.entity.User;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
 
 /**
  * 내 프로필 응답

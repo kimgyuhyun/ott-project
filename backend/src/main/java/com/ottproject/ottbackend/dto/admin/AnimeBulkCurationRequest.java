@@ -50,7 +50,13 @@ public class AnimeBulkCurationRequest {
      * 아무 값도 없으면 조건에 걸린 행을 훑기만 하고 아무것도 안 바꾸는 요청이라 거부한다.
      */
     public boolean hasAnyChange() {
-        return isActive != null || isExclusive != null || isPopular != null || isNew != null
-                || isCompleted != null || isSubtitle != null || isDub != null || isSimulcast != null;
+        return isActive != null
+                || isExclusive != null
+                || isPopular != null
+                || isNew != null
+                || isCompleted != null
+                || isSubtitle != null
+                || isDub != null
+                || isSimulcast != null;
     }
 }

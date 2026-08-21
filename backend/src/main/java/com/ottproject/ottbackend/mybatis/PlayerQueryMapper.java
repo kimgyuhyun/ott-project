@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.mybatis;
 
 import com.ottproject.ottbackend.dto.RecentAnimeWatchDto;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-
-import java.util.List;
-import java.time.LocalDateTime;
 
 /**
  * PlayerQueryMapper
@@ -24,8 +23,5 @@ public interface PlayerQueryMapper {
             @Param("limit") int limit,
             @Param("offset") int offset,
             @Param("cursorUpdatedAt") LocalDateTime cursorUpdatedAt,
-            @Param("cursorAnimeId") Long cursorAnimeId
-    );
+            @Param("cursorAnimeId") Long cursorAnimeId);
 }
-
-

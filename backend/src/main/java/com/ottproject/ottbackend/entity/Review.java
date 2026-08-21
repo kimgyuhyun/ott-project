@@ -2,12 +2,11 @@ package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.ReviewStatus;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 리뷰 엔티티
@@ -58,7 +57,7 @@ public class Review {
 
     /**
      * 리뷰 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 리뷰 작성자
      * @param anime 리뷰 대상 애니메이션
      * @param content 리뷰 내용 (1000자 이하)
@@ -92,7 +91,7 @@ public class Review {
 
     /**
      * 초안 리뷰 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 리뷰 작성자
      * @param anime 리뷰 대상 애니메이션
      * @return 생성된 Review 엔티티
@@ -119,7 +118,7 @@ public class Review {
 
     /**
      * 신고된 리뷰 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 리뷰 작성자
      * @param anime 리뷰 대상 애니메이션
      * @param content 리뷰 내용

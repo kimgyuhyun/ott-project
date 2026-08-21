@@ -41,5 +41,3 @@ public final class HlsSignedUrlUtil { // Nginx secure_link 서명 유틸리티
         return Instant.now().getEpochSecond() + Math.max(1, ttlSeconds); // 최소 1초 보장
     }
 }
-
-

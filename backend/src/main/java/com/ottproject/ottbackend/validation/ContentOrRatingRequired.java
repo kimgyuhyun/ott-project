@@ -1,8 +1,8 @@
 package com.ottproject.ottbackend.validation;
 
 import jakarta.validation.Constraint; // 제약 조건 메타 애노테이션
-import jakarta.validation.Payload;    // 페이로드(그룹/메타정보) 지정용
-import java.lang.annotation.*;        // 표준 애노테이션 메타
+import jakarta.validation.Payload; // 페이로드(그룹/메타정보) 지정용
+import java.lang.annotation.*; // 표준 애노테이션 메타
 
 /**
  * ContentOrRatingRequired
@@ -25,5 +25,6 @@ public @interface ContentOrRatingRequired {
     String message() default "내용 또는 평점 중 하나는 반드시 입력해야 합니다."; // 기본 에러 메시지
 
     Class<?>[] groups() default {}; // Bean validation 그룹 지정
+
     Class<? extends Payload>[] payload() default {}; // 메타정보 전달용 페이로드
 }

@@ -1,9 +1,9 @@
 package com.ottproject.ottbackend.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Embeddable;
 import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.AttributeOverrides;
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 
 /**
  * 금액/통화 VO(@Embeddable)
@@ -54,5 +54,3 @@ public class Money { // 금액 VO 시작
         return currency; // 값 반환
     }
 }
-
-

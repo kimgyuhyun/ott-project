@@ -5,16 +5,15 @@ import com.ottproject.ottbackend.enums.AuthEventType;
 import com.ottproject.ottbackend.repository.AuthEventRepository;
 import com.ottproject.ottbackend.repository.DailyStatsRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 
 /**
  * StatsSnapshotService
@@ -49,9 +48,14 @@ public class StatsSnapshotService {
     public void snapshotYesterday() {
         LocalDate yesterday = LocalDate.now(KST).minusDays(1);
         DailyStats stats = buildSnapshot(yesterday);
-        log.info("일일 통계 스냅샷 생성 완료 - date={}, loginSuccess={}, loginFail={}, logout={}, signup={}, dau={}",
-                stats.getStatDate(), stats.getLoginSuccessCount(), stats.getLoginFailCount(),
-                stats.getLogoutCount(), stats.getSignupCount(), stats.getActiveUserCount());
+        log.info(
+                "일일 통계 스냅샷 생성 완료 - date={}, loginSuccess={}, loginFail={}, logout={}, signup={}, dau={}",
+                stats.getStatDate(),
+                stats.getLoginSuccessCount(),
+                stats.getLoginFailCount(),
+                stats.getLogoutCount(),
+                stats.getSignupCount(),
+                stats.getActiveUserCount());
     }
 
     /**
@@ -62,7 +66,7 @@ public class StatsSnapshotService {
      */
     @Transactional
     public DailyStats buildSnapshot(LocalDate date) {
-        LocalDateTime start = date.atStartOfDay();          // 해당 일자 00:00:00 (포함)
+        LocalDateTime start = date.atStartOfDay(); // 해당 일자 00:00:00 (포함)
         LocalDateTime end = date.plusDays(1).atStartOfDay(); // 다음 일자 00:00:00 (미포함)
 
         long loginSuccess = authEventRepository.countByTypeBetween(AuthEventType.LOGIN_SUCCESS, start, end);
@@ -72,8 +76,7 @@ public class StatsSnapshotService {
         long dau = authEventRepository.countDistinctUsersByTypeBetween(AuthEventType.LOGIN_SUCCESS, start, end);
 
         // 기존 행이 있으면 덮어쓰고(upsert), 없으면 새로 생성
-        DailyStats stats = dailyStatsRepository.findByStatDate(date)
-                .orElseGet(() -> DailyStats.of(date));
+        DailyStats stats = dailyStatsRepository.findByStatDate(date).orElseGet(() -> DailyStats.of(date));
         stats.updateCounts(loginSuccess, loginFail, logout, signup, dau);
 
         return dailyStatsRepository.save(stats);

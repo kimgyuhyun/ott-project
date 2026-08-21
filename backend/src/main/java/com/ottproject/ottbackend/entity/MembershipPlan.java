@@ -25,7 +25,8 @@ import lombok.*;
 @Getter // 게터 생성
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본 생성자
 public class MembershipPlan { // 멤버쉽 플랜
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) // pk 자동 증가
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // pk 자동 증가
     private Long id; // PK
 
     @Column(nullable = false, unique = true) // 고유 코드 제약
@@ -39,8 +40,12 @@ public class MembershipPlan { // 멤버쉽 플랜
 
     @Embedded // VO 임베드
     @AttributeOverrides({ // 컬럼명 재정의로 기존 스키마 호환
-        @AttributeOverride(name = "amount", column = @Column(name = "price_monthly_vat_included", nullable = false)), // 금액 컬럼
-        @AttributeOverride(name = "currency", column = @Column(name = "price_currency", length = 3, nullable = false)) // 통화 컬럼
+        @AttributeOverride(
+                name = "amount",
+                column = @Column(name = "price_monthly_vat_included", nullable = false)), // 금액 컬럼
+        @AttributeOverride(
+                name = "currency",
+                column = @Column(name = "price_currency", length = 3, nullable = false)) // 통화 컬럼
     })
     private Money price; // 월 가격(VO: 금액/통화)
 
@@ -57,7 +62,7 @@ public class MembershipPlan { // 멤버쉽 플랜
 
     /**
      * 기본 플랜 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param name 플랜명 (고유해야 함)
      * @param description 플랜 설명
      * @param price 월 가격 (0 이상)
@@ -95,7 +100,7 @@ public class MembershipPlan { // 멤버쉽 플랜
 
     /**
      * 프리미엄 플랜 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param name 플랜명 (고유해야 함)
      * @param description 플랜 설명
      * @param price 월 가격 (0 이상)
@@ -104,8 +109,8 @@ public class MembershipPlan { // 멤버쉽 플랜
      * @return 생성된 MembershipPlan 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static MembershipPlan createPremiumPlan(String name, String description, Money price, 
-                                                  Integer durationMonths, String features) {
+    public static MembershipPlan createPremiumPlan(
+            String name, String description, Money price, Integer durationMonths, String features) {
         // 필수 필드 검증
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("플랜명은 필수입니다.");
@@ -135,7 +140,7 @@ public class MembershipPlan { // 멤버쉽 플랜
 
     /**
      * 무료 체험 플랜 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param name 플랜명 (고유해야 함)
      * @param description 플랜 설명
      * @param trialDays 체험 기간 (일 단위)
@@ -235,5 +240,3 @@ public class MembershipPlan { // 멤버쉽 플랜
         return name.trim().toUpperCase().replaceAll("\\s+", "_");
     }
 }
-
-

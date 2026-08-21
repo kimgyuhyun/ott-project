@@ -8,12 +8,11 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 관리자 에피소드 관리 컨트롤러
@@ -42,8 +41,7 @@ public class AdminEpisodeController {
 
     private final AdminEpisodeService adminEpisodeService;
 
-    @Operation(summary = "에피소드 등록",
-            description = "작품에 새 화수를 등록하고, 해당 작품을 찜한 사용자에게 업데이트 알림을 발송합니다.")
+    @Operation(summary = "에피소드 등록", description = "작품에 새 화수를 등록하고, 해당 작품을 찜한 사용자에게 업데이트 알림을 발송합니다.")
     @ApiResponse(responseCode = "200", description = "등록 성공")
     @ApiResponse(responseCode = "400", description = "필수값 누락 또는 이미 등록된 화수")
     @ApiResponse(responseCode = "404", description = "애니메이션 없음")
@@ -65,7 +63,8 @@ public class AdminEpisodeController {
         return ResponseEntity.ok(adminEpisodeService.listEpisodes(animeId));
     }
 
-    @Operation(summary = "에피소드 수정",
+    @Operation(
+            summary = "에피소드 수정",
             description = "영상 URL/썸네일/제목/활성·공개 여부를 수정합니다. 전달하지 않은 필드는 변경하지 않습니다. "
                     + "화수(episodeNumber)는 시청 기록이 붙어 있어 변경 대상이 아닙니다.")
     @ApiResponse(responseCode = "200", description = "수정 성공")

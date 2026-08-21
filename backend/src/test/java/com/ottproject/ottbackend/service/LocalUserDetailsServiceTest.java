@@ -1,7 +1,12 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,12 +15,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
-
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
 
 /**
  * LocalUserDetailsService 검증
@@ -28,7 +27,8 @@ import static org.mockito.BDDMockito.given;
 @ExtendWith(MockitoExtension.class)
 class LocalUserDetailsServiceTest {
 
-    @Mock private UserRepository userRepository;
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private LocalUserDetailsService service;
@@ -42,8 +42,7 @@ class LocalUserDetailsServiceTest {
         UserDetails details = service.loadUserByUsername("  TesTer@Example.COM  ");
 
         assertThat(details.getUsername()).isEqualTo("tester@example.com");
-        assertThat(details.getAuthorities())
-                .anyMatch(a -> a.getAuthority().equals("ROLE_USER"));
+        assertThat(details.getAuthorities()).anyMatch(a -> a.getAuthority().equals("ROLE_USER"));
     }
 
     @Test

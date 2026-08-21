@@ -13,14 +13,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 @EnableScheduling
 public class MvcConfig implements WebMvcConfigurer {
-	@Override
-	public void addCorsMappings(@NonNull CorsRegistry registry) { // CORS 매핑 추가
-		registry.addMapping("/api/**") // API 경로 허용
-				.allowCredentials(true) // 쿠키 전송 허용
-				.allowedMethods("GET","POST","PUT","DELETE","OPTIONS") // 메서드 허용
-				.allowedHeaders("*") // 헤더 허용
-				.allowedOrigins("http://localhost:3000", "http://127.0.0.1:3000"); // 프론트 오리진
-	}
+    @Override
+    public void addCorsMappings(@NonNull CorsRegistry registry) { // CORS 매핑 추가
+        registry.addMapping("/api/**") // API 경로 허용
+                .allowCredentials(true) // 쿠키 전송 허용
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS") // 메서드 허용
+                .allowedHeaders("*") // 헤더 허용
+                .allowedOrigins("http://localhost:3000", "http://127.0.0.1:3000"); // 프론트 오리진
+    }
 }
-
-

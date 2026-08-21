@@ -1,14 +1,13 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * 제작사(Studio) 엔티티
@@ -77,16 +76,16 @@ public class Studio {
      */
     @ManyToMany(mappedBy = "studios", fetch = FetchType.LAZY) // 다대다 관계, 지연로딩
     private Set<Anime> animes = new HashSet<>(); // 해당 제작사가 제작한 애니 목록
-    
+
     // ===== Getter 메서드 =====
     public String getName() {
         return name;
     }
-    
+
     // ===== 정적 팩토리 메서드 =====
     /**
      * 제작사 생성
-     * 
+     *
      * @param name 제작사명 (필수)
      * @param nameEn 영어명 (선택)
      * @param nameJp 일본어명 (선택)
@@ -96,15 +95,21 @@ public class Studio {
      * @param country 제작국 (필수)
      * @return 생성된 Studio 엔티티
      */
-    public static Studio createStudio(String name, String nameEn, String nameJp, 
-                                    String description, String logoUrl, String websiteUrl, String country) {
+    public static Studio createStudio(
+            String name,
+            String nameEn,
+            String nameJp,
+            String description,
+            String logoUrl,
+            String websiteUrl,
+            String country) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("제작사명은 필수입니다.");
         }
         if (country == null || country.trim().isEmpty()) {
             throw new IllegalArgumentException("제작국은 필수입니다.");
         }
-        
+
         Studio studio = new Studio();
         studio.name = name.trim();
         studio.nameEn = nameEn != null ? nameEn.trim() : null;
@@ -116,7 +121,7 @@ public class Studio {
         studio.isActive = true;
         studio.createdAt = LocalDateTime.now();
         studio.updatedAt = LocalDateTime.now();
-        
+
         return studio;
     }
 }

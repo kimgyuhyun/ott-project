@@ -14,8 +14,7 @@ package com.ottproject.ottbackend.entity;
  */
 public final class EntityTestFixtures {
 
-    private EntityTestFixtures() {
-    }
+    private EntityTestFixtures() {}
 
     /** 필드가 비어 있는 Anime — 호출자가 필요한 컬럼만 채운다. */
     public static Anime emptyAnime() {

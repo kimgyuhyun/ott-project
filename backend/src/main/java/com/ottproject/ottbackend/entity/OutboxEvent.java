@@ -2,9 +2,8 @@ package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.OutboxStatus;
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
+import lombok.*;
 
 /**
  * 트랜잭셔널 아웃박스 이벤트 엔티티
@@ -26,10 +25,12 @@ import java.time.LocalDateTime;
  * - createdAt/publishedAt: 적재/발행 시각
  */
 @Entity
-@Table(name = "outbox_events", indexes = {
-        @Index(name = "ux_outbox_event_id", columnList = "event_id", unique = true),
-        @Index(name = "idx_outbox_status_created", columnList = "status, created_at")
-})
+@Table(
+        name = "outbox_events",
+        indexes = {
+            @Index(name = "ux_outbox_event_id", columnList = "event_id", unique = true),
+            @Index(name = "idx_outbox_status_created", columnList = "status, created_at")
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class OutboxEvent {
@@ -70,10 +71,14 @@ public class OutboxEvent {
      * 아웃박스 이벤트 생성(정적 팩토리)
      * - 상태는 NEW 로 초기화한다. 적재 시각은 호출자가 넘긴다(엔티티는 현재 시각을 스스로 읽지 않는다).
      */
-    public static OutboxEvent create(String aggregateType, String aggregateId,
-                                     String eventType, String topic,
-                                     String eventId, String payload,
-                                     LocalDateTime createdAt) {
+    public static OutboxEvent create(
+            String aggregateType,
+            String aggregateId,
+            String eventType,
+            String topic,
+            String eventId,
+            String payload,
+            LocalDateTime createdAt) {
         if (createdAt == null) {
             throw new IllegalArgumentException("적재 시각은 필수입니다.");
         }

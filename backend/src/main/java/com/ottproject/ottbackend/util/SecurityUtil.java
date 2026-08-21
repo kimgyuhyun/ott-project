@@ -39,9 +39,11 @@ public class SecurityUtil { // 인증/세션 유틸리티
         if (email == null || email.isEmpty()) { // 미로그인 또는 값 없음
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."); // 401 응답
         }
-        User user = userRepository.findByEmail(email).orElseThrow( // 이메일로 사용자 조회
-                () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 사용자입니다.") // 없으면 401
-        );
+        User user = userRepository
+                .findByEmail(email)
+                .orElseThrow( // 이메일로 사용자 조회
+                        () -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "유효하지 않은 사용자입니다.") // 없으면 401
+                        );
         backfill(session, user); // 새 속성이 없는 기존 세션 백필
         return user.getId(); // 사용자 ID 반환
     }
@@ -81,5 +83,3 @@ public class SecurityUtil { // 인증/세션 유틸리티
         session.setAttribute("userRole", user.getRole().name()); // 권한 문자열 보관
     }
 }
-
-

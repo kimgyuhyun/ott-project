@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 리뷰 좋아요 엔티티
@@ -21,8 +20,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table( // 테이블 매핑
         name = "review_likes", // 테이블명
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id","review_id"}) // 복합 유니크(중복 방지)
-) // 엔티티 레벨에서 유니크 선언(중요)
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "review_id"}) // 복합 유니크(중복 방지)
+        ) // 엔티티 레벨에서 유니크 선언(중요)
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -48,7 +47,7 @@ public class ReviewLike {
 
     /**
      * 리뷰 좋아요 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 좋아요를 누른 사용자
      * @param review 좋아요 대상 리뷰
      * @return 생성된 ReviewLike 엔티티

@@ -1,5 +1,12 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.dto.EpisodeProgressResponseDto;
 import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.entity.Episode;
@@ -15,6 +22,10 @@ import com.ottproject.ottbackend.repository.EpisodeSkipMetaRepository;
 import com.ottproject.ottbackend.repository.SkipUsageRepository;
 import com.ottproject.ottbackend.repository.SubtitleRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -24,18 +35,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 /**
  * PlayerService 시청 진행률/스킵 로깅 검증
@@ -48,19 +47,41 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class PlayerServiceTest {
 
-    @Mock private SubtitleRepository subtitleRepository;
-    @Mock private EpisodeSkipMetaRepository skipMetaRepository;
-    @Mock private SkipUsageRepository skipUsageRepository;
-    @Mock private UserRepository userRepository;
-    @Mock private EpisodeRepository episodeRepository;
-    @Mock private EpisodeProgressRepository progressRepository;
-    @Mock private EpisodeMapper episodeMapper;
-    @Mock private PlayerProgressQueryMapper progressQueryMapper;
-    @Mock private PlayerQueryMapper playerQueryMapper;
-    @Mock private PlaybackAuthService playbackAuthService;
-    @Mock private ProgressBufferService progressBuffer;
+    @Mock
+    private SubtitleRepository subtitleRepository;
 
-    @InjectMocks private PlayerService playerService;
+    @Mock
+    private EpisodeSkipMetaRepository skipMetaRepository;
+
+    @Mock
+    private SkipUsageRepository skipUsageRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private EpisodeRepository episodeRepository;
+
+    @Mock
+    private EpisodeProgressRepository progressRepository;
+
+    @Mock
+    private EpisodeMapper episodeMapper;
+
+    @Mock
+    private PlayerProgressQueryMapper progressQueryMapper;
+
+    @Mock
+    private PlayerQueryMapper playerQueryMapper;
+
+    @Mock
+    private PlaybackAuthService playbackAuthService;
+
+    @Mock
+    private ProgressBufferService progressBuffer;
+
+    @InjectMocks
+    private PlayerService playerService;
 
     private static final Long USER_ID = 1L;
     private static final Long EPISODE_ID = 10L;
@@ -90,8 +111,8 @@ class PlayerServiceTest {
      * (실제 병합 결과는 EpisodeProgressWritePathTest 가 실제 PostgreSQL 에서 검증한다).
      */
     private void verifyMergedWith(Integer positionSec, Integer durationSec) {
-        verify(progressQueryMapper).mergeProgress(
-                eq(USER_ID), eq(EPISODE_ID), eq(positionSec), eq(durationSec), any(LocalDateTime.class));
+        verify(progressQueryMapper)
+                .mergeProgress(eq(USER_ID), eq(EPISODE_ID), eq(positionSec), eq(durationSec), any(LocalDateTime.class));
     }
 
     @Nested
@@ -263,7 +284,8 @@ class PlayerServiceTest {
             given(progressRepository.findByUser_IdAndEpisode_IdIn(USER_ID, List.of(EPISODE_ID)))
                     .willReturn(List.of());
 
-            assertThat(playerService.getBulkProgress(USER_ID, List.of(EPISODE_ID))).isEmpty();
+            assertThat(playerService.getBulkProgress(USER_ID, List.of(EPISODE_ID)))
+                    .isEmpty();
         }
     }
 }

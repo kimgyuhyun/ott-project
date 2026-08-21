@@ -1,5 +1,7 @@
 package com.ottproject.ottbackend.repository.curation;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ottproject.ottbackend.config.QuerydslConfig;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
@@ -8,6 +10,8 @@ import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.enums.SyncOrigin;
 import com.ottproject.ottbackend.repository.JpaSliceTestSupport;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -17,11 +21,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
-
-import java.time.LocalDateTime;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 관리자 큐레이션 검색(QueryDSL)의 동적 조건 조합 검증
@@ -43,22 +42,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 아래 URL 을 쓰기 위해 자동 대체를 끈다
 @Import({JpaSliceTestSupport.class, QuerydslConfig.class, AnimeCurationQueryRepository.class})
-@TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop",
-        // application.yml 이 dev 프로파일을 활성화하고 application-dev.yml 이 PostgreSQLDialect 를 지정한다.
-        // 그대로 두면 H2 를 상대로 PostgreSQL 전용 SQL(set client_min_messages 등)을 쏴서 스키마 생성이 깨진다.
-        "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
-        // H2 2.x 는 YEAR 를 예약어로 취급한다(PostgreSQL 은 아니다). Anime.year 컬럼 때문에
-        // create table anime 이 통째로 실패하는데, Hibernate 는 DDL 오류를 삼키므로 조회 시점에야
-        // "Table ANIME not found" 로 드러난다. 예약어에서 빼서 운영(PostgreSQL)과 같은 DDL 이 통하게 한다.
-        "spring.datasource.url=jdbc:h2:mem:anime_curation;DB_CLOSE_DELAY=-1;NON_KEYWORDS=YEAR",
-        "spring.datasource.driver-class-name=org.h2.Driver",
-        "spring.datasource.username=sa",
-        "spring.datasource.password=",
-        // DDL 오류를 조용히 넘기지 않는다 — 위 두 문제가 그렇게 숨어 있었다.
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create-drop",
+            // application.yml 이 dev 프로파일을 활성화하고 application-dev.yml 이 PostgreSQLDialect 를 지정한다.
+            // 그대로 두면 H2 를 상대로 PostgreSQL 전용 SQL(set client_min_messages 등)을 쏴서 스키마 생성이 깨진다.
+            "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
+            // H2 2.x 는 YEAR 를 예약어로 취급한다(PostgreSQL 은 아니다). Anime.year 컬럼 때문에
+            // create table anime 이 통째로 실패하는데, Hibernate 는 DDL 오류를 삼키므로 조회 시점에야
+            // "Table ANIME not found" 로 드러난다. 예약어에서 빼서 운영(PostgreSQL)과 같은 DDL 이 통하게 한다.
+            "spring.datasource.url=jdbc:h2:mem:anime_curation;DB_CLOSE_DELAY=-1;NON_KEYWORDS=YEAR",
+            "spring.datasource.driver-class-name=org.h2.Driver",
+            "spring.datasource.username=sa",
+            "spring.datasource.password=",
+            // DDL 오류를 조용히 넘기지 않는다 — 위 두 문제가 그렇게 숨어 있었다.
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 class AnimeCurationQueryRepositoryTest {
 
     @Autowired
@@ -99,7 +99,9 @@ class AnimeCurationQueryRepositoryTest {
     }
 
     private List<Long> searchIds(AnimeCurationSearchCondition condition) {
-        return curationQueryRepository.search(condition, 0, 50).stream().map(Anime::getId).toList();
+        return curationQueryRepository.search(condition, 0, 50).stream()
+                .map(Anime::getId)
+                .toList();
     }
 
     private AnimeCurationSearchCondition emptyCondition() {
@@ -117,7 +119,8 @@ class AnimeCurationQueryRepositoryTest {
             persist(anime("B", AnimeStatus.COMPLETED, 2025));
 
             assertThat(searchIds(emptyCondition())).hasSize(2);
-            assertThat(curationQueryRepository.countByCondition(emptyCondition())).isEqualTo(2);
+            assertThat(curationQueryRepository.countByCondition(emptyCondition()))
+                    .isEqualTo(2);
         }
 
         @Test
@@ -338,7 +341,7 @@ class AnimeCurationQueryRepositoryTest {
             Anime match = anime("A", AnimeStatus.ONGOING, 2026);
             match.setIsActive(false);
             persist(match);
-            persist(anime("B", AnimeStatus.ONGOING, 2026));            // 활성
+            persist(anime("B", AnimeStatus.ONGOING, 2026)); // 활성
             Anime completedInactive = anime("C", AnimeStatus.COMPLETED, 2026);
             completedInactive.setIsActive(false);
             persist(completedInactive);
@@ -459,8 +462,8 @@ class AnimeCurationQueryRepositoryTest {
             curationQueryRepository.applyBulkCuration(byYear(2026), deactivateRequest(byYear(2026)));
 
             Anime reloaded = reloadFromDatabase(a.getId());
-            assertThat(reloaded.getIsActive()).isFalse();  // 바꾼 것
-            assertThat(reloaded.getIsPopular()).isTrue();  // 안 건드린 것
+            assertThat(reloaded.getIsActive()).isFalse(); // 바꾼 것
+            assertThat(reloaded.getIsPopular()).isTrue(); // 안 건드린 것
         }
 
         /**
@@ -520,7 +523,8 @@ class AnimeCurationQueryRepositoryTest {
             assertThat(firstPage).hasSize(2);
             assertThat(secondPage).hasSize(2);
             assertThat(firstPage).doesNotContainAnyElementsOf(secondPage); // 페이지가 겹치지 않는다
-            assertThat(curationQueryRepository.countByCondition(emptyCondition())).isEqualTo(5);
+            assertThat(curationQueryRepository.countByCondition(emptyCondition()))
+                    .isEqualTo(5);
         }
 
         @Test

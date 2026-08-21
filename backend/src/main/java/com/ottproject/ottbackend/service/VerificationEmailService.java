@@ -1,14 +1,13 @@
 package com.ottproject.ottbackend.service;
 
+import java.security.SecureRandom;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
-
-import java.security.SecureRandom;
-import java.time.Duration;
 
 /**
  * VerificationEmailService
@@ -144,10 +143,10 @@ public class VerificationEmailService {
         message.setText("비밀번호를 재설정하려면 다음 링크를 클릭하세요:\n\n"
                 + resetBase.replaceAll("/+$", "") + "/api/auth/reset-password?token=" + resetToken + "\n\n"
                 + "이 링크는 1시간 동안 유효합니다.");
-                // repleaceAll("/+$", "")는 정규식을 이용해 URL 끝에 붙어있는 슬래시를 모두 잘라내는 코드임
-                // /+$ 정규식 뜻은 문자열 끝($)에서 하나 이상의 슬래시(/+)를 찾는 패턴
-                // 이걸 인자로 태워보내면 찾은 슬래쉬들을 빈 문자열로 대체함 즉 제거하는것
-                // 그다음 URL 끝에 resetToken을 파라미터로 추가하고 1시간동안 유효하다는걸 알림
+        // repleaceAll("/+$", "")는 정규식을 이용해 URL 끝에 붙어있는 슬래시를 모두 잘라내는 코드임
+        // /+$ 정규식 뜻은 문자열 끝($)에서 하나 이상의 슬래시(/+)를 찾는 패턴
+        // 이걸 인자로 태워보내면 찾은 슬래쉬들을 빈 문자열로 대체함 즉 제거하는것
+        // 그다음 URL 끝에 resetToken을 파라미터로 추가하고 1시간동안 유효하다는걸 알림
         mailSender.send(message); // SMTP 서버를 통해 이메일 발송함
     }
 }

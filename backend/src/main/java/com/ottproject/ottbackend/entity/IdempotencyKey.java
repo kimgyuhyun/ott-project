@@ -2,8 +2,8 @@ package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.IdempotencyKeyStatus;
 import jakarta.persistence.*;
-import lombok.*;
 import java.time.LocalDateTime;
+import lombok.*;
 
 /**
  * 아이드엠포턴시 키 엔티티
@@ -16,14 +16,17 @@ import java.time.LocalDateTime;
  * - id/keyValue/purpose/createdAt: 식별/토큰/용도/생성 시각
  */
 @Entity
-@Table(name = "idempotency_keys", indexes = {
-        @Index(name = "ux_idempotency_key", columnList = "key_value", unique = true),
-        @Index(name = "idx_idempotency_keys_purpose_status_created", columnList = "purpose, status, created_at")
-})
+@Table(
+        name = "idempotency_keys",
+        indexes = {
+            @Index(name = "ux_idempotency_key", columnList = "key_value", unique = true),
+            @Index(name = "idx_idempotency_keys_purpose_status_created", columnList = "purpose, status, created_at")
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class IdempotencyKey {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // PK
 
     @Column(name = "key_value", nullable = false, unique = true, length = 191)
@@ -43,7 +46,7 @@ public class IdempotencyKey {
 
     /**
      * 멱등성 키 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param key 키 값
      * @param requestType 요청 유형
      * @param response 응답 데이터
@@ -51,8 +54,8 @@ public class IdempotencyKey {
      * @return 생성된 IdempotencyKey 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static IdempotencyKey createIdempotencyKey(String key, String requestType, String response,
-                                                      LocalDateTime createdAt) {
+    public static IdempotencyKey createIdempotencyKey(
+            String key, String requestType, String response, LocalDateTime createdAt) {
         // 필수 필드 검증
         if (key == null || key.trim().isEmpty()) {
             throw new IllegalArgumentException("키는 필수입니다.");
@@ -98,5 +101,3 @@ public class IdempotencyKey {
         this.status = IdempotencyKeyStatus.CONFIRMED;
     }
 }
-
-

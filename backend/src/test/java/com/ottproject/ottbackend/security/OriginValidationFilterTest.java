@@ -1,16 +1,15 @@
 package com.ottproject.ottbackend.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import jakarta.servlet.ServletException;
+import java.io.IOException;
+import java.util.Set;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-
-import java.io.IOException;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * OriginValidationFilter 단위 테스트

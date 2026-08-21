@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class YearOptionDto {
-    private String value;    // 필터링에 사용할 값 (예: "2025", "2025-Q1")
-    private String label;    // 화면에 표시할 라벨 (예: "2025년", "2025년 1분기")
-    private String type;     // 옵션 타입 ("year", "quarter", "decade", "before")
+    private String value; // 필터링에 사용할 값 (예: "2025", "2025-Q1")
+    private String label; // 화면에 표시할 라벨 (예: "2025년", "2025년 1분기")
+    private String type; // 옵션 타입 ("year", "quarter", "decade", "before")
 }

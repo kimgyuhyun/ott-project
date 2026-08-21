@@ -1,7 +1,6 @@
 package com.ottproject.ottbackend.dto;
 
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
-
 import java.time.LocalDateTime;
 
 /**
@@ -23,7 +22,7 @@ public class UserMembershipDto {
     public LocalDateTime nextBillingAt; // 다음 결제일
     public boolean autoRenew; // 자동 갱신
     public MembershipSubscriptionStatus status; // 상태
-    
+
     // 플랜 변경 예약 시 사용
     public String nextPlanCode; // 다음 결제일부터 적용될 플랜 코드
     public String nextPlanName; // 다음 결제일부터 적용될 플랜 이름

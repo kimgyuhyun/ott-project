@@ -7,16 +7,15 @@ import com.ottproject.ottbackend.dto.UpdateEpisodeCommentsRequestDto;
 import com.ottproject.ottbackend.enums.CommentStatus;
 import com.ottproject.ottbackend.service.EpisodeCommentsService;
 import com.ottproject.ottbackend.util.SecurityUtil;
-import jakarta.servlet.http.HttpSession;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * EpisodeCommentsController
@@ -44,17 +43,16 @@ public class EpisodeCommentsController { // 댓글 목록/대댓글/작성/상�
     private final EpisodeCommentsService episodeCommentsService; // 댓글 서비스 의존성
     private final SecurityUtil securityUtil; // 세션 → 사용자 ID 해석 유틸
 
-
     @Operation(summary = "댓글 생성", description = "에피소드 하위에 최상위 댓글을 생성합니다.")
     @ApiResponse(responseCode = "200", description = "생성 성공: 댓글 ID 반환")
     @PostMapping // POST /api/episodes/{episodeId}/comments
     public ResponseEntity<Long> create( // 최상위 댓글 생성
-                                        @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 경로변수: 에피소드 ID
-                                        @Valid @RequestBody CreateEpisodeCommentsRequestDto dto, // 요청 바디(JSON)로 내용 수신
-                                        HttpSession session // 세션에서 사용자 확인
-    ) {
-		Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-		Long id  = episodeCommentsService.create(userId, episodeId, null, dto.getContent()); // parentId = null(최상위)
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 경로변수: 에피소드 ID
+            @Valid @RequestBody CreateEpisodeCommentsRequestDto dto, // 요청 바디(JSON)로 내용 수신
+            HttpSession session // 세션에서 사용자 확인
+            ) {
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
+        Long id = episodeCommentsService.create(userId, episodeId, null, dto.getContent()); // parentId = null(최상위)
         return ResponseEntity.ok(id); // 200 + 생성 ID
     }
 
@@ -62,14 +60,15 @@ public class EpisodeCommentsController { // 댓글 목록/대댓글/작성/상�
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping // Get /api/episodes/{episodeId}/comments
     public ResponseEntity<PagedResponse<EpisodeCommentsResponseDto>> listByEpisode( // 최상위 댓글 목록(페이지네이션)
-                                                                                  @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 경로변수: 에피소드 ID
-                                                                                  @RequestParam(defaultValue = "0") int page, // 페이지 번호(0-base)
-                                                                                  @RequestParam(defaultValue = "10") int size, // 페이지 크기
-                                                                                  @RequestParam(defaultValue = "latest") String sort, // latest|best
-                                                                                  HttpSession session // 세션(선택 로그인)
-    ) {
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 경로변수: 에피소드 ID
+            @RequestParam(defaultValue = "0") int page, // 페이지 번호(0-base)
+            @RequestParam(defaultValue = "10") int size, // 페이지 크기
+            @RequestParam(defaultValue = "latest") String sort, // latest|best
+            HttpSession session // 세션(선택 로그인)
+            ) {
         Long currentUserId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
-        return ResponseEntity.ok(episodeCommentsService.listByEpisode(episodeId, currentUserId, page, size, sort)); // 서비스 위임
+        return ResponseEntity.ok(
+                episodeCommentsService.listByEpisode(episodeId, currentUserId, page, size, sort)); // 서비스 위임
     }
 
     @Operation(summary = "댓글 상태 변경", description = "DELETED/REPORTED 등 상태를 변경합니다.")
@@ -79,8 +78,7 @@ public class EpisodeCommentsController { // 댓글 목록/대댓글/작성/상�
             @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 경로변수: 에피소드 ID(경로 일관성 유지)
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             @RequestParam CommentStatus status // 쿼리파라미터: 상태 값
-
-    ) {
+            ) {
         episodeCommentsService.updateStatus(commentId, status); // 상태 갱신
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -90,7 +88,7 @@ public class EpisodeCommentsController { // 댓글 목록/대댓글/작성/상�
     @DeleteMapping // DELETE /api/episodes/{episodeId}/comments
     public ResponseEntity<Void> deleteAllByEpisode( // 특정 에피소드의 댓글 일괄 삭제(관리용)
             @Parameter(description = "에피소드 ID") @PathVariable Long episodeId // 경로변수: 에피소드 ID
-    ) {
+            ) {
         episodeCommentsService.deleteHardByEpisode(episodeId); // 일괄 하드 삭제
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -99,11 +97,11 @@ public class EpisodeCommentsController { // 댓글 목록/대댓글/작성/상�
     @ApiResponse(responseCode = "204", description = "수정 완료")
     @PutMapping("/{commentId}") // 클래스 레벨 경로 기준
     public ResponseEntity<Void> update( // 본인 댓글 수정
-                                        @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 클래스 레벨 경로 변수 매핑
-                                        @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
-                                        @Valid @RequestBody UpdateEpisodeCommentsRequestDto dto, // 요청바디: 수정 내용
-                                        HttpSession session // 세션에서 사용자 확인
-    ) {
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 클래스 레벨 경로 변수 매핑
+            @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
+            @Valid @RequestBody UpdateEpisodeCommentsRequestDto dto, // 요청바디: 수정 내용
+            HttpSession session // 세션에서 사용자 확인
+            ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         episodeCommentsService.updateContent(commentId, userId, dto.getContent()); // 서비스 위임
         return ResponseEntity.noContent().build(); // 204 No Content
@@ -116,7 +114,7 @@ public class EpisodeCommentsController { // 댓글 목록/대댓글/작성/상�
             @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             HttpSession session // 세션에서 사용자 확인
-    ) {
+            ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         episodeCommentsService.deleteSoft(commentId, userId); // 상태 DELETED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
@@ -129,7 +127,7 @@ public class EpisodeCommentsController { // 댓글 목록/대댓글/작성/상�
             @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             HttpSession session // 세션에서 사용자 확인
-    ) {
+            ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         episodeCommentsService.report(commentId, userId); // 상태 REPORTED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
@@ -142,10 +140,11 @@ public class EpisodeCommentsController { // 댓글 목록/대댓글/작성/상�
             @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 Id
             HttpSession session // 세션에서 사용자 확인
-    ) {
+            ) {
         try {
             Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-            System.out.println("🔧 [BACKEND] EpisodeComment 좋아요 토글 요청 - episodeId: " + episodeId + ", commentId: " + commentId + ", userId: " + userId);
+            System.out.println("🔧 [BACKEND] EpisodeComment 좋아요 토글 요청 - episodeId: " + episodeId + ", commentId: "
+                    + commentId + ", userId: " + userId);
             boolean result = episodeCommentsService.toggleLike(commentId, userId);
             System.out.println("🔧 [BACKEND] EpisodeComment 좋아요 토글 결과: " + result);
             return ResponseEntity.ok(result); // 200 OK + 토글 결과
@@ -164,24 +163,25 @@ public class EpisodeCommentsController { // 댓글 목록/대댓글/작성/상�
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/{commentId}/replies") // 클래스 레벨 경로 기준
     public ResponseEntity<List<EpisodeCommentsResponseDto>> replies( // 대댓글 목록(플랫)
-                                                                    @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 클래스 레벨 경로 변수 매핑
-                                                                    @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모댓글 ID
-                                                                    HttpSession session // 세션(선택 로그인)
-    ) {
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 클래스 레벨 경로 변수 매핑
+            @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모댓글 ID
+            HttpSession session // 세션(선택 로그인)
+            ) {
         Long currentUserId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 ID, 아니면 null
         return ResponseEntity.ok(episodeCommentsService.listReplies(commentId, currentUserId)); // 200 OK + 리스트
     }
 
-	@Operation(summary = "대댓글 생성", description = "특정 댓글의 자식 댓글을 생성합니다.")
-	@ApiResponse(responseCode = "200", description = "생성 성공: 댓글 ID 반환")
-	@PostMapping("/{commentId}/replies") // 클래스 레벨 경로 기준
+    @Operation(summary = "대댓글 생성", description = "특정 댓글의 자식 댓글을 생성합니다.")
+    @ApiResponse(responseCode = "200", description = "생성 성공: 댓글 ID 반환")
+    @PostMapping("/{commentId}/replies") // 클래스 레벨 경로 기준
     public ResponseEntity<Long> createReply( // 대댓글 생성
-                                             @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 클래스 레벨 경로 변수 매핑
-                                             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모 댓글 ID
-                                             @Valid @RequestBody CreateEpisodeCommentsRequestDto dto, // 요청 바디(JSON)
-                                             HttpSession session // 세션에서 사용자 확인
-    ) {
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId, // 클래스 레벨 경로 변수 매핑
+            @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모 댓글 ID
+            @Valid @RequestBody CreateEpisodeCommentsRequestDto dto, // 요청 바디(JSON)
+            HttpSession session // 세션에서 사용자 확인
+            ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        return ResponseEntity.ok(episodeCommentsService.createReply(userId, commentId, dto.getContent())); // 200 OK + 생성 ID
+        return ResponseEntity.ok(
+                episodeCommentsService.createReply(userId, commentId, dto.getContent())); // 200 OK + 생성 ID
     }
 }

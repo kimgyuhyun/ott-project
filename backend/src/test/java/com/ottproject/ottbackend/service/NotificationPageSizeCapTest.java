@@ -1,11 +1,14 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.dto.NotificationDto;
 import com.ottproject.ottbackend.entity.Notification;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.repository.JpaSliceTestSupport;
 import com.ottproject.ottbackend.util.PageLimitUtil;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -26,10 +29,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  * 목록 API 페이지 크기 상한이 실제 SQL 까지 먹는지 검증 (실제 PostgreSQL)
  *
@@ -48,13 +47,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
-@Import({JpaSliceTestSupport.class, NotificationService.class, NotificationPageSizeCapTest.ObjectMapperTestConfig.class})
+@Import({JpaSliceTestSupport.class, NotificationService.class, NotificationPageSizeCapTest.ObjectMapperTestConfig.class
+})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create" // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-})
+@TestPropertySource(
+        properties = {
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create" // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+        })
 class NotificationPageSizeCapTest {
 
     /** 상한(100)보다 확실히 많은 행을 넣어야 잘리는지 알 수 있다. */

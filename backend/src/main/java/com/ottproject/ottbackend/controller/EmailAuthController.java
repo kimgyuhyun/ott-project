@@ -1,8 +1,8 @@
 package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.dto.AuthLoginRequestDto;
-import com.ottproject.ottbackend.dto.ChangePasswordRequestDto;
 import com.ottproject.ottbackend.dto.AuthRegisterRequestDto;
+import com.ottproject.ottbackend.dto.ChangePasswordRequestDto;
 import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.enums.AuthEventType;
 import com.ottproject.ottbackend.enums.AuthProvider;
@@ -16,10 +16,17 @@ import com.ottproject.ottbackend.service.TurnstileVerifier;
 import com.ottproject.ottbackend.service.VerificationEmailService;
 import com.ottproject.ottbackend.util.ClientRequestUtil;
 import com.ottproject.ottbackend.util.SecurityUtil;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -31,14 +38,6 @@ import org.springframework.security.web.context.HttpSessionSecurityContextReposi
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-
-import java.util.List;
 
 /**
  * EmailAuthController
@@ -58,7 +57,7 @@ import java.util.List;
  * - PUT /api/auth/change-password: 비밀번호 변경(세션 사용자)
  */
 
-/* 
+/*
  프론트에서 백엔드로로 JSON을 보내면 컨트롤러에서 DTO로 받고 서비스에서 DTO 내용을 사용해 ENTITY로 생성/조회하고
  service 레이어에서 엔티티를 저장하고 저장된 엔티티를 DTO로 변환하고 백엔드는 이걸 JSON으로 바꿔서 프론트에 넘겨줌
  이걸 직렬화/역직렬화라고함
@@ -70,24 +69,27 @@ import java.util.List;
 @RequiredArgsConstructor // final 필드만 생성자 파라미터로 받는 생성자를 자동 생성함
 public class EmailAuthController {
     private final EmailAuthService emailAuthService; // 인증 관련 비즈니스 로직 (회원가입,로그인 등) 주입
-    private final VerificationEmailService verificationEmailService;  // 이메일 인증 코드 발송/검증 주입
+    private final VerificationEmailService verificationEmailService; // 이메일 인증 코드 발송/검증 주입
     private final AuthEventService authEventService; // 인증 이벤트(로그인/로그아웃 등) 감사 로그 기록 주입
     private final LoginAttemptService loginAttemptService; // 로그인 실패 횟수 기반 계정 잠금(brute-force 방어) 주입
     private final TurnstileVerifier turnstileVerifier; // Cloudflare Turnstile(봇/사람 확인) 검증 주입
     private final UserSessionRegistry userSessionRegistry; // 사용자별 세션 목록(탈퇴 시 다른 기기 세션 차단) 주입
     private final SecurityUtil securityUtil; // 세션에서 사용자 ID 확인(탈퇴 전 캡처용) 주입
-    private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository(); // 로그인 성공 시 SecurityContext 를 세션에 저장
+    private final SecurityContextRepository securityContextRepository =
+            new HttpSessionSecurityContextRepository(); // 로그인 성공 시 SecurityContext 를 세션에 저장
 
     @Operation(summary = "회원가입", description = "이메일/비밀번호/프로필 정보로 신규 계정을 생성합니다.")
-    @ApiResponse(responseCode = "200", description = "성공",
+    @ApiResponse(
+            responseCode = "200",
+            description = "성공",
             content = @Content(schema = @Schema(implementation = UserResponseDto.class))) // Swagger 문서에 표시할 내용들
-    @PostMapping("/register") // POST 요청을 처리하는 엔드포인트 /api/auth/register 
+    @PostMapping("/register") // POST 요청을 처리하는 엔드포인트 /api/auth/register
     public ResponseEntity<UserResponseDto> register(@Valid @RequestBody AuthRegisterRequestDto requestDto) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // userResponseDto를 타입 매게변수로 넘기면 register 메서드는 ResponseEntity<UserResponseDto) 타입만 반환가능
         // @Valid는 입력 데이터 유효성 검증 에너테이션임 스프링이 검증을 수행해줌
         // @RequesBody는 요청 본문(request body)을 받는 어노테이션이고 요청 본문의 JSON을 AuthRegisterReuqestDto 객체로 변환해서
-        // 파라미터에 넣어주는 표시임        
+        // 파라미터에 넣어주는 표시임
         // requestDto 파라미터에 위에 설명한 2개의 에너테이션을 부여하고 AuthRegisterRequestDto 타입을 지정해줌
         UserResponseDto responseDto = emailAuthService.register(requestDto);
         // emailService에 register 메서드를 호출해서 요청 본문의 JSON을 AuthRegisterReuqest 객체로 변환한걸 인자로 태워보냄
@@ -113,7 +115,7 @@ public class EmailAuthController {
 
     @Operation(summary = "이메일 중복 확인", description = "주어진 이메일이 사용 중인지 여부 반환")
     @ApiResponse(responseCode = "200", description = "중복 여부 반환") // Swagger 문서에 표시할 내용들
-    @GetMapping("/check-email") // GET 요청을 처리하는 엔드포인트 /api/auth/check-email 
+    @GetMapping("/check-email") // GET 요청을 처리하는 엔드포인트 /api/auth/check-email
     public ResponseEntity<Boolean> checkEmailDuplicate(@Parameter(description = "이메일") @RequestParam String email) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // Boolean을 타입 매게변수로 넘기면 checkEmailDuplicate 메서드는 ResponseEntity<Boolean) 타입만 반환가능 true/false
@@ -131,7 +133,7 @@ public class EmailAuthController {
 
     @Operation(summary = "헬스체크", description = "인증 API 상태 확인")
     @ApiResponse(responseCode = "200", description = "정상") // Swagger 문서에 표시할 내용들
-    @GetMapping("/health") // GET 요청을 처리하는 엔드포인트 /api/auth/health 
+    @GetMapping("/health") // GET 요청을 처리하는 엔드포인트 /api/auth/health
     public ResponseEntity<String> health() {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // String을 타입 매게변수로 넘기면 health 메서드는 ResponseEntity<String) 타입만 반환가능
@@ -141,10 +143,16 @@ public class EmailAuthController {
     }
 
     @Operation(summary = "로그인", description = "세션 기반 로그인 수행")
-    @ApiResponse(responseCode = "200", description = "성공", 
+    @ApiResponse(
+            responseCode = "200",
+            description = "성공",
             content = @Content(schema = @Schema(implementation = UserResponseDto.class))) // Swagger 문서에 표시할 내용들
-    @PostMapping("/login") // POST 요청을 처리하는 엔드포인트 /api/auth/login 
-    public ResponseEntity<UserResponseDto> login(@Valid @RequestBody AuthLoginRequestDto requestDto, HttpSession session, HttpServletRequest request, HttpServletResponse response) {
+    @PostMapping("/login") // POST 요청을 처리하는 엔드포인트 /api/auth/login
+    public ResponseEntity<UserResponseDto> login(
+            @Valid @RequestBody AuthLoginRequestDto requestDto,
+            HttpSession session,
+            HttpServletRequest request,
+            HttpServletResponse response) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // UserResponseDto를 타입 매게변수로 넘기면 login 메서드는 ResponseEntity<UserResponseDto) 타입만 반환가능
         // @Valid는 입력 데이터 유효성 검증 에너테이션임 스프링이 검증을 수행해줌
@@ -163,10 +171,16 @@ public class EmailAuthController {
 
         // 로그인 시도 전 잠금 확인: 실패 횟수가 임계치를 넘어 잠긴 계정이면 즉시 거부(무차별 대입 방어)
         if (loginAttemptService.isBlocked(requestDto.getEmail())) {
-            authEventService.record(AuthEventType.LOGIN_FAIL, AuthProvider.LOCAL, requestDto.getEmail(),
-                    clientIp, userAgent, session.getId(), "계정 잠금(로그인 실패 횟수 초과)");
-            throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
-                    "로그인 시도가 너무 많아 일시적으로 잠겼습니다. 잠시 후 다시 시도해주세요.");
+            authEventService.record(
+                    AuthEventType.LOGIN_FAIL,
+                    AuthProvider.LOCAL,
+                    requestDto.getEmail(),
+                    clientIp,
+                    userAgent,
+                    session.getId(),
+                    "계정 잠금(로그인 실패 횟수 초과)");
+            throw new ResponseStatusException(
+                    HttpStatus.TOO_MANY_REQUESTS, "로그인 시도가 너무 많아 일시적으로 잠겼습니다. 잠시 후 다시 시도해주세요.");
         }
 
         // Turnstile(사람 확인): 직전 로그인 실패가 임계치 이상이면 토큰 검증을 요구한다.
@@ -185,8 +199,14 @@ public class EmailAuthController {
         } catch (RuntimeException ex) {
             // 로그인 실패(잘못된 비밀번호/비활성 계정 등): 실패 횟수 누적 후, 통계/보안 추적용 기록하고 예외 재전파
             loginAttemptService.recordFailure(requestDto.getEmail());
-            authEventService.record(AuthEventType.LOGIN_FAIL, AuthProvider.LOCAL, requestDto.getEmail(),
-                    clientIp, userAgent, session.getId(), ex.getMessage());
+            authEventService.record(
+                    AuthEventType.LOGIN_FAIL,
+                    AuthProvider.LOCAL,
+                    requestDto.getEmail(),
+                    clientIp,
+                    userAgent,
+                    session.getId(),
+                    ex.getMessage());
             throw ex;
         }
         loginAttemptService.reset(requestDto.getEmail()); // 로그인 성공 시 실패 카운터 초기화
@@ -216,8 +236,14 @@ public class EmailAuthController {
         // 그러니까 로그인 시 요청 본문에서 이메일을 받아서 세션에 저장해두면 이후 요청 시 세션에서 이메일을 가져와서 사용가능함
 
         // 로그인 성공 감사 로그 기록(비동기) - 통계 스냅샷의 원천 데이터가 됨
-        authEventService.record(AuthEventType.LOGIN_SUCCESS, AuthProvider.LOCAL, requestDto.getEmail(),
-                clientIp, userAgent, session.getId(), null);
+        authEventService.record(
+                AuthEventType.LOGIN_SUCCESS,
+                AuthProvider.LOCAL,
+                requestDto.getEmail(),
+                clientIp,
+                userAgent,
+                session.getId(),
+                null);
 
         return ResponseEntity.ok(responseDto);
         // ResponseEntity.ok(responseDto)를 리턴해주는데 이때 상태코드로 200이 들어가고
@@ -231,8 +257,8 @@ public class EmailAuthController {
      *   SecurityContextRepository.saveContext 를 직접 호출해야 세션에 실린다.
      * - 권한 표기는 SessionAuthenticationFilter 가 만드는 인증 객체와 동일하게 맞춘다.
      */
-    private void saveSecurityContext(HttpServletRequest request, HttpServletResponse response,
-                                     String email, UserRole role) {
+    private void saveSecurityContext(
+            HttpServletRequest request, HttpServletResponse response, String email, UserRole role) {
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 email, null, List.of(new SimpleGrantedAuthority("ROLE_" + role.name())));
         SecurityContext context = SecurityContextHolder.createEmptyContext();
@@ -243,7 +269,7 @@ public class EmailAuthController {
 
     @Operation(summary = "로그아웃", description = "세션 무효화")
     @ApiResponse(responseCode = "200", description = "성공") // Swagger 문서에 표시할 내용들
-    @PostMapping("/logout") // POST 요청을 처리하는 엔드포인트 /api/auth/logout 
+    @PostMapping("/logout") // POST 요청을 처리하는 엔드포인트 /api/auth/logout
     public ResponseEntity<String> logout(HttpSession session, HttpServletRequest request) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // String을 타입 매게변수로 넘기면 logout 메서드는 ResponseEntity<String) 타입만 반환가능
@@ -264,20 +290,20 @@ public class EmailAuthController {
         session.invalidate(); // 프론트에서 전달받은 세션을 무효화해서 로그아웃 처리함
 
         // 로그아웃 감사 로그 기록(비동기)
-        authEventService.record(AuthEventType.LOGOUT, AuthProvider.LOCAL, userEmail,
-                clientIp, userAgent, sessionId, null);
+        authEventService.record(
+                AuthEventType.LOGOUT, AuthProvider.LOCAL, userEmail, clientIp, userAgent, sessionId, null);
 
         return ResponseEntity.ok("로그아웃되었습니다.");
         // ResponseEntity.ok("로그아웃되었습니다.")를 리턴해주는데 이때 상태코드로 200이 들어가고
         // 응답 본문에는 "로그아웃되었습니다." 문자열이 들어있고 전송됨
     }
 
-
     @Operation(summary = "이메일 인증코드 발송", description = "입력 이메일로 인증코드 전송")
     @ApiResponse(responseCode = "200", description = "발송됨") // Swagger 문서에 표시할 내용들
     @PostMapping("/send-verification-code") // POST 요청을 처리하는 엔드포인트 /api/auth/send-verification-code
-    public ResponseEntity<String> sendVerificationCode(@Parameter(description = "이메일") @RequestParam String email,
-                                                       @Parameter(description = "Turnstile 토큰") @RequestParam(required = false) String turnstileToken) {
+    public ResponseEntity<String> sendVerificationCode(
+            @Parameter(description = "이메일") @RequestParam String email,
+            @Parameter(description = "Turnstile 토큰") @RequestParam(required = false) String turnstileToken) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // String을 타입 매게변수로 넘기면 sendVerificationCode 메서드는 ResponseEntity<String) 타입만 반환가능
         // @Parameter(description = "이메일")은 Swagger 문서용 어노테이션임 APi 문서에 파라미터 설명을 표시함
@@ -305,19 +331,20 @@ public class EmailAuthController {
 
     @Operation(summary = "인증코드 검증", description = "이메일/코드로 인증 여부 확인") //
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "인증 성공"),
-            @ApiResponse(responseCode = "400", description = "실패") // Swagger 문서에 표시할 내용들
+        @ApiResponse(responseCode = "200", description = "인증 성공"),
+        @ApiResponse(responseCode = "400", description = "실패") // Swagger 문서에 표시할 내용들
     })
-    @PostMapping("/verify-code") // POST 요청을 처리하는 엔드포인트 /api/auth/verify-code 
-    public ResponseEntity<String> verifyCode(@Parameter(description = "이메일") @RequestParam String email,
-                                             @Parameter(description = "인증코드") @RequestParam String code) {
-         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
-         // String을 타입 매게변수로 넘기면 verifyCode 메서드는 ResponseEntity<String) 타입만 반환가능
-         // @Parameter는 Swaager 설명용임
-         // 파라미터러 email,과 code를 받고 여기에 @RequestParam 을 부여해놔서 스프링이 자동으로 HTTP 요청에 URL에서
-         // 쿼리 파라미터만 추출해서 각각 해당하는 파라미터에 저장해줌
-         // 참고로 @reuqestParam 어노테이션이 HTTP 요청에 URL에서 값을 찾아서 변수에 할당해주는 방식은
-         // @ReuqestParam String email 이렇게 작성하면 쿼리 파라미터의 "email" 키에 해당하는 값을 찾아서 email 변수에 넣어주는것임
+    @PostMapping("/verify-code") // POST 요청을 처리하는 엔드포인트 /api/auth/verify-code
+    public ResponseEntity<String> verifyCode(
+            @Parameter(description = "이메일") @RequestParam String email,
+            @Parameter(description = "인증코드") @RequestParam String code) {
+        // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
+        // String을 타입 매게변수로 넘기면 verifyCode 메서드는 ResponseEntity<String) 타입만 반환가능
+        // @Parameter는 Swaager 설명용임
+        // 파라미터러 email,과 code를 받고 여기에 @RequestParam 을 부여해놔서 스프링이 자동으로 HTTP 요청에 URL에서
+        // 쿼리 파라미터만 추출해서 각각 해당하는 파라미터에 저장해줌
+        // 참고로 @reuqestParam 어노테이션이 HTTP 요청에 URL에서 값을 찾아서 변수에 할당해주는 방식은
+        // @ReuqestParam String email 이렇게 작성하면 쿼리 파라미터의 "email" 키에 해당하는 값을 찾아서 email 변수에 넣어주는것임
         boolean isVerified = verificationEmailService.verifyCode(email, code);
         // verificationEmailService에 verifyCode 메서드에 email과 code를 태워보냄
         // verifyCode 메서드는 email을 키로 사용해 해당 사용자의 인증 코드를 찾아 비교하고 true /false를 반환함
@@ -331,10 +358,10 @@ public class EmailAuthController {
 
     @Operation(summary = "회원탈퇴", description = "세션 사용자 탈퇴")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "탈퇴 완료"),
-            @ApiResponse(responseCode = "400", description = "로그인 필요") // Swagger 문서에 표시할 내용들
+        @ApiResponse(responseCode = "200", description = "탈퇴 완료"),
+        @ApiResponse(responseCode = "400", description = "로그인 필요") // Swagger 문서에 표시할 내용들
     })
-    @DeleteMapping("/withdraw") // DELETE 요청을 처리하는 엔드포인트 /api/auth/withdraw 
+    @DeleteMapping("/withdraw") // DELETE 요청을 처리하는 엔드포인트 /api/auth/withdraw
     public ResponseEntity<String> withdraw(HttpSession session, HttpServletRequest request) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // String을 타입 매게변수로 넘기면 withdraw 메서드는 ResponseEntity<String) 타입만 반환가능
@@ -356,8 +383,14 @@ public class EmailAuthController {
 
         // 세션 무효화 전에 감사 로그용 정보 확보 후 기록(비동기)
         String sessionId = session.getId();
-        authEventService.record(AuthEventType.WITHDRAW, AuthProvider.LOCAL, userEmail,
-                ClientRequestUtil.clientIp(request), ClientRequestUtil.userAgent(request), sessionId, null);
+        authEventService.record(
+                AuthEventType.WITHDRAW,
+                AuthProvider.LOCAL,
+                userEmail,
+                ClientRequestUtil.clientIp(request),
+                ClientRequestUtil.userAgent(request),
+                sessionId,
+                null);
 
         // 다른 기기에 남아 있는 세션을 끊는다. 탈퇴(DB 익명화)가 커밋된 뒤에 호출해야
         // 롤백된 탈퇴 때문에 멀쩡한 세션이 끊기는 일이 없다.
@@ -372,11 +405,12 @@ public class EmailAuthController {
 
     @Operation(summary = "비밀번호 변경", description = "세션 사용자 비밀번호 변경")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "변경 완료"),
-            @ApiResponse(responseCode = "400", description = "로그인 필요") // Swagger 문서에 표시할 내용들
+        @ApiResponse(responseCode = "200", description = "변경 완료"),
+        @ApiResponse(responseCode = "400", description = "로그인 필요") // Swagger 문서에 표시할 내용들
     })
-    @PutMapping("/settings/change-password") // PUT 요청을 처리하는 엔드포인트 /api/auth/settings/change-password 
-    public ResponseEntity<String> changePassword(HttpSession session, @RequestBody ChangePasswordRequestDto requestDto) {
+    @PutMapping("/settings/change-password") // PUT 요청을 처리하는 엔드포인트 /api/auth/settings/change-password
+    public ResponseEntity<String> changePassword(
+            HttpSession session, @RequestBody ChangePasswordRequestDto requestDto) {
         // ResponseEntity는 HTTP 응답을 감싸는 객체임 이 객체는 제네릭타입으로 선언되어있고
         // String을 타입 매게변수로 넘기면 changePassword 메서드는 ResponseEntity<String) 타입만 반환가능
         // HttpSession은 세션 데이터 저장/조회를함 프론트에서 credentials: 'include' 옵션으로 쿠키를 보내면
@@ -395,5 +429,4 @@ public class EmailAuthController {
         return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다.");
         // 프론트에 응답을 보내줌
     }
-
 }

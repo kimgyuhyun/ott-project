@@ -1,5 +1,12 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
@@ -10,6 +17,7 @@ import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.curation.AnimeCurationQueryRepository;
 import jakarta.persistence.EntityManager;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -20,15 +28,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 /**
  * 단건 큐레이션 수정 규칙 검증
@@ -42,12 +41,20 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class AnimeCurationServiceTest {
 
-    @Mock private AnimeCurationQueryRepository curationQueryRepository;
-    @Mock private AnimeRepository animeRepository;
-    @Mock private EntityManager entityManager;
-    @Mock private AnimeCacheService animeCacheService;
+    @Mock
+    private AnimeCurationQueryRepository curationQueryRepository;
 
-    @InjectMocks private AnimeCurationService animeCurationService;
+    @Mock
+    private AnimeRepository animeRepository;
+
+    @Mock
+    private EntityManager entityManager;
+
+    @Mock
+    private AnimeCacheService animeCacheService;
+
+    @InjectMocks
+    private AnimeCurationService animeCurationService;
 
     private static final Long ANIME_ID = 1L;
 
@@ -101,7 +108,7 @@ class AnimeCurationServiceTest {
             animeCurationService.update(ANIME_ID, request);
 
             assertThat(anime.getIsPopular()).isTrue();
-            assertThat(anime.getTitle()).isEqualTo("기존 제목");        // 안 건드림
+            assertThat(anime.getTitle()).isEqualTo("기존 제목"); // 안 건드림
             assertThat(anime.getPosterUrl()).isEqualTo("http://old/poster.jpg");
             assertThat(anime.getIsActive()).isTrue();
         }
@@ -524,9 +531,7 @@ class AnimeCurationServiceTest {
         void rejectsUnknownAnime() {
             given(animeRepository.findByIdWithoutLock(999L)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> animeCurationService.get(999L))
-                    .isInstanceOf(ResponseStatusException.class);
+            assertThatThrownBy(() -> animeCurationService.get(999L)).isInstanceOf(ResponseStatusException.class);
         }
     }
-
 }

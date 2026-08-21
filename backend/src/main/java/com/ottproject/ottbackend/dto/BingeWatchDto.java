@@ -1,8 +1,7 @@
 package com.ottproject.ottbackend.dto;
 
-import lombok.*;
-
 import java.time.LocalDateTime;
+import lombok.*;
 
 /**
  * 정주행 완료 작품 DTO

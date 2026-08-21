@@ -1,8 +1,12 @@
 package com.ottproject.ottbackend.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.ottproject.ottbackend.entity.SocialAccount;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -19,11 +23,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 탈퇴 후 재가입이 실제로 가능한지 검증 (실제 PostgreSQL)
@@ -54,12 +53,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Import(JpaSliceTestSupport.class)
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        // 엔티티 기준으로 스키마를 만든다. User.email 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            // 엔티티 기준으로 스키마를 만든다. User.email 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 class UserWithdrawReuseTest {
 
     @Container
@@ -125,8 +125,7 @@ class UserWithdrawReuseTest {
         withdrawn.setEnabled(false); // 익명화 이전의 탈퇴 처리
         userRepository.saveAndFlush(withdrawn);
 
-        assertThatThrownBy(() ->
-                userRepository.saveAndFlush(User.createLocalUser(EMAIL, "encoded2", "홍길동")))
+        assertThatThrownBy(() -> userRepository.saveAndFlush(User.createLocalUser(EMAIL, "encoded2", "홍길동")))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
@@ -142,7 +141,8 @@ class UserWithdrawReuseTest {
         socialAccountRepository.flush();
 
         // 연동이 남아 있으면 OAuth2UserService 1단계가 여기서 탈퇴 계정을 찾아 그대로 로그인시킨다
-        assertThat(socialAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-123")).isEmpty();
+        assertThat(socialAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-123"))
+                .isEmpty();
 
         // 같은 구글 계정으로 다시 가입 — (provider, provider_id) 유니크에도 걸리지 않아야 한다
         User rejoined = userRepository.saveAndFlush(User.createLocalUser(EMAIL, "encoded2", "홍길동"));

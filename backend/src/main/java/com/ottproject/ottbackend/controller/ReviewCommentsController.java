@@ -1,22 +1,21 @@
 package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.dto.CreateReviewCommentsRequestDto;
-import com.ottproject.ottbackend.dto.ReviewCommentsResponseDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
+import com.ottproject.ottbackend.dto.ReviewCommentsResponseDto;
 import com.ottproject.ottbackend.dto.UpdateReviewCommentsRequestDto;
 import com.ottproject.ottbackend.enums.CommentStatus;
 import com.ottproject.ottbackend.service.ReviewCommentsService;
 import com.ottproject.ottbackend.util.SecurityUtil;
-import jakarta.servlet.http.HttpSession;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-
+import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * ReviewCommentsController
@@ -44,17 +43,16 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
     private final ReviewCommentsService reviewCommentsService; // 댓글 서비스 의존성
     private final SecurityUtil securityUtil; // 세션 → 사용자 ID 해석 유틸
 
-
     @Operation(summary = "댓글 생성", description = "리뷰 하위에 최상위 댓글을 생성합니다.")
     @ApiResponse(responseCode = "200", description = "생성 성공: 댓글 ID 반환")
     @PostMapping // POST /api/reviews{reviewId}/comments
     public ResponseEntity<Long> create( // 최상위 댓글 생성
-                                        @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
-                                        @Valid @RequestBody CreateReviewCommentsRequestDto dto, // 요청 바디(JSON)로 내용 수신
-                                        HttpSession session // 세션에서 사용자 확인
-    ) {
-		Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-		Long id  = reviewCommentsService.create(userId, reviewId, null, dto.getContent()); // parentId = null(최상위)
+            @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
+            @Valid @RequestBody CreateReviewCommentsRequestDto dto, // 요청 바디(JSON)로 내용 수신
+            HttpSession session // 세션에서 사용자 확인
+            ) {
+        Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
+        Long id = reviewCommentsService.create(userId, reviewId, null, dto.getContent()); // parentId = null(최상위)
         return ResponseEntity.ok(id); // 200 + 생성 ID
     }
 
@@ -62,14 +60,15 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping // Get /api/reviews/{reviewId}/comments
     public ResponseEntity<PagedResponse<ReviewCommentsResponseDto>> listByReview( // 최상위 댓글 목록(페이지네이션)
-                                                                                  @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
-                                                                                  @RequestParam(defaultValue = "0") int page, // 페이지 번호(0-base)
-                                                                                  @RequestParam(defaultValue = "10") int size, // 페이지 크기
-                                                                                  @RequestParam(defaultValue = "latest") String sort, // latest|best
-                                                                                  HttpSession session // 세션(선택 로그인)
-    ) {
+            @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID
+            @RequestParam(defaultValue = "0") int page, // 페이지 번호(0-base)
+            @RequestParam(defaultValue = "10") int size, // 페이지 크기
+            @RequestParam(defaultValue = "latest") String sort, // latest|best
+            HttpSession session // 세션(선택 로그인)
+            ) {
         Long currentUserId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 사용자 ID, 아니면 null
-        return ResponseEntity.ok(reviewCommentsService.listByReview(reviewId, currentUserId, page, size, sort)); // 서비스 위임
+        return ResponseEntity.ok(
+                reviewCommentsService.listByReview(reviewId, currentUserId, page, size, sort)); // 서비스 위임
     }
 
     @Operation(summary = "댓글 상태 변경", description = "DELETED/REPORTED 등 상태를 변경합니다.")
@@ -79,8 +78,7 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 경로변수: 리뷰 ID(경로 일관성 유지)
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             @RequestParam CommentStatus status // 쿼리파라미터: 상태 값
-
-    ) {
+            ) {
         reviewCommentsService.updateStatus(commentId, status); // 상태 갱신
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -90,7 +88,7 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
     @DeleteMapping // DELETE /api/reviews/{reviewId}/comments
     public ResponseEntity<Void> deleteAllByReview( // 특정 리뷰의 댓글 일괄 삭제(관리용)
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId // 경로변수: 리뷰 ID
-    ) {
+            ) {
         reviewCommentsService.deleteHardByReview(reviewId); // 일괄 하드 삭제
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -99,11 +97,11 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
     @ApiResponse(responseCode = "204", description = "수정 완료")
     @PutMapping("/{commentId}") // 클래스 레벨 경로 기준
     public ResponseEntity<Void> update( // 본인 댓글 수정
-                                        @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
-                                        @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
-                                        @Valid @RequestBody UpdateReviewCommentsRequestDto dto, // 요청바디: 수정 내용
-                                        HttpSession session // 세션에서 사용자 확인
-    ) {
+            @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
+            @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
+            @Valid @RequestBody UpdateReviewCommentsRequestDto dto, // 요청바디: 수정 내용
+            HttpSession session // 세션에서 사용자 확인
+            ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         reviewCommentsService.updateContent(commentId, userId, dto.getContent()); // 서비스 위임
         return ResponseEntity.noContent().build(); // 204 No Content
@@ -116,7 +114,7 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             HttpSession session // 세션에서 사용자 확인
-    ) {
+            ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         reviewCommentsService.deleteSoft(commentId, userId); // 상태 DELETED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
@@ -129,7 +127,7 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 ID
             HttpSession session // 세션에서 사용자 확인
-    ) {
+            ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
         reviewCommentsService.report(commentId, userId); // 상태 REPORTED 전환
         return ResponseEntity.noContent().build(); // 204 No Content
@@ -142,10 +140,11 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 댓글 Id
             HttpSession session // 세션에서 사용자 확인
-    ) {
+            ) {
         try {
             Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-            System.out.println("🔧 [BACKEND] ReviewComment 좋아요 토글 요청 - reviewId: " + reviewId + ", commentId: " + commentId + ", userId: " + userId);
+            System.out.println("🔧 [BACKEND] ReviewComment 좋아요 토글 요청 - reviewId: " + reviewId + ", commentId: "
+                    + commentId + ", userId: " + userId);
             boolean result = reviewCommentsService.toggleLike(commentId, userId);
             System.out.println("🔧 [BACKEND] ReviewComment 좋아요 토글 결과: " + result);
             return ResponseEntity.ok(result); // 200 OK + 토글 결과
@@ -164,24 +163,25 @@ public class ReviewCommentsController { // 댓글 목록/대댓글/작성/상태
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/{commentId}/replies") // 클래스 레벨 경로 기준
     public ResponseEntity<List<ReviewCommentsResponseDto>> replies( // 대댓글 목록(플랫)
-                                                                    @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
-                                                                    @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모댓글 ID
-                                                                    HttpSession session // 세션(선택 로그인)
-    ) {
+            @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
+            @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모댓글 ID
+            HttpSession session // 세션(선택 로그인)
+            ) {
         Long currentUserId = securityUtil.getCurrentUserIdOrNull(session); // 로그인 시 ID, 아니면 null
         return ResponseEntity.ok(reviewCommentsService.listReplies(commentId, currentUserId)); // 200 OK + 리스트
     }
 
-	@Operation(summary = "대댓글 생성", description = "특정 댓글의 자식 댓글을 생성합니다.")
-	@ApiResponse(responseCode = "200", description = "생성 성공: 댓글 ID 반환")
-	@PostMapping("/{commentId}/replies") // 클래스 레벨 경로 기준
+    @Operation(summary = "대댓글 생성", description = "특정 댓글의 자식 댓글을 생성합니다.")
+    @ApiResponse(responseCode = "200", description = "생성 성공: 댓글 ID 반환")
+    @PostMapping("/{commentId}/replies") // 클래스 레벨 경로 기준
     public ResponseEntity<Long> createReply( // 대댓글 생성
-                                             @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
-                                             @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모 댓글 ID
-                                             @Valid @RequestBody CreateReviewCommentsRequestDto dto, // 요청 바디(JSON)
-                                             HttpSession session // 세션에서 사용자 확인
-    ) {
+            @Parameter(description = "리뷰 ID") @PathVariable Long reviewId, // 클래스 레벨 경로 변수 매핑
+            @Parameter(description = "댓글 ID") @PathVariable Long commentId, // 경로변수: 부모 댓글 ID
+            @Valid @RequestBody CreateReviewCommentsRequestDto dto, // 요청 바디(JSON)
+            HttpSession session // 세션에서 사용자 확인
+            ) {
         Long userId = securityUtil.requireCurrentUserId(session); // 로그인 필수
-        return ResponseEntity.ok(reviewCommentsService.createReply(userId, commentId, dto.getContent())); // 200 OK + 생성 ID
+        return ResponseEntity.ok(
+                reviewCommentsService.createReply(userId, commentId, dto.getContent())); // 200 OK + 생성 ID
     }
 }

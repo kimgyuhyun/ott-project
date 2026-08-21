@@ -1,5 +1,19 @@
 package com.ottproject.ottbackend.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -13,21 +27,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.session.MapSessionRepository;
 import org.springframework.session.Session;
 import org.springframework.session.SessionRepository;
-
-import java.time.Duration;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * UserSessionRegistry 단위 테스트
@@ -43,9 +42,14 @@ class UserSessionRegistryTest {
     private static final Long USER_ID = 42L;
     private static final String KEY = "ott:user-sessions:v1:42";
 
-    @Mock private StringRedisTemplate redisTemplate;
-    @Mock private SetOperations<String, String> setOps;
-    @Mock private SessionRepository<Session> sessionRepository;
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private SetOperations<String, String> setOps;
+
+    @Mock
+    private SessionRepository<Session> sessionRepository;
 
     private UserSessionRegistry registry;
 

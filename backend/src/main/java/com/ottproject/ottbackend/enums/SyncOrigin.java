@@ -16,6 +16,6 @@ package com.ottproject.ottbackend.enums;
  * - MANUAL: malId 가 없는 작품(수동 등록/시드 데이터)
  */
 public enum SyncOrigin {
-    JIKAN,  // malId is not null
-    MANUAL  // malId is null
+    JIKAN, // malId is not null
+    MANUAL // malId is null
 }

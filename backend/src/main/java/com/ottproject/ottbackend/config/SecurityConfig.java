@@ -1,9 +1,15 @@
 package com.ottproject.ottbackend.config;
 
-import com.ottproject.ottbackend.handler.OAuth2AuthSuccessHandler;
 import com.ottproject.ottbackend.handler.OAuth2AuthFailureHandler;
-import com.ottproject.ottbackend.service.OAuth2UserService;
+import com.ottproject.ottbackend.handler.OAuth2AuthSuccessHandler;
+import com.ottproject.ottbackend.security.OriginValidationFilter;
+import com.ottproject.ottbackend.security.SessionAuthenticationFilter;
 import com.ottproject.ottbackend.service.LocalUserDetailsService;
+import com.ottproject.ottbackend.service.OAuth2UserService;
+import jakarta.servlet.http.HttpServletResponse;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,18 +20,11 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import com.ottproject.ottbackend.security.SessionAuthenticationFilter;
-import com.ottproject.ottbackend.security.OriginValidationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
 
 /**
  * Spring Security 설정 클래스
@@ -72,10 +71,14 @@ public class SecurityConfig {
      */
     private List<String> resolveAllowedOrigins() {
         return org.springframework.util.StringUtils.commaDelimitedListToSet(
-                System.getProperty("app.cors.allowed-origins",
-                        System.getenv().getOrDefault("APP_CORS_ALLOWED_ORIGINS",
-                                "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000"))
-        ).stream().toList();
+                        System.getProperty(
+                                "app.cors.allowed-origins",
+                                System.getenv()
+                                        .getOrDefault(
+                                                "APP_CORS_ALLOWED_ORIGINS",
+                                                "http://localhost,http://localhost:3000,http://127.0.0.1,http://127.0.0.1:3000")))
+                .stream()
+                .toList();
     }
 
     /**
@@ -89,7 +92,7 @@ public class SecurityConfig {
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
-        
+
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/**", configuration);
         return source;
@@ -105,62 +108,96 @@ public class SecurityConfig {
      */
     @Bean // securityFilterChain Bean 등록
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정 적용
+        http.cors(cors -> cors.configurationSource(corsConfigurationSource())) // CORS 설정 적용
                 .csrf(csrf -> {
-                    boolean csrfEnabled = Boolean.parseBoolean(System.getProperty("app.security.csrf.enabled",
+                    boolean csrfEnabled = Boolean.parseBoolean(System.getProperty(
+                            "app.security.csrf.enabled",
                             System.getenv().getOrDefault("APP_SECURITY_CSRF_ENABLED", "false")));
                     if (csrfEnabled) {
                         // 더블 서브밋 쿠키 패턴: 서버가 XSRF-TOKEN 쿠키를 내려주고,
                         // 프론트(SPA/fetch)가 그 값을 X-XSRF-TOKEN 헤더로 되돌려 보내면 검증한다.
                         // SPA 에서 JS 로 토큰을 읽어 헤더에 실어야 하므로 HttpOnly=false 로 발급한다.
-                        csrf
-                                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                                 // 서버-서버 호출/리다이렉트 콜백은 CSRF 토큰을 보낼 수 없으므로 예외 처리
                                 .ignoringRequestMatchers(
-                                        "/api/payments/webhook", "/api/payments/*/webhook", // 결제 PG 웹훅(서버→서버)
-                                        "/oauth2/**", "/login/oauth2/**", "/api/oauth2/**"   // OAuth2 인가/콜백
-                                );
+                                        "/api/payments/webhook",
+                                        "/api/payments/*/webhook", // 결제 PG 웹훅(서버→서버)
+                                        "/oauth2/**",
+                                        "/login/oauth2/**",
+                                        "/api/oauth2/**" // OAuth2 인가/콜백
+                                        );
                     } else {
                         // 기본값: CSRF 비활성화. 세션 쿠키의 SameSite=Lax 로 교차 사이트 위조 요청을 1차 방어한다.
                         // (프론트가 fetch 기반이라 X-XSRF-TOKEN 헤더 전송 적용 전까지는 비활성 유지)
                         csrf.disable();
                     }
                 }) // 환경 변수/시스템 프로퍼티(APP_SECURITY_CSRF_ENABLED)로 전환
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // 모든 인증 관련 경로 허용
-                        .requestMatchers("/oauth2/**").permitAll() // OAuth2 관련 경로 허용 (소셜 로그인)
-                        .requestMatchers("/login/oauth2/authorization/**").permitAll() // OAuth2 인가 요청 허용
-                        .requestMatchers("/login/oauth2/code/**").permitAll() // OAuth2 콜백 URL 허용
-                        .requestMatchers("/api/oauth2/**").permitAll() // OAuth2 API 엔드포인트 허용
-                        .requestMatchers("/oauth2/success").permitAll() // OAuth2 성공 페이지 허용
-                        .requestMatchers("/oauth2/failure").permitAll() // OAuth2 실패 페이지 허용
-                        .requestMatchers("/api/episodes/*/skips").permitAll() // 스킵 메타 조회 공개
-                        .requestMatchers("/api/episodes/*/skips/track").permitAll() // 스킵 사용 로깅 공개
-                        .requestMatchers("/api/episodes/*/next").permitAll() // 다음 에피소드 조회 공개
-                        .requestMatchers("/api/episodes/*/stream-url").authenticated() // 스트림 URL은 인증 필요
-                        .requestMatchers("/api/episodes/*/progress").authenticated() // 진행률은 인증 필요
-                        .requestMatchers("/api/episodes/progress").authenticated() // 벌크 진행률은 인증 필요
-                        .requestMatchers("/api/episodes/mypage/**").authenticated() // 마이페이지는 인증 필요
-                        .requestMatchers("/api/admin/public/**").permitAll() // Admin 공개 컨텐츠
-                        .requestMatchers("/api/anime/**").permitAll() // 애니메이션 조회 공개 (인증 없이 접근 가능)
-                        .requestMatchers("/api/memberships/plans").permitAll() // 멤버십 플랜 조회 공개 (인증 없이 접근 가능)
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll() // OpenAPI
-                        .requestMatchers("/").permitAll() // 루트 경로 허용 (헬스체크용)
-                        .requestMatchers("/health").permitAll() // 헬스체크 경로 허용
-                        .requestMatchers("/actuator/health").permitAll() // Spring Actuator 헬스체크 (모니터링용)
-                        .requestMatchers("/actuator/prometheus").permitAll() // Prometheus 스크레이프용 (도커 내부망 전용, nginx 미공개)
-                        .requestMatchers("/api/search/**").permitAll() // 검색(자동완성/본검색) 익명 허용
-                        .requestMatchers("/api/payments/webhook", "/api/payments/*/webhook").permitAll() // 결제 웹훅은 인증 없이 수신
-                        .requestMatchers("/api/admin/contents/**").hasRole("ADMIN") // Admin DB 관리 전용
-                        .requestMatchers("/api/admin/stats/**").hasRole("ADMIN") // 관리자 통계/감사 로그 조회 전용
-                        .requestMatchers("/api/admin/anime/**").hasRole("ADMIN") // 애니메이션 동기화(단일/대량) 관리자 전용
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN") // 그 외 모든 admin 작업(환불 구독 정리 등) 관리자 전용
-                        .requestMatchers("/api/anime/*/reviews").permitAll() // 리뷰 조회는 누구나 접근 가능
-                        .requestMatchers("/api/reviews/*/comments").permitAll() // 댓글 조회는 누구나 접근 가능
-                        .requestMatchers("/api/episodes/*/comments").permitAll() // 에피소드 댓글 조회는 누구나 접근 가능
-                        .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
-                )
+                .authorizeHttpRequests(
+                        auth -> auth.requestMatchers("/api/auth/**")
+                                .permitAll() // 모든 인증 관련 경로 허용
+                                .requestMatchers("/oauth2/**")
+                                .permitAll() // OAuth2 관련 경로 허용 (소셜 로그인)
+                                .requestMatchers("/login/oauth2/authorization/**")
+                                .permitAll() // OAuth2 인가 요청 허용
+                                .requestMatchers("/login/oauth2/code/**")
+                                .permitAll() // OAuth2 콜백 URL 허용
+                                .requestMatchers("/api/oauth2/**")
+                                .permitAll() // OAuth2 API 엔드포인트 허용
+                                .requestMatchers("/oauth2/success")
+                                .permitAll() // OAuth2 성공 페이지 허용
+                                .requestMatchers("/oauth2/failure")
+                                .permitAll() // OAuth2 실패 페이지 허용
+                                .requestMatchers("/api/episodes/*/skips")
+                                .permitAll() // 스킵 메타 조회 공개
+                                .requestMatchers("/api/episodes/*/skips/track")
+                                .permitAll() // 스킵 사용 로깅 공개
+                                .requestMatchers("/api/episodes/*/next")
+                                .permitAll() // 다음 에피소드 조회 공개
+                                .requestMatchers("/api/episodes/*/stream-url")
+                                .authenticated() // 스트림 URL은 인증 필요
+                                .requestMatchers("/api/episodes/*/progress")
+                                .authenticated() // 진행률은 인증 필요
+                                .requestMatchers("/api/episodes/progress")
+                                .authenticated() // 벌크 진행률은 인증 필요
+                                .requestMatchers("/api/episodes/mypage/**")
+                                .authenticated() // 마이페이지는 인증 필요
+                                .requestMatchers("/api/admin/public/**")
+                                .permitAll() // Admin 공개 컨텐츠
+                                .requestMatchers("/api/anime/**")
+                                .permitAll() // 애니메이션 조회 공개 (인증 없이 접근 가능)
+                                .requestMatchers("/api/memberships/plans")
+                                .permitAll() // 멤버십 플랜 조회 공개 (인증 없이 접근 가능)
+                                .requestMatchers("/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**")
+                                .permitAll() // OpenAPI
+                                .requestMatchers("/")
+                                .permitAll() // 루트 경로 허용 (헬스체크용)
+                                .requestMatchers("/health")
+                                .permitAll() // 헬스체크 경로 허용
+                                .requestMatchers("/actuator/health")
+                                .permitAll() // Spring Actuator 헬스체크 (모니터링용)
+                                .requestMatchers("/actuator/prometheus")
+                                .permitAll() // Prometheus 스크레이프용 (도커 내부망 전용, nginx 미공개)
+                                .requestMatchers("/api/search/**")
+                                .permitAll() // 검색(자동완성/본검색) 익명 허용
+                                .requestMatchers("/api/payments/webhook", "/api/payments/*/webhook")
+                                .permitAll() // 결제 웹훅은 인증 없이 수신
+                                .requestMatchers("/api/admin/contents/**")
+                                .hasRole("ADMIN") // Admin DB 관리 전용
+                                .requestMatchers("/api/admin/stats/**")
+                                .hasRole("ADMIN") // 관리자 통계/감사 로그 조회 전용
+                                .requestMatchers("/api/admin/anime/**")
+                                .hasRole("ADMIN") // 애니메이션 동기화(단일/대량) 관리자 전용
+                                .requestMatchers("/api/admin/**")
+                                .hasRole("ADMIN") // 그 외 모든 admin 작업(환불 구독 정리 등) 관리자 전용
+                                .requestMatchers("/api/anime/*/reviews")
+                                .permitAll() // 리뷰 조회는 누구나 접근 가능
+                                .requestMatchers("/api/reviews/*/comments")
+                                .permitAll() // 댓글 조회는 누구나 접근 가능
+                                .requestMatchers("/api/episodes/*/comments")
+                                .permitAll() // 에피소드 댓글 조회는 누구나 접근 가능
+                                .anyRequest()
+                                .authenticated() // 그 외 모든 요청은 인증 필요
+                        )
                 .formLogin(form -> form.disable()) // 기본 로그인 폼 비활성화 (REST API용)
                 .httpBasic(basic -> basic.disable()) // HTTP Basic 인증 비활성화
 
@@ -173,23 +210,24 @@ public class SecurityConfig {
                 }))
 
                 // OAuth2 소셜 로그인 설정
-                .oauth2Login(oauth2 -> oauth2
-                        .authorizationEndpoint(a -> a.baseUri("/login/oauth2/authorization")) // 인가 엔드포인트 baseUri 일치
+                .oauth2Login(oauth2 -> oauth2.authorizationEndpoint(
+                                a -> a.baseUri("/login/oauth2/authorization")) // 인가 엔드포인트 baseUri 일치
                         .successHandler(oAuth2AuthSuccessHandler) // OAuth2 로그인 성공 시 처리할 핸들러
                         .failureHandler(oAuth2AuthFailureHandler) // OAuth2 로그인 실패 시 처리할 핸들러
-                        .userInfoEndpoint(userInfo -> userInfo
-                                .userService(OAuth2UserService) // OAuth2 사용자 정보 처리 서비스
-                        )
-                )
+                        .userInfoEndpoint(
+                                userInfo -> userInfo.userService(OAuth2UserService) // OAuth2 사용자 정보 처리 서비스
+                                ))
                 .userDetailsService(localUserDetailsService) // 기존 이메일 로그인용 customUserDetailService 등록
                 // CSRF 방어(오리진 검증): 상태변경 요청의 출처가 우리 도메인인지 확인. SameSite=Lax 위 한 겹.
                 // 공용 도메인(kozow.com) 특성상 SameSite 만으론 이웃 서브도메인 위조를 못 막아 추가한다.
                 // APP_SECURITY_ORIGIN_CHECK_ENABLED=false 로 즉시 끌 수 있는 킬스위치 제공(기본 ON).
-                .addFilterBefore(new OriginValidationFilter(
-                        new HashSet<>(resolveAllowedOrigins()),
-                        Boolean.parseBoolean(System.getProperty("app.security.origin-check.enabled",
-                                System.getenv().getOrDefault("APP_SECURITY_ORIGIN_CHECK_ENABLED", "true")))
-                ), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(
+                        new OriginValidationFilter(
+                                new HashSet<>(resolveAllowedOrigins()),
+                                Boolean.parseBoolean(System.getProperty(
+                                        "app.security.origin-check.enabled",
+                                        System.getenv().getOrDefault("APP_SECURITY_ORIGIN_CHECK_ENABLED", "true")))),
+                        UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(sessionAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build(); // 설정된 securityFilterChain 반환

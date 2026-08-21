@@ -4,14 +4,13 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.net.URI;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.net.URI;
-import java.util.Set;
 
 /**
  * OriginValidationFilter — CSRF 방어(오리진 검증 방식)
@@ -55,13 +54,15 @@ public class OriginValidationFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         return path != null
                 && (path.equals("/api/payments/webhook")
-                    || (path.startsWith("/api/payments/") && path.endsWith("/webhook")));
+                        || (path.startsWith("/api/payments/") && path.endsWith("/webhook")));
     }
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain)
+            throws ServletException, IOException {
         String source = request.getHeader("Origin");
         if (source == null) {
             source = originOf(request.getHeader("Referer")); // Origin 없으면 Referer 로 폴백
@@ -69,8 +70,11 @@ public class OriginValidationFilter extends OncePerRequestFilter {
 
         // 출처가 있는데 우리 도메인이 아니면 차단. 둘 다 없으면(브라우저발 아님) 통과.
         if (source != null && !allowedOrigins.contains(source)) {
-            log.warn("CSRF(origin) 차단: method={} path={} origin={}",
-                    request.getMethod(), request.getRequestURI(), source);
+            log.warn(
+                    "CSRF(origin) 차단: method={} path={} origin={}",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    source);
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json;charset=UTF-8");
             response.getWriter().write("{\"code\":\"FORBIDDEN\",\"message\":\"Invalid request origin\"}");

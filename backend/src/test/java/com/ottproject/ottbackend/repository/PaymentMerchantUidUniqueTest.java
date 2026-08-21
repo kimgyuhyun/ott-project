@@ -1,10 +1,20 @@
 package com.ottproject.ottbackend.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.PaymentProvider;
+import java.time.LocalDateTime;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -17,25 +27,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicReference;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
 
 /**
  * merchant_uid(payments.provider_session_id) 유니크 제약의 실제 동작 검증 (실제 PostgreSQL)
@@ -61,12 +60,13 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 @Import(JpaSliceTestSupport.class)
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        // 엔티티 기준으로 스키마를 만든다. Payment.providerSessionId 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            // 엔티티 기준으로 스키마를 만든다. Payment.providerSessionId 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 @Transactional(propagation = Propagation.NOT_SUPPORTED) // @DataJpaTest 의 감싸는 트랜잭션을 끈다
 class PaymentMerchantUidUniqueTest {
 
@@ -108,8 +108,7 @@ class PaymentMerchantUidUniqueTest {
         userRepository.deleteAll();
 
         user = userRepository.save(User.createLocalUser("billing@example.com", "encoded", "테스터"));
-        plan = planRepository.save(
-                MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
+        plan = planRepository.save(MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
     }
 
     private TransactionTemplate writeTransaction() {
@@ -118,8 +117,8 @@ class PaymentMerchantUidUniqueTest {
 
     /** 재청구가 PG 호출 전에 선삽입하는 PENDING 결제 */
     private Payment pendingAttempt(String merchantUid) {
-        Payment payment = Payment.createPendingPayment(
-                user, plan, PaymentProvider.IMPORT, merchantUid, new Money(9900L, "KRW"));
+        Payment payment =
+                Payment.createPendingPayment(user, plan, PaymentProvider.IMPORT, merchantUid, new Money(9900L, "KRW"));
         LocalDateTime now = LocalDateTime.now();
         ReflectionTestUtils.setField(payment, "createdAt", now); // 슬라이스에는 Auditing 이 없어 직접 채운다
         ReflectionTestUtils.setField(payment, "updatedAt", now);
@@ -147,14 +146,14 @@ class PaymentMerchantUidUniqueTest {
                 paymentRepository.saveAndFlush(pendingAttempt(REBILL_UID)); // 첫 번째 배달: 선점(아직 커밋 전)
 
                 // 두 번째 배달을 흉내낸다. 별도 스레드여야 별도 커넥션/트랜잭션이 열린다.
-                secondDelivery.set(other.submit(() -> catchThrowable(
-                        () -> writeTransaction().execute(inner ->
-                                paymentRepository.saveAndFlush(pendingAttempt(REBILL_UID))))));
+                secondDelivery.set(other.submit(() -> catchThrowable(() -> writeTransaction()
+                        .execute(inner -> paymentRepository.saveAndFlush(pendingAttempt(REBILL_UID))))));
 
                 // 첫 트랜잭션이 끝나기 전에는 유니크 인덱스에서 대기한다.
                 // 여기서 이미 끝나 있으면 제약이 없어 그냥 두 건이 들어갔다는 뜻이다.
                 try {
-                    assertThat(resultOrNullIfStillRunning(secondDelivery.get(), 2)).isNull();
+                    assertThat(resultOrNullIfStillRunning(secondDelivery.get(), 2))
+                            .isNull();
                 } catch (Exception e) {
                     throw new IllegalStateException(e);
                 }

@@ -29,15 +29,15 @@ import lombok.Setter;
 @AllArgsConstructor
 public class AnimeCurationSearchCondition {
 
-    private String titleKeyword;    // title/titleEn/titleJp 부분일치(대소문자 무시)
-    private AnimeStatus status;     // ONGOING/COMPLETED/UPCOMING/HIATUS
+    private String titleKeyword; // title/titleEn/titleJp 부분일치(대소문자 무시)
+    private AnimeStatus status; // ONGOING/COMPLETED/UPCOMING/HIATUS
     private Integer year;
     private Boolean isActive;
     private Boolean isExclusive;
     private Boolean isPopular;
     private Boolean isNew;
     private Boolean curated;
-    private SyncOrigin syncOrigin;  // JIKAN(malId 있음) / MANUAL(malId 없음)
+    private SyncOrigin syncOrigin; // JIKAN(malId 있음) / MANUAL(malId 없음)
 
     /**
      * 조건이 하나도 걸리지 않았는지 여부.

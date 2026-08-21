@@ -1,10 +1,21 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.entity.DailyStats;
 import com.ottproject.ottbackend.enums.AuthEventType;
 import com.ottproject.ottbackend.repository.AuthEventRepository;
 import com.ottproject.ottbackend.repository.DailyStatsRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,18 +23,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 /**
  * StatsSnapshotService 일일 통계 집계 검증
@@ -37,11 +36,17 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class StatsSnapshotServiceTest {
 
-    @Mock private AuthEventRepository authEventRepository;
-    @Mock private UserRepository userRepository;
-    @Mock private DailyStatsRepository dailyStatsRepository;
+    @Mock
+    private AuthEventRepository authEventRepository;
 
-    @InjectMocks private StatsSnapshotService statsSnapshotService;
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private DailyStatsRepository dailyStatsRepository;
+
+    @InjectMocks
+    private StatsSnapshotService statsSnapshotService;
 
     private static final LocalDate DATE = LocalDate.of(2026, 7, 16);
     private static final LocalDateTime START = LocalDateTime.of(2026, 7, 16, 0, 0);
@@ -51,9 +56,12 @@ class StatsSnapshotServiceTest {
      * 집계값을 서로 다른 수로 준비해, 자리가 바뀌면 반드시 드러나게 한다.
      */
     private void givenCounts(long loginSuccess, long loginFail, long logout, long signup, long dau) {
-        given(authEventRepository.countByTypeBetween(AuthEventType.LOGIN_SUCCESS, START, END)).willReturn(loginSuccess);
-        given(authEventRepository.countByTypeBetween(AuthEventType.LOGIN_FAIL, START, END)).willReturn(loginFail);
-        given(authEventRepository.countByTypeBetween(AuthEventType.LOGOUT, START, END)).willReturn(logout);
+        given(authEventRepository.countByTypeBetween(AuthEventType.LOGIN_SUCCESS, START, END))
+                .willReturn(loginSuccess);
+        given(authEventRepository.countByTypeBetween(AuthEventType.LOGIN_FAIL, START, END))
+                .willReturn(loginFail);
+        given(authEventRepository.countByTypeBetween(AuthEventType.LOGOUT, START, END))
+                .willReturn(logout);
         given(userRepository.countSignupsBetween(START, END)).willReturn(signup);
         given(authEventRepository.countDistinctUsersByTypeBetween(AuthEventType.LOGIN_SUCCESS, START, END))
                 .willReturn(dau);
@@ -144,7 +152,8 @@ class StatsSnapshotServiceTest {
         LocalDateTime end = yesterday.plusDays(1).atStartOfDay();
         given(authEventRepository.countByTypeBetween(any(), eq(start), eq(end))).willReturn(1L);
         given(userRepository.countSignupsBetween(start, end)).willReturn(1L);
-        given(authEventRepository.countDistinctUsersByTypeBetween(any(), eq(start), eq(end))).willReturn(1L);
+        given(authEventRepository.countDistinctUsersByTypeBetween(any(), eq(start), eq(end)))
+                .willReturn(1L);
         given(dailyStatsRepository.findByStatDate(yesterday)).willReturn(Optional.empty());
         given(dailyStatsRepository.save(any(DailyStats.class))).willAnswer(inv -> inv.getArgument(0));
 

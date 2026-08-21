@@ -8,5 +8,3 @@ import org.apache.ibatis.annotations.Param;
 public interface MypageStatsQueryMapper {
     MypageStatsDto findMypageStatsByUserId(@Param("userId") Long userId);
 }
-
-

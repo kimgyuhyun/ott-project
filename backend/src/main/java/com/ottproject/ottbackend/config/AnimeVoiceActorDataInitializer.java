@@ -1,15 +1,15 @@
-//package com.ottproject.ottbackend.config;
+// package com.ottproject.ottbackend.config;
 //
-//import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
-//import com.ottproject.ottbackend.repository.AnimeRepository;
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.boot.CommandLineRunner;
-//import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-//import org.springframework.core.annotation.Order;
-//import org.springframework.stereotype.Component;
+// import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
+// import com.ottproject.ottbackend.repository.AnimeRepository;
+// import lombok.RequiredArgsConstructor;
+// import lombok.extern.slf4j.Slf4j;
+// import org.springframework.boot.CommandLineRunner;
+// import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+// import org.springframework.core.annotation.Order;
+// import org.springframework.stereotype.Component;
 //
-///**
+/// **
 // * 애니메이션 성우 데이터 자동 초기화
 // *
 // * 큰 흐름
@@ -20,12 +20,12 @@
 // * - collectorService: 애니메 데이터 수집 서비스
 // * - animeRepository: 애니메 데이터 접근
 // */
-//@Component
-//@RequiredArgsConstructor
-//@Slf4j
-//@ConditionalOnProperty(name = "anime.voice-actor.auto-enabled", havingValue = "true", matchIfMissing = false)
-//@Order(5) //  (성우 데이터 수집)
-//public class AnimeVoiceActorDataInitializer implements CommandLineRunner {
+// @Component
+// @RequiredArgsConstructor
+// @Slf4j
+// @ConditionalOnProperty(name = "anime.voice-actor.auto-enabled", havingValue = "true", matchIfMissing = false)
+// @Order(5) //  (성우 데이터 수집)
+// public class AnimeVoiceActorDataInitializer implements CommandLineRunner {
 //
 //    private final SimpleAnimeDataCollectorService collectorService;
 //    private final AnimeRepository animeRepository;
@@ -84,4 +84,4 @@
 //            log.error("❌ 성우 데이터 처리 중 오류 발생", e);
 //        }
 //    }
-//}
+// }

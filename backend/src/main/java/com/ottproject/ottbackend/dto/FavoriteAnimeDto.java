@@ -1,9 +1,8 @@
 package com.ottproject.ottbackend.dto;
 
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import lombok.*;
-
 import java.time.LocalDateTime;
+import lombok.*;
 
 /**
  * 마이페이지 찜 목록 항목 DTO

@@ -3,15 +3,11 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.SkipType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 스킵 사용 로그 엔티티
@@ -62,7 +58,7 @@ public class SkipUsage { // 스킵 사용 로그
 
     /**
      * 스킵 사용 로그 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 사용자 (null 허용)
      * @param episode 에피소드
      * @param skipType 스킵 유형
@@ -103,5 +99,3 @@ public class SkipUsage { // 스킵 사용 로그
         this.atSec = positionSec;
     }
 }
-
-

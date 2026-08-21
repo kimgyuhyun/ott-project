@@ -2,10 +2,10 @@ package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.EpisodeCommentsResponseDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
+import com.ottproject.ottbackend.entity.Episode;
 import com.ottproject.ottbackend.entity.EpisodeComment;
 import com.ottproject.ottbackend.entity.EpisodeCommentLike;
 import com.ottproject.ottbackend.entity.EpisodeCommentReport;
-import com.ottproject.ottbackend.entity.Episode;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.CommentStatus;
 import com.ottproject.ottbackend.mybatis.EpisodeCommentQueryMapper;
@@ -14,15 +14,13 @@ import com.ottproject.ottbackend.repository.EpisodeCommentReportRepository;
 import com.ottproject.ottbackend.repository.EpisodeCommentRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
-import com.ottproject.ottbackend.service.NotificationTriggerService;
 import com.ottproject.ottbackend.util.PageLimitUtil;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 /**
  * EpisodeCommentsService
@@ -55,12 +53,13 @@ public class EpisodeCommentsService {
     private static final int REPORT_HIDE_THRESHOLD = 5; // 서로 다른 사용자 신고가 이 수 이상이면 숨김(REPORTED)
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
-    public PagedResponse<EpisodeCommentsResponseDto> listByEpisode(Long episodeId, Long currentUserId, int page, int size) {
+    public PagedResponse<EpisodeCommentsResponseDto> listByEpisode(
+            Long episodeId, Long currentUserId, int page, int size) {
         size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
         int limit = size; // LIMIT 계산
         int offset = Math.max(page, 0) * size; // OFFSET 계산(0 미만 보호)
-        List<EpisodeCommentsResponseDto> items = commentQueryMapper
-                .findCommentsByEpisodeId(episodeId, currentUserId, "latest", limit, offset);
+        List<EpisodeCommentsResponseDto> items =
+                commentQueryMapper.findCommentsByEpisodeId(episodeId, currentUserId, "latest", limit, offset);
         long total = commentQueryMapper.countCommentsByEpisodeId(episodeId); // 총 개수 조회
         return new PagedResponse<>(items, total, page, size); // 표준 페이지 응답
     }
@@ -71,24 +70,27 @@ public class EpisodeCommentsService {
     }
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
-    public PagedResponse<EpisodeCommentsResponseDto> listByEpisode(Long episodeId, Long currentUserId, int page, int size, String sort) { // [NEW]
+    public PagedResponse<EpisodeCommentsResponseDto> listByEpisode(
+            Long episodeId, Long currentUserId, int page, int size, String sort) { // [NEW]
         size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
         int limit = size; // LIMIT 계산
         int offset = Math.max(page, 0) * size; // OFFSET 계산(0 미만 보호)
-        List<EpisodeCommentsResponseDto> items = commentQueryMapper
-                .findCommentsByEpisodeId(episodeId, currentUserId, sort, limit, offset); // [NEW]
+        List<EpisodeCommentsResponseDto> items =
+                commentQueryMapper.findCommentsByEpisodeId(episodeId, currentUserId, sort, limit, offset); // [NEW]
         long total = commentQueryMapper.countCommentsByEpisodeId(episodeId); // 총 개수 조회
         return new PagedResponse<>(items, total, page, size); // 표준 페이지 응답
     }
 
     public Long create(Long userId, Long episodeId, Long parentId, String content) {
         User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
-        Episode episode = episodeRepository.findById(episodeId)
+        Episode episode = episodeRepository
+                .findById(episodeId)
                 .orElseThrow(() -> new IllegalArgumentException("episode not found: " + episodeId));
 
         EpisodeComment parent = null;
         if (parentId != null) {
-            parent = commentRepository.findById(parentId)
+            parent = commentRepository
+                    .findById(parentId)
                     .orElseThrow(() -> new IllegalArgumentException("parent comment not found: " + parentId));
             // 선택 검증: 부모 댓글이 같은 에피소드에 속하는지
             if (parent.getEpisode() != null && !parent.getEpisode().getId().equals(episodeId)) {
@@ -96,29 +98,32 @@ public class EpisodeCommentsService {
             }
         }
 
-        EpisodeComment comment = (parent == null) 
+        EpisodeComment comment = (parent == null)
                 ? EpisodeComment.createComment(user, episode, content)
                 : EpisodeComment.createReply(user, episode, parent, content);
 
         EpisodeComment savedComment = commentRepository.save(comment); // 저장 후 ID 반환
-        
+
         // 댓글 작성 시 알림 생성 (일반 댓글, 대댓글 모두)
         notificationTriggerService.triggerEpisodeCommentNotification(savedComment);
-        
+
         return savedComment.getId();
     }
 
     public void updateContent(Long commentId, Long userId, String content) { // 본인 댓글 수정
-        EpisodeComment comment = commentRepository.findById(commentId)
+        EpisodeComment comment = commentRepository
+                .findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
         if (!comment.getUser().getId().equals(userId)) throw new SecurityException("forbidden");
-        if (comment.getStatus() != CommentStatus.ACTIVE) throw new IllegalStateException("수정할 수 없는 댓글입니다."); // 삭제/신고된 댓글 수정 불가
+        if (comment.getStatus() != CommentStatus.ACTIVE)
+            throw new IllegalStateException("수정할 수 없는 댓글입니다."); // 삭제/신고된 댓글 수정 불가
         comment.updateContent(content); // 내용 갱신(길이/공백 검증 포함)
         commentRepository.save(comment); // 저장
     }
 
     public void deleteSoft(Long commentId, Long userId) { // 본인 댓글 소프트 삭제(상태 전환)
-        EpisodeComment comment = commentRepository.findById(commentId)
+        EpisodeComment comment = commentRepository
+                .findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
         if (!comment.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
         comment.setStatus(CommentStatus.DELETED); // 상태 전환
@@ -127,7 +132,8 @@ public class EpisodeCommentsService {
 
     public void report(Long commentId, Long userId) { // 댓글 신고(사용자당 1회, 임계치 초과 시에만 숨김)
         User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
-        EpisodeComment comment = commentRepository.findById(commentId)
+        EpisodeComment comment = commentRepository
+                .findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
 
         if (commentReportRepository.existsByEpisodeComment_IdAndUser_Id(commentId, userId)) {
@@ -143,7 +149,7 @@ public class EpisodeCommentsService {
     }
 
     public boolean toggleLike(Long commentId, Long userId) { // 좋아요 토글(delete-first 전략)
-        
+
         try {
             int deleted = commentLikeRepository.deleteByUser_IdAndEpisodeComment_Id(userId, commentId); // 먼저 off 시도
             if (deleted > 0) {
@@ -151,21 +157,22 @@ public class EpisodeCommentsService {
             }
 
             User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
-            
-            EpisodeComment comment = commentRepository.findById(commentId)
+
+            EpisodeComment comment = commentRepository
+                    .findById(commentId)
                     .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
-            
+
             try {
                 EpisodeCommentLike like = EpisodeCommentLike.createLike(user, comment);
                 EpisodeCommentLike savedLike = commentLikeRepository.save(like); // on 시도
-                
+
                 // 좋아요 알림 생성 (실패해도 좋아요는 정상 처리)
                 try {
                     notificationTriggerService.triggerEpisodeCommentLikeNotification(savedLike);
                 } catch (Exception e) {
-            log.warn("comment notification failed (ignored)", e);
-        }
-                
+                    log.warn("comment notification failed (ignored)", e);
+                }
+
                 return true; // on
             } catch (DataIntegrityViolationException e) { // 경합 대비: 이미 on 이었다면 off 로 수렴
                 commentLikeRepository.deleteByUser_IdAndEpisodeComment_Id(userId, commentId);
@@ -178,7 +185,8 @@ public class EpisodeCommentsService {
     }
 
     public void updateStatus(Long commentId, CommentStatus status) {
-        EpisodeComment comment = commentRepository.findById(commentId)
+        EpisodeComment comment = commentRepository
+                .findById(commentId)
                 .orElseThrow(() -> new IllegalArgumentException("comment not found: " + commentId));
         comment.setStatus(status);
         commentRepository.save(comment);
@@ -186,7 +194,8 @@ public class EpisodeCommentsService {
 
     public Long createReply(Long userId, Long parentId, String content) { // 대댓글 생성(부모에서 에피소드 ID 유추)
         User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
-        EpisodeComment parent = commentRepository.findById(parentId) // 부모 댓글 조회(필수)
+        EpisodeComment parent = commentRepository
+                .findById(parentId) // 부모 댓글 조회(필수)
                 .orElseThrow(() -> new IllegalArgumentException("parent comment not found: " + parentId)); // 없으면 예외
         Episode episode = parent.getEpisode(); // 부모 댓글이 속한 에피소드 엔티티 추출
 

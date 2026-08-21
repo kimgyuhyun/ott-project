@@ -1,10 +1,9 @@
 package com.ottproject.ottbackend.dto;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 /**
  * 결제 성공 도메인 이벤트 페이로드

@@ -5,11 +5,10 @@ import com.ottproject.ottbackend.service.PlayerService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * SubtitleController
@@ -32,8 +31,7 @@ public class SubtitleController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/{episodeId}/subtitles")
     public ResponseEntity<List<SubtitleDto>> getSubtitles(
-            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId
-    ) {
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId) {
         List<SubtitleDto> subtitles = playerService.getSubtitlesByEpisode(episodeId);
         return ResponseEntity.ok(subtitles);
     }
@@ -42,8 +40,7 @@ public class SubtitleController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/{episodeId}/subtitles/default")
     public ResponseEntity<SubtitleDto> getDefaultSubtitle(
-            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId
-    ) {
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId) {
         SubtitleDto subtitle = playerService.getDefaultSubtitle(episodeId);
         if (subtitle == null) {
             return ResponseEntity.notFound().build();
@@ -56,8 +53,7 @@ public class SubtitleController {
     @GetMapping("/{episodeId}/subtitles/{language}")
     public ResponseEntity<SubtitleDto> getSubtitleByLanguage(
             @Parameter(description = "에피소드 ID") @PathVariable Long episodeId,
-            @Parameter(description = "언어 코드") @PathVariable String language
-    ) {
+            @Parameter(description = "언어 코드") @PathVariable String language) {
         SubtitleDto subtitle = playerService.getSubtitleByLanguage(episodeId, language);
         if (subtitle == null) {
             return ResponseEntity.notFound().build();

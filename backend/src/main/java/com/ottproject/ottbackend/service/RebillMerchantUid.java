@@ -24,60 +24,60 @@ import java.time.format.DateTimeFormatter;
  */
 public final class RebillMerchantUid {
 
-	private static final String PREFIX = "rebill_"; // 대사 경로가 재청구 결제를 식별하는 접두어
-	private static final DateTimeFormatter ANCHOR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
+    private static final String PREFIX = "rebill_"; // 대사 경로가 재청구 결제를 식별하는 접두어
+    private static final DateTimeFormatter ANCHOR_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd");
 
-	private RebillMerchantUid() { // 유틸리티 클래스
-	}
+    private RebillMerchantUid() { // 유틸리티 클래스
+    }
 
-	/**
-	 * 재청구 merchant_uid 생성
-	 *
-	 * @param subscriptionId 구독 ID
-	 * @param cycleAnchor    청구주기 앵커(구독의 endAt). null 이면 주기 구분이 불가능하므로 거부한다
-	 * @param attempt        시도 횟수(구독의 retryCount)
-	 * @param paymentMethodId 이번 시도에 쓸 결제수단 ID
-	 */
-	public static String create(Long subscriptionId, LocalDateTime cycleAnchor, int attempt, Long paymentMethodId) {
-		if (subscriptionId == null || paymentMethodId == null) {
-			throw new IllegalArgumentException("구독 ID와 결제수단 ID는 필수입니다.");
-		}
-		if (cycleAnchor == null) {
-			// 앵커가 없으면 서로 다른 주기가 같은 값을 갖게 되어, 다음 주기 청구가 중복으로 차단된다.
-			throw new IllegalArgumentException("청구주기 앵커는 필수입니다.");
-		}
-		return PREFIX + subscriptionId
-				+ "_" + cycleAnchor.format(ANCHOR_FORMAT)
-				+ "_" + attempt
-				+ "_" + paymentMethodId;
-	}
+    /**
+     * 재청구 merchant_uid 생성
+     *
+     * @param subscriptionId 구독 ID
+     * @param cycleAnchor    청구주기 앵커(구독의 endAt). null 이면 주기 구분이 불가능하므로 거부한다
+     * @param attempt        시도 횟수(구독의 retryCount)
+     * @param paymentMethodId 이번 시도에 쓸 결제수단 ID
+     */
+    public static String create(Long subscriptionId, LocalDateTime cycleAnchor, int attempt, Long paymentMethodId) {
+        if (subscriptionId == null || paymentMethodId == null) {
+            throw new IllegalArgumentException("구독 ID와 결제수단 ID는 필수입니다.");
+        }
+        if (cycleAnchor == null) {
+            // 앵커가 없으면 서로 다른 주기가 같은 값을 갖게 되어, 다음 주기 청구가 중복으로 차단된다.
+            throw new IllegalArgumentException("청구주기 앵커는 필수입니다.");
+        }
+        return PREFIX + subscriptionId
+                + "_" + cycleAnchor.format(ANCHOR_FORMAT)
+                + "_" + attempt
+                + "_" + paymentMethodId;
+    }
 
-	/**
-	 * 재청구 경로가 만든 merchant_uid 인지 판별
-	 * - 대사 배치가 체크아웃 전제의 확정 로직으로 보내면 안 되는 결제를 골라내는 데 쓴다.
-	 */
-	public static boolean isRebill(String merchantUid) {
-		return merchantUid != null && merchantUid.startsWith(PREFIX);
-	}
+    /**
+     * 재청구 경로가 만든 merchant_uid 인지 판별
+     * - 대사 배치가 체크아웃 전제의 확정 로직으로 보내면 안 되는 결제를 골라내는 데 쓴다.
+     */
+    public static boolean isRebill(String merchantUid) {
+        return merchantUid != null && merchantUid.startsWith(PREFIX);
+    }
 
-	/**
-	 * merchant_uid 에서 구독 ID 추출
-	 * - 대사가 확정한 재청구 결제를 어느 구독에 반영할지 찾는 용도.
-	 *   payments 에는 구독 FK 가 없어서 uid 가 유일한 연결고리다.
-	 * @return 구독 ID, 형식이 맞지 않으면 null
-	 */
-	public static Long subscriptionIdOf(String merchantUid) {
-		if (!isRebill(merchantUid)) {
-			return null;
-		}
-		String[] parts = merchantUid.split("_");
-		if (parts.length != 5) {
-			return null; // rebill_{sub}_{anchor}_{attempt}_{method}
-		}
-		try {
-			return Long.parseLong(parts[1]);
-		} catch (NumberFormatException e) {
-			return null;
-		}
-	}
+    /**
+     * merchant_uid 에서 구독 ID 추출
+     * - 대사가 확정한 재청구 결제를 어느 구독에 반영할지 찾는 용도.
+     *   payments 에는 구독 FK 가 없어서 uid 가 유일한 연결고리다.
+     * @return 구독 ID, 형식이 맞지 않으면 null
+     */
+    public static Long subscriptionIdOf(String merchantUid) {
+        if (!isRebill(merchantUid)) {
+            return null;
+        }
+        String[] parts = merchantUid.split("_");
+        if (parts.length != 5) {
+            return null; // rebill_{sub}_{anchor}_{attempt}_{method}
+        }
+        try {
+            return Long.parseLong(parts[1]);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 }

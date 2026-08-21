@@ -1,28 +1,28 @@
-//package com.ottproject.ottbackend.config;
+// package com.ottproject.ottbackend.config;
 //
-//import com.ottproject.ottbackend.dto.jikan.AnimeCharactersJikanDto;
-//import com.ottproject.ottbackend.repository.AnimeRepository;
-//import com.ottproject.ottbackend.repository.CharacterRepository;
-//import com.ottproject.ottbackend.repository.VoiceActorRepository;
-//import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.boot.CommandLineRunner;
-//import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-//import org.springframework.core.annotation.Order;
-//import org.springframework.stereotype.Component;
-//import org.springframework.transaction.annotation.Transactional;
+// import com.ottproject.ottbackend.dto.jikan.AnimeCharactersJikanDto;
+// import com.ottproject.ottbackend.repository.AnimeRepository;
+// import com.ottproject.ottbackend.repository.CharacterRepository;
+// import com.ottproject.ottbackend.repository.VoiceActorRepository;
+// import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
+// import lombok.RequiredArgsConstructor;
+// import lombok.extern.slf4j.Slf4j;
+// import org.springframework.boot.CommandLineRunner;
+// import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+// import org.springframework.core.annotation.Order;
+// import org.springframework.stereotype.Component;
+// import org.springframework.transaction.annotation.Transactional;
 //
-///**
+/// **
 // * 캐릭터-성우 조인 전용 러너
 // * - character_voice_actors upsert만 수행
 // */
-//@Component
-//@RequiredArgsConstructor
-//@Slf4j
-//@ConditionalOnProperty(name = "anime.join.character-voice.enabled", havingValue = "true", matchIfMissing = false)
-//@Order(61)
-//public class CharacterVoiceJoinRunner implements CommandLineRunner {
+// @Component
+// @RequiredArgsConstructor
+// @Slf4j
+// @ConditionalOnProperty(name = "anime.join.character-voice.enabled", havingValue = "true", matchIfMissing = false)
+// @Order(61)
+// public class CharacterVoiceJoinRunner implements CommandLineRunner {
 //
 //    private final SimpleAnimeDataCollectorService collectorService;
 //    private final AnimeRepository animeRepository;
@@ -48,7 +48,8 @@
 //                var charactersData = collectorService.convertCharactersToMap(dto);
 //
 //                // 캐릭터-성우 조인 upsert (마스터는 사전 존재 가정)
-//                collectorService.upsertCharacterVoiceActorJoins(charactersData, characterRepository, voiceActorRepository);
+//                collectorService.upsertCharacterVoiceActorJoins(charactersData, characterRepository,
+// voiceActorRepository);
 //
 //                processed++;
 //                Thread.sleep(200); // 레이트리밋 보호
@@ -59,6 +60,6 @@
 //
 //        log.info("🎉 캐릭터-성우 조인 upsert 완료: {}건", processed);
 //    }
-//}
+// }
 //
 //

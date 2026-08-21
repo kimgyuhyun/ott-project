@@ -2,10 +2,9 @@ package com.ottproject.ottbackend.mybatis;
 
 import com.ottproject.ottbackend.dto.MembershipPlanDto;
 import com.ottproject.ottbackend.dto.UserMembershipDto;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-
-import java.util.List;
 
 /**
  * MembershipQueryMapper
@@ -21,5 +20,6 @@ import java.util.List;
 public interface MembershipQueryMapper { // MyBatis 매퍼
     List<MembershipPlanDto> listPlans(); // 플랜 목록
 
-    UserMembershipDto findMyMembership(@Param("userId") Long userId, @Param("now") java.time.LocalDateTime now); // 내 멤버십 단건
+    UserMembershipDto findMyMembership(
+            @Param("userId") Long userId, @Param("now") java.time.LocalDateTime now); // 내 멤버십 단건
 }

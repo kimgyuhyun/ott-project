@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.entity; // 엔티티 패키지
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 애니 보고싶다 엔티티
@@ -19,12 +18,11 @@ import java.time.LocalDateTime;
  * - user/anime: 소유 사용자/대상 애니
  * - createdAt: 보고싶다 추가 시각(Auditing)
  */
-
 @Entity // JPA 엔티티
 @Table( // 테이블 매핑
         name = "ani_favorites", // 테이블명
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id","ani_id"}) // 동일 유저-작품 중복 방지
-) // 유니크 제약
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "ani_id"}) // 동일 유저-작품 중복 방지
+        ) // 유니크 제약
 @Getter // 게터
 @Setter // 세터
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본 생성자
@@ -50,7 +48,7 @@ public class AnimeFavorite { // 애니 보고싶다 엔티티
 
     /**
      * 애니메이션 즐겨찾기 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 사용자
      * @param anime 애니메이션
      * @return 생성된 AnimeFavorite 엔티티

@@ -1,11 +1,11 @@
 package com.ottproject.ottbackend.service;
 
-import com.ottproject.ottbackend.dto.MypageStatsDto;
+import com.ottproject.ottbackend.dto.MyCommentItemDto;
 import com.ottproject.ottbackend.dto.MyRatingItemDto;
 import com.ottproject.ottbackend.dto.MyReviewItemDto;
-import com.ottproject.ottbackend.dto.MyCommentItemDto;
-import com.ottproject.ottbackend.mybatis.MypageStatsQueryMapper;
+import com.ottproject.ottbackend.dto.MypageStatsDto;
 import com.ottproject.ottbackend.mybatis.MypageActivityQueryMapper;
+import com.ottproject.ottbackend.mybatis.MypageStatsQueryMapper;
 import com.ottproject.ottbackend.util.PageLimitUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -44,5 +44,3 @@ public class MypageService {
         return mypageActivityQueryMapper.findMyComments(userId, offset, size);
     }
 }
-
-

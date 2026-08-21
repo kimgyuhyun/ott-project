@@ -3,12 +3,11 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Optional;
 
 /**
  * UserService
@@ -33,7 +32,7 @@ public class UserService {
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션(성능 최적화)
     // 읽기만 가능 쓰기 락이 걸리지 않아 성능 최적화 조회 전용 메서드에 권장됨
-    // 읽기 전용 트랜잭션은 데이터를 변경하지 않는다는 것을 DB에 알려주고 
+    // 읽기 전용 트랜잭션은 데이터를 변경하지 않는다는 것을 DB에 알려주고
     // DB는 읽기 전용 트랜잭션에는 쓰기 락을 걸 필요가 없음 (데이터를 변경하지 않으니까) 따라서 성능 최적화가 가능능
     public Optional<User> findByEmail(String email) { // 파라미터로 받은 email에 해당하는 user 객체를 Optional로 감싸서 반환환
         // findByEmail 메서드는 파라미터로 email을 String 타입으로 받고 Optional<User> 타입을을 반환함

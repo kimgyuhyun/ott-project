@@ -1,14 +1,13 @@
 package com.ottproject.ottbackend.security;
 
+import java.time.Duration;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.session.Session;
 import org.springframework.session.SessionRepository;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-import java.util.Set;
 
 /**
  * UserSessionRegistry

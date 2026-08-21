@@ -4,13 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.dto.PaymentSucceededEventDto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
-
-import java.time.Duration;
 
 /**
  * PaymentEventConsumer
@@ -59,7 +58,8 @@ public class PaymentEventConsumer {
         }
 
         // 부수효과: 영수증 메일 발송 (실패 시 예외 → 재시도/DLT)
-        User user = userRepository.findById(event.getUserId())
+        User user = userRepository
+                .findById(event.getUserId())
                 .orElseThrow(() -> new IllegalStateException("사용자 없음 - userId: " + event.getUserId()));
         notificationService.sendPaymentReceipt(user, event.getPlanCode(), event.getAmount(), event.getPaidAt());
 

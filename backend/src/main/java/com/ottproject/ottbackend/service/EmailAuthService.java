@@ -3,18 +3,16 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.dto.AuthRegisterRequestDto;
 import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.entity.User;
-import com.ottproject.ottbackend.enums.AuthProvider;
-import com.ottproject.ottbackend.enums.UserRole;
 import com.ottproject.ottbackend.repository.SocialAccountRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.web.server.ResponseStatusException;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * EmailAuthService
@@ -35,137 +33,136 @@ import org.springframework.transaction.annotation.Transactional;
 // 트랜잭션은 DB 작업을 하나의 단위로 묶는 것, 모든 작업이 성공하면 커밋, 하나라도 실패하면 롤백백
 public class EmailAuthService {
 
-	private final UserService userService; // 사용자 서비스 주입
-	private final org.springframework.security.crypto.password.PasswordEncoder passwordEncoder; // 비밀번호 암호화 주입(비밀번호 변경 시 사용)
-	// SPring Security 에서 제공하는 암호화 인터페이스임
-	private final AuthenticationManager authenticationManager; // 표준 인증 위임(로컬 로그인)
-	private final VerificationEmailService verificationEmailService; // 이메일 인증 티켓 확인/소비(가입 전제조건)
-	private final MembershipCommandService membershipCommandService; // 탈퇴 시 구독 즉시 해지
-	private final SocialAccountRepository socialAccountRepository; // 소셜 연동 해제(탈퇴)
-	// 엔티티→DTO 변환은 UserResponseDto.from 이 담당한다(다른 DTO 들과 같은 정적 팩토리 방식).
-	// User 엔티티에는 비밀번호 등 민감 정보가 포함되기 때문에 UserResponseDto로 바꿔서 비밀번호를 제외한 안전한 정보만 포함함
-	public UserResponseDto  register(AuthRegisterRequestDto requestDto) { // 회원가입 메서드
-		// 회원가입 처리하는 메서드고 파라미터로 요청Dto를 받고 UserResponseDto로 반환해줌
-		if (userService.existsByEmail(requestDto.getEmail())) {
-			// 만약 existByEmail 메서드에 인자로 requestDto에 담있는 email을 태워보냈는데 true가 나오면 이미 가입된 이메일이란뜻
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
-			// 상태코드와 에러메시지를 생성자에 인자로 넘겨서 ResponseStatusException 객체를 생성해서 던짐
-			// CONFLCT를 넣으면 409 상태 코드가 생성되고 의미는 리소스 충돌(이미 존재하는 리소스)임
-		}
-		// 이메일 소유 증명 요구: 인증코드 발송/검증을 거친 티켓이 있어야 가입할 수 있다.
-		// 프론트는 이메일 -> 인증코드 -> 비밀번호 3단계지만 그 순서는 브라우저 안에만 있어서,
-		// /api/auth/register 를 직접 호출하면 1·2단계가 통째로 사라진다(남의 이메일로 가입 가능).
-		// Turnstile 봇 방어도 인증코드 발송 단계에만 걸려 있어 이 검사가 봇 대량가입까지 함께 막는다.
-		if (!verificationEmailService.isEmailVerified(requestDto.getEmail())) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이메일 인증이 필요합니다.");
-		}
-		User user = User.createLocalUser(  // existByEmail이 false를 반환하면 중복된게 아니라는 뜻으로 여기가 실행
-			// createLocalUser는 static 키워드가 붙은 정적 팩토리 메서드이고 객체를 생성하지않고 클래스명으로 직접 호출이 가능함
-			// 생성자로 오버로딩은 파라미터 타입/개수가 달라야하는데 회원가입할 때 필요한 파라미터는 모두 동일함 그래서 생성자 오버로딩은 사용못하고
-			// 정적 팩토리 메서드를 생성자 역할로 사용함 메서드 이름으로 역할도 구분가능
-			// 생성자로하면 객체 생성시 user만 사용하니까 내가 관리자를 만드는지 로컬유저를 만드는지 구분을못해서 애초에안됨
-				requestDto.getEmail(), // 요청객체에서 Email값 꺼내서 파라미터로 전달
-				requestDto.getPassword(), // 요청객체에서 Password값 꺼내서 파라미터로 전달
-				requestDto.getName() // 요청객체에서 Name값 꺼내서 파라미터로 전달
-		); // User 엔티티에 정의된 정적 팩토리 메서드인 createLocalUser로 로컬유저를 생성해서 user 변수에 할당함
-		// createLocalUser 는 emailVerified 를 false 로 고정해서 만든다. 위에서 티켓을 확인했으므로
-		// 이 계정의 이메일은 실제로 인증된 것이고, 그 사실을 계정에 남긴다(프로필의 "이메일 인증됨" 표시가 이 값을 읽는다).
-		user.setEmailVerified(true);
-		User saveUser = userService.saveUser(user);
-		// userService에 saveUser 메서드에 user 객체를 태워보냄
-		// saveUser 메서드는 user 객체를 DB에 저장하고 저장된 객체를 반환함
-		// 반환된 객체를 saveuser 변수에 할당
-		// 티켓 소비는 저장 성공 뒤에 한다(저장이 실패했는데 티켓만 날리면 재시도 시 인증을 다시 받아야 한다).
-		// 하나의 인증으로 여러 계정을 만들지 못하게 한다.
-		verificationEmailService.consumeVerification(requestDto.getEmail());
-		return UserResponseDto.from(saveUser);
-		// Db에 저장한 user를 태워보내면 비밀번호 등 민감 정보를 뺀 응답 DTO로 변환되어 그대로 리턴된다
-	}
+    private final UserService userService; // 사용자 서비스 주입
+    private final org.springframework.security.crypto.password.PasswordEncoder
+            passwordEncoder; // 비밀번호 암호화 주입(비밀번호 변경 시 사용)
+    // SPring Security 에서 제공하는 암호화 인터페이스임
+    private final AuthenticationManager authenticationManager; // 표준 인증 위임(로컬 로그인)
+    private final VerificationEmailService verificationEmailService; // 이메일 인증 티켓 확인/소비(가입 전제조건)
+    private final MembershipCommandService membershipCommandService; // 탈퇴 시 구독 즉시 해지
+    private final SocialAccountRepository socialAccountRepository; // 소셜 연동 해제(탈퇴)
+    // 엔티티→DTO 변환은 UserResponseDto.from 이 담당한다(다른 DTO 들과 같은 정적 팩토리 방식).
+    // User 엔티티에는 비밀번호 등 민감 정보가 포함되기 때문에 UserResponseDto로 바꿔서 비밀번호를 제외한 안전한 정보만 포함함
+    public UserResponseDto register(AuthRegisterRequestDto requestDto) { // 회원가입 메서드
+        // 회원가입 처리하는 메서드고 파라미터로 요청Dto를 받고 UserResponseDto로 반환해줌
+        if (userService.existsByEmail(requestDto.getEmail())) {
+            // 만약 existByEmail 메서드에 인자로 requestDto에 담있는 email을 태워보냈는데 true가 나오면 이미 가입된 이메일이란뜻
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
+            // 상태코드와 에러메시지를 생성자에 인자로 넘겨서 ResponseStatusException 객체를 생성해서 던짐
+            // CONFLCT를 넣으면 409 상태 코드가 생성되고 의미는 리소스 충돌(이미 존재하는 리소스)임
+        }
+        // 이메일 소유 증명 요구: 인증코드 발송/검증을 거친 티켓이 있어야 가입할 수 있다.
+        // 프론트는 이메일 -> 인증코드 -> 비밀번호 3단계지만 그 순서는 브라우저 안에만 있어서,
+        // /api/auth/register 를 직접 호출하면 1·2단계가 통째로 사라진다(남의 이메일로 가입 가능).
+        // Turnstile 봇 방어도 인증코드 발송 단계에만 걸려 있어 이 검사가 봇 대량가입까지 함께 막는다.
+        if (!verificationEmailService.isEmailVerified(requestDto.getEmail())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이메일 인증이 필요합니다.");
+        }
+        User user = User.createLocalUser( // existByEmail이 false를 반환하면 중복된게 아니라는 뜻으로 여기가 실행
+                // createLocalUser는 static 키워드가 붙은 정적 팩토리 메서드이고 객체를 생성하지않고 클래스명으로 직접 호출이 가능함
+                // 생성자로 오버로딩은 파라미터 타입/개수가 달라야하는데 회원가입할 때 필요한 파라미터는 모두 동일함 그래서 생성자 오버로딩은 사용못하고
+                // 정적 팩토리 메서드를 생성자 역할로 사용함 메서드 이름으로 역할도 구분가능
+                // 생성자로하면 객체 생성시 user만 사용하니까 내가 관리자를 만드는지 로컬유저를 만드는지 구분을못해서 애초에안됨
+                requestDto.getEmail(), // 요청객체에서 Email값 꺼내서 파라미터로 전달
+                requestDto.getPassword(), // 요청객체에서 Password값 꺼내서 파라미터로 전달
+                requestDto.getName() // 요청객체에서 Name값 꺼내서 파라미터로 전달
+                ); // User 엔티티에 정의된 정적 팩토리 메서드인 createLocalUser로 로컬유저를 생성해서 user 변수에 할당함
+        // createLocalUser 는 emailVerified 를 false 로 고정해서 만든다. 위에서 티켓을 확인했으므로
+        // 이 계정의 이메일은 실제로 인증된 것이고, 그 사실을 계정에 남긴다(프로필의 "이메일 인증됨" 표시가 이 값을 읽는다).
+        user.setEmailVerified(true);
+        User saveUser = userService.saveUser(user);
+        // userService에 saveUser 메서드에 user 객체를 태워보냄
+        // saveUser 메서드는 user 객체를 DB에 저장하고 저장된 객체를 반환함
+        // 반환된 객체를 saveuser 변수에 할당
+        // 티켓 소비는 저장 성공 뒤에 한다(저장이 실패했는데 티켓만 날리면 재시도 시 인증을 다시 받아야 한다).
+        // 하나의 인증으로 여러 계정을 만들지 못하게 한다.
+        verificationEmailService.consumeVerification(requestDto.getEmail());
+        return UserResponseDto.from(saveUser);
+        // Db에 저장한 user를 태워보내면 비밀번호 등 민감 정보를 뺀 응답 DTO로 변환되어 그대로 리턴된다
+    }
 
-	public UserResponseDto login(String email, String password) { // 로그인 메서드
-		// 인증을 Spring Security 표준 흐름에 위임한다.
-		// AuthenticationManager -> DaoAuthenticationProvider -> LocalUserDetailsService + PasswordEncoder(BCrypt)
-		// 가 비밀번호 일치/계정 활성화(enabled) 여부를 표준 규칙으로 검증한다.
-		// 기존의 수동 비밀번호/활성화 검증(passwordEncoder.matches, isEnabled) 중복 로직을 제거했다.
-		try {
-			authenticationManager.authenticate(
-					new UsernamePasswordAuthenticationToken(email, password));
-		} catch (DisabledException ex) {
-			// 비활성화/탈퇴(enabled=false) 계정 → 403
-			throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비활성화된 계정입니다.");
-		} catch (AuthenticationException ex) {
-			// 이메일 없음/비밀번호 불일치 등 → 계정 존재 여부를 노출하지 않도록 동일한 메시지로 401
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
-		}
-		// 인증 성공 → 응답용 사용자 정보 조회 후 DTO 변환
-		User user = userService.findByEmail(email)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."));
-		return UserResponseDto.from(user);
-	}
+    public UserResponseDto login(String email, String password) { // 로그인 메서드
+        // 인증을 Spring Security 표준 흐름에 위임한다.
+        // AuthenticationManager -> DaoAuthenticationProvider -> LocalUserDetailsService + PasswordEncoder(BCrypt)
+        // 가 비밀번호 일치/계정 활성화(enabled) 여부를 표준 규칙으로 검증한다.
+        // 기존의 수동 비밀번호/활성화 검증(passwordEncoder.matches, isEnabled) 중복 로직을 제거했다.
+        try {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
+        } catch (DisabledException ex) {
+            // 비활성화/탈퇴(enabled=false) 계정 → 403
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "비활성화된 계정입니다.");
+        } catch (AuthenticationException ex) {
+            // 이메일 없음/비밀번호 불일치 등 → 계정 존재 여부를 노출하지 않도록 동일한 메시지로 401
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다.");
+        }
+        // 인증 성공 → 응답용 사용자 정보 조회 후 DTO 변환
+        User user = userService
+                .findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "이메일 또는 비밀번호가 올바르지 않습니다."));
+        return UserResponseDto.from(user);
+    }
 
-	public boolean checkEmailDuplicate(String email) {
-		// 이메일 중복 확인 메서드고 파라미터로 이메일값을 받음
-		return userService.existsByEmail(email);
-		// 그걸 userService에 existByEmail 메서드에 태워넘기면
-		// DB에 접근해서 중복인지 아닌지 여부를 ture/false로 반환해주고 그걸 바로 반환하는 형식
-	}
+    public boolean checkEmailDuplicate(String email) {
+        // 이메일 중복 확인 메서드고 파라미터로 이메일값을 받음
+        return userService.existsByEmail(email);
+        // 그걸 userService에 existByEmail 메서드에 태워넘기면
+        // DB에 접근해서 중복인지 아닌지 여부를 ture/false로 반환해주고 그걸 바로 반환하는 형식
+    }
 
-	/**
-	 * 회원탈퇴 — 계정 비활성화 + 개인정보 익명화 + 소셜 연동 해제
-	 *
-	 * 세 가지가 한 트랜잭션 안에서 끝나야 한다(클래스 레벨 @Transactional). 연동만 지워지고 익명화가
-	 * 실패하면 로그인 수단은 끊겼는데 이메일은 계속 점유된 계정이 남는다.
-	 */
-	public void withdraw(String email) {
-		// 회원탈퇴 처리하는 메서드고 파라미터로 이메일을 받음
-		User user = userService.findByEmail(email)
-				.orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-		// 자세한 설명은 65라인에 login 메서드 참고
-		// findByEmail 메서드에 email 넘겨서 optional<User> 타입으로 User 객체가 Optional에 감싸져 반환되고
-		// orElseThrow() 메서드를 체이닝해서 호출했기떄문에 여기서 검증을하는데 optional이 비어있으면 람다식으로 넘긴
-		// 예외객체가 생성되고 메서드 중단, 값이 있으면 user 변수에 저장됨
+    /**
+     * 회원탈퇴 — 계정 비활성화 + 개인정보 익명화 + 소셜 연동 해제
+     *
+     * 세 가지가 한 트랜잭션 안에서 끝나야 한다(클래스 레벨 @Transactional). 연동만 지워지고 익명화가
+     * 실패하면 로그인 수단은 끊겼는데 이메일은 계속 점유된 계정이 남는다.
+     */
+    public void withdraw(String email) {
+        // 회원탈퇴 처리하는 메서드고 파라미터로 이메일을 받음
+        User user = userService.findByEmail(email).orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        // 자세한 설명은 65라인에 login 메서드 참고
+        // findByEmail 메서드에 email 넘겨서 optional<User> 타입으로 User 객체가 Optional에 감싸져 반환되고
+        // orElseThrow() 메서드를 체이닝해서 호출했기떄문에 여기서 검증을하는데 optional이 비어있으면 람다식으로 넘긴
+        // 예외객체가 생성되고 메서드 중단, 값이 있으면 user 변수에 저장됨
 
-		// 구독을 즉시 해지한다(잔여기간은 환불 없이 소멸). 탈퇴를 막지 않는 이유는, 해지가 말일 해지 예약이라
-		// 만료일까지 상태가 ACTIVE 로 남아 사용자가 탈퇴 조건을 스스로 만족시킬 방법이 없었기 때문이다.
-		// PAST_DUE(결제 실패 후 던닝 재시도 중)도 함께 끊어야 익명화된 계정에 결제가 시도되지 않는다.
-		// 익명화보다 반드시 먼저 한다 — 순서가 뒤집히면 주인 잃은 계정에 해지가 걸린다.
-		membershipCommandService.cancelImmediatelyForWithdrawal(user.getId());
+        // 구독을 즉시 해지한다(잔여기간은 환불 없이 소멸). 탈퇴를 막지 않는 이유는, 해지가 말일 해지 예약이라
+        // 만료일까지 상태가 ACTIVE 로 남아 사용자가 탈퇴 조건을 스스로 만족시킬 방법이 없었기 때문이다.
+        // PAST_DUE(결제 실패 후 던닝 재시도 중)도 함께 끊어야 익명화된 계정에 결제가 시도되지 않는다.
+        // 익명화보다 반드시 먼저 한다 — 순서가 뒤집히면 주인 잃은 계정에 해지가 걸린다.
+        membershipCommandService.cancelImmediatelyForWithdrawal(user.getId());
 
-		// 소셜 연동 행을 지운다. 남겨두면 OAuth2UserService 가 (provider, providerId)로 이 계정을
-		// 먼저 찾아내 탈퇴한 계정으로 다시 로그인시키고, 같은 소셜 계정의 재가입도 막힌다.
-		socialAccountRepository.deleteByUser(user);
+        // 소셜 연동 행을 지운다. 남겨두면 OAuth2UserService 가 (provider, providerId)로 이 계정을
+        // 먼저 찾아내 탈퇴한 계정으로 다시 로그인시키고, 같은 소셜 계정의 재가입도 막힌다.
+        socialAccountRepository.deleteByUser(user);
 
-		// 이메일/이름 익명화 + 비활성화. 규칙은 엔티티 안에 있다(User.withdraw).
-		// enabled=false 만 두면 email 유니크 제약이 그 주소를 영구 점유해 같은 주소로 재가입할 수 없다.
-		user.withdraw();
-		userService.saveUser(user);
-		// saveuser 메서드에 user 객체를 태워보넴
-		// JPA의 save 메서드는 ID가 있으면 UPDATE를 수행함
-		// 실제로 데이터를 삭제하진 않고 식별 정보만 지우는 소프트 삭제라, 결제/댓글 등 20개 테이블의
-		// FK 참조가 그대로 살아 있다(하드 삭제하면 그 이력이 통째로 깨진다)
-	}
+        // 이메일/이름 익명화 + 비활성화. 규칙은 엔티티 안에 있다(User.withdraw).
+        // enabled=false 만 두면 email 유니크 제약이 그 주소를 영구 점유해 같은 주소로 재가입할 수 없다.
+        user.withdraw();
+        userService.saveUser(user);
+        // saveuser 메서드에 user 객체를 태워보넴
+        // JPA의 save 메서드는 ID가 있으면 UPDATE를 수행함
+        // 실제로 데이터를 삭제하진 않고 식별 정보만 지우는 소프트 삭제라, 결제/댓글 등 20개 테이블의
+        // FK 참조가 그대로 살아 있다(하드 삭제하면 그 이력이 통째로 깨진다)
+    }
 
-	public void changePassword(String email, String currentPassword, String newPassword) {
-		// 비밀번호 변경 처리하는 메서드고 파라미터로 이메일, 현재 비밀번호, 변경할 비밀번호를 받음
-		User user = userService.findByEmail(email)
-				.orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
-		// 자세한 설명은 65라인에 login 메서드 참고
-		// findByEmail 메서드에 email 넘겨서 optional<User> 타입으로 User 객체가 Optional에 감싸져 반환되고
-		// orElseThrow() 메서드를 체이닝해서 호출했기떄문에 여기서 검증을하는데 optional이 비어있으면 람다식으로 넘긴
-		// 예외객체가 생성되고 메서드 중단, 값이 있으면 user 변수에 저장됨
-		if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
-			// passwordEncoder.matches 메서드는 인자로 원본 비밀번호(평문) - 로그인 시 입력한 비밀번호,
-			// 암호화된 비밀번호- DB에 저장된 해시값을 받아서 비교해주고 일치하면 true, 불일치하면 false를 리턴해줌
-			// 그리고 이 조건식은 입력한 비밀번호와 DB에 비밀번호가 불일치할때 false를 반환할텐데 그걸 부정연산자로 true로 바꿔서 실행
-			// 즉 비밀번호가 불일치할때 실행하는곳임임
-			throw new RuntimeException("현재 비밀번호가 올바르지 않습니다.");
-		}
-		// 비밀번호가 맞으면 아래 실행
-		String encodeNewPassword = passwordEncoder.encode(newPassword);
-		// passwodEncoder.encode 메서드는 인자로 전달된 평문 비밀번호 암호화해서 해시값을 반환해줌
-		// 이 반환값을 encodeNewPassword 변수에 할당
-		user.setPassword(encodeNewPassword);
-		// 새 비밀번호를 user password 필드에 세팅함함
-		userService.saveUser(user); // 변경된 user 객체를 그대로 db에 저장
-	}
+    public void changePassword(String email, String currentPassword, String newPassword) {
+        // 비밀번호 변경 처리하는 메서드고 파라미터로 이메일, 현재 비밀번호, 변경할 비밀번호를 받음
+        User user = userService.findByEmail(email).orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다."));
+        // 자세한 설명은 65라인에 login 메서드 참고
+        // findByEmail 메서드에 email 넘겨서 optional<User> 타입으로 User 객체가 Optional에 감싸져 반환되고
+        // orElseThrow() 메서드를 체이닝해서 호출했기떄문에 여기서 검증을하는데 optional이 비어있으면 람다식으로 넘긴
+        // 예외객체가 생성되고 메서드 중단, 값이 있으면 user 변수에 저장됨
+        if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
+            // passwordEncoder.matches 메서드는 인자로 원본 비밀번호(평문) - 로그인 시 입력한 비밀번호,
+            // 암호화된 비밀번호- DB에 저장된 해시값을 받아서 비교해주고 일치하면 true, 불일치하면 false를 리턴해줌
+            // 그리고 이 조건식은 입력한 비밀번호와 DB에 비밀번호가 불일치할때 false를 반환할텐데 그걸 부정연산자로 true로 바꿔서 실행
+            // 즉 비밀번호가 불일치할때 실행하는곳임임
+            throw new RuntimeException("현재 비밀번호가 올바르지 않습니다.");
+        }
+        // 비밀번호가 맞으면 아래 실행
+        String encodeNewPassword = passwordEncoder.encode(newPassword);
+        // passwodEncoder.encode 메서드는 인자로 전달된 평문 비밀번호 암호화해서 해시값을 반환해줌
+        // 이 반환값을 encodeNewPassword 변수에 할당
+        user.setPassword(encodeNewPassword);
+        // 새 비밀번호를 user password 필드에 세팅함함
+        userService.saveUser(user); // 변경된 user 객체를 그대로 db에 저장
+    }
 }

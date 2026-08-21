@@ -12,6 +12,6 @@ package com.ottproject.ottbackend.enums;
  * - DOWNGRADE: 하위 플랜으로 변경 (다음 결제일부터 적용)
  */
 public enum PlanChangeType {
-    UPGRADE,    // 업그레이드: 즉시 적용 + 차액 결제
-    DOWNGRADE   // 다운그레이드: 다음 결제일부터 적용
+    UPGRADE, // 업그레이드: 즉시 적용 + 차액 결제
+    DOWNGRADE // 다운그레이드: 다음 결제일부터 적용
 }

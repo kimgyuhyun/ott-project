@@ -1,8 +1,8 @@
 package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.UserSettingsDto;
-import com.ottproject.ottbackend.entity.UserSettings;
 import com.ottproject.ottbackend.entity.User;
+import com.ottproject.ottbackend.entity.UserSettings;
 import com.ottproject.ottbackend.repository.UserSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,7 +29,8 @@ public class SettingsService { // 사용자 재생 설정
      */
     @Transactional(readOnly = true)
     public UserSettingsDto get(Long userId) {
-        return userSettingsRepository.findByUserId(userId)
+        return userSettingsRepository
+                .findByUserId(userId)
                 .map(this::convertToDto)
                 .orElse(UserSettingsDto.builder()
                         .autoSkipIntro(true)
@@ -47,11 +48,10 @@ public class SettingsService { // 사용자 재생 설정
      */
     @Transactional
     public void update(Long userId, UserSettingsDto dto) {
-        UserSettings userSettings = userSettingsRepository.findByUserId(userId)
-                .orElseGet(() -> {
-                    User user = User.reference(userId);
-                    return UserSettings.createDefaultSettings(user);
-                });
+        UserSettings userSettings = userSettingsRepository.findByUserId(userId).orElseGet(() -> {
+            User user = User.reference(userId);
+            return UserSettings.createDefaultSettings(user);
+        });
 
         // 부분 갱신 (null이 아닌 값만 업데이트)
         if (dto.getAutoSkipIntro() != null) {

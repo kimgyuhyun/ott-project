@@ -3,24 +3,23 @@ package com.ottproject.ottbackend.controller;
 import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.SearchSuggestTitleDto;
-import com.ottproject.ottbackend.service.SearchService;
 import com.ottproject.ottbackend.service.RecentSearchService;
+import com.ottproject.ottbackend.service.SearchService;
 import com.ottproject.ottbackend.util.SecurityUtil;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.http.ResponseEntity;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import java.util.UUID;
-import java.util.Base64;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import java.util.Base64;
 import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * SearchController
@@ -45,13 +44,15 @@ public class SearchController {
     @ApiResponse(responseCode = "200", description = "검색 성공")
     @GetMapping("/suggest") // 자동완성 엔드포인트
     public List<SearchSuggestTitleDto> suggest( // 제목만 응답
-            @Parameter(description = "검색 키워드 (q 또는 query 파라미터 사용)", required = false) 
-            @RequestParam(value = "q", required = false) String q, // 키워드 별칭 1
-            @Parameter(description = "검색 키워드 (q 또는 query 파라미터 사용)", required = false) 
-            @RequestParam(value = "query", required = false) String query, // 키워드 별칭 2
-            @Parameter(description = "최대 반환 건수", required = false) 
-            @RequestParam(defaultValue = "10") int limit // 최대 건수(기본 10)
-    ) {
+            @Parameter(description = "검색 키워드 (q 또는 query 파라미터 사용)", required = false)
+                    @RequestParam(value = "q", required = false)
+                    String q, // 키워드 별칭 1
+            @Parameter(description = "검색 키워드 (q 또는 query 파라미터 사용)", required = false)
+                    @RequestParam(value = "query", required = false)
+                    String query, // 키워드 별칭 2
+            @Parameter(description = "최대 반환 건수", required = false) @RequestParam(defaultValue = "10")
+                    int limit // 최대 건수(기본 10)
+            ) {
         String keyword = (q != null && !q.isBlank()) ? q : query; // q 우선, 없으면 query 사용
         return searchService.suggest(keyword, limit); // 서비스 호출
     }
@@ -60,29 +61,28 @@ public class SearchController {
     @ApiResponse(responseCode = "200", description = "검색 성공")
     @GetMapping // 통합 검색 엔드포인트
     public PagedResponse<AnimeListDto> search( // 페이지 응답
-            @Parameter(description = "검색 키워드 (제목 부분일치)", required = false) 
-            @RequestParam(required = false) String query, // 키워드(부분일치)
-            @Parameter(description = "장르 ID 목록 (AND 조건, 모든 장르를 포함하는 작품만)", required = false) 
-            @RequestParam(required = false, name = "genreIds") List<Long> genreIds, // 장르 AND
-            @Parameter(description = "태그 ID 목록 (OR 조건, 하나라도 포함하는 작품)", required = false) 
-            @RequestParam(required = false, name = "tagIds") List<Long> tagIds, // 태그 OR
-            @Parameter(description = "정렬 기준 (id, rating, year, popular)", required = false) 
-            @RequestParam(defaultValue = "id") String sort, // 정렬 키
-            @Parameter(description = "페이지 번호 (0부터 시작)", required = false) 
-            @RequestParam(defaultValue = "0") int page, // 페이지 번호
-            @Parameter(description = "페이지 크기", required = false) 
-            @RequestParam(defaultValue = "20") int size // 페이지 크기
-    ) {
+            @Parameter(description = "검색 키워드 (제목 부분일치)", required = false) @RequestParam(required = false)
+                    String query, // 키워드(부분일치)
+            @Parameter(description = "장르 ID 목록 (AND 조건, 모든 장르를 포함하는 작품만)", required = false)
+                    @RequestParam(required = false, name = "genreIds")
+                    List<Long> genreIds, // 장르 AND
+            @Parameter(description = "태그 ID 목록 (OR 조건, 하나라도 포함하는 작품)", required = false)
+                    @RequestParam(required = false, name = "tagIds")
+                    List<Long> tagIds, // 태그 OR
+            @Parameter(description = "정렬 기준 (id, rating, year, popular)", required = false)
+                    @RequestParam(defaultValue = "id")
+                    String sort, // 정렬 키
+            @Parameter(description = "페이지 번호 (0부터 시작)", required = false) @RequestParam(defaultValue = "0")
+                    int page, // 페이지 번호
+            @Parameter(description = "페이지 크기", required = false) @RequestParam(defaultValue = "20") int size // 페이지 크기
+            ) {
         return searchService.search(query, genreIds, tagIds, sort, page, size); // 서비스 호출
     }
 
     @Operation(summary = "최근 검색어 조회", description = "사용자의 최근 검색어 목록을 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/recent")
-    public ResponseEntity<List<String>> getRecentSearches(
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) {
+    public ResponseEntity<List<String>> getRecentSearches(HttpServletRequest request, HttpServletResponse response) {
         String subjectId = getSubjectId(request, response);
         List<String> searches = recentSearchService.list(subjectId);
         return ResponseEntity.ok(searches);
@@ -94,8 +94,7 @@ public class SearchController {
     public ResponseEntity<List<String>> addRecentSearch(
             @RequestBody AddRecentSearchRequest request,
             HttpServletRequest httpRequest,
-            HttpServletResponse httpResponse
-    ) {
+            HttpServletResponse httpResponse) {
         String subjectId = getSubjectId(httpRequest, httpResponse);
         List<String> searches = recentSearchService.add(subjectId, request.getTerm());
         return ResponseEntity.ok(searches);
@@ -105,12 +104,9 @@ public class SearchController {
     @ApiResponse(responseCode = "200", description = "삭제 성공")
     @DeleteMapping("/recent")
     public ResponseEntity<?> deleteRecentSearch(
-            @RequestParam(required = false) String term,
-            HttpServletRequest request,
-            HttpServletResponse response
-    ) {
+            @RequestParam(required = false) String term, HttpServletRequest request, HttpServletResponse response) {
         String subjectId = getSubjectId(request, response);
-        
+
         if (term != null && !term.trim().isEmpty()) {
             // 특정 검색어 삭제
             List<String> searches = recentSearchService.remove(subjectId, term);
@@ -132,7 +128,7 @@ public class SearchController {
         if (userId != null) {
             return "user:" + userId;
         }
-        
+
         // 익명 사용자 - anonId 쿠키 확인/발급
         String anonId = getAnonId(request, response);
         return "anon:" + anonId;
@@ -151,7 +147,7 @@ public class SearchController {
                 }
             }
         }
-        
+
         // 새 anonId 생성 및 쿠키 설정
         String anonId = generateAnonId();
         Cookie cookie = new Cookie("anonId", anonId);
@@ -159,7 +155,7 @@ public class SearchController {
         cookie.setMaxAge(365 * 24 * 60 * 60); // 365일
         cookie.setHttpOnly(false); // 프론트에서 접근 가능
         response.addCookie(cookie);
-        
+
         return anonId;
     }
 
@@ -171,12 +167,12 @@ public class SearchController {
         byte[] bytes = new byte[16];
         long mostSigBits = uuid.getMostSignificantBits();
         long leastSigBits = uuid.getLeastSignificantBits();
-        
+
         for (int i = 0; i < 8; i++) {
             bytes[i] = (byte) (mostSigBits >>> 8 * (7 - i));
             bytes[i + 8] = (byte) (leastSigBits >>> 8 * (7 - i));
         }
-        
+
         String base64 = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
         return base64.substring(0, 26); // 26자로 제한
     }

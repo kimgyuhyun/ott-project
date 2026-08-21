@@ -17,6 +17,8 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SkipMetaResponseDto { // 스킵 메타 응답
-    private Integer introStart; private Integer introEnd; // 인트로
-    private Integer outroStart; private Integer outroEnd; // 엔딩
+    private Integer introStart;
+    private Integer introEnd; // 인트로
+    private Integer outroStart;
+    private Integer outroEnd; // 엔딩
 }

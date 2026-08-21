@@ -10,10 +10,8 @@ package com.ottproject.ottbackend.enums;
  * - ACTIVE/PAST_DUE/CANCELED/EXPIRED
  */
 public enum MembershipSubscriptionStatus { // 구독 상태
-    ACTIVE,     // 활성
-    PAST_DUE,   // 연체(재시도 대기)
-    CANCELED,   // 해지
-    EXPIRED     // 만료
+    ACTIVE, // 활성
+    PAST_DUE, // 연체(재시도 대기)
+    CANCELED, // 해지
+    EXPIRED // 만료
 }
-
-

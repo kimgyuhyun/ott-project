@@ -1,5 +1,15 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,17 +19,6 @@ import org.springframework.http.HttpEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * TurnstileVerifier 단위 테스트
@@ -80,8 +79,10 @@ class TurnstileVerifierTest {
     @DisplayName("클플이 success=true 면 통과")
     void cloudflareSuccessPasses() {
         TurnstileVerifier verifier = verifierWithSecret("secret-key");
-        given(rest.postForObject(eq("https://challenges.cloudflare.com/turnstile/v0/siteverify"),
-                any(HttpEntity.class), eq(Map.class)))
+        given(rest.postForObject(
+                        eq("https://challenges.cloudflare.com/turnstile/v0/siteverify"),
+                        any(HttpEntity.class),
+                        eq(Map.class)))
                 .willReturn(Map.of("success", true));
 
         assertThat(verifier.verify("valid-token")).isTrue();
@@ -92,8 +93,7 @@ class TurnstileVerifierTest {
     void cloudflareFailureIsRejected() {
         TurnstileVerifier verifier = verifierWithSecret("secret-key");
         given(rest.postForObject(anyString(), any(HttpEntity.class), eq(Map.class)))
-                .willReturn(Map.of("success", false,
-                        "error-codes", java.util.List.of("timeout-or-duplicate")));
+                .willReturn(Map.of("success", false, "error-codes", java.util.List.of("timeout-or-duplicate")));
 
         assertThat(verifier.verify("reused-token")).isFalse();
     }

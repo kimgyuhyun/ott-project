@@ -8,13 +8,12 @@ import com.ottproject.ottbackend.exception.ViewingProfileLimitExceededException;
 import com.ottproject.ottbackend.exception.ViewingProfileNotFoundException;
 import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.repository.ViewingProfileRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 시청 프로필 서비스
@@ -70,8 +69,8 @@ public class ViewingProfileService {
                     "프로필 상한 초과: userId=" + userId + ", 상한=" + ViewingProfile.MAX_PER_ACCOUNT);
         }
         User owner = userRepository.getReferenceById(userId); // FK 만 걸면 되므로 실제 조회는 하지 않는다
-        ViewingProfile saved = viewingProfileRepository.save(
-                ViewingProfile.create(owner, name, LocalDateTime.now(clock)));
+        ViewingProfile saved =
+                viewingProfileRepository.save(ViewingProfile.create(owner, name, LocalDateTime.now(clock)));
         return toDto(saved);
     }
 
@@ -124,19 +123,19 @@ public class ViewingProfileService {
     }
 
     private ViewingProfile createDefaultProfile(Long userId) {
-        User owner = userRepository.findById(userId)
+        User owner = userRepository
+                .findById(userId)
                 .orElseThrow(() -> new ViewingProfileNotFoundException("계정 없음: userId=" + userId));
-        return viewingProfileRepository.save(
-                ViewingProfile.create(owner, owner.getName(), LocalDateTime.now(clock)));
+        return viewingProfileRepository.save(ViewingProfile.create(owner, owner.getName(), LocalDateTime.now(clock)));
     }
 
     private ViewingProfile findOwned(Long userId, Long profileId) {
-        ViewingProfile profile = viewingProfileRepository.findById(profileId)
+        ViewingProfile profile = viewingProfileRepository
+                .findById(profileId)
                 .orElseThrow(() -> new ViewingProfileNotFoundException("프로필 없음: profileId=" + profileId));
         if (!profile.isOwnedBy(userId)) {
             // 남의 프로필이어도 "없음"으로 응답한다. 권한 없음으로 구분하면 id 존재 여부가 새어 나간다.
-            throw new ViewingProfileNotFoundException(
-                    "다른 계정의 프로필: profileId=" + profileId + ", userId=" + userId);
+            throw new ViewingProfileNotFoundException("다른 계정의 프로필: profileId=" + profileId + ", userId=" + userId);
         }
         return profile;
     }

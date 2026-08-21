@@ -2,6 +2,7 @@ package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.repository.AnimeRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -9,15 +10,13 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 /**
  * 애니메이션 데이터 보완 서비스
- * 
+ *
  * 큰 흐름
  * - Jikan API로 수집된 기본 데이터를 TMDB API로 보완한다.
  * - 한국어 제목, 시놉시스, 배경이미지를 추가로 수집한다.
- * 
+ *
  * 필드 개요
  * - animeRepository: 애니메 데이터 접근
  * - tmdbApiService: TMDB API 호출
@@ -26,7 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class AnimeEnhancementService {
-    
+
     private final AnimeRepository animeRepository;
     private final TmdbApiService tmdbApiService;
 
@@ -54,8 +53,7 @@ public class AnimeEnhancementService {
 
         try {
             // 한국어 정보가 없는 애니메들의 ID 만 조회 (운영자가 큐레이션한 작품은 제외)
-            List<Long> targetIds = animeRepository.findByTitleIsNullAndCuratedIsFalse()
-                    .stream()
+            List<Long> targetIds = animeRepository.findByTitleIsNullAndCuratedIsFalse().stream()
                     .map(Anime::getId)
                     .toList();
             log.info("보완 대상 애니메 수: {}", targetIds.size());
@@ -89,7 +87,7 @@ public class AnimeEnhancementService {
             log.error("애니메이션 데이터 보완 중 오류 발생", e);
         }
     }
-    
+
     /**
      * 단일 애니메이션 데이터 보완
      *
@@ -105,7 +103,7 @@ public class AnimeEnhancementService {
             log.warn("애니메이션 정보가 null");
             return false;
         }
-        
+
         // 검색할 제목 결정 (영어 제목 우선, 없으면 일본어 제목)
         String searchTitle = anime.getTitleEn();
         if (searchTitle == null || searchTitle.trim().isEmpty()) {
@@ -115,57 +113,55 @@ public class AnimeEnhancementService {
             log.warn("검색할 제목이 없음: ID {}", anime.getId());
             return false;
         }
-        
+
         log.info("TMDB 검색 시작: {} (ID: {})", searchTitle, anime.getId());
-        
+
         try {
             // TMDB API에서 한국어 정보 조회
             TmdbApiService.TmdbAnimeData tmdbData = tmdbApiService.searchAnime(searchTitle);
-            
+
             if (tmdbData == null) {
                 log.warn("TMDB 검색 결과 없음: {}", searchTitle);
                 return false;
             }
-            
+
             if (!tmdbData.isHasKoreanData()) {
                 log.warn("TMDB 한국어 데이터 없음: {}", searchTitle);
                 return false;
             }
-            
+
             // 한국어 정보 업데이트
             boolean updated = false;
-            
+
             // 한국어 제목 업데이트
             if (anime.getTitle() == null && tmdbData.getTitle() != null) {
                 anime.setTitle(tmdbData.getTitle());
                 updated = true;
                 log.info("한국어 제목 업데이트: {} → {}", searchTitle, tmdbData.getTitle());
             }
-            
+
             // 한국어 시놉시스 업데이트
-            if ((anime.getSynopsis() == null || anime.getSynopsis().isEmpty()) && 
-                tmdbData.getOverview() != null) {
+            if ((anime.getSynopsis() == null || anime.getSynopsis().isEmpty()) && tmdbData.getOverview() != null) {
                 anime.setSynopsis(tmdbData.getOverview());
                 anime.setFullSynopsis(tmdbData.getOverview());
                 updated = true;
                 log.info("한국어 시놉시스 업데이트: ID {}", anime.getId());
             }
-            
+
             // 배경 이미지 업데이트
             if (anime.getBackdropUrl() == null && tmdbData.getBackdropUrl() != null) {
                 anime.setBackdropUrl(tmdbData.getBackdropUrl());
                 updated = true;
                 log.info("배경 이미지 업데이트: ID {}", anime.getId());
             }
-            
+
             // 포스터 이미지 업데이트 (Jikan API 포스터가 없거나 품질이 낮은 경우)
-            if ((anime.getPosterUrl() == null || anime.getPosterUrl().isEmpty()) && 
-                tmdbData.getPosterUrl() != null) {
+            if ((anime.getPosterUrl() == null || anime.getPosterUrl().isEmpty()) && tmdbData.getPosterUrl() != null) {
                 anime.setPosterUrl(tmdbData.getPosterUrl());
                 updated = true;
                 log.info("포스터 이미지 업데이트: ID {}", anime.getId());
             }
-            
+
             if (updated) {
                 // save() 를 호출하지 않는다: 엔티티가 영속 상태라 더티 체킹으로 커밋 시점에 반영된다.
                 // (준영속 엔티티에 save() 를 쓰면 merge 가 되어 낡은 스냅샷 전체를 덮어쓰므로 그 경로를 없앴다)
@@ -175,13 +171,13 @@ public class AnimeEnhancementService {
                 log.info("업데이트할 정보 없음: ID {}", anime.getId());
                 return false;
             }
-            
+
         } catch (Exception e) {
             log.error("TMDB API 호출 실패: {} - {}", searchTitle, e.getMessage());
             return false;
         }
     }
-    
+
     /**
      * 특정 애니메이션 ID로 보완
      *
