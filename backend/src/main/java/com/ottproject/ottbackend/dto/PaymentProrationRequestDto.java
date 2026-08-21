@@ -15,7 +15,7 @@ import lombok.Data;
  */
 @Data
 public class PaymentProrationRequestDto {
-    
+
     private Integer amount; // 차액 금액
     private String description; // 결제 설명
 }

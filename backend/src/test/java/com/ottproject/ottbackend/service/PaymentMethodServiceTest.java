@@ -1,5 +1,11 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+
 import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
 import com.ottproject.ottbackend.dto.PaymentMethodUpdateRequestDto;
 import com.ottproject.ottbackend.entity.PaymentMethod;
@@ -7,6 +13,8 @@ import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.PaymentMethodType;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.repository.PaymentMethodRepository;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,15 +24,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 /**
  * PaymentMethodService 단위 테스트
@@ -135,8 +134,7 @@ class PaymentMethodServiceTest {
     void setDefaultOnForeignMethodIsRejected() {
         given(paymentMethodRepository.findByIdAndUser_Id(99L, USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.setDefault(USER_ID, 99L))
-                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> service.setDefault(USER_ID, 99L)).isInstanceOf(ResponseStatusException.class);
 
         // 소유 확인이 목록 조회보다 먼저다 - 남의 id 로 내 목록이 훑어지지 않아야 한다
         verify(paymentMethodRepository).findByIdAndUser_Id(99L, USER_ID);
@@ -213,8 +211,7 @@ class PaymentMethodServiceTest {
     void deletingForeignMethodIsRejected() {
         given(paymentMethodRepository.findByIdAndUser_Id(99L, USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.delete(USER_ID, 99L))
-                .isInstanceOf(ResponseStatusException.class);
+        assertThatThrownBy(() -> service.delete(USER_ID, 99L)).isInstanceOf(ResponseStatusException.class);
     }
 
     // ===== 부분 수정 =====

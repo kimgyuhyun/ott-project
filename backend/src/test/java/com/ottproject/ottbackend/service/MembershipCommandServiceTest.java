@@ -1,5 +1,16 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
 import com.ottproject.ottbackend.dto.MembershipCancelMembershipRequestDto;
 import com.ottproject.ottbackend.dto.MembershipPlanChangeRequestDto;
 import com.ottproject.ottbackend.dto.MembershipPlanChangeResponseDto;
@@ -15,6 +26,9 @@ import com.ottproject.ottbackend.exception.DuplicateIdempotentRequestException;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,21 +42,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-
 /**
  * MembershipCommandService 구독 생명주기 단위 테스트
  *
@@ -55,10 +54,17 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @ExtendWith(MockitoExtension.class)
 class MembershipCommandServiceTest {
 
-    @Mock private MembershipPlanRepository planRepository;
-    @Mock private MembershipSubscriptionRepository subscriptionRepository;
-    @Mock private IdempotencyKeyRepository idempotencyKeyRepository;
-    @Mock private MembershipNotificationService notificationService;
+    @Mock
+    private MembershipPlanRepository planRepository;
+
+    @Mock
+    private MembershipSubscriptionRepository subscriptionRepository;
+
+    @Mock
+    private IdempotencyKeyRepository idempotencyKeyRepository;
+
+    @Mock
+    private MembershipNotificationService notificationService;
 
     @InjectMocks
     private MembershipCommandService service;
@@ -70,7 +76,10 @@ class MembershipCommandServiceTest {
         User user = User.reference(1L);
         // 팩토리가 ACTIVE + autoRenew=true + cancelAtPeriodEnd=false 로 만든다(해지 전 정상 상태)
         sub = MembershipSubscription.createSubscription(
-                user, plan("BASIC", 9900L, 1), LocalDateTime.now(), LocalDateTime.now().plusMonths(1));
+                user,
+                plan("BASIC", 9900L, 1),
+                LocalDateTime.now(),
+                LocalDateTime.now().plusMonths(1));
     }
 
     private MembershipCancelMembershipRequestDto cancelReq(String idempotencyKey) {
@@ -99,8 +108,7 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("해지 멱등 - 같은 키로 다시 오면 아무것도 하지 않는다(중복 메일 방지)")
     void cancelIsIdempotent() {
-        given(idempotencyKeyRepository.findByKeyValue("key-1"))
-                .willReturn(Optional.of(mock(IdempotencyKey.class)));
+        given(idempotencyKeyRepository.findByKeyValue("key-1")).willReturn(Optional.of(mock(IdempotencyKey.class)));
 
         service.cancel(1L, cancelReq("key-1"));
 
@@ -153,8 +161,7 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("탈퇴 즉시 해지 - ACTIVE 구독을 CANCELED + autoRenew off 로 바꾼다(잔여기간 소멸)")
     void cancelImmediatelyForWithdrawalEndsActiveSubscription() {
-        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any()))
-                .willReturn(List.of(sub));
+        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any())).willReturn(List.of(sub));
 
         service.cancelImmediatelyForWithdrawal(1L);
 
@@ -170,8 +177,7 @@ class MembershipCommandServiceTest {
     @DisplayName("탈퇴 즉시 해지 - PAST_DUE 구독도 CANCELED 로 바꿔 던닝 재시도를 멈춘다")
     void cancelImmediatelyForWithdrawalEndsPastDueSubscription() {
         sub.applyPaymentFailure(LocalDateTime.now()); // 결제 실패 → PAST_DUE, 던닝 재시도 중
-        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any()))
-                .willReturn(List.of(sub));
+        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any())).willReturn(List.of(sub));
 
         service.cancelImmediatelyForWithdrawal(1L);
 
@@ -184,8 +190,7 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("탈퇴 즉시 해지 - 구독이 없으면 예외 없이 아무것도 하지 않는다(구독 없는 사용자도 탈퇴해야 한다)")
     void cancelImmediatelyForWithdrawalWithoutSubscriptionDoesNothing() {
-        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any()))
-                .willReturn(List.of());
+        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any())).willReturn(List.of());
 
         service.cancelImmediatelyForWithdrawal(1L);
 
@@ -200,8 +205,7 @@ class MembershipCommandServiceTest {
         MembershipSubscription older = MembershipSubscription.createSubscription(
                 User.reference(1L), plan("BASIC", 9900L, 1), LocalDateTime.now().minusMonths(2), null);
         older.applyPaymentFailure(LocalDateTime.now()); // 던닝 재시도 중인 PAST_DUE
-        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any()))
-                .willReturn(List.of(sub, older));
+        given(subscriptionRepository.findAllByUserAndStatusIn(eq(1L), any())).willReturn(List.of(sub, older));
 
         service.cancelImmediatelyForWithdrawal(1L);
 
@@ -312,7 +316,10 @@ class MembershipCommandServiceTest {
     void subscribeExtendsFromRemainingPeriod() {
         LocalDateTime latestEnd = LocalDateTime.now().plusDays(10);
         MembershipSubscription latest = MembershipSubscription.createSubscription(
-                User.reference(1L), plan("BASIC", 9900L, 1), LocalDateTime.now().minusDays(20), latestEnd); // ACTIVE + 잔여기간
+                User.reference(1L),
+                plan("BASIC", 9900L, 1),
+                LocalDateTime.now().minusDays(20),
+                latestEnd); // ACTIVE + 잔여기간
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(latest));
 
@@ -366,8 +373,7 @@ class MembershipCommandServiceTest {
     /** endAt 을 지정할 수 있는 변형(무기한 구독 = endAt null) */
     private MembershipSubscription subscriptionOnPlan(MembershipPlan current, LocalDateTime endAt) {
         User user = User.reference(1L);
-        MembershipSubscription s = MembershipSubscription.createSubscription(
-                user, current, LocalDateTime.now(), endAt);
+        MembershipSubscription s = MembershipSubscription.createSubscription(user, current, LocalDateTime.now(), endAt);
         s.scheduleNextBillingAt(LocalDateTime.now().plusDays(15));
         return s;
     }

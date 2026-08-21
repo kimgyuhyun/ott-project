@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.mybatis.PlayerProgressQueryMapper;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 /**
  * PlayerProgressReadService
@@ -20,12 +19,10 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PlayerProgressReadService {
-	private final PlayerProgressQueryMapper playerProgressQueryMapper;
+    private final PlayerProgressQueryMapper playerProgressQueryMapper;
 
-	public int sumWatchedSecondsSincePaidEpisodes(Long userId, LocalDateTime since) {
-		Integer v = playerProgressQueryMapper.sumWatchedSecondsSincePaidEpisodes(userId, since);
-		return v == null ? 0 : v;
-	}
+    public int sumWatchedSecondsSincePaidEpisodes(Long userId, LocalDateTime since) {
+        Integer v = playerProgressQueryMapper.sumWatchedSecondsSincePaidEpisodes(userId, since);
+        return v == null ? 0 : v;
+    }
 }
-
-

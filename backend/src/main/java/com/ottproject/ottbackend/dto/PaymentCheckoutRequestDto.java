@@ -1,6 +1,5 @@
 package com.ottproject.ottbackend.dto;
 
-
 /**
  * 결제 체크아웃 생성 요청 DTO
  *
@@ -17,5 +16,4 @@ public class PaymentCheckoutRequestDto {
     public String successUrl; // 결제 성공 시 리다이렉트 URL(선택)
     public String cancelUrl; // 결제 취소 시 리다이렉트 URL(선택)
     public String idempotencyKey; // 역등키(선택, 중복 요청 방지)
-
 }

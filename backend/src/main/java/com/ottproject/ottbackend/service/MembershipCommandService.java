@@ -1,9 +1,10 @@
 package com.ottproject.ottbackend.service;
-import com.ottproject.ottbackend.dto.MembershipSubscribeRequestDto;
+
 import com.ottproject.ottbackend.dto.MembershipPlanChangeRequestDto;
 import com.ottproject.ottbackend.dto.MembershipPlanChangeResponseDto;
-import com.ottproject.ottbackend.entity.MembershipPlan;
+import com.ottproject.ottbackend.dto.MembershipSubscribeRequestDto;
 import com.ottproject.ottbackend.entity.IdempotencyKey; // NEW
+import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
@@ -11,6 +12,8 @@ import com.ottproject.ottbackend.enums.PlanChangeType;
 import com.ottproject.ottbackend.exception.DuplicateIdempotentRequestException;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -18,9 +21,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * MembershipCommandService
@@ -49,7 +49,8 @@ public class MembershipCommandService {
      * - 실제 서비스 로직 기준(임시 처리가 아니라 도메인 규칙 반영)
      */
     public void subscribe(Long userId, MembershipSubscribeRequestDto req) {
-        MembershipPlan plan = planRepository.findByCode(req.planCode) // 플랜 조회
+        MembershipPlan plan = planRepository
+                .findByCode(req.planCode) // 플랜 조회
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "플랜이 존재하지 않습니다.")); // 400
 
         LocalDateTime now = LocalDateTime.now(); // 기준 시각
@@ -58,8 +59,9 @@ public class MembershipCommandService {
         if (latestOpt.isPresent()) { // 최근 구독 존재
             LocalDateTime latestEnd = latestOpt.get().getEndAt(); // 최근 종료일
             // 잔여기간이 있고, 현재 구독이 ACTIVE 상태인 경우에만 연장
-            if (latestEnd != null && latestEnd.isAfter(now) && 
-                latestOpt.get().getStatus() == MembershipSubscriptionStatus.ACTIVE) {
+            if (latestEnd != null
+                    && latestEnd.isAfter(now)
+                    && latestOpt.get().getStatus() == MembershipSubscriptionStatus.ACTIVE) {
                 start = latestEnd; // 잔여 종료 직후부터
             }
         }
@@ -71,7 +73,7 @@ public class MembershipCommandService {
                 plan, // 플랜 설정
                 start, // 시작
                 end // 종료
-        );
+                );
         sub.scheduleNextBillingAt(end); // 다음 청구 앵커
 
         subscriptionRepository.save(sub); // 저장
@@ -83,9 +85,9 @@ public class MembershipCommandService {
      */
     public void cancelScheduledPlanChange(Long userId) {
         LocalDateTime now = LocalDateTime.now();
-        MembershipSubscription currentSubscription = subscriptionRepository.findActiveEffectiveByUser(
-                userId, MembershipSubscriptionStatus.ACTIVE, now
-        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
+        MembershipSubscription currentSubscription = subscriptionRepository
+                .findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
 
         if (currentSubscription.getNextPlan() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "예약된 플랜 변경이 없습니다.");
@@ -100,7 +102,8 @@ public class MembershipCommandService {
      */
     public void cancel(Long userId, com.ottproject.ottbackend.dto.MembershipCancelMembershipRequestDto req) {
         String idempotencyKey = (req != null && req.idempotencyKey != null && !req.idempotencyKey.isBlank())
-                ? req.idempotencyKey.trim() : null; // 멱등 키(선택 입력)
+                ? req.idempotencyKey.trim()
+                : null; // 멱등 키(선택 입력)
 
         if (idempotencyKey != null) {
             // 빠른 경로: 한참 전에 처리된 키면 여기서 걸러 예외/롤백 없이 끝낸다.
@@ -117,20 +120,17 @@ public class MembershipCommandService {
             // 메일은 트랜잭션을 따르지 않으므로 사용자에게는 해지 안내가 두 번 도착했다.
             try {
                 idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
-                        idempotencyKey,
-                        "membership.cancel",
-                        null,
-                        LocalDateTime.now()
-                ));
+                        idempotencyKey, "membership.cancel", null, LocalDateTime.now()));
             } catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
                 throw new DuplicateIdempotentRequestException("membership.cancel", idempotencyKey, e);
             }
         }
 
         LocalDateTime now = LocalDateTime.now(); // 기준 시각
-        MembershipSubscription sub = subscriptionRepository.findActiveEffectiveByUser( // 유효 구독 단건
-                userId, MembershipSubscriptionStatus.ACTIVE, now
-        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다.")); // 400
+        MembershipSubscription sub = subscriptionRepository
+                .findActiveEffectiveByUser( // 유효 구독 단건
+                        userId, MembershipSubscriptionStatus.ACTIVE, now)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다.")); // 400
 
         // 자동갱신 중단 + 말일 해지 예약 (상태 ACTIVE 유지, 만료일까지 혜택 유지)
         sub.scheduleCancellationAtPeriodEnd();
@@ -150,8 +150,10 @@ public class MembershipCommandService {
      */
     public void cancelImmediatelyForWithdrawal(Long userId) {
         List<MembershipSubscription> subs = subscriptionRepository.findAllByUserAndStatusIn(
-                userId, List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE)
-        ); // 구독 없는 사용자도 탈퇴하므로 빈 목록이면 그대로 끝난다
+                userId,
+                List.of(
+                        MembershipSubscriptionStatus.ACTIVE,
+                        MembershipSubscriptionStatus.PAST_DUE)); // 구독 없는 사용자도 탈퇴하므로 빈 목록이면 그대로 끝난다
         // 던닝 중단 코드는 따로 두지 않는다: RecurringBillingService.prepareRetry 가
         // "PAST_DUE 아니거나 autoRenew=false 면 skip" 가드를 가지고 있어, 여기서 CANCELED + autoRenew=false 가
         // 되는 순간 재시도가 자동으로 멈춘다.
@@ -168,9 +170,9 @@ public class MembershipCommandService {
      */
     public void resume(Long userId) {
         LocalDateTime now = LocalDateTime.now();
-        MembershipSubscription sub = subscriptionRepository.findActiveEffectiveByUser(
-                userId, MembershipSubscriptionStatus.ACTIVE, now
-        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
+        MembershipSubscription sub = subscriptionRepository
+                .findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
 
         // 해지 예약 상태인지 확인
         if (!sub.isCancelAtPeriodEnd()) {
@@ -191,12 +193,13 @@ public class MembershipCommandService {
     public MembershipPlanChangeResponseDto changePlan(Long userId, MembershipPlanChangeRequestDto request) {
         // 현재 활성 구독 조회
         LocalDateTime now = LocalDateTime.now();
-        MembershipSubscription currentSubscription = subscriptionRepository.findActiveEffectiveByUser(
-                userId, MembershipSubscriptionStatus.ACTIVE, now
-        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
+        MembershipSubscription currentSubscription = subscriptionRepository
+                .findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
 
         // 새로운 플랜 조회
-        MembershipPlan newPlan = planRepository.findByCode(request.getNewPlanCode())
+        MembershipPlan newPlan = planRepository
+                .findByCode(request.getNewPlanCode())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "플랜이 존재하지 않습니다."));
 
         // 같은 플랜인지 확인
@@ -205,15 +208,16 @@ public class MembershipCommandService {
         }
 
         // 변경 유형 판단 (가격 기준)
-        PlanChangeType changeType = newPlan.getPrice().getAmount() > currentSubscription.getMembershipPlan().getPrice().getAmount() 
-                ? PlanChangeType.UPGRADE 
+        PlanChangeType changeType = newPlan.getPrice().getAmount()
+                        > currentSubscription.getMembershipPlan().getPrice().getAmount()
+                ? PlanChangeType.UPGRADE
                 : PlanChangeType.DOWNGRADE;
 
         // 업그레이드는 차액을 실제로 청구하는 경로가 이 API 에 없다. 여기서 플랜을 바꿔주면
         // 결제 없이 상위 플랜을 받아내는 뒷문이 된다(프론트도 업그레이드는 차액 결제 API 를 쓴다).
         if (changeType == PlanChangeType.UPGRADE) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "업그레이드는 차액 결제 API(/api/proration-payments)를 사용해야 합니다.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "업그레이드는 차액 결제 API(/api/proration-payments)를 사용해야 합니다.");
         }
         return handleDowngrade(currentSubscription, newPlan);
     }
@@ -222,18 +226,17 @@ public class MembershipCommandService {
      * 다운그레이드 처리
      * - 다음 결제일부터 적용
      */
-    private MembershipPlanChangeResponseDto handleDowngrade(MembershipSubscription subscription, MembershipPlan newPlan) {
+    private MembershipPlanChangeResponseDto handleDowngrade(
+            MembershipSubscription subscription, MembershipPlan newPlan) {
         // 다음 결제일부터 적용하도록 예약
         subscription.schedulePlanChange(newPlan, subscription.getNextBillingAt(), PlanChangeType.DOWNGRADE);
-
 
         return MembershipPlanChangeResponseDto.builder()
                 .changeType(PlanChangeType.DOWNGRADE)
                 .effectiveDate(subscription.getNextBillingAt())
                 .prorationAmount(null)
-                .message("다음 결제일(" + subscription.getNextBillingAt().toLocalDate() + ")부터 " + 
-                        newPlan.getName() + " 플랜이 적용됩니다.")
+                .message("다음 결제일(" + subscription.getNextBillingAt().toLocalDate() + ")부터 " + newPlan.getName()
+                        + " 플랜이 적용됩니다.")
                 .build();
     }
-
 }

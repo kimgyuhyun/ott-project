@@ -1,8 +1,7 @@
 package com.ottproject.ottbackend.dto;
 
-import lombok.*;
-
 import java.time.LocalDateTime;
+import lombok.*;
 
 /**
  * 에피소드 읽기용 DTO
@@ -20,7 +19,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EpisodeDto {
-    
+
     private Long id; // 에피소드 ID
     private Integer episodeNumber; // 화수(1,2,3)
     private String title; // 제목

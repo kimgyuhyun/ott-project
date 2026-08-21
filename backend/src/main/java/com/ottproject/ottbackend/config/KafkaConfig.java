@@ -29,12 +29,18 @@ public class KafkaConfig {
 
     @Bean
     public NewTopic paymentSucceededTopic() {
-        return TopicBuilder.name(TOPIC_PAYMENT_SUCCEEDED).partitions(3).replicas(1).build();
+        return TopicBuilder.name(TOPIC_PAYMENT_SUCCEEDED)
+                .partitions(3)
+                .replicas(1)
+                .build();
     }
 
     @Bean
     public NewTopic paymentSucceededDltTopic() {
-        return TopicBuilder.name(TOPIC_PAYMENT_SUCCEEDED_DLT).partitions(3).replicas(1).build();
+        return TopicBuilder.name(TOPIC_PAYMENT_SUCCEEDED_DLT)
+                .partitions(3)
+                .replicas(1)
+                .build();
     }
 
     /**

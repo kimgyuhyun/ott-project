@@ -3,8 +3,8 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PlanChangeType;
 import jakarta.persistence.*;
-import lombok.*;
 import java.time.LocalDateTime;
+import lombok.*;
 
 /**
  * 사용자 구독 엔티티
@@ -23,13 +23,15 @@ import java.time.LocalDateTime;
  * - nextPlan/planChangeScheduledAt/changeType: 플랜 변경 예약 정보
  */
 @Entity
-@Table(name = "subscriptions", indexes = {
-        @Index(name = "idx_subscription_user", columnList = "user_id") // 사용자 인덱스
-})
+@Table(
+        name = "subscriptions",
+        indexes = {@Index(name = "idx_subscription_user", columnList = "user_id") // 사용자 인덱스
+        })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MembershipSubscription { // 멤버쉽 구독
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // PK
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -94,7 +96,7 @@ public class MembershipSubscription { // 멤버쉽 구독
 
     /**
      * 멤버십 구독 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 사용자
      * @param membershipPlan 멤버십 플랜
      * @param startAt 시작 시각
@@ -102,8 +104,8 @@ public class MembershipSubscription { // 멤버쉽 구독
      * @return 생성된 MembershipSubscription 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static MembershipSubscription createSubscription(User user, MembershipPlan membershipPlan, 
-                                                           LocalDateTime startAt, LocalDateTime endAt) {
+    public static MembershipSubscription createSubscription(
+            User user, MembershipPlan membershipPlan, LocalDateTime startAt, LocalDateTime endAt) {
         // 필수 필드 검증
         if (user == null) {
             throw new IllegalArgumentException("사용자는 필수입니다.");
@@ -312,5 +314,3 @@ public class MembershipSubscription { // 멤버쉽 구독
         clearScheduledPlanChange();
     }
 }
-
-

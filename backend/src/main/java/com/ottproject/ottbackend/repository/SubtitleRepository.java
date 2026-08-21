@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.Subtitle;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 /**
  * SubtitleRepository
@@ -21,6 +20,8 @@ import java.util.Optional;
 @Repository
 public interface SubtitleRepository extends JpaRepository<Subtitle, Long> {
     List<Subtitle> findByEpisodeId(Long episodeId);
+
     Optional<Subtitle> findByEpisodeIdAndLanguage(Long episodeId, String language);
+
     Optional<Subtitle> findByEpisodeIdAndIsDefaultTrue(Long episodeId);
 }

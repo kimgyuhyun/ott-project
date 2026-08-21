@@ -1,15 +1,14 @@
 package com.ottproject.ottbackend.entity;
 
-import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.time.LocalDateTime;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
+import java.time.LocalDateTime;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * MembershipSubscription 정적 팩토리 검증
@@ -48,8 +47,7 @@ class MembershipSubscriptionFactoryTest {
     @Test
     @DisplayName("종료 시각이 없는 무기한 구독을 허용한다")
     void allowsOpenEndedSubscription() {
-        MembershipSubscription subscription =
-                MembershipSubscription.createSubscription(user, plan, startAt, null);
+        MembershipSubscription subscription = MembershipSubscription.createSubscription(user, plan, startAt, null);
 
         assertThat(subscription.getEndAt()).isNull();
         assertThat(subscription.getStatus()).isEqualTo(MembershipSubscriptionStatus.ACTIVE);
@@ -58,8 +56,7 @@ class MembershipSubscriptionFactoryTest {
     @Test
     @DisplayName("종료 시각이 시작 시각보다 앞서면 거부한다")
     void rejectsEndBeforeStart() {
-        assertThatThrownBy(() -> MembershipSubscription.createSubscription(
-                user, plan, startAt, startAt.minusDays(1)))
+        assertThatThrownBy(() -> MembershipSubscription.createSubscription(user, plan, startAt, startAt.minusDays(1)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 

@@ -1,5 +1,13 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doAnswer;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ottproject.ottbackend.dto.PaymentWebhookEventDto;
@@ -17,6 +25,14 @@ import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -38,23 +54,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doAnswer;
 
 /**
  * 결제 확정의 이중 지급 방어 검증 (실제 PostgreSQL, 실제 커밋, 실제 스레드 2개)
@@ -85,11 +84,12 @@ import static org.mockito.Mockito.doAnswer;
 @Import({JpaSliceTestSupport.class, PaymentCommandService.class, MembershipCommandService.class})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 @Transactional(propagation = Propagation.NOT_SUPPORTED) // @DataJpaTest 의 감싸는 트랜잭션을 끈다
 class PaymentConfirmIdempotencyTest {
 
@@ -187,12 +187,12 @@ class PaymentConfirmIdempotencyTest {
         userRepository.deleteAll();
 
         User user = userRepository.save(User.createLocalUser("confirm@example.com", "encoded", "테스터"));
-        MembershipPlan plan = planRepository.save(
-                MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
+        MembershipPlan plan =
+                planRepository.save(MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
         userId = user.getId();
 
-        Payment payment = Payment.createPendingPayment(
-                user, plan, PaymentProvider.IMPORT, MERCHANT_UID, new Money(9900L, "KRW"));
+        Payment payment =
+                Payment.createPendingPayment(user, plan, PaymentProvider.IMPORT, MERCHANT_UID, new Money(9900L, "KRW"));
         LocalDateTime now = LocalDateTime.now();
         ReflectionTestUtils.setField(payment, "createdAt", now); // 슬라이스에는 Auditing 이 없어 직접 채운다
         ReflectionTestUtils.setField(payment, "updatedAt", now);
@@ -209,12 +209,14 @@ class PaymentConfirmIdempotencyTest {
         // 아웃박스 직렬화는 결제 행을 잠그고 SUCCEEDED 로 바꾸고 구독을 만든 뒤, 커밋하기 전에 불린다.
         // 즉 여기서 멈춘 스레드는 락을 쥔 채 아직 커밋하지 않은 상태다.
         doAnswer(invocation -> {
-            if (provisioningCalls.incrementAndGet() == 1) {
-                firstReachedOutbox.countDown();
-                releaseFirst.await(10, TimeUnit.SECONDS);
-            }
-            return invocation.callRealMethod(); // 실제 직렬화는 그대로 수행
-        }).when(objectMapper).writeValueAsString(any());
+                    if (provisioningCalls.incrementAndGet() == 1) {
+                        firstReachedOutbox.countDown();
+                        releaseFirst.await(10, TimeUnit.SECONDS);
+                    }
+                    return invocation.callRealMethod(); // 실제 직렬화는 그대로 수행
+                })
+                .when(objectMapper)
+                .writeValueAsString(any());
     }
 
     /** 결제 성공 웹훅 1건 */
@@ -255,8 +257,8 @@ class PaymentConfirmIdempotencyTest {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
             // 첫 번째: 웹훅 확정. 결제 행을 잠그고 지급 단계에서 멈춘다(아직 커밋 전).
-            Future<Throwable> webhook = pool.submit(
-                    () -> catchThrowable(() -> service.applyWebhookEvent(paymentId, succeededWebhook())));
+            Future<Throwable> webhook =
+                    pool.submit(() -> catchThrowable(() -> service.applyWebhookEvent(paymentId, succeededWebhook())));
             assertThat(firstReachedOutbox.await(30, TimeUnit.SECONDS)).isTrue();
 
             // 두 번째: 클라 확정. 별도 스레드여야 별도 커넥션/트랜잭션이 열린다.
@@ -305,8 +307,8 @@ class PaymentConfirmIdempotencyTest {
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            Future<Throwable> webhook = pool.submit(
-                    () -> catchThrowable(() -> service.applyWebhookEvent(paymentId, succeededWebhook())));
+            Future<Throwable> webhook =
+                    pool.submit(() -> catchThrowable(() -> service.applyWebhookEvent(paymentId, succeededWebhook())));
             assertThat(firstReachedOutbox.await(30, TimeUnit.SECONDS)).isTrue();
 
             // 대사 배치는 1단계에서 아직 PENDING 을 본다(웹훅이 커밋 전이므로). 그 상태로 아임포트에

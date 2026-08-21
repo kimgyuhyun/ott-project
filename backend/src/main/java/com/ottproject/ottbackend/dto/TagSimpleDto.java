@@ -24,5 +24,3 @@ public class TagSimpleDto { // 태그 표시용 단순 DTO
     private String name; // 태그 이름(예: 가족, 감동)
     private String color; // 태그 색상(선택)
 }
-
-

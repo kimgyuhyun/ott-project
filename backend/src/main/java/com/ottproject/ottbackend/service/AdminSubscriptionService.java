@@ -7,14 +7,13 @@ import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PaymentStatus;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * AdminSubscriptionService
@@ -51,8 +50,8 @@ public class AdminSubscriptionService {
         for (Payment payment : refundedPayments) {
             Long userId = payment.getUser().getId();
 
-            Optional<MembershipSubscription> active = subscriptionRepository
-                    .findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now);
+            Optional<MembershipSubscription> active =
+                    subscriptionRepository.findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now);
             if (active.isEmpty()) {
                 continue;
             }
@@ -61,8 +60,11 @@ public class AdminSubscriptionService {
             subscription.applyImmediateCancellation(now); // 상태 + 해지 시각 + 자동갱신 중단을 한 번에
             subscriptionRepository.save(subscription);
 
-            log.info("구독 해지 완료 - userId: {}, subscriptionId: {}, paymentId: {}",
-                    userId, subscription.getId(), payment.getId());
+            log.info(
+                    "구독 해지 완료 - userId: {}, subscriptionId: {}, paymentId: {}",
+                    userId,
+                    subscription.getId(),
+                    payment.getId());
             fixedCount++;
         }
 

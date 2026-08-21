@@ -1,5 +1,12 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.dto.admin.AdminEpisodeDetailDto;
 import com.ottproject.ottbackend.dto.admin.EpisodeCreateRequest;
 import com.ottproject.ottbackend.dto.admin.EpisodeUpdateRequest;
@@ -8,6 +15,8 @@ import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.entity.Episode;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -18,16 +27,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 /**
  * AdminEpisodeService 단위 테스트
@@ -40,10 +39,17 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class AdminEpisodeServiceTest {
 
-    @Mock private AnimeRepository animeRepository;
-    @Mock private EpisodeRepository episodeRepository;
-    @Mock private NotificationTriggerService notificationTriggerService;
-    @Mock private AnimeCacheService animeCacheService;
+    @Mock
+    private AnimeRepository animeRepository;
+
+    @Mock
+    private EpisodeRepository episodeRepository;
+
+    @Mock
+    private NotificationTriggerService notificationTriggerService;
+
+    @Mock
+    private AnimeCacheService animeCacheService;
 
     @InjectMocks
     private AdminEpisodeService service;
@@ -75,8 +81,7 @@ class AdminEpisodeServiceTest {
     void triggersNotificationAfterSave() {
         given(animeRepository.findById(1L)).willReturn(Optional.of(anime));
         given(episodeRepository.findByAnime_Id(1L)).willReturn(List.of());
-        given(episodeRepository.saveAndFlush(any(Episode.class)))
-                .willAnswer(invocation -> invocation.getArgument(0));
+        given(episodeRepository.saveAndFlush(any(Episode.class))).willAnswer(invocation -> invocation.getArgument(0));
 
         service.createEpisode(1L, request(1));
 
@@ -167,7 +172,8 @@ class AdminEpisodeServiceTest {
 
             List<AdminEpisodeDetailDto> result = service.listEpisodes(1L);
 
-            assertThat(result).extracting(AdminEpisodeDetailDto::getEpisodeNumber)
+            assertThat(result)
+                    .extracting(AdminEpisodeDetailDto::getEpisodeNumber)
                     .containsExactly(1, 2, 3);
         }
 

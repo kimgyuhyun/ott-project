@@ -1,9 +1,8 @@
 package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.ViewingProfile;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * 시청 프로필 리포지토리

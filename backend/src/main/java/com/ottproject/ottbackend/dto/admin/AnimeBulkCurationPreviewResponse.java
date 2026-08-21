@@ -1,9 +1,8 @@
 package com.ottproject.ottbackend.dto.admin;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-
-import java.util.List;
 
 /**
  * 벌크 큐레이션 미리보기 응답

@@ -2,11 +2,10 @@ package com.ottproject.ottbackend.mybatis; // MyBatis 매퍼 패키지 선언
 
 import com.ottproject.ottbackend.dto.PaymentHistoryItemDto;
 import com.ottproject.ottbackend.entity.Payment;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-
 import java.time.LocalDateTime;
 import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * PaymentQueryMapper
@@ -20,17 +19,15 @@ import java.util.List;
 @Mapper // MyBatis 매퍼로 등록
 public interface PaymentQueryMapper { // 결제 조회 매퍼 인터페이스 시작
 
-	List<PaymentHistoryItemDto> listHistory( // 사용자 결제 이력 조회
-		@Param("userId") Long userId, // 사용자 ID
-		@Param("start") LocalDateTime start, // 조회 시작 시각(선택 가능)
-		@Param("end") LocalDateTime end // 조회 종료 시각(선택 가능)
-	);
+    List<PaymentHistoryItemDto> listHistory( // 사용자 결제 이력 조회
+            @Param("userId") Long userId, // 사용자 ID
+            @Param("start") LocalDateTime start, // 조회 시작 시각(선택 가능)
+            @Param("end") LocalDateTime end // 조회 종료 시각(선택 가능)
+            );
 
-	/** providerSessionId로 결제 정보 조회 */
-	Payment findByProviderSessionId(@Param("providerSessionId") String providerSessionId);
-	
-	/** 결제 ID로 결제 정보 조회 */
-	Payment findById(@Param("id") Long id);
+    /** providerSessionId로 결제 정보 조회 */
+    Payment findByProviderSessionId(@Param("providerSessionId") String providerSessionId);
+
+    /** 결제 ID로 결제 정보 조회 */
+    Payment findById(@Param("id") Long id);
 }
-
-

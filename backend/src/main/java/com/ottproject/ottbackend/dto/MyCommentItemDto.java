@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.dto;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 /**
  * 내 댓글 목록 아이템 DTO
@@ -30,5 +29,3 @@ public class MyCommentItemDto {
     private String userProfileImage; // 작성자 프로필 이미지
     private LocalDateTime createdAt;
 }
-
-

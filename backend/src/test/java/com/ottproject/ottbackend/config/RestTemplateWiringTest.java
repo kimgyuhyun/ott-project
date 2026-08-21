@@ -1,5 +1,7 @@
 package com.ottproject.ottbackend.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.service.ImportPaymentGateway;
 import com.ottproject.ottbackend.service.SimpleJikanApiService;
@@ -16,8 +18,6 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 /**
  * RestTemplate 빈이 소비자별로 의도한 것이 주입되는지 검증
  *
@@ -28,18 +28,20 @@ import static org.assertj.core.api.Assertions.assertThat;
  *
  * 컨테이너를 쓰지 않아 testFast 에 포함된다.
  */
-@SpringJUnitConfig(classes = {
-        RestTemplateConfig.class,
-        TurnstileVerifier.class,
-        ImportPaymentGateway.class,
-        TmdbApiService.class,
-        SimpleJikanApiService.class,
-        RestTemplateWiringTest.TestBeans.class
-})
-@TestPropertySource(properties = {
-        "tmdb.api.key=test-key",       // 기본값이 없는 @Value 라 없으면 컨텍스트가 안 뜬다
-        "tmdb.api.base-url=https://example.invalid"
-})
+@SpringJUnitConfig(
+        classes = {
+            RestTemplateConfig.class,
+            TurnstileVerifier.class,
+            ImportPaymentGateway.class,
+            TmdbApiService.class,
+            SimpleJikanApiService.class,
+            RestTemplateWiringTest.TestBeans.class
+        })
+@TestPropertySource(
+        properties = {
+            "tmdb.api.key=test-key", // 기본값이 없는 @Value 라 없으면 컨텍스트가 안 뜬다
+            "tmdb.api.base-url=https://example.invalid"
+        })
 class RestTemplateWiringTest {
 
     @Configuration
@@ -50,14 +52,29 @@ class RestTemplateWiringTest {
         }
     }
 
-    @Autowired @Qualifier("restTemplate") RestTemplate collectorTemplate;
-    @Autowired @Qualifier("turnstileRestTemplate") RestTemplate turnstileTemplate;
-    @Autowired @Qualifier("paymentRestTemplate") RestTemplate paymentTemplate;
+    @Autowired
+    @Qualifier("restTemplate")
+    RestTemplate collectorTemplate;
 
-    @Autowired TurnstileVerifier turnstileVerifier;
-    @Autowired ImportPaymentGateway importPaymentGateway;
-    @Autowired TmdbApiService tmdbApiService;
-    @Autowired SimpleJikanApiService simpleJikanApiService;
+    @Autowired
+    @Qualifier("turnstileRestTemplate")
+    RestTemplate turnstileTemplate;
+
+    @Autowired
+    @Qualifier("paymentRestTemplate")
+    RestTemplate paymentTemplate;
+
+    @Autowired
+    TurnstileVerifier turnstileVerifier;
+
+    @Autowired
+    ImportPaymentGateway importPaymentGateway;
+
+    @Autowired
+    TmdbApiService tmdbApiService;
+
+    @Autowired
+    SimpleJikanApiService simpleJikanApiService;
 
     @Test
     @DisplayName("세 빈은 서로 다른 인스턴스다")
@@ -83,6 +100,7 @@ class RestTemplateWiringTest {
     @DisplayName("수집 서비스 둘은 기존 restTemplate 을 주입받는다")
     void 수집은_기존_빈을_받는다() {
         assertThat(ReflectionTestUtils.getField(tmdbApiService, "restTemplate")).isSameAs(collectorTemplate);
-        assertThat(ReflectionTestUtils.getField(simpleJikanApiService, "restTemplate")).isSameAs(collectorTemplate);
+        assertThat(ReflectionTestUtils.getField(simpleJikanApiService, "restTemplate"))
+                .isSameAs(collectorTemplate);
     }
 }

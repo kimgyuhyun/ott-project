@@ -1,5 +1,17 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.entity.MembershipPlan;
@@ -18,6 +30,15 @@ import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -39,28 +60,6 @@ import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willAnswer;
-import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 /**
  * 환불의 이중 실행 방어 검증 (실제 PostgreSQL, 실제 커밋, 실제 스레드 2개)
@@ -93,12 +92,13 @@ import static org.mockito.Mockito.verify;
 @Import({JpaSliceTestSupport.class, PaymentCommandService.class, PaymentReconciliationService.class})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        // 엔티티 기준으로 스키마를 만든다. IdempotencyKey.keyValue 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            // 엔티티 기준으로 스키마를 만든다. IdempotencyKey.keyValue 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 @Transactional(propagation = Propagation.NOT_SUPPORTED) // @DataJpaTest 의 감싸는 트랜잭션을 끈다
 class RefundIdempotencyTest {
 
@@ -187,8 +187,8 @@ class RefundIdempotencyTest {
         userRepository.deleteAll();
 
         User user = userRepository.save(User.createLocalUser("refund@example.com", "encoded", "테스터"));
-        MembershipPlan plan = planRepository.save(
-                MembershipPlan.createBasicPlan("Basic", "기본", new Money(PRICE, "KRW"), 1));
+        MembershipPlan plan =
+                planRepository.save(MembershipPlan.createBasicPlan("Basic", "기본", new Money(PRICE, "KRW"), 1));
         userId = user.getId();
 
         LocalDateTime now = LocalDateTime.now();
@@ -322,7 +322,8 @@ class RefundIdempotencyTest {
     @Test
     @DisplayName("환불이 끝난 뒤 같은 결제를 다시 환불하면 400 - 기존 동작을 바꾸지 않는다")
     void sequentialRefundIsRejected() {
-        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any())).willReturn(0);
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any()))
+                .willReturn(0);
 
         service.refundIfEligible(userId, paymentId);
 
@@ -336,12 +337,10 @@ class RefundIdempotencyTest {
         assertThat(refundCalls.get()).isEqualTo(1);
 
         // 환불되면 구독은 즉시 해지된다(정책) — 락 분리가 정상 흐름을 잡아먹지 않았는지 함께 본다
-        assertThat(subscriptionRepository.findAll())
-                .singleElement()
-                .satisfies(sub -> {
-                    assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
-                    assertThat(sub.isAutoRenew()).isFalse();
-                });
+        assertThat(subscriptionRepository.findAll()).singleElement().satisfies(sub -> {
+            assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
+            assertThat(sub.isAutoRenew()).isFalse();
+        });
     }
 
     /**
@@ -379,13 +378,14 @@ class RefundIdempotencyTest {
     private void failGatewayRefundOnce() {
         // setUp 이 이미 스텁해 둔 메서드라 given(mock.issueRefund(...)) 형태로 덮으면 매처를 기록하는
         // 그 호출이 기존 응답을 실행해 호출 수가 하나 늘어난다. 스터버를 앞세우는 형태여야 한다.
-        willThrow(new RuntimeException("read timed out"))
-                .given(paymentGateway).issueRefund(anyString(), anyLong());
+        willThrow(new RuntimeException("read timed out")).given(paymentGateway).issueRefund(anyString(), anyLong());
     }
 
     /** 배치는 10분 이상 지난 선점만 본다. 슬라이스에는 시간을 앞당길 수단이 없어 키를 직접 과거로 민다. */
     private IdempotencyKey backdateClaim() {
-        IdempotencyKey key = idempotencyKeyRepository.findByKeyValue("payment.refund:" + paymentId).orElseThrow();
+        IdempotencyKey key = idempotencyKeyRepository
+                .findByKeyValue("payment.refund:" + paymentId)
+                .orElseThrow();
         assertThat(key.getStatus()).isEqualTo(IdempotencyKeyStatus.CLAIMED);
         ReflectionTestUtils.setField(key, "createdAt", LocalDateTime.now().minusMinutes(30));
         return idempotencyKeyRepository.saveAndFlush(key);
@@ -394,7 +394,8 @@ class RefundIdempotencyTest {
     @Test
     @DisplayName("게이트웨이 호출이 실패해 남은 선점은, 환불이 안 나갔음이 확인되면 배치가 풀어 재환불이 가능해진다")
     void staleClaimIsReleasedWhenGatewaySaysNotRefunded() {
-        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any())).willReturn(0);
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any()))
+                .willReturn(0);
         failGatewayRefundOnce();
 
         assertThat(refundOutcome()).isEqualTo("rejected-500"); // 환불 실패
@@ -421,7 +422,8 @@ class RefundIdempotencyTest {
     @Test
     @DisplayName("환불이 실제로 나갔다면 배치는 선점을 풀지 않고 확정한다 - 결제 REFUNDED, 구독 즉시 해지")
     void staleClaimIsConfirmedWhenGatewaySaysRefunded() {
-        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any())).willReturn(0);
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any()))
+                .willReturn(0);
         failGatewayRefundOnce(); // 응답만 못 받았을 뿐 환불은 나갔던 경우
 
         assertThat(refundOutcome()).isEqualTo("rejected-500");
@@ -433,19 +435,20 @@ class RefundIdempotencyTest {
 
         // 선점은 남되 확정으로 전이된다 — 풀었다면 재환불이 열려 이중 환불이 됐을 자리다.
         assertThat(idempotencyKeyRepository.count()).isEqualTo(1);
-        assertThat(idempotencyKeyRepository.findByKeyValue("payment.refund:" + paymentId).orElseThrow().getStatus())
+        assertThat(idempotencyKeyRepository
+                        .findByKeyValue("payment.refund:" + paymentId)
+                        .orElseThrow()
+                        .getStatus())
                 .isEqualTo(IdempotencyKeyStatus.CONFIRMED);
 
         Payment refunded = paymentRepository.findById(paymentId).orElseThrow();
         assertThat(refunded.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
         assertThat(refunded.getRefundedAmount()).isEqualTo(PRICE); // 전액
 
-        assertThat(subscriptionRepository.findAll())
-                .singleElement()
-                .satisfies(sub -> {
-                    assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
-                    assertThat(sub.isAutoRenew()).isFalse();
-                });
+        assertThat(subscriptionRepository.findAll()).singleElement().satisfies(sub -> {
+            assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.CANCELED);
+            assertThat(sub.isAutoRenew()).isFalse();
+        });
 
         // 확정된 뒤에는 다시 돌아도 역조회를 하지 않는다(배치 대상은 CLAIMED 뿐이다).
         reconciliationService.reconcileStaleRefundClaims();
@@ -455,7 +458,8 @@ class RefundIdempotencyTest {
     @Test
     @DisplayName("역조회가 판정 불가면 선점을 그대로 둔다 - 해제도 확정도 하지 않는다")
     void unknownRefundStatusLeavesTheClaimUntouched() {
-        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any())).willReturn(0);
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any()))
+                .willReturn(0);
         failGatewayRefundOnce();
 
         assertThat(refundOutcome()).isEqualTo("rejected-500");
@@ -467,7 +471,9 @@ class RefundIdempotencyTest {
 
         // 모르는 것을 "안 나감"으로 읽어 풀면 이중 환불이고, "나감"으로 읽어 확정하면 나가지 않은 환불이
         // REFUNDED 로 찍힌다. 둘 다 하지 않고 다음 회차에 다시 묻는다.
-        IdempotencyKey key = idempotencyKeyRepository.findByKeyValue("payment.refund:" + paymentId).orElseThrow();
+        IdempotencyKey key = idempotencyKeyRepository
+                .findByKeyValue("payment.refund:" + paymentId)
+                .orElseThrow();
         assertThat(key.getStatus()).isEqualTo(IdempotencyKeyStatus.CLAIMED);
         assertThat(paymentRepository.findById(paymentId).orElseThrow().getStatus())
                 .isEqualTo(PaymentStatus.SUCCEEDED); // 결제 상태도 그대로
@@ -477,7 +483,8 @@ class RefundIdempotencyTest {
     @Test
     @DisplayName("배치는 10분이 지나지 않은 선점을 건드리지 않는다 - 진행 중인 정상 환불 보호")
     void freshClaimIsNotReconciled() {
-        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any())).willReturn(0);
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(userId), any()))
+                .willReturn(0);
         failGatewayRefundOnce();
 
         assertThat(refundOutcome()).isEqualTo("rejected-500"); // 방금 생긴 선점

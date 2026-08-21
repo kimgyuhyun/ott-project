@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.mybatis; // 플레이어 진행률 MyBatis 매퍼
 
 import com.ottproject.ottbackend.dto.EpisodeProgressFlushDto;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-
 import java.time.LocalDateTime;
 import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * PlayerProgressQueryMapper
@@ -27,48 +26,36 @@ import java.util.List;
 @Mapper
 public interface PlayerProgressQueryMapper {
 
-	/**
-	 * 결제 시각 이후, 4화 이상 에피소드의 누적 시청 초 합계
-	 */
-	Integer sumWatchedSecondsSincePaidEpisodes(
-		@Param("userId") Long userId,
-		@Param("since") LocalDateTime since
-	);
+    /**
+     * 결제 시각 이후, 4화 이상 에피소드의 누적 시청 초 합계
+     */
+    Integer sumWatchedSecondsSincePaidEpisodes(@Param("userId") Long userId, @Param("since") LocalDateTime since);
 
-	/**
-	 * 진행률 배치 upsert(있으면 갱신, 없으면 생성)
-	 */
-	int upsertProgressBatch(@Param("rows") List<EpisodeProgressFlushDto> rows);
+    /**
+     * 진행률 배치 upsert(있으면 갱신, 없으면 생성)
+     */
+    int upsertProgressBatch(@Param("rows") List<EpisodeProgressFlushDto> rows);
 
-	/**
-	 * 진행률 단건 병합 upsert
-	 * - null 로 넘긴 값은 기존 값을 그대로 둔다(위치·길이 중 하나만 도착한 경우).
-	 * - 위치는 항상 길이 이하로 잘라 넣는다.
-	 */
-	int mergeProgress(
-		@Param("userId") Long userId,
-		@Param("episodeId") Long episodeId,
-		@Param("positionSec") Integer positionSec,
-		@Param("durationSec") Integer durationSec,
-		@Param("updatedAt") LocalDateTime updatedAt
-	);
+    /**
+     * 진행률 단건 병합 upsert
+     * - null 로 넘긴 값은 기존 값을 그대로 둔다(위치·길이 중 하나만 도착한 경우).
+     * - 위치는 항상 길이 이하로 잘라 넣는다.
+     */
+    int mergeProgress(
+            @Param("userId") Long userId,
+            @Param("episodeId") Long episodeId,
+            @Param("positionSec") Integer positionSec,
+            @Param("durationSec") Integer durationSec,
+            @Param("updatedAt") LocalDateTime updatedAt);
 
-	/**
-	 * 최근본 목록 숨김 여부 일괄 변경(시청 기록 자체는 남긴다)
-	 */
-	int updateHiddenInRecent(
-		@Param("userId") Long userId,
-		@Param("episodeIds") List<Long> episodeIds,
-		@Param("hidden") boolean hidden
-	);
+    /**
+     * 최근본 목록 숨김 여부 일괄 변경(시청 기록 자체는 남긴다)
+     */
+    int updateHiddenInRecent(
+            @Param("userId") Long userId, @Param("episodeIds") List<Long> episodeIds, @Param("hidden") boolean hidden);
 
-	/**
-	 * 진행률 일괄 삭제(정주행 목록에서 완전 삭제)
-	 */
-	int deleteProgressByUserAndEpisodes(
-		@Param("userId") Long userId,
-		@Param("episodeIds") List<Long> episodeIds
-	);
+    /**
+     * 진행률 일괄 삭제(정주행 목록에서 완전 삭제)
+     */
+    int deleteProgressByUserAndEpisodes(@Param("userId") Long userId, @Param("episodeIds") List<Long> episodeIds);
 }
-
-

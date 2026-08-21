@@ -11,7 +11,5 @@ package com.ottproject.ottbackend.enums;
  */
 public enum SkipType { // 스킵 타입
     INTRO, // 오프닝
-    OUTRO  // 엔딩
+    OUTRO // 엔딩
 }
-
-

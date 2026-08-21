@@ -15,9 +15,9 @@ package com.ottproject.ottbackend.enums;
  * - WITHDRAW: 회원 탈퇴
  */
 public enum AuthEventType { // 인증 이벤트 유형
-    LOGIN_SUCCESS,   // 로그인 성공
-    LOGIN_FAIL,      // 로그인 실패
-    LOGOUT,          // 명시적 로그아웃
+    LOGIN_SUCCESS, // 로그인 성공
+    LOGIN_FAIL, // 로그인 실패
+    LOGOUT, // 명시적 로그아웃
     SESSION_EXPIRED, // 세션 만료(타임아웃/창 닫음 등 비명시적 종료)
-    WITHDRAW         // 회원 탈퇴
+    WITHDRAW // 회원 탈퇴
 }

@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 사용자 재생 설정 엔티티
@@ -27,7 +26,8 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class)
 public class UserSettings { // 사용자 재생 설정
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY) // PK
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY) // PK
     private Long id; // PK
 
     @OneToOne(fetch = FetchType.LAZY, optional = false) // 1:1 사용자
@@ -72,7 +72,7 @@ public class UserSettings { // 사용자 재생 설정
 
     /**
      * 기본 설정 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 사용자
      * @return 생성된 UserSettings 엔티티
      * @throws IllegalArgumentException 사용자가 null인 경우
@@ -102,7 +102,7 @@ public class UserSettings { // 사용자 재생 설정
 
     /**
      * 커스텀 설정 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 사용자
      * @param language 언어 설정 (ko|en|ja)
      * @param theme 테마 설정 (light|dark|null)
@@ -249,7 +249,6 @@ public class UserSettings { // 사용자 재생 설정
      * @return 유효한 화질 여부
      */
     private static boolean isValidQuality(String quality) {
-        return "auto".equals(quality) || "480p".equals(quality) || 
-               "720p".equals(quality) || "1080p".equals(quality);
+        return "auto".equals(quality) || "480p".equals(quality) || "720p".equals(quality) || "1080p".equals(quality);
     }
 }

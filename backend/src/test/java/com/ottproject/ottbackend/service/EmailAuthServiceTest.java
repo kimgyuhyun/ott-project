@@ -1,11 +1,21 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
 import com.ottproject.ottbackend.dto.AuthRegisterRequestDto;
 import com.ottproject.ottbackend.dto.UserResponseDto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
 import com.ottproject.ottbackend.repository.SocialAccountRepository;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,17 +30,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * EmailAuthService 단위 테스트
@@ -53,12 +52,23 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @ExtendWith(MockitoExtension.class)
 class EmailAuthServiceTest {
 
-    @Mock private UserService userService;
-    @Mock private PasswordEncoder passwordEncoder;
-    @Mock private AuthenticationManager authenticationManager;
-    @Mock private VerificationEmailService verificationEmailService;
-    @Mock private MembershipCommandService membershipCommandService;
-    @Mock private SocialAccountRepository socialAccountRepository;
+    @Mock
+    private UserService userService;
+
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private AuthenticationManager authenticationManager;
+
+    @Mock
+    private VerificationEmailService verificationEmailService;
+
+    @Mock
+    private MembershipCommandService membershipCommandService;
+
+    @Mock
+    private SocialAccountRepository socialAccountRepository;
 
     @InjectMocks
     private EmailAuthService service;
@@ -149,8 +159,7 @@ class EmailAuthServiceTest {
         given(verificationEmailService.isEmailVerified("user@test.com")).willReturn(true);
         given(userService.saveUser(any(User.class))).willThrow(new RuntimeException("db down"));
 
-        assertThatThrownBy(() -> service.register(registerReq()))
-                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> service.register(registerReq())).isInstanceOf(RuntimeException.class);
         verify(verificationEmailService, never()).consumeVerification(any());
     }
 

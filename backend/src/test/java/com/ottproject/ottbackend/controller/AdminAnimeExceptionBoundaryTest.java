@@ -1,5 +1,14 @@
 package com.ottproject.ottbackend.controller;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.ottproject.ottbackend.exception.GlobalExceptionHandler;
 import com.ottproject.ottbackend.service.AnimeCurationService;
 import com.ottproject.ottbackend.service.AnimeEnhancementService;
@@ -13,15 +22,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 관리자 동기화 API 의 예외 → 응답 경계 테스트
@@ -37,11 +37,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 class AdminAnimeExceptionBoundaryTest {
 
-    @Mock private SimpleAnimeDataCollectorService collectorService;
-    @Mock private AnimeEnhancementService animeEnhancementService;
-    @Mock private AnimeCurationService animeCurationService;
+    @Mock
+    private SimpleAnimeDataCollectorService collectorService;
 
-    @InjectMocks private AdminAnimeController controller;
+    @Mock
+    private AnimeEnhancementService animeEnhancementService;
+
+    @Mock
+    private AnimeCurationService animeCurationService;
+
+    @InjectMocks
+    private AdminAnimeController controller;
 
     private MockMvc mvc;
 

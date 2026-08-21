@@ -2,11 +2,10 @@ package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.NotificationType;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 알림 엔티티
@@ -22,9 +21,9 @@ import java.time.LocalDateTime;
  * - isRead/createdAt: 읽음 상태/생성 시각
  */
 @Entity
-@Table(name = "notifications", indexes = {
-    @Index(name = "idx_notifications_user_unread", columnList = "user_id, is_read, created_at")
-})
+@Table(
+        name = "notifications",
+        indexes = {@Index(name = "idx_notifications_user_unread", columnList = "user_id, is_read, created_at")})
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -63,7 +62,7 @@ public class Notification {
 
     /**
      * 에피소드 업데이트 알림 생성
-     * 
+     *
      * @param user 알림 받을 사용자
      * @param animeTitle 애니메이션 제목
      * @param episodeNumber 에피소드 번호
@@ -73,7 +72,7 @@ public class Notification {
      */
     public static Notification createEpisodeUpdateNotification(
             User user, String animeTitle, int episodeNumber, Long animeId, Long episodeId) {
-        
+
         Notification notification = new Notification();
         notification.user = user;
         notification.type = NotificationType.EPISODE_UPDATE;
@@ -83,17 +82,16 @@ public class Notification {
         // 이 키가 빠져 있던 동안 에피소드 알림은 중복 검사가 한 번도 걸리지 않았다.
         // 값 뒤에 항상 쉼표가 오도록 마지막에 두지 않는다 — 검사 쿼리가 경계로 쉼표/닫는 중괄호를 본다.
         notification.data = String.format(
-            "{\"contentId\":%d,\"animeId\":%d,\"episodeId\":%d,\"animeTitle\":\"%s\",\"episodeNumber\":%d}",
-            episodeId, animeId, episodeId, animeTitle, episodeNumber
-        );
+                "{\"contentId\":%d,\"animeId\":%d,\"episodeId\":%d,\"animeTitle\":\"%s\",\"episodeNumber\":%d}",
+                episodeId, animeId, episodeId, animeTitle, episodeNumber);
         notification.isRead = false;
-        
+
         return notification;
     }
 
     /**
      * 댓글 활동 알림 생성
-     * 
+     *
      * @param user 알림 받을 사용자
      * @param actorName 활동한 사용자 이름
      * @param activityType 활동 타입 (COMMENT_LIKE, COMMENT_REPLY)
@@ -105,13 +103,19 @@ public class Notification {
      * @return 생성된 Notification 엔티티
      */
     public static Notification createCommentActivityNotification(
-            User user, String actorName, String activityType, String contentType, 
-            Long contentId, Long animeId, Long episodeId, String commentContent) {
-        
+            User user,
+            String actorName,
+            String activityType,
+            String contentType,
+            Long contentId,
+            Long animeId,
+            Long episodeId,
+            String commentContent) {
+
         Notification notification = new Notification();
         notification.user = user;
         notification.type = NotificationType.COMMENT_ACTIVITY;
-        
+
         // 제목과 내용 설정
         if ("COMMENT_LIKE".equals(activityType)) {
             notification.title = "좋아요 알림";
@@ -120,7 +124,7 @@ public class Notification {
             notification.title = "댓글 알림";
             notification.content = String.format("%s님이 댓글을 달았습니다.", actorName);
         }
-        
+
         // 메타데이터 구성
         StringBuilder dataBuilder = new StringBuilder();
         dataBuilder.append("{");
@@ -128,19 +132,22 @@ public class Notification {
         dataBuilder.append("\"contentType\":\"").append(contentType).append("\",");
         dataBuilder.append("\"contentId\":").append(contentId).append(",");
         dataBuilder.append("\"animeId\":").append(animeId);
-        
+
         if (episodeId != null) {
             dataBuilder.append(",\"episodeId\":").append(episodeId);
         }
-        
+
         if (commentContent != null) {
-            dataBuilder.append(",\"commentContent\":\"").append(commentContent.replace("\"", "\\\"")).append("\"");
+            dataBuilder
+                    .append(",\"commentContent\":\"")
+                    .append(commentContent.replace("\"", "\\\""))
+                    .append("\"");
         }
-        
+
         dataBuilder.append("}");
         notification.data = dataBuilder.toString();
         notification.isRead = false;
-        
+
         return notification;
     }
 
@@ -155,7 +162,7 @@ public class Notification {
 
     /**
      * 메타데이터에서 특정 값 추출
-     * 
+     *
      * @param key 추출할 키
      * @return 추출된 값 (문자열)
      */
@@ -163,29 +170,29 @@ public class Notification {
         if (data == null || data.trim().isEmpty()) {
             return null;
         }
-        
+
         // 간단한 JSON 파싱 (실제로는 Jackson ObjectMapper 사용 권장)
         String pattern = "\"" + key + "\":";
         int startIndex = data.indexOf(pattern);
         if (startIndex == -1) {
             return null;
         }
-        
+
         startIndex += pattern.length();
         int endIndex = data.indexOf(",", startIndex);
         if (endIndex == -1) {
             endIndex = data.indexOf("}", startIndex);
         }
-        
+
         if (endIndex == -1) {
             return null;
         }
-        
+
         String value = data.substring(startIndex, endIndex).trim();
         if (value.startsWith("\"") && value.endsWith("\"")) {
             return value.substring(1, value.length() - 1);
         }
-        
+
         return value;
     }
 }

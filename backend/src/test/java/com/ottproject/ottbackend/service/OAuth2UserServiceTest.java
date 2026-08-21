@@ -1,8 +1,14 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.repository.SocialAccountRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,13 +19,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * OAuth2UserService 단위 테스트
@@ -37,6 +36,7 @@ class OAuth2UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
     @Mock
     private SocialAccountRepository socialAccountRepository;
 

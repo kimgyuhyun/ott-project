@@ -1,5 +1,19 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.endsWith;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,21 +32,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.endsWith;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 /**
  * ImportPaymentGateway 웹훅 검증/결제 재검증 테스트
@@ -57,7 +56,8 @@ class ImportPaymentGatewayTest {
     private static final long EXPECTED_AMOUNT = 9900L;
     private static final long IAMPORT_NOW = 1_700_000_000L; // 아임포트가 응답에 실어 주는 서버 시각(epoch)
 
-    @Mock private RestTemplate rest;
+    @Mock
+    private RestTemplate rest;
 
     private ImportPaymentGateway gateway;
 
@@ -83,10 +83,9 @@ class ImportPaymentGatewayTest {
      * 잔여 수명은 expiredAt - now 로 재므로 두 값을 함께 준다.
      */
     private static Object newTokenResponse(String accessToken, long now, long expiredAt) throws Exception {
-        Class<?> tokenResponseType = Class.forName(
-                "com.ottproject.ottbackend.service.ImportPaymentGateway$TokenResponse");
-        Class<?> tokenType = Class.forName(
-                "com.ottproject.ottbackend.service.ImportPaymentGateway$Token");
+        Class<?> tokenResponseType =
+                Class.forName("com.ottproject.ottbackend.service.ImportPaymentGateway$TokenResponse");
+        Class<?> tokenType = Class.forName("com.ottproject.ottbackend.service.ImportPaymentGateway$Token");
 
         Constructor<?> tokenCtor = tokenType.getDeclaredConstructor();
         tokenCtor.setAccessible(true);
@@ -135,8 +134,8 @@ class ImportPaymentGatewayTest {
     }
 
     private void verifyTokenIssuedTimes(int expected) {
-        verify(rest, times(expected)).exchange(
-                endsWith("/users/getToken"), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
+        verify(rest, times(expected))
+                .exchange(endsWith("/users/getToken"), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
     }
 
     private Map<String, Object> paidPayment(long amount, String merchantUid) {
@@ -152,7 +151,8 @@ class ImportPaymentGatewayTest {
         void acceptsMatchingPaidPayment() throws Exception {
             givenIamportResponds(paidPayment(EXPECTED_AMOUNT, MERCHANT_UID));
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isTrue();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isTrue();
         }
 
         @Test
@@ -160,7 +160,8 @@ class ImportPaymentGatewayTest {
         void rejectsUnderpaidAmount() throws Exception {
             givenIamportResponds(paidPayment(1L, MERCHANT_UID));
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isFalse();
         }
 
         @Test
@@ -168,16 +169,17 @@ class ImportPaymentGatewayTest {
         void rejectsAmountMismatchEvenIfHigher() throws Exception {
             givenIamportResponds(paidPayment(EXPECTED_AMOUNT + 1, MERCHANT_UID));
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isFalse();
         }
 
         @Test
         @DisplayName("아직 결제되지 않은 건은 거부한다")
         void rejectsUnpaidStatus() throws Exception {
-            givenIamportResponds(Map.of(
-                    "status", "ready", "amount", EXPECTED_AMOUNT, "merchant_uid", MERCHANT_UID));
+            givenIamportResponds(Map.of("status", "ready", "amount", EXPECTED_AMOUNT, "merchant_uid", MERCHANT_UID));
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isFalse();
         }
 
         @Test
@@ -185,7 +187,8 @@ class ImportPaymentGatewayTest {
         void rejectsMerchantUidMismatch() throws Exception {
             givenIamportResponds(paidPayment(EXPECTED_AMOUNT, "order_someone_else"));
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isFalse();
         }
 
         @Test
@@ -201,7 +204,8 @@ class ImportPaymentGatewayTest {
                         return ResponseEntity.ok(Map.of()); // response 키 없음
                     });
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isFalse();
         }
     }
 
@@ -232,7 +236,8 @@ class ImportPaymentGatewayTest {
         void fallsBackToMerchantUidLookup() throws Exception {
             givenSingleLookupFailsAndFindReturns(paidPayment(EXPECTED_AMOUNT, MERCHANT_UID));
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isTrue();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isTrue();
         }
 
         @Test
@@ -240,27 +245,35 @@ class ImportPaymentGatewayTest {
         void fallbackStillChecksAmount() throws Exception {
             givenSingleLookupFailsAndFindReturns(paidPayment(1L, MERCHANT_UID));
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isFalse();
         }
 
         @Test
         @DisplayName("폴백 경로에서 imp_uid 가 다르면 거부한다 - 남의 결제를 가져다 붙이는 위조 방어")
         void fallbackRejectsImpUidMismatch() throws Exception {
-            givenSingleLookupFailsAndFindReturns(
-                    Map.of("status", "paid", "amount", EXPECTED_AMOUNT,
-                            "merchant_uid", MERCHANT_UID, "imp_uid", "imp_someone_else"));
+            givenSingleLookupFailsAndFindReturns(Map.of(
+                    "status",
+                    "paid",
+                    "amount",
+                    EXPECTED_AMOUNT,
+                    "merchant_uid",
+                    MERCHANT_UID,
+                    "imp_uid",
+                    "imp_someone_else"));
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isFalse();
         }
 
         @Test
         @DisplayName("폴백 경로에서도 결제 완료가 아니면 거부한다")
         void fallbackRejectsUnpaidStatus() throws Exception {
-            givenSingleLookupFailsAndFindReturns(
-                    Map.of("status", "failed", "amount", EXPECTED_AMOUNT,
-                            "merchant_uid", MERCHANT_UID, "imp_uid", IMP_UID));
+            givenSingleLookupFailsAndFindReturns(Map.of(
+                    "status", "failed", "amount", EXPECTED_AMOUNT, "merchant_uid", MERCHANT_UID, "imp_uid", IMP_UID));
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isFalse();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isFalse();
         }
     }
 
@@ -275,8 +288,15 @@ class ImportPaymentGatewayTest {
         @Test
         @DisplayName("paid 는 PAID 로 읽고 imp_uid/금액/영수증을 함께 싣는다")
         void mapsPaid() throws Exception {
-            givenIamportResponds(Map.of("status", "paid", "amount", EXPECTED_AMOUNT,
-                    "imp_uid", IMP_UID, "receipt_url", "https://receipt.test/1"));
+            givenIamportResponds(Map.of(
+                    "status",
+                    "paid",
+                    "amount",
+                    EXPECTED_AMOUNT,
+                    "imp_uid",
+                    IMP_UID,
+                    "receipt_url",
+                    "https://receipt.test/1"));
 
             PaymentGateway.ReconcileResult r = gateway.findPaymentBySessionId(MERCHANT_UID);
 
@@ -362,7 +382,8 @@ class ImportPaymentGatewayTest {
         }
 
         private PaymentGateway.ChargeResult charge() {
-            return gateway.chargeWithSavedMethod("cust_1", "billing_1", "rebill_10_20260808_1_100", EXPECTED_AMOUNT, "KRW", "Subscription renewal");
+            return gateway.chargeWithSavedMethod(
+                    "cust_1", "billing_1", "rebill_10_20260808_1_100", EXPECTED_AMOUNT, "KRW", "Subscription renewal");
         }
 
         /**
@@ -383,8 +404,8 @@ class ImportPaymentGatewayTest {
         @Test
         @DisplayName("code 가 0 이어도 status 가 paid 가 아니면 ChargeException 을 던진다")
         void throwsWhenStatusIsNotPaid() throws Exception {
-            givenAgainResponds("{\"code\":0,\"message\":null,"
-                    + "\"response\":{\"status\":\"failed\",\"imp_uid\":\"imp_1\"}}");
+            givenAgainResponds(
+                    "{\"code\":0,\"message\":null," + "\"response\":{\"status\":\"failed\",\"imp_uid\":\"imp_1\"}}");
 
             assertThatThrownBy(this::charge).isInstanceOf(PaymentGateway.ChargeException.class);
         }
@@ -400,8 +421,8 @@ class ImportPaymentGatewayTest {
         @Test
         @DisplayName("정상 응답이면 ChargeResult 를 반환한다")
         void returnsResultOnSuccess() throws Exception {
-            givenAgainResponds("{\"code\":0,\"message\":null,\"response\":{\"status\":\"paid\","
-                    + "\"imp_uid\":\"" + IMP_UID + "\",\"receipt_url\":\"https://receipt.test/1\"}}");
+            givenAgainResponds("{\"code\":0,\"message\":null,\"response\":{\"status\":\"paid\"," + "\"imp_uid\":\""
+                    + IMP_UID + "\",\"receipt_url\":\"https://receipt.test/1\"}}");
 
             PaymentGateway.ChargeResult result = charge();
 
@@ -421,7 +442,8 @@ class ImportPaymentGatewayTest {
         @Test
         @DisplayName("필수 필드가 모두 있고 상태값이 유효하면 통과시킨다")
         void acceptsWellFormedWebhook() {
-            assertThat(gateway.verifyWebhookBasicValidation(VALID_BODY, Map.of())).isTrue();
+            assertThat(gateway.verifyWebhookBasicValidation(VALID_BODY, Map.of()))
+                    .isTrue();
         }
 
         @Test
@@ -434,23 +456,25 @@ class ImportPaymentGatewayTest {
         @Test
         @DisplayName("JSON 이 아니면 거부한다 - 파싱 실패가 예외로 새어나가면 안 된다")
         void rejectsMalformedJson() {
-            assertThat(gateway.verifyWebhookBasicValidation("not json at all", Map.of())).isFalse();
+            assertThat(gateway.verifyWebhookBasicValidation("not json at all", Map.of()))
+                    .isFalse();
         }
 
         @Test
         @DisplayName("imp_uid 나 merchant_uid 가 빠지면 거부한다")
         void rejectsMissingIdentifiers() {
             assertThat(gateway.verifyWebhookBasicValidation(
-                    "{\"merchant_uid\":\"order_1\",\"status\":\"paid\"}", Map.of())).isFalse();
-            assertThat(gateway.verifyWebhookBasicValidation(
-                    "{\"imp_uid\":\"imp_1\",\"status\":\"paid\"}", Map.of())).isFalse();
+                            "{\"merchant_uid\":\"order_1\",\"status\":\"paid\"}", Map.of()))
+                    .isFalse();
+            assertThat(gateway.verifyWebhookBasicValidation("{\"imp_uid\":\"imp_1\",\"status\":\"paid\"}", Map.of()))
+                    .isFalse();
         }
 
         @Test
         @DisplayName("상태값이 비어 있으면 거부한다")
         void rejectsBlankStatus() {
             assertThat(gateway.verifyWebhookBasicValidation(
-                    "{\"imp_uid\":\"imp_1\",\"merchant_uid\":\"order_1\",\"status\":\"  \"}", Map.of()))
+                            "{\"imp_uid\":\"imp_1\",\"merchant_uid\":\"order_1\",\"status\":\"  \"}", Map.of()))
                     .isFalse();
         }
 
@@ -458,16 +482,16 @@ class ImportPaymentGatewayTest {
         @DisplayName("아임포트가 쓰지 않는 상태값은 거부한다")
         void rejectsUnknownStatus() {
             assertThat(gateway.verifyWebhookBasicValidation(
-                    "{\"imp_uid\":\"imp_1\",\"merchant_uid\":\"order_1\",\"status\":\"succeeded\"}", Map.of()))
+                            "{\"imp_uid\":\"imp_1\",\"merchant_uid\":\"order_1\",\"status\":\"succeeded\"}", Map.of()))
                     .isFalse();
         }
 
         @Test
         @DisplayName("아임포트가 쓰는 네 가지 상태값을 모두 받는다")
         void acceptsAllIamportStatuses() {
-            for (String status : new String[]{"ready", "paid", "cancelled", "failed"}) {
-                String body = String.format(
-                        "{\"imp_uid\":\"imp_1\",\"merchant_uid\":\"order_1\",\"status\":\"%s\"}", status);
+            for (String status : new String[] {"ready", "paid", "cancelled", "failed"}) {
+                String body =
+                        String.format("{\"imp_uid\":\"imp_1\",\"merchant_uid\":\"order_1\",\"status\":\"%s\"}", status);
                 assertThat(gateway.verifyWebhookBasicValidation(body, Map.of()))
                         .as("상태값 %s", status)
                         .isTrue();
@@ -495,8 +519,8 @@ class ImportPaymentGatewayTest {
             gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT);
 
             verifyTokenIssuedTimes(1);
-            verify(rest, times(3)).exchange(
-                    contains("/payments/"), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
+            verify(rest, times(3))
+                    .exchange(contains("/payments/"), any(HttpMethod.class), any(HttpEntity.class), any(Class.class));
         }
 
         @Test
@@ -534,9 +558,10 @@ class ImportPaymentGatewayTest {
                         return ResponseEntity.ok(Map.of("response", paidPayment(EXPECTED_AMOUNT, MERCHANT_UID)));
                     });
 
-            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT)).isTrue();
+            assertThat(gateway.verifyPayment(IMP_UID, MERCHANT_UID, EXPECTED_AMOUNT))
+                    .isTrue();
             assertThat(tokenIssues.get()).isEqualTo(2); // 최초 1회 + 401 후 재발급 1회
-            assertThat(lookups.get()).isEqualTo(2);     // 재시도는 정확히 한 번
+            assertThat(lookups.get()).isEqualTo(2); // 재시도는 정확히 한 번
         }
 
         /**
@@ -558,7 +583,12 @@ class ImportPaymentGatewayTest {
                     });
 
             assertThatThrownBy(() -> gateway.chargeWithSavedMethod(
-                    "cust_1", "billing_1", "rebill_10_20260808_1_100", EXPECTED_AMOUNT, "KRW", "Subscription renewal"))
+                            "cust_1",
+                            "billing_1",
+                            "rebill_10_20260808_1_100",
+                            EXPECTED_AMOUNT,
+                            "KRW",
+                            "Subscription renewal"))
                     .isInstanceOf(PaymentGateway.ChargeException.class);
 
             assertThat(charges.get()).isEqualTo(1); // 청구는 정확히 한 번만 나갔다
@@ -590,7 +620,8 @@ class ImportPaymentGatewayTest {
         void devProfileBypassesValidation() {
             System.setProperty("spring.profiles.active", "dev");
 
-            assertThat(gateway.verifyWebhookBasicValidation("garbage", Map.of())).isTrue();
+            assertThat(gateway.verifyWebhookBasicValidation("garbage", Map.of()))
+                    .isTrue();
         }
 
         /**
@@ -601,7 +632,8 @@ class ImportPaymentGatewayTest {
         void prodProfileDoesNotBypass() {
             System.setProperty("spring.profiles.active", "prod");
 
-            assertThat(gateway.verifyWebhookBasicValidation("garbage", Map.of())).isFalse();
+            assertThat(gateway.verifyWebhookBasicValidation("garbage", Map.of()))
+                    .isFalse();
         }
 
         @Test

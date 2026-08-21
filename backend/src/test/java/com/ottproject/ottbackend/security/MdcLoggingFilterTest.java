@@ -1,5 +1,8 @@
 package com.ottproject.ottbackend.security;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -7,9 +10,6 @@ import org.slf4j.MDC;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * MdcLoggingFilter 단위 테스트
@@ -57,10 +57,11 @@ class MdcLoggingFilterTest {
     void idSurvivesWhenTheHandlerThrows() {
         MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/payments/checkout");
         MockHttpServletResponse res = new MockHttpServletResponse();
-        FilterChain boom = (rq, rs) -> { throw new IllegalStateException("handler failed"); };
+        FilterChain boom = (rq, rs) -> {
+            throw new IllegalStateException("handler failed");
+        };
 
-        assertThatThrownBy(() -> filter.doFilter(req, res, boom))
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> filter.doFilter(req, res, boom)).isInstanceOf(IllegalStateException.class);
 
         assertThat(res.getHeader(MdcLoggingFilter.REQUEST_ID_HEADER)).isNotBlank();
     }
@@ -68,8 +69,8 @@ class MdcLoggingFilterTest {
     @Test
     @DisplayName("요청이 끝나면 MDC 를 비운다 - 스레드 재사용 시 남의 ID 가 새지 않는다")
     void mdcIsClearedAfterTheRequest() throws Exception {
-        filter.doFilter(new MockHttpServletRequest("GET", "/api/anime"),
-                new MockHttpServletResponse(), new MockFilterChain());
+        filter.doFilter(
+                new MockHttpServletRequest("GET", "/api/anime"), new MockHttpServletResponse(), new MockFilterChain());
 
         assertThat(MDC.get("requestId")).isNull();
         assertThat(MDC.get("clientIp")).isNull();

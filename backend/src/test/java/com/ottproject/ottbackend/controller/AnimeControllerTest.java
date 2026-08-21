@@ -1,5 +1,11 @@
 package com.ottproject.ottbackend.controller;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.dto.AnimeDetailDto;
 import com.ottproject.ottbackend.service.AnimeCacheService;
 import com.ottproject.ottbackend.service.FavoriteAnimeService;
@@ -12,12 +18,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-
 /**
  * AnimeController.detail 단위 테스트
  *
@@ -29,12 +29,20 @@ import static org.mockito.Mockito.verify;
 @ExtendWith(MockitoExtension.class)
 class AnimeControllerTest {
 
-    @Mock private SecurityUtil securityUtil;
-    @Mock private AnimeCacheService animeCacheService;
-    @Mock private FavoriteAnimeService favoriteAnimeService;
-    @Mock private HttpSession session;
+    @Mock
+    private SecurityUtil securityUtil;
 
-    @InjectMocks private AnimeController controller;
+    @Mock
+    private AnimeCacheService animeCacheService;
+
+    @Mock
+    private FavoriteAnimeService favoriteAnimeService;
+
+    @Mock
+    private HttpSession session;
+
+    @InjectMocks
+    private AnimeController controller;
 
     private static final Long ANI_ID = 1L;
 

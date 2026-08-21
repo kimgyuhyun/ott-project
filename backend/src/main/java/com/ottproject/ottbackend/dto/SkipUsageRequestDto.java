@@ -25,8 +25,8 @@ import lombok.Setter;
 public class SkipUsageRequestDto { // 스킵 사용 로깅 요청
     @NotNull
     private SkipType type; // INTRO/OUTRO
-    @NotNull @Min(0)
+
+    @NotNull
+    @Min(0)
     private Integer atSec; // 사용 시점(초)
 }
-
-

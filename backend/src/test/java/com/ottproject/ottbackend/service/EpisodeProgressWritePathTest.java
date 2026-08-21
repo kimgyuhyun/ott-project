@@ -1,5 +1,10 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.dto.EpisodeDto;
 import com.ottproject.ottbackend.dto.EpisodeProgressFlushDto;
 import com.ottproject.ottbackend.entity.Anime;
@@ -13,6 +18,11 @@ import com.ottproject.ottbackend.mybatis.PlayerQueryMapper;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import javax.sql.DataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,17 +48,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import javax.sql.DataSource;
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 /**
  * episode_progress 쓰기 경로 검증 (실제 PostgreSQL)
@@ -78,11 +77,12 @@ import static org.mockito.Mockito.verify;
 @Import({EpisodeProgressWritePathTest.MyBatisTestConfig.class, PlayerService.class, RecentAnimeService.class})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 @Transactional(propagation = Propagation.NOT_SUPPORTED) // @DataJpaTest 의 감싸는 트랜잭션을 끈다
 class EpisodeProgressWritePathTest {
 
@@ -125,20 +125,39 @@ class EpisodeProgressWritePathTest {
     private static final LocalDateTime EARLIER = LocalDateTime.of(2026, 8, 5, 12, 0, 0);
     private static final LocalDateTime LATER = LocalDateTime.of(2026, 8, 5, 12, 0, 30);
 
-    @Autowired private PlayerProgressQueryMapper progressQueryMapper;
-    @Autowired private PlayerService playerService;
-    @Autowired private RecentAnimeService recentAnimeService;
-    @Autowired private UserRepository userRepository;
-    @Autowired private AnimeRepository animeRepository;
-    @Autowired private EpisodeRepository episodeRepository;
-    @Autowired private JdbcTemplate jdbc;
+    @Autowired
+    private PlayerProgressQueryMapper progressQueryMapper;
+
+    @Autowired
+    private PlayerService playerService;
+
+    @Autowired
+    private RecentAnimeService recentAnimeService;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private AnimeRepository animeRepository;
+
+    @Autowired
+    private EpisodeRepository episodeRepository;
+
+    @Autowired
+    private JdbcTemplate jdbc;
 
     /** 최근본 서비스가 회차 목록을 얻는 경로. 이 테스트의 관심사는 진행률 행이라 목으로 고정한다. */
-    @MockitoBean private EpisodeMapper episodeMapper;
+    @MockitoBean
+    private EpisodeMapper episodeMapper;
     /** 버퍼(Redis)는 슬라이스에 없다. 삭제 시 버퍼 제거를 호출하는지만 본다. */
-    @MockitoBean private ProgressBufferService progressBuffer;
-    @MockitoBean private PlaybackAuthService playbackAuthService;
-    @MockitoBean private PlayerQueryMapper playerQueryMapper;
+    @MockitoBean
+    private ProgressBufferService progressBuffer;
+
+    @MockitoBean
+    private PlaybackAuthService playbackAuthService;
+
+    @MockitoBean
+    private PlayerQueryMapper playerQueryMapper;
 
     private Long userId;
     private Long animeId;
@@ -150,7 +169,9 @@ class EpisodeProgressWritePathTest {
         // 감싸는 트랜잭션이 없어 각 테스트의 쓰기가 실제로 커밋된다. 픽스처를 매번 비운다.
         jdbc.execute("truncate table episode_progress, episodes, anime, users cascade");
 
-        userId = userRepository.save(User.createLocalUser("progress@example.com", "encoded", "시청자")).getId();
+        userId = userRepository
+                .save(User.createLocalUser("progress@example.com", "encoded", "시청자"))
+                .getId();
         Anime anime = animeRepository.save(anime("작품"));
         animeId = anime.getId();
         episodeId = episodeRepository.save(episode(anime, 1)).getId();
@@ -207,7 +228,8 @@ class EpisodeProgressWritePathTest {
         return jdbc.queryForMap(
                 "select position_sec, duration_sec, updated_at, hidden_in_recent"
                         + " from episode_progress where user_id = ? and episode_id = ?",
-                userId, episodeId);
+                userId,
+                episodeId);
     }
 
     private int progressRowCount() {
@@ -221,9 +243,8 @@ class EpisodeProgressWritePathTest {
         @Test
         @DisplayName("한 문장으로 여러 행을 새로 만든다")
         void insertsEveryRowInOneStatement() {
-            progressQueryMapper.upsertProgressBatch(List.of(
-                    bufferedRow(episodeId, 100, EARLIER),
-                    bufferedRow(otherEpisodeId, 200, EARLIER)));
+            progressQueryMapper.upsertProgressBatch(
+                    List.of(bufferedRow(episodeId, 100, EARLIER), bufferedRow(otherEpisodeId, 200, EARLIER)));
 
             assertThat(progressRowCount()).isEqualTo(2);
             assertThat(progressRow(episodeId)).containsEntry("position_sec", 100);
@@ -342,9 +363,8 @@ class EpisodeProgressWritePathTest {
         @Test
         @DisplayName("숨김은 그 작품의 회차만 표시에서 빼고 시청 기록은 남긴다")
         void hideMarksOnlyRequestedEpisodes() {
-            progressQueryMapper.upsertProgressBatch(List.of(
-                    bufferedRow(episodeId, 100, EARLIER),
-                    bufferedRow(otherEpisodeId, 200, EARLIER)));
+            progressQueryMapper.upsertProgressBatch(
+                    List.of(bufferedRow(episodeId, 100, EARLIER), bufferedRow(otherEpisodeId, 200, EARLIER)));
             given(episodeMapper.findEpisodesByAnimeId(animeId))
                     .willReturn(List.of(EpisodeDto.builder().id(episodeId).build()));
 
@@ -358,9 +378,8 @@ class EpisodeProgressWritePathTest {
         @Test
         @DisplayName("정주행 삭제는 그 작품의 회차 진행률만 지우고 버퍼도 함께 비운다")
         void deleteRemovesRowsAndEvictsBuffer() {
-            progressQueryMapper.upsertProgressBatch(List.of(
-                    bufferedRow(episodeId, 100, EARLIER),
-                    bufferedRow(otherEpisodeId, 200, EARLIER)));
+            progressQueryMapper.upsertProgressBatch(
+                    List.of(bufferedRow(episodeId, 100, EARLIER), bufferedRow(otherEpisodeId, 200, EARLIER)));
             given(episodeMapper.findEpisodesByAnimeId(animeId))
                     .willReturn(List.of(EpisodeDto.builder().id(episodeId).build()));
 

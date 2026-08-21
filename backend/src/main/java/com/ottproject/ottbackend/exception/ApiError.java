@@ -20,8 +20,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor // 기본 생성자
 @AllArgsConstructor // 모든 필드 생성자
 public class ApiError {
-	private String code; // 에러 코드
-	private String message; // 에러 메시지
+    private String code; // 에러 코드
+    private String message; // 에러 메시지
 }
-
-

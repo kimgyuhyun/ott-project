@@ -1,32 +1,32 @@
-//package com.ottproject.ottbackend.config;
+// package com.ottproject.ottbackend.config;
 //
-//import com.ottproject.ottbackend.dto.jikan.AnimeCharactersJikanDto;
-//import com.ottproject.ottbackend.entity.VoiceActor;
-//import com.ottproject.ottbackend.repository.AnimeRepository;
-//import com.ottproject.ottbackend.repository.VoiceActorRepository;
-//import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.boot.CommandLineRunner;
-//import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-//import org.springframework.core.annotation.Order;
-//import org.springframework.stereotype.Component;
-//import org.springframework.transaction.annotation.Transactional;
+// import com.ottproject.ottbackend.dto.jikan.AnimeCharactersJikanDto;
+// import com.ottproject.ottbackend.entity.VoiceActor;
+// import com.ottproject.ottbackend.repository.AnimeRepository;
+// import com.ottproject.ottbackend.repository.VoiceActorRepository;
+// import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
+// import lombok.RequiredArgsConstructor;
+// import lombok.extern.slf4j.Slf4j;
+// import org.springframework.boot.CommandLineRunner;
+// import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+// import org.springframework.core.annotation.Order;
+// import org.springframework.stereotype.Component;
+// import org.springframework.transaction.annotation.Transactional;
 //
-//import java.util.Set;
-//import java.util.stream.Collectors;
+// import java.util.Set;
+// import java.util.stream.Collectors;
 //
-///**
+/// **
 // * 애니-성우 조인 전용 러너 // 지금 사용하지않음
 // * - anime_voice_actors upsert만 수행
 // * - LAZY 컬렉션 접근 없이 성우 ID 집계로 처리
 // */
-//@Component
-//@RequiredArgsConstructor
-//@Slf4j
-//@ConditionalOnProperty(name = "anime.join.anime-voice.enabled", havingValue = "true", matchIfMissing = false)
-//@Order(62)
-//public class AnimeVoiceJoinRunner implements CommandLineRunner {
+// @Component
+// @RequiredArgsConstructor
+// @Slf4j
+// @ConditionalOnProperty(name = "anime.join.anime-voice.enabled", havingValue = "true", matchIfMissing = false)
+// @Order(62)
+// public class AnimeVoiceJoinRunner implements CommandLineRunner {
 //
 //    private final SimpleAnimeDataCollectorService collectorService;
 //    private final AnimeRepository animeRepository;
@@ -71,6 +71,6 @@
 //
 //        log.info("🎉 애니-성우 조인 upsert 완료: {}건", processed);
 //    }
-//}
+// }
 //
 //

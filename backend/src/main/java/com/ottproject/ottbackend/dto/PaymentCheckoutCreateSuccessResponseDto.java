@@ -10,8 +10,8 @@ package com.ottproject.ottbackend.dto;
  * - redirectUrl/paymentId
  */
 public class PaymentCheckoutCreateSuccessResponseDto { // 체크아웃 생성 성공 응답 DTO 클래스 시작
-	public String redirectUrl; // 결제창 리다이렉트 URL
-	public Long paymentId; // 내부 결제 레코드 ID(상태 추적용)
+    public String redirectUrl; // 결제창 리다이렉트 URL
+    public Long paymentId; // 내부 결제 레코드 ID(상태 추적용)
     public String providerSessionId; // 게이트웨이 세션/merchant_uid
     public Long amount; // 결제 금액(검증용)
     public String pg; // 프론트 SDK용 PortOne PG 코드(kakaopay.TCSUBSCRIP|kakaopay.TC0ONETIME|tosspayments|nice)
@@ -19,5 +19,3 @@ public class PaymentCheckoutCreateSuccessResponseDto { // 체크아웃 생성 �
     // 이 값이 있으면 결제창이 결제와 동시에 빌링키를 발급해 게이트웨이 쪽에 이 값으로 묶어 보관한다.
     public String customerUid;
 }
-
-

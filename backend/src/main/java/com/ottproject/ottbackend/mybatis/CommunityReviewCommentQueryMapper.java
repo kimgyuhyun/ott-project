@@ -2,10 +2,9 @@ package com.ottproject.ottbackend.mybatis;
 
 import com.ottproject.ottbackend.dto.ReviewCommentsResponseDto;
 import com.ottproject.ottbackend.dto.ReviewResponseDto;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-
-import java.util.List;
 
 /**
  * CommunityReviewCommentQueryMapper
@@ -29,7 +28,7 @@ public interface CommunityReviewCommentQueryMapper {
             @Param("sort") String sort, // 정렬키: latest/likes/rating
             @Param("limit") int limit, // 페이지 크기
             @Param("offset") int offset // 오프셋
-    );
+            );
 
     // 리뷰 목록 총 개수(페이지네이션용)
     long countReviewsByAniId(@Param("aniId") Long aniId);
@@ -38,7 +37,7 @@ public interface CommunityReviewCommentQueryMapper {
     ReviewResponseDto findReviewById(
             @Param("reviewId") Long reviewId, // 리뷰 ID
             @Param("currentUserId") Long currentUserId // 현재 사용자 ID
-    );
+            );
 
     // 댓글 목록: 특정 리뷰(reviewId) 기준(최상위 댓글만)
     List<ReviewCommentsResponseDto> findCommentsByReviewId(
@@ -47,7 +46,7 @@ public interface CommunityReviewCommentQueryMapper {
             @Param("sort") String sort, // 정렬 latest|best
             @Param("limit") int limit, // 페이지 크기
             @Param("offset") int offset // 오프셋
-    );
+            );
 
     // 댓글 총 개수
     long countCommentsByReviewId(@Param("reviewId") Long reviewId);
@@ -56,7 +55,5 @@ public interface CommunityReviewCommentQueryMapper {
     List<ReviewCommentsResponseDto> findRepliesByParentId(
             @Param("parentId") Long parentId, // 부모 댓글 ID
             @Param("currentUserId") Long currentUserId // 현재 사용자 ID
-    );
+            );
 }
-
-

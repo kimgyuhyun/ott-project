@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.mybatis;
 
 import com.ottproject.ottbackend.entity.MembershipSubscription;
-import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-
 import java.time.LocalDateTime;
 import java.util.List;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 
 /**
  * MembershipSubscriptionQueryMapper
@@ -18,16 +17,14 @@ import java.util.List;
  */
 @Mapper
 public interface MembershipSubscriptionQueryMapper {
-    
+
     /**
      * 정기결제 대상 구독 조회
      * - ACTIVE/PAST_DUE 상태이면서 자동갱신 ON이고 말일 해지 예약이 아닌 구독
      * - nextBillingAt이 현재 시각 이하인 구독만 조회
      */
     List<MembershipSubscription> findSubscriptionsForBilling(
-        @Param("statuses") List<String> statuses,
-        @Param("now") LocalDateTime now
-    );
+            @Param("statuses") List<String> statuses, @Param("now") LocalDateTime now);
 
     /**
      * 플랜 변경 예약된 구독 조회
@@ -37,7 +34,5 @@ public interface MembershipSubscriptionQueryMapper {
      *   해지된 구독의 플랜을 바꾸면 안 되기 때문이다.
      */
     List<MembershipSubscription> findSubscriptionsWithScheduledPlanChanges(
-        @Param("statuses") List<String> statuses,
-        @Param("now") LocalDateTime now
-    );
+            @Param("statuses") List<String> statuses, @Param("now") LocalDateTime now);
 }

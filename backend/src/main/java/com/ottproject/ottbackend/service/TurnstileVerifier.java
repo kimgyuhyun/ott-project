@@ -1,5 +1,6 @@
 package com.ottproject.ottbackend.service;
 
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -10,8 +11,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.Map;
 
 /**
  * TurnstileVerifier
@@ -66,8 +65,8 @@ public class TurnstileVerifier {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED); // siteverify 는 form 인코딩 요구
             MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
-            body.add("secret", secretKey);   // 비밀 키
-            body.add("response", token);      // 검증할 토큰
+            body.add("secret", secretKey); // 비밀 키
+            body.add("response", token); // 검증할 토큰
 
             Map<?, ?> result = rest.postForObject(VERIFY_URL, new HttpEntity<>(body, headers), Map.class);
             boolean success = result != null && Boolean.TRUE.equals(result.get("success"));

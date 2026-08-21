@@ -3,10 +3,9 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.AuthEventType;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import lombok.*;
 
 /**
  * 인증 이벤트(감사 로그) 엔티티
@@ -26,11 +25,13 @@ import java.time.ZoneId;
  * - occurredAt: 발생 시각(KST)
  */
 @Entity
-@Table(name = "auth_events", indexes = {
-        @Index(name = "idx_auth_events_occurred", columnList = "occurred_at"),
-        @Index(name = "idx_auth_events_type_occurred", columnList = "event_type, occurred_at"),
-        @Index(name = "idx_auth_events_user", columnList = "user_id, occurred_at")
-})
+@Table(
+        name = "auth_events",
+        indexes = {
+            @Index(name = "idx_auth_events_occurred", columnList = "occurred_at"),
+            @Index(name = "idx_auth_events_type_occurred", columnList = "event_type, occurred_at"),
+            @Index(name = "idx_auth_events_user", columnList = "user_id, occurred_at")
+        })
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED) // 기본 생성자
@@ -84,8 +85,15 @@ public class AuthEvent {
      * @param failReason 실패 사유(성공 시 null)
      * @return 생성된 AuthEvent 엔티티
      */
-    public static AuthEvent of(Long userId, String email, AuthEventType eventType, AuthProvider provider,
-                               String ipAddress, String userAgent, String sessionId, String failReason) {
+    public static AuthEvent of(
+            Long userId,
+            String email,
+            AuthEventType eventType,
+            AuthProvider provider,
+            String ipAddress,
+            String userAgent,
+            String sessionId,
+            String failReason) {
         AuthEvent e = new AuthEvent();
         e.userId = userId;
         e.email = email != null ? email.trim().toLowerCase() : null; // 사용자 이메일 저장 정책(소문자)과 정합성 유지

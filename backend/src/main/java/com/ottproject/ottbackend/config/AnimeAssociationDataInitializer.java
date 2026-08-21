@@ -1,18 +1,18 @@
-//package com.ottproject.ottbackend.config;
+// package com.ottproject.ottbackend.config;
 //
-//import com.ottproject.ottbackend.entity.Anime;
-//import com.ottproject.ottbackend.repository.AnimeRepository;
-//import com.ottproject.ottbackend.service.AnimeBatchProcessor;
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.boot.CommandLineRunner;
-//import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-//import org.springframework.core.annotation.Order;
-//import org.springframework.stereotype.Component;
+// import com.ottproject.ottbackend.entity.Anime;
+// import com.ottproject.ottbackend.repository.AnimeRepository;
+// import com.ottproject.ottbackend.service.AnimeBatchProcessor;
+// import lombok.RequiredArgsConstructor;
+// import lombok.extern.slf4j.Slf4j;
+// import org.springframework.boot.CommandLineRunner;
+// import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+// import org.springframework.core.annotation.Order;
+// import org.springframework.stereotype.Component;
 //
-//import java.util.List;
+// import java.util.List;
 //
-///**
+/// **
 // * 애니메이션 연관 엔티티 데이터 수집 초기화
 // *
 // * 큰 흐름
@@ -20,12 +20,12 @@
 // * - 장르, 스튜디오, 태그 데이터를 수집한다.
 // * - 감독(디렉터)는 별도 config에서 처리한다.
 // */
-//@Component
-//@RequiredArgsConstructor
-//@Slf4j
-//@ConditionalOnProperty(name = "anime.auto-sync.enabled", havingValue = "true", matchIfMissing = true)
-//@Order(2) // 두 번째로 실행 (연관 엔티티 데이터 수집)
-//public class AnimeAssociationDataInitializer implements CommandLineRunner {
+// @Component
+// @RequiredArgsConstructor
+// @Slf4j
+// @ConditionalOnProperty(name = "anime.auto-sync.enabled", havingValue = "true", matchIfMissing = true)
+// @Order(2) // 두 번째로 실행 (연관 엔티티 데이터 수집)
+// public class AnimeAssociationDataInitializer implements CommandLineRunner {
 //
 //    private final AnimeRepository animeRepository;
 //    private final AnimeBatchProcessor animeBatchProcessor;
@@ -62,4 +62,4 @@
 //            log.error("❌ 애니메이션 연관 엔티티 데이터 수집 실패", e);
 //        }
 //    }
-//}
+// }

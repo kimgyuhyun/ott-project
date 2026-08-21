@@ -13,7 +13,7 @@ package com.ottproject.ottbackend.enums;
  * - LIKE_ACTIVITY: 좋아요 관련 활동
  */
 public enum NotificationType {
-    EPISODE_UPDATE,      // 에피소드 업데이트 알림
-    COMMENT_ACTIVITY,    // 댓글 활동 알림 (댓글, 대댓글, 좋아요)
-    LIKE_ACTIVITY        // 좋아요 활동 알림
+    EPISODE_UPDATE, // 에피소드 업데이트 알림
+    COMMENT_ACTIVITY, // 댓글 활동 알림 (댓글, 대댓글, 좋아요)
+    LIKE_ACTIVITY // 좋아요 활동 알림
 }

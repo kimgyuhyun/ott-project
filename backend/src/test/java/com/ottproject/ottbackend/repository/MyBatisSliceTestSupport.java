@@ -1,12 +1,11 @@
 package com.ottproject.ottbackend.repository;
 
+import javax.sql.DataSource;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.spring.SqlSessionFactoryBean;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
-
-import javax.sql.DataSource;
 
 /**
  * MyBatis 매퍼 XML 을 실제 DB 에 실행하는 슬라이스용 설정

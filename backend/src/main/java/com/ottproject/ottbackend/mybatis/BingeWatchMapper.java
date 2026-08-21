@@ -1,10 +1,9 @@
 package com.ottproject.ottbackend.mybatis;
 
 import com.ottproject.ottbackend.dto.BingeWatchDto;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-
-import java.util.List;
 
 /**
  * 정주행 관련 MyBatis 매퍼
@@ -18,10 +17,10 @@ import java.util.List;
  */
 @Mapper
 public interface BingeWatchMapper {
-    
+
     /**
      * 사용자별 정주행 완료 작품 목록 조회
-     * 
+     *
      * @param userId 사용자 ID
      * @return 정주행 완료 작품 목록
      */

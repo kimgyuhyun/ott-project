@@ -2,6 +2,10 @@ package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.dto.UserProfileDto;
 import com.ottproject.ottbackend.service.UserProfileService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -15,11 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * SocialAuthController
@@ -60,8 +59,9 @@ public class SocialAuthController {
         Map<String, Object> response = new HashMap<>();
 
         // 인증 상태 확인 (로그인되어 있는지 체크)
-        if (authentication != null && authentication.isAuthenticated() &&
-                !"anonymousUser".equals(authentication.getName())) { // anonymousUser 는 로그인되지 않은 유저
+        if (authentication != null
+                && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getName())) { // anonymousUser 는 로그인되지 않은 유저
             // 로그인된 사용자인 경우 - 성공 응답 데이터 설정(닉네임은 DB에서)
             response.put("authenticated", true);
             response.put("authorities", authentication.getAuthorities());
@@ -69,7 +69,8 @@ public class SocialAuthController {
             response.put("message", "소셜 로그인이 완료되었습니다.");
 
             String authEmail = authentication.getName();
-            UserProfileDto dbUserOrNull = userProfileService.findProfileByEmail(authEmail).orElse(null);
+            UserProfileDto dbUserOrNull =
+                    userProfileService.findProfileByEmail(authEmail).orElse(null);
             if (dbUserOrNull != null) {
                 response.put("username", dbUserOrNull.getName());
                 response.put("email", dbUserOrNull.getEmail());
@@ -91,11 +92,13 @@ public class SocialAuthController {
             // 로그인되지 않은 사용자인 경우 - 실패 응답 데이터 설정
             response.put("authenticated", false); // 인증 상태를 false 로 설정
             response.put("message", "소셜 로그인이 필요합니다."); // 안내 메시지 설정
-            response.put("loginUrls", Map.of( // 소셜 로그인 URL들을 Map 으로 설정
-                    "google", "/login/oauth2/authorization/google", // Google 로그인 URL
-                    "kakao", "/login/oauth2/authorization/kakao", // Kakao 로그인 URL
-                    "naver", "/login/oauth2/authorization/naver" // Naver 로그인 URL
-            ));
+            response.put(
+                    "loginUrls",
+                    Map.of( // 소셜 로그인 URL들을 Map 으로 설정
+                            "google", "/login/oauth2/authorization/google", // Google 로그인 URL
+                            "kakao", "/login/oauth2/authorization/kakao", // Kakao 로그인 URL
+                            "naver", "/login/oauth2/authorization/naver" // Naver 로그인 URL
+                            ));
         }
 
         return ResponseEntity.ok(response); // 200 OK 상태코드와 함께 응답 데이터 반환
@@ -128,10 +131,10 @@ public class SocialAuthController {
                 "google", "/login/oauth2/authorization/google", // Google 로그인 URL
                 "kakao", "/login/oauth2/authorization/kakao", // Kakao 로그인 URL
                 "naver", "/login/oauth2/authorization/naver" // Naver 로그인 URL
-        );
-        
+                );
+
         response.put("loginUrls", loginUrls);
-        
+
         log.info("OAuth2 로그인 URL 응답: {}", loginUrls); // 응답 URL 로그
 
         return ResponseEntity.ok(response); // 200 OK 상태코드와 함께 응답 데이터 반환
@@ -156,15 +159,17 @@ public class SocialAuthController {
         Map<String, Object> userInfo = new HashMap<>();
 
         // 인증 상태 확인 (로그인되어 있는지 체크)
-        if (authentication != null && authentication.isAuthenticated() &&
-                !"anonymousUser".equals(authentication.getName())) { // anonymousUser 는 로그인되지 않은 유저
+        if (authentication != null
+                && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getName())) { // anonymousUser 는 로그인되지 않은 유저
             // 로그인된 사용자 정보 설정 (DB 닉네임을 최우선으로 반환)
             userInfo.put("authenticated", true);
             userInfo.put("authorities", authentication.getAuthorities());
             userInfo.put("principal", authentication.getPrincipal());
 
             String authEmail = authentication.getName();
-            UserProfileDto dbUserOrNull = userProfileService.findProfileByEmail(authEmail).orElse(null);
+            UserProfileDto dbUserOrNull =
+                    userProfileService.findProfileByEmail(authEmail).orElse(null);
             if (dbUserOrNull != null) {
                 userInfo.put("username", dbUserOrNull.getName());
                 userInfo.put("email", dbUserOrNull.getEmail());
@@ -196,7 +201,9 @@ public class SocialAuthController {
                                 attrs.put("name", u.getName());
                             }
                         });
-                    } else if (dbUserOrNull != null && dbUserOrNull.getName() != null && !dbUserOrNull.getName().isBlank()) {
+                    } else if (dbUserOrNull != null
+                            && dbUserOrNull.getName() != null
+                            && !dbUserOrNull.getName().isBlank()) {
                         attrs.put("userName", dbUserOrNull.getName());
                         attrs.put("name", dbUserOrNull.getName());
                     }
@@ -210,9 +217,10 @@ public class SocialAuthController {
                 // 신규 사용자 플래그를 attributes 에 보강 (세션/속성 어디서든 읽을 수 있게)
                 boolean isNewByAttr = Boolean.TRUE.equals(oAuth2User.getAttribute("isNewUser"));
                 try {
-                    jakarta.servlet.http.HttpSession session =
-                            ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes())
-                                    .getRequest().getSession(false);
+                    jakarta.servlet.http.HttpSession session = ((ServletRequestAttributes)
+                                    RequestContextHolder.currentRequestAttributes())
+                            .getRequest()
+                            .getSession(false);
                     Boolean isNewBySession = session != null ? (Boolean) session.getAttribute("isNewUser") : null;
                     userInfo.put("isNewUser", isNewBySession != null ? isNewBySession : isNewByAttr);
                 } catch (Exception e) {
@@ -238,7 +246,8 @@ public class SocialAuthController {
     @Operation(summary = "OAuth2 로그아웃", description = "현재 인증 컨텍스트를 초기화합니다.")
     @ApiResponse(responseCode = "200", description = "정상")
     @PostMapping("/logout") // POST 요청 처리 - /api/oauth2/logout 경로로 접근
-    public ResponseEntity<Map<String, Object>> logout(jakarta.servlet.http.HttpServletRequest request) { // HTTP 응답을 위한 ResponseEntity 반환
+    public ResponseEntity<Map<String, Object>> logout(
+            jakarta.servlet.http.HttpServletRequest request) { // HTTP 응답을 위한 ResponseEntity 반환
         log.info("OAuth2 로그아웃 요청"); // 로그 출력 - 요청 시작을 알림
 
         // 세션 무효화 및 시큐리티 컨텍스트 초기화
@@ -275,18 +284,20 @@ public class SocialAuthController {
     @ApiResponse(responseCode = "401", description = "인증 필요")
     @ApiResponse(responseCode = "400", description = "잘못된 요청")
     @PutMapping("/nickname") // PUT 요청 처리 - /api/oauth2/nickname 경로로 접근
-    public ResponseEntity<Map<String, Object>> updateNickname(@RequestBody Map<String, String> nicknameRequest) { // HTTP 응답을 위한 ResponseEntity 반환
+    public ResponseEntity<Map<String, Object>> updateNickname(
+            @RequestBody Map<String, String> nicknameRequest) { // HTTP 응답을 위한 ResponseEntity 반환
         log.info("닉네임 업데이트 요청 수신"); // 로그 출력 - 요청 시작을 알림
 
         // Spring Security 컨텍스트에서 현재 인증 정보 가져오기
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        
+
         // 응답 데이터를 담을 Map 객체 생성
         Map<String, Object> response = new HashMap<>();
 
         // 인증 상태 확인 (로그인되어 있는지 체크)
-        if (authentication == null || !authentication.isAuthenticated() ||
-                "anonymousUser".equals(authentication.getName())) { // anonymousUser 는 로그인되지 않은 유저
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getName())) { // anonymousUser 는 로그인되지 않은 유저
             response.put("success", false); // 실패 상태 설정
             response.put("message", "로그인이 필요합니다."); // 안내 메시지 설정
             return ResponseEntity.status(401).body(response); // 401 Unauthorized 상태코드와 함께 응답 데이터 반환
@@ -301,7 +312,7 @@ public class SocialAuthController {
         }
 
         newNickname = newNickname.trim(); // 공백 제거
-        
+
         // 닉네임 길이 검증 (2-20자)
         if (newNickname.length() < 2 || newNickname.length() > 20) {
             response.put("success", false); // 실패 상태 설정
@@ -341,9 +352,10 @@ public class SocialAuthController {
             // 아래 응답도 newNickname 을 그대로 쓰므로 아무 데도 영향이 없었다.
             try {
                 if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User) {
-                    jakarta.servlet.http.HttpSession session =
-                            ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes())
-                                    .getRequest().getSession(false);
+                    jakarta.servlet.http.HttpSession session = ((ServletRequestAttributes)
+                                    RequestContextHolder.currentRequestAttributes())
+                            .getRequest()
+                            .getSession(false);
                     if (session != null) {
                         session.setAttribute("isNewUser", Boolean.FALSE);
                     }

@@ -13,5 +13,3 @@ package com.ottproject.ottbackend.dto;
 public class MembershipCancelMembershipRequestDto {
     public String idempotencyKey; // 중복 방지용 토큰(선택)
 }
-
-

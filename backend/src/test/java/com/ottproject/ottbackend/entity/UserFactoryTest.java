@@ -1,13 +1,13 @@
 package com.ottproject.ottbackend.entity;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * User 정적 팩토리 검증
@@ -117,8 +117,8 @@ class UserFactoryTest {
         @Test
         @DisplayName("소셜 계정은 비밀번호 없이 생성되고 이메일 인증 완료로 간주된다")
         void createsSocialUserWithoutPassword() {
-            User user = User.createSocialUser(
-                    "Social@Example.com", "소셜", AuthProvider.GOOGLE, "google-123", "http://img");
+            User user =
+                    User.createSocialUser("Social@Example.com", "소셜", AuthProvider.GOOGLE, "google-123", "http://img");
 
             assertThat(user.getPassword()).isNull();
             assertThat(user.isEmailVerified()).isTrue();
@@ -130,8 +130,7 @@ class UserFactoryTest {
         @Test
         @DisplayName("프로필 이미지는 선택이라 없어도 생성된다")
         void allowsNullProfileImage() {
-            User user = User.createSocialUser(
-                    "social@example.com", "소셜", AuthProvider.GOOGLE, "google-123", null);
+            User user = User.createSocialUser("social@example.com", "소셜", AuthProvider.GOOGLE, "google-123", null);
 
             assertThat(user.getProfileImage()).isNull();
         }
@@ -139,11 +138,9 @@ class UserFactoryTest {
         @Test
         @DisplayName("제공자와 제공자 ID 가 없으면 거부한다 - 소셜 계정 식별 불가")
         void rejectsMissingProviderInfo() {
-            assertThatThrownBy(() -> User.createSocialUser(
-                    "social@example.com", "소셜", null, "google-123", null))
+            assertThatThrownBy(() -> User.createSocialUser("social@example.com", "소셜", null, "google-123", null))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> User.createSocialUser(
-                    "social@example.com", "소셜", AuthProvider.GOOGLE, "  ", null))
+            assertThatThrownBy(() -> User.createSocialUser("social@example.com", "소셜", AuthProvider.GOOGLE, "  ", null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -207,8 +204,7 @@ class UserFactoryTest {
         void rejectsUnsavedUser() {
             User user = User.createLocalUser("user@example.com", "encoded-pw", "홍길동");
 
-            assertThatThrownBy(user::withdraw)
-                    .isInstanceOf(IllegalStateException.class);
+            assertThatThrownBy(user::withdraw).isInstanceOf(IllegalStateException.class);
         }
     }
 

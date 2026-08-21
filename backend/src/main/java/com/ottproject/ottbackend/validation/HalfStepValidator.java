@@ -14,11 +14,12 @@ import jakarta.validation.ConstraintValidatorContext;
  * - isValid: null 통과, 값*2가 정수인지 검사하여 0.5 단위 여부 판별
  */
 public class HalfStepValidator // HalfStep 어노테이션 검증기
-        implements ConstraintValidator<HalfStep, Double> {
+implements ConstraintValidator<HalfStep, Double> {
 
     @Override
-    public boolean isValid(Double value, // 검증 대상 값
-                           ConstraintValidatorContext context) {
+    public boolean isValid(
+            Double value, // 검증 대상 값
+            ConstraintValidatorContext context) {
         if (value == null) { // null 은 다른 제약이 막지 않는 한 허용
             return true; // 클래스 레벨 제약과 함께 동작
         }

@@ -2,11 +2,10 @@ package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.AuthProvider;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 소셜 계정 연동 엔티티
@@ -25,7 +24,7 @@ import java.time.LocalDateTime;
 @Table( // 테이블 매핑
         name = "user_social_accounts", // 테이블명
         uniqueConstraints = @UniqueConstraint(columnNames = {"provider", "provider_id"}) // (provider, provider_id) 유니크
-)
+        )
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -58,7 +57,7 @@ public class SocialAccount { // 소셜 계정 연동 엔티티
 
     /**
      * 소셜 계정 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 사용자
      * @param provider 인증 제공자
      * @param providerId 제공자별 고유 ID
@@ -91,5 +90,3 @@ public class SocialAccount { // 소셜 계정 연동 엔티티
         return socialAccount;
     }
 }
-
-

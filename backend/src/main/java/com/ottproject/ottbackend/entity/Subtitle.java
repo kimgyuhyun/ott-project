@@ -1,12 +1,11 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 자막 엔티티
@@ -58,7 +57,7 @@ public class Subtitle {
 
     /**
      * 자막 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param episode 에피소드
      * @param language 언어 코드
      * @param content 자막 내용
@@ -67,7 +66,8 @@ public class Subtitle {
      * @return 생성된 Subtitle 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static Subtitle createSubtitle(Episode episode, String language, String content, Integer startTime, Integer endTime) {
+    public static Subtitle createSubtitle(
+            Episode episode, String language, String content, Integer startTime, Integer endTime) {
         // 필수 필드 검증
         if (episode == null) {
             throw new IllegalArgumentException("에피소드는 필수입니다.");

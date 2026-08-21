@@ -1,5 +1,13 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doAnswer;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ottproject.ottbackend.entity.MembershipPlan;
@@ -15,6 +23,14 @@ import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -37,23 +53,6 @@ import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doAnswer;
 
 /**
  * 차액 결제 확정의 이중 확정 방어 검증 (실제 PostgreSQL, 실제 커밋, 실제 스레드 2개)
@@ -80,11 +79,12 @@ import static org.mockito.Mockito.doAnswer;
 @Import({JpaSliceTestSupport.class, ProrationPaymentService.class})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 @Transactional(propagation = Propagation.NOT_SUPPORTED) // @DataJpaTest 의 감싸는 트랜잭션을 끈다
 class ProrationConfirmIdempotencyTest {
 
@@ -162,10 +162,10 @@ class ProrationConfirmIdempotencyTest {
         userRepository.deleteAll();
 
         User user = userRepository.save(User.createLocalUser("proration@example.com", "encoded", "테스터"));
-        MembershipPlan basic = planRepository.save(
-                MembershipPlan.createBasicPlan("Basic", "기본", new Money(9900L, "KRW"), 1));
-        MembershipPlan premium = planRepository.save(
-                MembershipPlan.createBasicPlan("Premium", "프리미엄", new Money(14900L, "KRW"), 1));
+        MembershipPlan basic =
+                planRepository.save(MembershipPlan.createBasicPlan("Basic", "기본", new Money(9900L, "KRW"), 1));
+        MembershipPlan premium =
+                planRepository.save(MembershipPlan.createBasicPlan("Premium", "프리미엄", new Money(14900L, "KRW"), 1));
         userId = user.getId();
         targetPlanId = premium.getId();
 
@@ -191,12 +191,14 @@ class ProrationConfirmIdempotencyTest {
         // 첫 확정을 아웃박스 적재 직전에 붙잡아 둔다.
         // 이 지점은 결제 행을 잠그고 SUCCEEDED 로 바꾼 뒤, 아직 커밋하기 전이다.
         doAnswer(invocation -> {
-            if (outboxSerializations.incrementAndGet() == 1) {
-                firstReachedOutbox.countDown();
-                releaseFirst.await(10, TimeUnit.SECONDS);
-            }
-            return invocation.callRealMethod(); // 실제 직렬화는 그대로 수행
-        }).when(objectMapper).writeValueAsString(any());
+                    if (outboxSerializations.incrementAndGet() == 1) {
+                        firstReachedOutbox.countDown();
+                        releaseFirst.await(10, TimeUnit.SECONDS);
+                    }
+                    return invocation.callRealMethod(); // 실제 직렬화는 그대로 수행
+                })
+                .when(objectMapper)
+                .writeValueAsString(any());
     }
 
     private <T> T resultOrNullIfStillRunning(Future<T> future, long seconds) throws Exception {
@@ -216,8 +218,8 @@ class ProrationConfirmIdempotencyTest {
     void concurrentProrationConfirmIsProcessedOnce() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            Future<Throwable> first = pool.submit(() -> catchThrowable(
-                    () -> service.completeProrationPayment(userId, paymentId, FIRST_IMP_UID)));
+            Future<Throwable> first = pool.submit(
+                    () -> catchThrowable(() -> service.completeProrationPayment(userId, paymentId, FIRST_IMP_UID)));
             assertThat(firstReachedOutbox.await(30, TimeUnit.SECONDS)).isTrue(); // 락을 쥐고 커밋 직전까지 옴
 
             // 두 번째 확정. 별도 스레드여야 별도 커넥션/트랜잭션이 열린다.
@@ -252,9 +254,9 @@ class ProrationConfirmIdempotencyTest {
             assertThat(confirmed.getProviderPaymentId()).isEqualTo(FIRST_IMP_UID);
 
             // 플랜 변경은 실제로 일어나야 한다(락이 정상 흐름을 잡아먹지 않았는지)
-            assertThat(subscriptionRepository.findAll())
-                    .singleElement()
-                    .satisfies(sub -> assertThat(sub.getMembershipPlan().getId()).isEqualTo(targetPlanId));
+            assertThat(subscriptionRepository.findAll()).singleElement().satisfies(sub -> assertThat(
+                            sub.getMembershipPlan().getId())
+                    .isEqualTo(targetPlanId));
         } finally {
             releaseFirst.countDown(); // 실패 경로에서도 첫 확정이 매달려 있지 않게 한다
             // 단언이 먼저 깨져도 남은 스레드가 다음 테스트의 픽스처 위에 커밋하지 않도록 여기서 끝을 본다.
@@ -270,8 +272,7 @@ class ProrationConfirmIdempotencyTest {
 
         service.completeProrationPayment(userId, paymentId, FIRST_IMP_UID);
 
-        Throwable thrown = catchThrowable(
-                () -> service.completeProrationPayment(userId, paymentId, SECOND_IMP_UID));
+        Throwable thrown = catchThrowable(() -> service.completeProrationPayment(userId, paymentId, SECOND_IMP_UID));
 
         assertThat(thrown).isInstanceOf(ResponseStatusException.class);
         assertThat(((ResponseStatusException) thrown).getStatusCode().value()).isEqualTo(400);

@@ -43,8 +43,7 @@ public class SessionEventListener implements HttpSessionListener {
         Object emailObj = session.getAttribute("userEmail");
         if (emailObj instanceof String email && !email.isBlank()) {
             // 세션 소멸 컨텍스트라 IP/User-Agent 는 없음(null), 세션ID 만 남긴다
-            authEventService.record(AuthEventType.SESSION_EXPIRED, null, email,
-                    null, null, session.getId(), null);
+            authEventService.record(AuthEventType.SESSION_EXPIRED, null, email, null, null, session.getId(), null);
         }
     }
 }

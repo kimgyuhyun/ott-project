@@ -1,15 +1,13 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 리뷰 댓글 신고 기록 엔티티
@@ -20,8 +18,7 @@ import java.time.LocalDateTime;
  * - 신고 수가 임계치를 넘으면 서비스가 댓글 상태를 REPORTED로 전환한다.
  */
 @Entity
-@Table(name = "comment_reports",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"comment_id", "user_id"}))
+@Table(name = "comment_reports", uniqueConstraints = @UniqueConstraint(columnNames = {"comment_id", "user_id"}))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

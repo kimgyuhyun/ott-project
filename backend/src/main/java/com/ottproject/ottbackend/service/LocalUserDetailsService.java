@@ -1,9 +1,9 @@
 package com.ottproject.ottbackend.service;
 
-import com.ottproject.ottbackend.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
+import com.ottproject.ottbackend.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -24,31 +24,32 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor // final 필드에 대한 생성자 자동 생성
 public class LocalUserDetailsService implements UserDetailsService { // spring security 사용자 조회 서비스 구현
 
-	private final UserRepository userRepository; // 사용자 데이터베이스 접근 Repository 주입
+    private final UserRepository userRepository; // 사용자 데이터베이스 접근 Repository 주입
 
-	@Override // UserDetailsService 인터페이스 메서드 재정의
-	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-		// 계정은 소문자로 저장되므로 로그인 조회도 같은 기준으로 정규화한다.
-		// (정규화 없이 원본으로 조회하면 대소문자만 다른 입력으로 로그인이 실패한다)
-		User user = userRepository.findByEmail(User.normalizeEmail(email))
-				.orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
+    @Override // UserDetailsService 인터페이스 메서드 재정의
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        // 계정은 소문자로 저장되므로 로그인 조회도 같은 기준으로 정규화한다.
+        // (정규화 없이 원본으로 조회하면 대소문자만 다른 입력으로 로그인이 실패한다)
+        User user = userRepository
+                .findByEmail(User.normalizeEmail(email))
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + email));
 
-		boolean isSocialUser = user.getAuthProvider() != AuthProvider.LOCAL; // LOCAL 이 아닌 경우 소셜 로그인 사용자
+        boolean isSocialUser = user.getAuthProvider() != AuthProvider.LOCAL; // LOCAL 이 아닌 경우 소셜 로그인 사용자
 
-		// 탈퇴 계정은 비밀번호가 비어 있다(User.withdraw 가 지운다). null 을 그대로 넘기면 빌더가
-		// IllegalArgumentException 을 던져 403 대신 500 이 나가므로 빈 문자열로 바꾼다.
-		// 어떤 입력과도 일치하지 않고, 비활성 계정이라 비밀번호 대조 전에 DisabledException 으로 끝난다.
-		String storedPassword = user.getPassword() != null ? user.getPassword() : "";
+        // 탈퇴 계정은 비밀번호가 비어 있다(User.withdraw 가 지운다). null 을 그대로 넘기면 빌더가
+        // IllegalArgumentException 을 던져 403 대신 500 이 나가므로 빈 문자열로 바꾼다.
+        // 어떤 입력과도 일치하지 않고, 비활성 계정이라 비밀번호 대조 전에 DisabledException 으로 끝난다.
+        String storedPassword = user.getPassword() != null ? user.getPassword() : "";
 
-		return org.springframework.security.core.userdetails.User.builder()
-				.username(user.getEmail()) // 사용자명
-				.password(isSocialUser ? "{noop}" + storedPassword : storedPassword) // 소셜이면 비번검증 skip
-				.disabled(!user.isEnabled())
-				.accountExpired(false)
-				.credentialsExpired(false)
-				.accountLocked(false)
-				.authorities(java.util.Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
-				.build();
-
-	}
+        return org.springframework.security.core.userdetails.User.builder()
+                .username(user.getEmail()) // 사용자명
+                .password(isSocialUser ? "{noop}" + storedPassword : storedPassword) // 소셜이면 비번검증 skip
+                .disabled(!user.isEnabled())
+                .accountExpired(false)
+                .credentialsExpired(false)
+                .accountLocked(false)
+                .authorities(java.util.Collections.singletonList(
+                        new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
+                .build();
+    }
 }

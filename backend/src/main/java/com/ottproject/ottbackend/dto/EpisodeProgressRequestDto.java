@@ -22,10 +22,11 @@ import lombok.Setter;
 @NoArgsConstructor // 기본 생성자
 @AllArgsConstructor // 모든 필드 생성자
 public class EpisodeProgressRequestDto { // 진행률 저장 요청 DTO
-    @NotNull @Min(0)
+    @NotNull
+    @Min(0)
     private Integer positionSec; // 현재 위치(초)
-    @NotNull @Min(0)
+
+    @NotNull
+    @Min(0)
     private Integer durationSec; // 총 길이(초)
 }
-
-

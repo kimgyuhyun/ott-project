@@ -2,11 +2,10 @@ package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.mybatis.EpisodeMapper;
 import com.ottproject.ottbackend.mybatis.PlayerProgressQueryMapper;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 /**
  * 최근본 애니메이션 서비스
@@ -28,11 +27,11 @@ public class RecentAnimeService {
     private final PlayerProgressQueryMapper progressQueryMapper;
     private final EpisodeMapper episodeMapper;
     private final ProgressBufferService progressBuffer;
-    
+
     /**
      * 최근본 목록에서 숨김 처리
      * 해당 애니메이션의 모든 에피소드 진행률을 hidden_in_recent = true로 설정
-     * 
+     *
      * @param userId 사용자 ID
      * @param aniId 애니메이션 ID
      */
@@ -40,26 +39,25 @@ public class RecentAnimeService {
     public void hideFromRecent(Long userId, Long aniId) {
         System.out.println("🔧 [SERVICE] RecentAnimeService.hideFromRecent 시작");
         System.out.println("🔧 [SERVICE] 파라미터 - userId: " + userId + ", aniId: " + aniId);
-        
+
         // 해당 애니메이션의 모든 에피소드 ID 조회
-        List<Long> episodeIds = episodeMapper.findEpisodesByAnimeId(aniId)
-            .stream()
-            .map(episode -> episode.getId())
-            .toList();
-        
+        List<Long> episodeIds = episodeMapper.findEpisodesByAnimeId(aniId).stream()
+                .map(episode -> episode.getId())
+                .toList();
+
         System.out.println("🔧 [SERVICE] 숨김 처리할 에피소드 수: " + episodeIds.size());
-        
+
         if (!episodeIds.isEmpty()) {
             // 해당 에피소드들의 진행률을 hidden_in_recent = true로 업데이트
             progressQueryMapper.updateHiddenInRecent(userId, episodeIds, true);
             System.out.println("🔧 [SERVICE] 최근본 목록에서 숨김 처리 완료");
         }
     }
-    
+
     /**
      * 정주행 목록에서 완전 삭제 (시청 기록 완전 삭제)
      * 해당 애니메이션의 모든 에피소드 진행률을 완전히 삭제
-     * 
+     *
      * @param userId 사용자 ID
      * @param aniId 애니메이션 ID
      */
@@ -67,15 +65,14 @@ public class RecentAnimeService {
     public void deleteFromBinge(Long userId, Long aniId) {
         System.out.println("🔧 [SERVICE] RecentAnimeService.deleteFromBinge 시작");
         System.out.println("🔧 [SERVICE] 파라미터 - userId: " + userId + ", aniId: " + aniId);
-        
+
         // 해당 애니메이션의 모든 에피소드 ID 조회
-        List<Long> episodeIds = episodeMapper.findEpisodesByAnimeId(aniId)
-            .stream()
-            .map(episode -> episode.getId())
-            .toList();
-        
+        List<Long> episodeIds = episodeMapper.findEpisodesByAnimeId(aniId).stream()
+                .map(episode -> episode.getId())
+                .toList();
+
         System.out.println("🔧 [SERVICE] 삭제할 에피소드 수: " + episodeIds.size());
-        
+
         if (!episodeIds.isEmpty()) {
             // 해당 에피소드들의 진행률을 완전히 삭제
             progressQueryMapper.deleteProgressByUserAndEpisodes(userId, episodeIds);

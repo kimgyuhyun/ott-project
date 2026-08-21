@@ -1,12 +1,11 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * Admin 관리 컨텐츠(FAQ/혜택/CTA) 2단계용 공통 엔티티
@@ -76,7 +75,7 @@ public class AdminContent { // 엔티티 시작
 
     /**
      * 관리자 콘텐츠 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param title 제목
      * @param content 내용
      * @param contentType 콘텐츠 유형
@@ -111,5 +110,3 @@ public class AdminContent { // 엔티티 시작
         return adminContent;
     }
 }
-
-

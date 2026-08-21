@@ -35,4 +35,3 @@ public class ContentOrRatingRequiredValidator implements ConstraintValidator<Con
         return true;
     }
 }
-

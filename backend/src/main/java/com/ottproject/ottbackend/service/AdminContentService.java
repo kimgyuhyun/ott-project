@@ -4,12 +4,11 @@ import com.ottproject.ottbackend.dto.AdminContentRequestDto;
 import com.ottproject.ottbackend.dto.AdminContentResponseDto;
 import com.ottproject.ottbackend.entity.AdminContent;
 import com.ottproject.ottbackend.repository.AdminContentRepository;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * AdminContentService
@@ -32,18 +31,27 @@ public class AdminContentService { // 서비스 시작
 
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public List<AdminContentResponseDto> listPublic(String type, String locale) { // 공개 목록
-        return repository.findByTypeAndLocaleAndPublishedOrderByPositionAsc(type, locale, true) // 조건 조회
-                .stream().map(this::toDto).collect(Collectors.toList()); // DTO 변환
+        return repository
+                .findByTypeAndLocaleAndPublishedOrderByPositionAsc(type, locale, true) // 조건 조회
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList()); // DTO 변환
     }
 
     @Transactional(readOnly = true) // 읽기 전용
     public List<AdminContentResponseDto> list(String type, String locale) { // 관리자 목록
         if (locale != null && !locale.isEmpty()) { // locale 지정 시
-            return repository.findByTypeAndLocaleOrderByPositionAsc(type, locale) // 조건 조회
-                    .stream().map(this::toDto).collect(Collectors.toList()); // DTO 변환
+            return repository
+                    .findByTypeAndLocaleOrderByPositionAsc(type, locale) // 조건 조회
+                    .stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList()); // DTO 변환
         }
-        return repository.findByTypeOrderByPositionAsc(type) // 전체 로케일
-                .stream().map(this::toDto).collect(Collectors.toList()); // DTO 변환
+        return repository
+                .findByTypeOrderByPositionAsc(type) // 전체 로케일
+                .stream()
+                .map(this::toDto)
+                .collect(Collectors.toList()); // DTO 변환
     }
 
     public AdminContentResponseDto create(AdminContentRequestDto dto) { // 생성
@@ -52,7 +60,7 @@ public class AdminContentService { // 서비스 시작
                 dto.getContent(), // 본문
                 dto.getType(), // 유형
                 dto.getPosition() == null ? 0 : dto.getPosition() // 순서 기본값 0
-        );
+                );
         entity.setLocale(dto.getLocale()); // 언어 코드
         entity.setPublished(Boolean.TRUE.equals(dto.getPublished())); // 공개 여부
         entity.setActionText(dto.getActionText()); // CTA 텍스트
@@ -105,5 +113,3 @@ public class AdminContentService { // 서비스 시작
                 .build(); // DTO 완성
     }
 }
-
-

@@ -1,7 +1,15 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.dto.EpisodeProgressFlushDto;
 import com.ottproject.ottbackend.mybatis.PlayerProgressQueryMapper;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,15 +22,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
-
-import java.util.List;
-import java.util.Map;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 /**
  * ProgressBufferService 검증
@@ -38,11 +37,17 @@ class ProgressBufferServiceTest {
     private static final String BUFFER_KEY = "ott:progress-buffer:v1";
     private static final String FLUSHING_KEY = "ott:progress-buffer:v1:flushing";
 
-    @Mock private StringRedisTemplate redisTemplate;
-    @Mock private PlayerProgressQueryMapper progressQueryMapper;
-    @Mock private HashOperations<String, Object, Object> hashOps;
+    @Mock
+    private StringRedisTemplate redisTemplate;
 
-    @InjectMocks private ProgressBufferService service;
+    @Mock
+    private PlayerProgressQueryMapper progressQueryMapper;
+
+    @Mock
+    private HashOperations<String, Object, Object> hashOps;
+
+    @InjectMocks
+    private ProgressBufferService service;
 
     @BeforeEach
     void setUp() {
@@ -55,8 +60,11 @@ class ProgressBufferServiceTest {
         service.write(1L, 10L, 500, 1400);
 
         ArgumentCaptor<Object> value = ArgumentCaptor.forClass(Object.class);
-        verify(hashOps).put(org.mockito.ArgumentMatchers.eq(BUFFER_KEY),
-                org.mockito.ArgumentMatchers.eq("1:10"), value.capture());
+        verify(hashOps)
+                .put(
+                        org.mockito.ArgumentMatchers.eq(BUFFER_KEY),
+                        org.mockito.ArgumentMatchers.eq("1:10"),
+                        value.capture());
         assertThat(value.getValue().toString()).startsWith("500:1400:");
         verify(progressQueryMapper, never()).upsertProgressBatch(org.mockito.ArgumentMatchers.anyList());
     }

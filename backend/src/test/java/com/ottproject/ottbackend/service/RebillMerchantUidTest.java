@@ -1,12 +1,11 @@
 package com.ottproject.ottbackend.service;
 
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-
-import java.time.LocalDateTime;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.time.LocalDateTime;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 
 /**
  * RebillMerchantUid 단위 테스트
@@ -60,7 +59,8 @@ class RebillMerchantUidTest {
     @Test
     @DisplayName("재청구 결제 식별 - 체크아웃/차액 결제와 구분된다")
     void identifiesRebillPayments() {
-        assertThat(RebillMerchantUid.isRebill(RebillMerchantUid.create(10L, ANCHOR, 1, 100L))).isTrue();
+        assertThat(RebillMerchantUid.isRebill(RebillMerchantUid.create(10L, ANCHOR, 1, 100L)))
+                .isTrue();
         assertThat(RebillMerchantUid.isRebill("order_1755600000000")).isFalse();
         assertThat(RebillMerchantUid.isRebill("proration_abc123")).isFalse();
         assertThat(RebillMerchantUid.isRebill(null)).isFalse();
@@ -69,7 +69,8 @@ class RebillMerchantUidTest {
     @Test
     @DisplayName("구독 ID 역추출 - 대사가 어느 구독을 연장할지 찾는 유일한 연결고리")
     void extractsSubscriptionId() {
-        assertThat(RebillMerchantUid.subscriptionIdOf(RebillMerchantUid.create(10L, ANCHOR, 1, 100L))).isEqualTo(10L);
+        assertThat(RebillMerchantUid.subscriptionIdOf(RebillMerchantUid.create(10L, ANCHOR, 1, 100L)))
+                .isEqualTo(10L);
         assertThat(RebillMerchantUid.subscriptionIdOf("order_1755600000000")).isNull();
         assertThat(RebillMerchantUid.subscriptionIdOf("rebill_broken")).isNull();
         assertThat(RebillMerchantUid.subscriptionIdOf(null)).isNull();

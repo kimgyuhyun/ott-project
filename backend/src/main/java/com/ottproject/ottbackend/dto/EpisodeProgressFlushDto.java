@@ -23,9 +23,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class EpisodeProgressFlushDto {
-	private Long userId;
-	private Long episodeId;
-	private Integer positionSec;
-	private Integer durationSec;
-	private LocalDateTime updatedAt;
+    private Long userId;
+    private Long episodeId;
+    private Integer positionSec;
+    private Integer durationSec;
+    private LocalDateTime updatedAt;
 }

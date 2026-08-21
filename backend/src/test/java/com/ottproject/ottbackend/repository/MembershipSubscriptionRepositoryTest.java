@@ -1,10 +1,15 @@
 package com.ottproject.ottbackend.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.Money;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -20,12 +25,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * MembershipSubscriptionRepository 의 커스텀 JPQL 검증
@@ -53,11 +52,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
 // 스키마는 Flyway 가 아니라 엔티티 기준으로 만든다. 이 테스트가 보는 것은 스키마 이력이 아니라 JPQL 이고,
 // 같은 컨테이너 슬라이스인 MembershipSubscriptionLockTest·PaymentMerchantUidUniqueTest 와 구성을 맞춘다.
-@TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true" // DDL 오류를 조용히 넘기지 않는다
-})
+@TestPropertySource(
+        properties = {
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true" // DDL 오류를 조용히 넘기지 않는다
+        })
 class MembershipSubscriptionRepositoryTest {
 
     @Container
@@ -86,8 +86,7 @@ class MembershipSubscriptionRepositoryTest {
     }
 
     private MembershipPlan persistPlan(String name) {
-        return entityManager.persist(
-                MembershipPlan.createBasicPlan(name, "설명", new Money(9900L, "KRW"), 1));
+        return entityManager.persist(MembershipPlan.createBasicPlan(name, "설명", new Money(9900L, "KRW"), 1));
     }
 
     /**
@@ -95,11 +94,13 @@ class MembershipSubscriptionRepositoryTest {
      * 거르는지를 보는 것이라 임의 상태가 필요하다. 도메인 전이 메서드는 상태마다 부수 필드(해지 시각,
      * 재시도 카운트)를 함께 바꿔 조회 조건과 무관한 값까지 끌고 들어오므로, 여기서는 필드만 주입한다.
      */
-    private MembershipSubscription persistSubscription(User user, MembershipPlan plan,
-                                                       LocalDateTime startAt, LocalDateTime endAt,
-                                                       MembershipSubscriptionStatus status) {
-        MembershipSubscription subscription =
-                MembershipSubscription.createSubscription(user, plan, startAt, endAt);
+    private MembershipSubscription persistSubscription(
+            User user,
+            MembershipPlan plan,
+            LocalDateTime startAt,
+            LocalDateTime endAt,
+            MembershipSubscriptionStatus status) {
+        MembershipSubscription subscription = MembershipSubscription.createSubscription(user, plan, startAt, endAt);
         ReflectionTestUtils.setField(subscription, "status", status);
         return entityManager.persist(subscription);
     }
@@ -123,8 +124,8 @@ class MembershipSubscriptionRepositoryTest {
     void findsOpenEndedSubscription() {
         User user = persistUser("openended@example.com");
         MembershipPlan plan = persistPlan("Open Ended");
-        MembershipSubscription subscription = persistSubscription(
-                user, plan, NOW.minusDays(10), null, MembershipSubscriptionStatus.ACTIVE);
+        MembershipSubscription subscription =
+                persistSubscription(user, plan, NOW.minusDays(10), null, MembershipSubscriptionStatus.ACTIVE);
 
         Optional<MembershipSubscription> found = subscriptionRepository.findActiveEffectiveByUser(
                 user.getId(), MembershipSubscriptionStatus.ACTIVE, NOW);
@@ -207,8 +208,8 @@ class MembershipSubscriptionRepositoryTest {
         User user = persistUser("recent@example.com");
         MembershipPlan plan = persistPlan("Recent");
         persistSubscription(user, plan, NOW.minusDays(30), NOW.minusDays(20), MembershipSubscriptionStatus.EXPIRED);
-        MembershipSubscription newest = persistSubscription(
-                user, plan, NOW.minusDays(5), null, MembershipSubscriptionStatus.CANCELED);
+        MembershipSubscription newest =
+                persistSubscription(user, plan, NOW.minusDays(5), null, MembershipSubscriptionStatus.CANCELED);
 
         Optional<MembershipSubscription> found =
                 subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(user.getId());
@@ -226,16 +227,15 @@ class MembershipSubscriptionRepositoryTest {
         User user = persistUser("overlap@example.com");
         MembershipPlan plan = persistPlan("Overlap");
         // 무기한 구독이 있는 사용자가 재구독하면 실제로 만들어지는 조합이다
-        MembershipSubscription openEnded = persistSubscription(
-                user, plan, NOW.minusDays(60), null, MembershipSubscriptionStatus.ACTIVE);
+        MembershipSubscription openEnded =
+                persistSubscription(user, plan, NOW.minusDays(60), null, MembershipSubscriptionStatus.ACTIVE);
         MembershipSubscription active = persistSubscription(
                 user, plan, NOW.minusDays(5), NOW.plusDays(25), MembershipSubscriptionStatus.ACTIVE);
         MembershipSubscription pastDue = persistSubscription(
                 user, plan, NOW.minusDays(30), NOW.minusDays(1), MembershipSubscriptionStatus.PAST_DUE);
 
         List<MembershipSubscription> found = subscriptionRepository.findAllByUserAndStatusIn(
-                user.getId(),
-                List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
+                user.getId(), List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
 
         // 만료된 PAST_DUE 도 포함돼야 한다. 던닝 재시도는 endAt 이 지났는지와 무관하게 돈다
         assertThat(found).containsExactlyInAnyOrder(openEnded, active, pastDue);
@@ -254,8 +254,7 @@ class MembershipSubscriptionRepositoryTest {
         persistSubscription(other, plan, NOW.minusDays(5), NOW.plusDays(25), MembershipSubscriptionStatus.ACTIVE);
 
         List<MembershipSubscription> found = subscriptionRepository.findAllByUserAndStatusIn(
-                user.getId(),
-                List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
+                user.getId(), List.of(MembershipSubscriptionStatus.ACTIVE, MembershipSubscriptionStatus.PAST_DUE));
 
         assertThat(found).containsExactly(active);
     }

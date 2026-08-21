@@ -2,11 +2,10 @@ package com.ottproject.ottbackend.dto.admin;
 
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
 
 /**
  * 관리자용 구독 상태 응답

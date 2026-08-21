@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.dto;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 /**
  * 내 리뷰 목록 아이템 DTO
@@ -26,5 +25,3 @@ public class MyReviewItemDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
-
-

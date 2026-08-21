@@ -14,6 +14,6 @@ import lombok.Data;
  */
 @Data
 public class MembershipPlanChangeRequestDto {
-    
+
     private String newPlanCode; // 변경할 플랜 코드
 }

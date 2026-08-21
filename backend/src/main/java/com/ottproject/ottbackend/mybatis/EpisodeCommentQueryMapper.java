@@ -1,10 +1,9 @@
 package com.ottproject.ottbackend.mybatis;
 
 import com.ottproject.ottbackend.dto.EpisodeCommentsResponseDto;
+import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-
-import java.util.List;
 
 /**
  * EpisodeCommentQueryMapper
@@ -26,7 +25,7 @@ public interface EpisodeCommentQueryMapper {
             @Param("sort") String sort, // 정렬 latest|best
             @Param("limit") int limit, // 페이지 크기
             @Param("offset") int offset // 오프셋
-    );
+            );
 
     // 댓글 총 개수
     long countCommentsByEpisodeId(@Param("episodeId") Long episodeId);
@@ -35,5 +34,5 @@ public interface EpisodeCommentQueryMapper {
     List<EpisodeCommentsResponseDto> findRepliesByParentId(
             @Param("parentId") Long parentId, // 부모 댓글 ID
             @Param("currentUserId") Long currentUserId // 현재 사용자 ID
-    );
+            );
 }

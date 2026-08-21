@@ -3,12 +3,11 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.PaymentMethodType;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * PaymentMethod 엔티티
@@ -104,7 +103,7 @@ public class PaymentMethod { // 엔티티 시작
 
     /**
      * 결제수단 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 사용자
      * @param provider 결제 제공자
      * @param type 결제수단 타입
@@ -112,8 +111,8 @@ public class PaymentMethod { // 엔티티 시작
      * @return 생성된 PaymentMethod 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static PaymentMethod createPaymentMethod(User user, PaymentProvider provider, 
-                                                   PaymentMethodType type, String providerMethodId) {
+    public static PaymentMethod createPaymentMethod(
+            User user, PaymentProvider provider, PaymentMethodType type, String providerMethodId) {
         // 필수 필드 검증
         if (user == null) {
             throw new IllegalArgumentException("사용자는 필수입니다.");
