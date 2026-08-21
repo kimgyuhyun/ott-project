@@ -7,3 +7,7 @@
 
 # Format the frontend with Prettier (도구 도입 시 1회 일괄 적용, 143개 파일)
 97afe3dca729c2efc1a14c0b00289f14d3308696
+
+# Format the backend with Spotless (palantir-java-format 1회 일괄 적용, 355개 파일)
+# ratchetFrom 으로 점진 적용하던 것을 걷어내면서 한 번에 맞췄다.
+b69ca240da9118c8582e088c548fc584d7f76589
