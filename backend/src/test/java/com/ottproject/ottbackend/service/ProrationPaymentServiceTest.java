@@ -1,5 +1,7 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
@@ -9,16 +11,13 @@ import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * ProrationPaymentService 차액 계산 단위 테스트
@@ -34,12 +33,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 @ExtendWith(MockitoExtension.class)
 class ProrationPaymentServiceTest {
 
-    @Mock private MembershipPlanRepository planRepository;
-    @Mock private MembershipSubscriptionRepository subscriptionRepository;
-    @Mock private PaymentRepository paymentRepository;
-    @Mock private PaymentGateway paymentGateway;
-    @Mock private OutboxEventRepository outboxEventRepository;
-    @Mock private ObjectMapper objectMapper;
+    @Mock
+    private MembershipPlanRepository planRepository;
+
+    @Mock
+    private MembershipSubscriptionRepository subscriptionRepository;
+
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private PaymentGateway paymentGateway;
+
+    @Mock
+    private OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private ProrationPaymentService service;

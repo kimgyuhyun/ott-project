@@ -2,14 +2,13 @@ package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * UserRepository
@@ -45,7 +44,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     //  SELECT 1
     //  FROM user
     // WHERE email = ?
-    //)
+    // )
     // SELECT EXISTS(...)은 서브쿼리가 결과를 반환하는지 확인하고 행이 하나라도 있으면 true, 없으면 false 반환함
     // SELECT 1은 단순히 행이 있는지만 확인하는것
     // WhERE email = ? 조건으로 파라미터로 들어온 email일로 해당하는 행을 찾고

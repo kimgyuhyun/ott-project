@@ -3,11 +3,10 @@ package com.ottproject.ottbackend.dto.admin;
 import com.ottproject.ottbackend.entity.AuthEvent;
 import com.ottproject.ottbackend.enums.AuthEventType;
 import com.ottproject.ottbackend.enums.AuthProvider;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
 
 /**
  * 관리자 인증 이벤트(감사 로그) 응답 항목

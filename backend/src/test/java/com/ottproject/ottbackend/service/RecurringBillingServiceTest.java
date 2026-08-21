@@ -1,5 +1,20 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.Money;
@@ -16,6 +31,12 @@ import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,28 +51,6 @@ import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * RecurringBillingService.retryBilling 단위 테스트
@@ -68,17 +67,33 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @ExtendWith(MockitoExtension.class)
 class RecurringBillingServiceTest {
 
-    @Mock private MembershipSubscriptionRepository subscriptionRepository;
-    @Mock private PaymentMethodRepository paymentMethodRepository;
-    @Mock private PaymentRepository paymentRepository;
-    @Mock private PaymentGateway paymentGateway;
-    @Mock private MembershipNotificationService notificationService;
-    @Mock private MembershipSubscriptionQueryMapper membershipSubscriptionQueryMapper;
-    @Mock private BillingRetryPublisher billingRetryPublisher;
-    @Mock private BillingAttemptRecorder attemptRecorder;
+    @Mock
+    private MembershipSubscriptionRepository subscriptionRepository;
+
+    @Mock
+    private PaymentMethodRepository paymentMethodRepository;
+
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private PaymentGateway paymentGateway;
+
+    @Mock
+    private MembershipNotificationService notificationService;
+
+    @Mock
+    private MembershipSubscriptionQueryMapper membershipSubscriptionQueryMapper;
+
+    @Mock
+    private BillingRetryPublisher billingRetryPublisher;
+
+    @Mock
+    private BillingAttemptRecorder attemptRecorder;
     // 목이 아니라 진짜 레지스트리다. 경보 BillingBatchStalled 가 지표 "이름"에 걸려 있어서,
     // 목으로 두면 이름이 바뀌어도 아무 테스트도 깨지지 않는다.
-    @Spy private MeterRegistry meterRegistry = new SimpleMeterRegistry();
+    @Spy
+    private MeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     @InjectMocks
     private RecurringBillingService service;
@@ -96,7 +111,10 @@ class RecurringBillingServiceTest {
 
         // PAST_DUE + 자동갱신 + 1차 실패 상태(retryCount=1)의 구독
         sub = MembershipSubscription.createSubscription(
-                user, plan, LocalDateTime.now().minusDays(20), LocalDateTime.now().plusDays(10));
+                user,
+                plan,
+                LocalDateTime.now().minusDays(20),
+                LocalDateTime.now().plusDays(10));
         ReflectionTestUtils.setField(sub, "id", SUB_ID); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
         sub.recordDeclinedCharge(LocalDateTime.now(), "CARD_DECLINED", "1차 청구 실패"); // → PAST_DUE, retryCount=1
 
@@ -110,7 +128,10 @@ class RecurringBillingServiceTest {
 
     /** 배치 생존 게이지의 현재 값. 이름이 바뀌면 여기서 먼저 깨진다(경보 식이 이 이름을 쓴다). */
     private double livenessGauge() {
-        return meterRegistry.get("billing.batch.last.success.timestamp.seconds").gauge().value();
+        return meterRegistry
+                .get("billing.batch.last.success.timestamp.seconds")
+                .gauge()
+                .value();
     }
 
     /** 마지막 배치의 청구 실패 건수. 경보 BillingItemsFailing 이 이 이름을 쓴다. */
@@ -138,8 +159,11 @@ class RecurringBillingServiceTest {
     /** PG 호출 전에 선기록되는 PENDING 결제(성공 시 이 행이 SUCCEEDED 로 확정된다) */
     private Payment pendingPayment() {
         return Payment.createPendingPayment(
-                sub.getUser(), sub.getMembershipPlan(), PaymentProvider.IMPORT,
-                "rebill_10_20260808_1_100", new Money(9900L, "KRW"));
+                sub.getUser(),
+                sub.getMembershipPlan(),
+                PaymentProvider.IMPORT,
+                "rebill_10_20260808_1_100",
+                new Money(9900L, "KRW"));
     }
 
     @Test
@@ -208,7 +232,8 @@ class RecurringBillingServiceTest {
                 .willReturn(List.of(card));
         given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
                 .willReturn(PAYMENT_ID);
-        given(paymentGateway.chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .willThrow(new PaymentGateway.ChargeException(
                         PaymentGateway.FailureType.SOFT_DECLINE, "CARD_DECLINED", "카드 승인 거절"));
         given(billingRetryPublisher.scheduleRetry(SUB_ID, 2)).willReturn(true);
@@ -232,7 +257,8 @@ class RecurringBillingServiceTest {
                 .willReturn(List.of(card));
         given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
                 .willReturn(PAYMENT_ID);
-        given(paymentGateway.chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .willThrow(new PaymentGateway.ChargeException(
                         PaymentGateway.FailureType.HARD_DECLINE, "CARD_EXPIRED", "카드 만료"));
 
@@ -259,7 +285,8 @@ class RecurringBillingServiceTest {
                 .willReturn(List.of(card));
         given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
                 .willReturn(PAYMENT_ID);
-        given(paymentGateway.chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .willReturn(cr);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(pending));
 
@@ -287,7 +314,8 @@ class RecurringBillingServiceTest {
                 .willReturn(List.of(card));
         given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
                 .willReturn(PAYMENT_ID);
-        given(paymentGateway.chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .willReturn(cr);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(pendingPayment()));
 
@@ -295,7 +323,8 @@ class RecurringBillingServiceTest {
 
         InOrder order = inOrder(attemptRecorder, paymentGateway);
         order.verify(attemptRecorder).openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class));
-        order.verify(paymentGateway).chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString());
+        order.verify(paymentGateway)
+                .chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString());
     }
 
     @Test
@@ -342,7 +371,8 @@ class RecurringBillingServiceTest {
         given(attemptRecorder.isAlreadyDeclined(anyString())).willReturn(true); // 이미 FAILED 로 닫힌 시도
         given(attemptRecorder.openAttempt(anyLong(), anyLong(), eq(200L), anyString(), any(Money.class)))
                 .willReturn(PAYMENT_ID);
-        given(paymentGateway.chargeWithSavedMethod(anyString(), eq("pm_backup"), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), eq("pm_backup"), anyString(), anyLong(), anyString(), anyString()))
                 .willReturn(cr);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(pendingPayment()));
 
@@ -361,7 +391,8 @@ class RecurringBillingServiceTest {
                 .willReturn(List.of(card));
         given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
                 .willReturn(PAYMENT_ID);
-        given(paymentGateway.chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .willThrow(new PaymentGateway.ChargeException(
                         PaymentGateway.FailureType.AMBIGUOUS, "NO_RESPONSE", "재청구 응답 확인 불가"));
 
@@ -393,10 +424,12 @@ class RecurringBillingServiceTest {
                 .willReturn(List.of(primary, backup)); // 기본 → 보조 순서
         given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
                 .willReturn(PAYMENT_ID);
-        given(paymentGateway.chargeWithSavedMethod(anyString(), eq("pm_primary"), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), eq("pm_primary"), anyString(), anyLong(), anyString(), anyString()))
                 .willThrow(new PaymentGateway.ChargeException(
                         PaymentGateway.FailureType.SOFT_DECLINE, "LIMIT_EXCEEDED", "한도 초과"));
-        given(paymentGateway.chargeWithSavedMethod(anyString(), eq("pm_backup"), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), eq("pm_backup"), anyString(), anyLong(), anyString(), anyString()))
                 .willReturn(cr);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(pendingPayment()));
 
@@ -505,7 +538,8 @@ class RecurringBillingServiceTest {
                 .willReturn(List.of(card));
         given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
                 .willReturn(PAYMENT_ID);
-        given(paymentGateway.chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .willReturn(cr);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(pendingPayment()));
 
@@ -545,7 +579,8 @@ class RecurringBillingServiceTest {
                 .willReturn(List.of(card));
         given(attemptRecorder.openAttempt(anyLong(), anyLong(), anyLong(), anyString(), any(Money.class)))
                 .willReturn(PAYMENT_ID);
-        given(paymentGateway.chargeWithSavedMethod(anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
+        given(paymentGateway.chargeWithSavedMethod(
+                        anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .willReturn(cr);
         given(paymentRepository.findById(PAYMENT_ID)).willReturn(Optional.of(pendingPayment()));
 
@@ -637,7 +672,8 @@ class RecurringBillingServiceTest {
      */
     private MembershipSubscription mapperShapedPlanChange() {
         MembershipSubscription mapped = mapperShapedSubscription(SUB_ID);
-        MembershipPlan idOnlyNextPlan = MembershipPlan.createBasicPlan("PREMIUM", "프리미엄 플랜", new Money(14900L, "KRW"), 1);
+        MembershipPlan idOnlyNextPlan =
+                MembershipPlan.createBasicPlan("PREMIUM", "프리미엄 플랜", new Money(14900L, "KRW"), 1);
         ReflectionTestUtils.setField(idOnlyNextPlan, "id", 6L);
         ReflectionTestUtils.setField(idOnlyNextPlan, "name", null); // resultMap 에 없는 컬럼
         ReflectionTestUtils.setField(idOnlyNextPlan, "price", null); // resultMap 에 없는 컬럼
@@ -656,7 +692,10 @@ class RecurringBillingServiceTest {
         ReflectionTestUtils.setField(next, "id", 6L);
 
         MembershipSubscription managed = MembershipSubscription.createSubscription(
-                user, current, LocalDateTime.now().minusDays(20), LocalDateTime.now().plusDays(10));
+                user,
+                current,
+                LocalDateTime.now().minusDays(20),
+                LocalDateTime.now().plusDays(10));
         ReflectionTestUtils.setField(managed, "id", SUB_ID);
         managed.schedulePlanChange(next, LocalDateTime.now(), PlanChangeType.UPGRADE);
         return managed;
@@ -670,8 +709,7 @@ class RecurringBillingServiceTest {
         given(membershipSubscriptionQueryMapper.findSubscriptionsWithScheduledPlanChanges(anyList(), any()))
                 .willThrow(new DataAccessResourceFailureException("connection reset"));
 
-        assertThatThrownBy(() -> service.runRecurringBilling())
-                .isInstanceOf(DataAccessResourceFailureException.class);
+        assertThatThrownBy(() -> service.runRecurringBilling()).isInstanceOf(DataAccessResourceFailureException.class);
 
         assertThat(livenessGauge()).isEqualTo(stale);
     }

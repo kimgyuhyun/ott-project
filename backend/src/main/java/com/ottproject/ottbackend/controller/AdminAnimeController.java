@@ -66,8 +66,7 @@ public class AdminAnimeController {
      * 조건은 전부 선택이며 자유롭게 조합된다. 아무 조건도 주지 않으면 전체 목록이다.
      * 조건 객체는 쿼리 파라미터로 바인딩된다(예: ?status=ONGOING&year=2026&isActive=false).
      */
-    @Operation(summary = "애니 큐레이션 검색",
-            description = "제목(한/영/일 통합)/상태/연도/노출여부/배지/큐레이션여부/유입경로를 자유 조합해 검색합니다.")
+    @Operation(summary = "애니 큐레이션 검색", description = "제목(한/영/일 통합)/상태/연도/노출여부/배지/큐레이션여부/유입경로를 자유 조합해 검색합니다.")
     @ApiResponse(responseCode = "200", description = "검색 성공")
     @GetMapping("/search")
     public ResponseEntity<PagedResponse<AdminAnimeListItemDto>> searchForCuration(
@@ -94,15 +93,15 @@ public class AdminAnimeController {
      *
      * 부분 수정이다 — 요청에 없는(null) 필드는 그대로 둔다.
      */
-    @Operation(summary = "애니 단건 큐레이션 수정",
+    @Operation(
+            summary = "애니 단건 큐레이션 수정",
             description = "제목/줄거리/이미지/배지/노출 여부를 수정합니다. 전달하지 않은 필드는 변경하지 않습니다. "
                     + "콘텐츠(제목/줄거리/이미지)가 실제로 바뀌면 curated 가 켜져 TMDB 자동 보강에서 제외됩니다.")
     @ApiResponse(responseCode = "200", description = "수정 성공")
     @ApiResponse(responseCode = "404", description = "애니메이션 없음")
     @PatchMapping("/{animeId}")
     public ResponseEntity<AdminAnimeDetailDto> updateCuration(
-            @PathVariable Long animeId,
-            @RequestBody AnimeCurationUpdateRequest request) {
+            @PathVariable Long animeId, @RequestBody AnimeCurationUpdateRequest request) {
 
         return ResponseEntity.ok(animeCurationService.update(animeId, request));
     }
@@ -113,8 +112,7 @@ public class AdminAnimeController {
      * 실행 전에 몇 건이 바뀌는지 확인한다. 여기서 받은 affectedCount 를 벌크 요청의 expectedCount 로
      * 되돌려 보내야 실행된다.
      */
-    @Operation(summary = "벌크 큐레이션 미리보기",
-            description = "조건에 걸린 건수와 표본을 돌려줍니다. 실제 수정은 하지 않습니다.")
+    @Operation(summary = "벌크 큐레이션 미리보기", description = "조건에 걸린 건수와 표본을 돌려줍니다. 실제 수정은 하지 않습니다.")
     @ApiResponse(responseCode = "200", description = "미리보기 성공")
     @ApiResponse(responseCode = "400", description = "조건이 비어 있음")
     @PostMapping("/bulk/preview")
@@ -129,9 +127,9 @@ public class AdminAnimeController {
      *
      * 조건에 걸린 작품 전체에 같은 배지/노출 여부를 적용한다(제목/포스터는 대상이 아니다).
      */
-    @Operation(summary = "조건 기반 벌크 큐레이션",
-            description = "검색 조건에 걸린 작품 전체에 배지/노출 여부를 일괄 적용합니다. "
-                    + "미리보기에서 확인한 건수를 expectedCount 로 함께 보내야 합니다.")
+    @Operation(
+            summary = "조건 기반 벌크 큐레이션",
+            description = "검색 조건에 걸린 작품 전체에 배지/노출 여부를 일괄 적용합니다. " + "미리보기에서 확인한 건수를 expectedCount 로 함께 보내야 합니다.")
     @ApiResponse(responseCode = "200", description = "적용 성공(영향 건수 반환)")
     @ApiResponse(responseCode = "400", description = "조건이 비었거나 변경할 값이 없음")
     @ApiResponse(responseCode = "409", description = "대상 건수가 미리보기와 다름")
@@ -151,8 +149,7 @@ public class AdminAnimeController {
     @ApiResponse(responseCode = "500", description = "수집 실패(외부 API/DB 오류)")
     @PostMapping("/sync/{malId}")
     public ResponseEntity<SyncResult> syncAnime(
-            @Parameter(description = "MyAnimeList 애니메이션 ID", required = true)
-            @PathVariable Long malId) {
+            @Parameter(description = "MyAnimeList 애니메이션 ID", required = true) @PathVariable Long malId) {
 
         log.info("단일 애니메이션 동기화 요청: MAL ID {}", malId);
 
@@ -177,8 +174,7 @@ public class AdminAnimeController {
     @ApiResponse(responseCode = "500", description = "수집 실패(외부 API/DB 오류)")
     @PostMapping("/sync-popular")
     public ResponseEntity<BulkSyncResult> syncPopularAnime(
-            @Parameter(description = "수집할 개수 (기본값: 50, 최대: 5000)")
-            @RequestParam(defaultValue = "50") int limit) {
+            @Parameter(description = "수집할 개수 (기본값: 50, 최대: 5000)") @RequestParam(defaultValue = "50") int limit) {
 
         log.info("인기 애니메이션 일괄 동기화 요청: {}개", limit);
 
@@ -249,7 +245,9 @@ public class AdminAnimeController {
             this.affectedCount = affectedCount;
         }
 
-        public long getAffectedCount() { return affectedCount; }
+        public long getAffectedCount() {
+            return affectedCount;
+        }
     }
 
     /**
@@ -266,9 +264,17 @@ public class AdminAnimeController {
             this.malId = malId;
         }
 
-        public boolean isSuccess() { return success; }
-        public String getMessage() { return message; }
-        public Long getMalId() { return malId; }
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public Long getMalId() {
+            return malId;
+        }
     }
 
     /**
@@ -285,8 +291,16 @@ public class AdminAnimeController {
             this.statistics = statistics;
         }
 
-        public boolean isSuccess() { return success; }
-        public String getMessage() { return message; }
-        public CollectionResult getStatistics() { return statistics; }
+        public boolean isSuccess() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public CollectionResult getStatistics() {
+            return statistics;
+        }
     }
 }

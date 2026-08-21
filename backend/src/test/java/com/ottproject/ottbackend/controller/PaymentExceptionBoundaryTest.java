@@ -1,5 +1,17 @@
 package com.ottproject.ottbackend.controller;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
 import com.ottproject.ottbackend.exception.GlobalExceptionHandler;
 import com.ottproject.ottbackend.service.PaymentCommandService;
@@ -18,18 +30,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 결제 API 의 예외 → 응답 경계 테스트
@@ -50,13 +50,23 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(MockitoExtension.class)
 class PaymentExceptionBoundaryTest {
 
-    @Mock private PaymentCommandService paymentCommandService;
-    @Mock private PaymentReadService paymentReadService;
-    @Mock private SecurityUtil securityUtil;
-    @Mock private PaymentMethodService paymentMethodService;
-    @Mock private Environment environment;
+    @Mock
+    private PaymentCommandService paymentCommandService;
 
-    @InjectMocks private PaymentController controller;
+    @Mock
+    private PaymentReadService paymentReadService;
+
+    @Mock
+    private SecurityUtil securityUtil;
+
+    @Mock
+    private PaymentMethodService paymentMethodService;
+
+    @Mock
+    private Environment environment;
+
+    @InjectMocks
+    private PaymentController controller;
 
     private MockMvc mvc;
 
@@ -71,10 +81,12 @@ class PaymentExceptionBoundaryTest {
     @DisplayName("웹훅 중복 수신은 200 - PG 재전송 루프를 막는다")
     void duplicateWebhookIsAnsweredWith200() throws Exception {
         willThrow(new DuplicateWebhookEventException("evt_1", new DataIntegrityViolationException("dup key")))
-                .given(paymentCommandService).processWebhook(any(), anyString());
+                .given(paymentCommandService)
+                .processWebhook(any(), anyString());
 
         mvc.perform(post("/api/payments/webhook")
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"imp_uid\":\"imp_1\"}"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"imp_uid\":\"imp_1\"}"))
                 .andExpect(status().isOk());
     }
 
@@ -82,10 +94,12 @@ class PaymentExceptionBoundaryTest {
     @DisplayName("중복 외의 웹훅 실패는 200 으로 삼키지 않는다 - PG 재전송으로 복구돼야 한다")
     void otherWebhookFailureIsNotSwallowed() throws Exception {
         willThrow(new DataIntegrityViolationException("membership row conflict"))
-                .given(paymentCommandService).processWebhook(any(), anyString());
+                .given(paymentCommandService)
+                .processWebhook(any(), anyString());
 
         mvc.perform(post("/api/payments/webhook")
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"imp_uid\":\"imp_1\"}"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"imp_uid\":\"imp_1\"}"))
                 .andExpect(status().isInternalServerError());
     }
 

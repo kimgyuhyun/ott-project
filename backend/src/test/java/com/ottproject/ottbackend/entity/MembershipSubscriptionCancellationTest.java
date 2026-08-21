@@ -1,14 +1,13 @@
 package com.ottproject.ottbackend.entity;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PlanChangeType;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * MembershipSubscription 해지 전이가 플랜 변경 예약을 어떻게 다루는지 검증

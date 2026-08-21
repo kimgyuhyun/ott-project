@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.AnimeFavorite;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 /**
  * AnimeFavoriteRepository
@@ -22,8 +21,12 @@ import java.util.Optional;
 @Repository // 스프링 빈 등록
 public interface AnimeFavoriteRepository extends JpaRepository<AnimeFavorite, Long> { // 리포지토리 인터페이스
     Optional<AnimeFavorite> findByUser_IdAndAnime_Id(Long userId, Long animeId); // 특정 유저-작품 보고싶다 조회
+
     boolean existsByUser_IdAndAnime_Id(Long userId, Long animeId); // 보고싶다 여부 확인
+
     void deleteByUser_IdAndAnime_Id(Long userId, Long animeId); // 보고싶다 삭제(멱등)
+
     long countByAnime_Id(Long animeId); // 작품별 보고싶다 수(옵션)
+
     List<AnimeFavorite> findByAnimeId(Long animeId); // 특정 작품을 찜한 사용자 목록
 }

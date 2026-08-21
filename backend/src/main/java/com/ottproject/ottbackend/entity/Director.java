@@ -1,14 +1,13 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * 감독 엔티티
@@ -78,16 +77,16 @@ public class Director {
         this.animes.remove(anime);
         anime.getDirectors().remove(this);
     }
-    
+
     // ===== Getter 메서드 =====
     public Set<Anime> getAnimes() {
         return animes;
     }
-    
+
     // ===== 정적 팩토리 메서드 =====
     /**
      * 감독 생성
-     * 
+     *
      * @param name 감독 이름 (필수)
      * @param nameEn 영어 이름 (선택)
      * @param nameJp 일본어 이름 (선택)
@@ -95,12 +94,12 @@ public class Director {
      * @param description 설명 (선택)
      * @return 생성된 Director 엔티티
      */
-    public static Director createDirector(String name, String nameEn, String nameJp, 
-                                        String profileUrl, String description) {
+    public static Director createDirector(
+            String name, String nameEn, String nameJp, String profileUrl, String description) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("감독 이름은 필수입니다.");
         }
-        
+
         Director director = new Director();
         director.name = name.trim();
         director.nameEn = nameEn != null ? nameEn.trim() : null;
@@ -109,7 +108,7 @@ public class Director {
         director.description = description != null ? description.trim() : null;
         director.isActive = true;
         // Auditing이 자동으로 createdAt, updatedAt을 설정하므로 수동 설정 제거
-        
+
         return director;
     }
 }

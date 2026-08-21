@@ -10,6 +10,6 @@ package com.ottproject.ottbackend.enums;
  * - USER/ADMIN
  */
 public enum UserRole { // 역할
-    USER,   // 일반 사용자
-    ADMIN   // 관리자
+    USER, // 일반 사용자
+    ADMIN // 관리자
 }

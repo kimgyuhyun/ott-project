@@ -1,6 +1,9 @@
 package com.ottproject.ottbackend.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ottproject.ottbackend.entity.User;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,10 +11,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
-
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * UserRepository.countSignupsBetween 검증 (일일 통계의 가입자 수)
@@ -25,10 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @Import(JpaSliceTestSupport.class)
-@TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
-})
+@TestPropertySource(properties = {"spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
 class UserRepositorySignupCountTest {
 
     @Autowired

@@ -1,10 +1,9 @@
 package com.ottproject.ottbackend.dto;
 
 import com.ottproject.ottbackend.enums.PlanChangeType;
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Data;
-
-import java.time.LocalDateTime;
 
 /**
  * 멤버십 플랜 변경 응답 DTO
@@ -22,7 +21,7 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class MembershipPlanChangeResponseDto {
-    
+
     private PlanChangeType changeType; // 변경 유형
     private LocalDateTime effectiveDate; // 변경 적용일
     private Integer prorationAmount; // 차액 (업그레이드 시에만)

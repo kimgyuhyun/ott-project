@@ -3,6 +3,8 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.entity.OutboxEvent;
 import com.ottproject.ottbackend.enums.OutboxStatus;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -10,9 +12,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * OutboxPublisher
@@ -47,14 +46,16 @@ public class OutboxPublisher {
     @Scheduled(fixedDelayString = "${outbox.publish-interval-ms:2000}")
     @SchedulerLock(name = "OutboxPublisher_publishPending", lockAtMostFor = "PT1M", lockAtLeastFor = "PT1S")
     public void publishPending() {
-        List<OutboxEvent> batch = outboxEventRepository.findByStatusOrderByCreatedAtAsc(
-                OutboxStatus.NEW, PageRequest.of(0, BATCH_SIZE));
+        List<OutboxEvent> batch =
+                outboxEventRepository.findByStatusOrderByCreatedAtAsc(OutboxStatus.NEW, PageRequest.of(0, BATCH_SIZE));
         if (batch.isEmpty()) return;
 
         for (OutboxEvent e : batch) {
             try {
                 // 동기 발행(.get())으로 성공을 확인한 뒤에만 PUBLISHED 로 마킹한다.
-                kafkaTemplate.send(e.getTopic(), e.getAggregateId(), e.getPayload()).get();
+                kafkaTemplate
+                        .send(e.getTopic(), e.getAggregateId(), e.getPayload())
+                        .get();
                 e.markPublished(LocalDateTime.now());
                 outboxEventRepository.save(e);
                 log.debug("아웃박스 발행 완료 - eventId: {}, topic: {}", e.getEventId(), e.getTopic());

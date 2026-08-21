@@ -1,5 +1,10 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+
 import com.ottproject.ottbackend.dto.MembershipCancelMembershipRequestDto;
 import com.ottproject.ottbackend.entity.MembershipPlan;
 import com.ottproject.ottbackend.entity.MembershipSubscription;
@@ -11,6 +16,14 @@ import com.ottproject.ottbackend.repository.JpaSliceTestSupport;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -28,20 +41,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 
 /**
  * 구독 해지 멱등성의 실제 동작 검증 (실제 PostgreSQL, 실제 커밋, 실제 스레드 2개)
@@ -69,12 +68,13 @@ import static org.mockito.Mockito.doAnswer;
 @Import({JpaSliceTestSupport.class, MembershipCommandService.class})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        // 엔티티 기준으로 스키마를 만든다. IdempotencyKey.keyValue 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            // 엔티티 기준으로 스키마를 만든다. IdempotencyKey.keyValue 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 @Transactional(propagation = Propagation.NOT_SUPPORTED) // @DataJpaTest 의 감싸는 트랜잭션을 끈다
 class MembershipCancelIdempotencyTest {
 
@@ -123,8 +123,8 @@ class MembershipCancelIdempotencyTest {
         userRepository.deleteAll();
 
         User user = userRepository.save(User.createLocalUser("cancel@example.com", "encoded", "테스터"));
-        MembershipPlan plan = planRepository.save(
-                MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
+        MembershipPlan plan =
+                planRepository.save(MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
         userId = user.getId();
 
         LocalDateTime now = LocalDateTime.now();
@@ -159,20 +159,24 @@ class MembershipCancelIdempotencyTest {
 
         // 첫 요청을 메일 발송 지점에 붙잡아 둔다. 이 지점은 멱등키를 선삽입한 뒤, 아직 커밋하기 전이다.
         doAnswer(invocation -> {
-            if (notificationCalls.incrementAndGet() == 1) {
-                firstReachedNotification.countDown();
-                releaseFirst.await(10, TimeUnit.SECONDS);
-            }
-            return null;
-        }).when(notificationService).sendCancelAtPeriodEnd(any(), any());
+                    if (notificationCalls.incrementAndGet() == 1) {
+                        firstReachedNotification.countDown();
+                        releaseFirst.await(10, TimeUnit.SECONDS);
+                    }
+                    return null;
+                })
+                .when(notificationService)
+                .sendCancelAtPeriodEnd(any(), any());
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            Future<Throwable> first = pool.submit(() -> catchThrowable(() -> service.cancel(userId, cancelReq(CANCEL_KEY))));
+            Future<Throwable> first =
+                    pool.submit(() -> catchThrowable(() -> service.cancel(userId, cancelReq(CANCEL_KEY))));
             assertThat(firstReachedNotification.await(30, TimeUnit.SECONDS)).isTrue(); // 첫 요청이 키를 선점하고 커밋 직전까지 옴
 
             // 두 번째 요청. 별도 스레드여야 별도 커넥션/트랜잭션이 열린다.
-            Future<Throwable> second = pool.submit(() -> catchThrowable(() -> service.cancel(userId, cancelReq(CANCEL_KEY))));
+            Future<Throwable> second =
+                    pool.submit(() -> catchThrowable(() -> service.cancel(userId, cancelReq(CANCEL_KEY))));
 
             // 첫 요청이 커밋하기 전에는 유니크 인덱스에서 대기해야 한다.
             // 여기서 이미 끝나 있으면 제약이 판정하지 않았다는 뜻이다 = 둘 다 통과했다.
@@ -200,12 +204,10 @@ class MembershipCancelIdempotencyTest {
         service.cancel(userId, cancelReq(CANCEL_KEY)); // 이미 커밋된 키라 빠른 경로에서 걸러진다
 
         assertThat(idempotencyKeyRepository.count()).isEqualTo(1);
-        assertThat(subscriptionRepository.findAll())
-                .singleElement()
-                .satisfies(sub -> {
-                    assertThat(sub.isAutoRenew()).isFalse();
-                    assertThat(sub.isCancelAtPeriodEnd()).isTrue();
-                });
+        assertThat(subscriptionRepository.findAll()).singleElement().satisfies(sub -> {
+            assertThat(sub.isAutoRenew()).isFalse();
+            assertThat(sub.isCancelAtPeriodEnd()).isTrue();
+        });
     }
 
     @Test

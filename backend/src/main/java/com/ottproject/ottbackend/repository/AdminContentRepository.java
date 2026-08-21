@@ -1,9 +1,8 @@
 package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.AdminContent;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
  * AdminContentRepository
@@ -18,9 +17,10 @@ import java.util.List;
  * - findByTypeOrderByPositionAsc: 유형 기준 전체 로케일 목록
  */
 public interface AdminContentRepository extends JpaRepository<AdminContent, Long> { // Repository 시작
-    List<AdminContent> findByTypeAndLocaleAndPublishedOrderByPositionAsc(String type, String locale, boolean published); // 공개용
+    List<AdminContent> findByTypeAndLocaleAndPublishedOrderByPositionAsc(
+            String type, String locale, boolean published); // 공개용
+
     List<AdminContent> findByTypeAndLocaleOrderByPositionAsc(String type, String locale); // 로케일 필터
+
     List<AdminContent> findByTypeOrderByPositionAsc(String type); // 전체 로케일
 }
-
-

@@ -1,5 +1,11 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doAnswer;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateRequestDto;
 import com.ottproject.ottbackend.entity.MembershipPlan;
@@ -11,6 +17,14 @@ import com.ottproject.ottbackend.repository.JpaSliceTestSupport;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.hibernate.Interceptor;
 import org.hibernate.type.Type;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,21 +49,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.LocalDateTime;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.doAnswer;
-
 /**
  * 체크아웃 생성의 멱등 판정 검증 (실제 PostgreSQL, 실제 커밋, 실제 스레드 2개)
  *
@@ -73,15 +72,16 @@ import static org.mockito.Mockito.doAnswer;
 @Import({JpaSliceTestSupport.class, PaymentCommandService.class})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        // 엔티티 기준으로 스키마를 만든다. IdempotencyKey.keyValue 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true",
-        // 아래 AuditTimestampInterceptor 주석 참고
-        "spring.jpa.properties.hibernate.session_factory.interceptor="
-                + "com.ottproject.ottbackend.service.PaymentCheckoutIdempotencyTest$AuditTimestampInterceptor"
-})
+@TestPropertySource(
+        properties = {
+            // 엔티티 기준으로 스키마를 만든다. IdempotencyKey.keyValue 의 unique 선언이 실제 인덱스가 되는지도 함께 검증된다.
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true",
+            // 아래 AuditTimestampInterceptor 주석 참고
+            "spring.jpa.properties.hibernate.session_factory.interceptor="
+                    + "com.ottproject.ottbackend.service.PaymentCheckoutIdempotencyTest$AuditTimestampInterceptor"
+        })
 @Transactional(propagation = Propagation.NOT_SUPPORTED) // @DataJpaTest 의 감싸는 트랜잭션을 끈다
 class PaymentCheckoutIdempotencyTest {
 
@@ -185,8 +185,8 @@ class PaymentCheckoutIdempotencyTest {
         userRepository.deleteAll();
 
         User user = userRepository.save(User.createLocalUser("checkout@example.com", "encoded", "테스터"));
-        MembershipPlan plan = planRepository.save(
-                MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
+        MembershipPlan plan =
+                planRepository.save(MembershipPlan.createBasicPlan("Basic", "설명", new Money(9900L, "KRW"), 1));
         userId = user.getId();
         planCode = plan.getCode();
 
@@ -198,15 +198,17 @@ class PaymentCheckoutIdempotencyTest {
         // 세션 ID 는 호출마다 다르게 발급한다(실제 PG 동작). 그래서 payments 의 유니크 제약은
         // 중복 체크아웃을 막아주지 못하고, 막는 것은 오직 멱등키뿐이다.
         doAnswer(invocation -> {
-            int n = sessionsCreated.incrementAndGet();
-            if (n == 1) {
-                firstReachedGateway.countDown();
-                releaseFirst.await(10, TimeUnit.SECONDS);
-            }
-            PaymentGateway.CheckoutSession session = new PaymentGateway.CheckoutSession();
-            session.sessionId = "sess_checkout_" + n;
-            return session;
-        }).when(paymentGateway).createCheckoutSession(any(), any(), any(), any(), any(), anyLong());
+                    int n = sessionsCreated.incrementAndGet();
+                    if (n == 1) {
+                        firstReachedGateway.countDown();
+                        releaseFirst.await(10, TimeUnit.SECONDS);
+                    }
+                    PaymentGateway.CheckoutSession session = new PaymentGateway.CheckoutSession();
+                    session.sessionId = "sess_checkout_" + n;
+                    return session;
+                })
+                .when(paymentGateway)
+                .createCheckoutSession(any(), any(), any(), any(), any(), anyLong());
     }
 
     private PaymentCheckoutCreateRequestDto checkoutReq(String idempotencyKey) {
@@ -233,8 +235,8 @@ class PaymentCheckoutIdempotencyTest {
     void concurrentCheckoutWithSameKeyCreatesOne() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            Future<Throwable> first = pool.submit(
-                    () -> catchThrowable(() -> service.checkout(userId, checkoutReq(CHECKOUT_KEY))));
+            Future<Throwable> first =
+                    pool.submit(() -> catchThrowable(() -> service.checkout(userId, checkoutReq(CHECKOUT_KEY))));
             assertThat(firstReachedGateway.await(30, TimeUnit.SECONDS)).isTrue(); // 첫 요청이 키를 선점하고 커밋 직전까지 옴
 
             // 두 번째 요청. 별도 스레드여야 별도 커넥션/트랜잭션이 열린다.

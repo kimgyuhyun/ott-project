@@ -12,9 +12,7 @@ package com.ottproject.ottbackend.dto;
  */
 public class PaymentMethodUpdateRequestDto { // 결제수단 부분 수정 요청 DTO 선언
     public Integer expiryMonth; // 선택: 만료 월(Null이면 변경 없음)
-    public Integer expiryYear;  // 선택: 만료 연도(Null이면 변경 없음)
-    public Integer priority;    // 선택: 폴백 우선순위(낮을수록 우선, Null이면 변경 없음)
-    public String label;        // 선택: 별칭(Null이면 변경 없음)
+    public Integer expiryYear; // 선택: 만료 연도(Null이면 변경 없음)
+    public Integer priority; // 선택: 폴백 우선순위(낮을수록 우선, Null이면 변경 없음)
+    public String label; // 선택: 별칭(Null이면 변경 없음)
 }
-
-

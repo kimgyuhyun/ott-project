@@ -1,10 +1,16 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.exception.AdultContentException;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.CharacterRepository;
 import com.ottproject.ottbackend.repository.DirectorRepository;
 import com.ottproject.ottbackend.repository.VoiceActorRepository;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,13 +22,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.PlatformTransactionManager;
-
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
 
 /**
  * SimpleAnimeDataCollectorService 일괄 수집 단위 테스트
@@ -41,18 +40,36 @@ import static org.mockito.Mockito.verify;
 @MockitoSettings(strictness = Strictness.LENIENT) // 생성자 주입 목이 많아 미사용 스텁 허용
 class SimpleAnimeDataCollectorServiceTest {
 
-    @Mock private SimpleJikanApiService jikanApiService;
-    @Mock private SimpleJikanDataMapper dataMapper;
-    @Mock private AnimeRepository animeRepository;
-    @Mock private VoiceActorRepository voiceActorRepository;
-    @Mock private CharacterRepository characterRepository;
-    @Mock private DirectorRepository directorRepository;
-    @Mock private AnimeBatchProcessor animeBatchProcessor;
-    @Mock private PlatformTransactionManager transactionManager;
-    @Mock private ObjectProvider<SimpleAnimeDataCollectorService> selfProvider;
+    @Mock
+    private SimpleJikanApiService jikanApiService;
+
+    @Mock
+    private SimpleJikanDataMapper dataMapper;
+
+    @Mock
+    private AnimeRepository animeRepository;
+
+    @Mock
+    private VoiceActorRepository voiceActorRepository;
+
+    @Mock
+    private CharacterRepository characterRepository;
+
+    @Mock
+    private DirectorRepository directorRepository;
+
+    @Mock
+    private AnimeBatchProcessor animeBatchProcessor;
+
+    @Mock
+    private PlatformTransactionManager transactionManager;
+
+    @Mock
+    private ObjectProvider<SimpleAnimeDataCollectorService> selfProvider;
 
     /** 프록시로 얻어지는 자기 자신(항목별 트랜잭션이 적용되는 경로) */
-    @Mock private SimpleAnimeDataCollectorService self;
+    @Mock
+    private SimpleAnimeDataCollectorService self;
 
     @InjectMocks
     private SimpleAnimeDataCollectorService service;

@@ -1,5 +1,19 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
+import java.time.Duration;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -13,21 +27,6 @@ import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.time.Duration;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * VerificationEmailService 단위 테스트
@@ -47,9 +46,14 @@ import static org.mockito.Mockito.verifyNoInteractions;
 @ExtendWith(MockitoExtension.class)
 class VerificationEmailServiceTest {
 
-    @Mock private JavaMailSender mailSender;
-    @Mock private StringRedisTemplate redisTemplate;
-    @Mock private ValueOperations<String, String> valueOperations;
+    @Mock
+    private JavaMailSender mailSender;
+
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private ValueOperations<String, String> valueOperations;
 
     @InjectMocks
     private VerificationEmailService service;
@@ -197,8 +201,7 @@ class VerificationEmailServiceTest {
     void redisFailureDoesNotSilentlyPass() {
         given(redisTemplate.hasKey(VERIFIED_KEY)).willThrow(new RuntimeException("redis down"));
 
-        assertThatThrownBy(() -> service.isEmailVerified("user@test.com"))
-                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> service.isEmailVerified("user@test.com")).isInstanceOf(RuntimeException.class);
     }
 
     @Test
@@ -206,10 +209,10 @@ class VerificationEmailServiceTest {
     void doesNotSendMailWhenStoringCodeFails() {
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         willThrow(new RuntimeException("redis down"))
-                .given(valueOperations).set(anyString(), anyString(), any(Duration.class));
+                .given(valueOperations)
+                .set(anyString(), anyString(), any(Duration.class));
 
-        assertThatThrownBy(() -> service.sendVerificationEmail("user@test.com"))
-                .isInstanceOf(RuntimeException.class);
+        assertThatThrownBy(() -> service.sendVerificationEmail("user@test.com")).isInstanceOf(RuntimeException.class);
         // 저장 안 된 코드를 메일로 보내면 사용자는 절대 인증할 수 없다
         verifyNoInteractions(mailSender);
     }

@@ -98,35 +98,50 @@ function runTests(backendDir, statePath, fingerprint) {
   // Timed out, or gradle never started. Infrastructure, not code.
   if (run.error || run.signal) return null;
 
-  const failures = collectFailures(resultsDir, before);
+  const results = collectFailures(resultsDir, before);
 
-  if (failures === null) {
+  if (results === null) {
     // This run wrote no results. If gradle still succeeded it decided the tests were
     // up to date, which is green. If it failed, the one cause worth stopping on is
     // code that does not compile - that produces no XML at all, and it is exactly the
     // red light CI would raise ten minutes later.
     if (run.status !== 0) {
-      const compileErrors = extractCompileErrors(
-        (run.stdout || '') + (run.stderr || '')
-      );
+      const output = (run.stdout || '') + (run.stderr || '');
+      const compileErrors = extractCompileErrors(output);
       if (compileErrors.length) {
         return (
           'backend testFast: the backend does not compile.\n' +
           compileErrors.slice(0, MAX_REPORTED).map((l) => '  ' + l).join('\n')
         );
       }
+      // A filter that matches nothing fails the build and writes no XML at all, which
+      // absence alone cannot tell apart from "up to date". Gradle does say so on stdout,
+      // and this is the state PLATFORM 7 wants gated: a green build over zero tests.
+      if (/No tests found for given includes/i.test(output)) {
+        return (
+          'backend testFast: 0 tests ran - the filter matched nothing.\n' +
+          '  The suite is guarding nothing until this is fixed.'
+        );
+      }
       return null; // gradle broke for some other reason - not the code's fault
     }
-  } else if (failures.length) {
-    const shown = failures.slice(0, MAX_REPORTED);
+  } else if (results.failures.length) {
+    const shown = results.failures.slice(0, MAX_REPORTED);
     const more =
-      failures.length > shown.length
-        ? `\n  ...and ${failures.length - shown.length} more`
+      results.failures.length > shown.length
+        ? `\n  ...and ${results.failures.length - shown.length} more`
         : '';
     return (
-      `backend testFast: ${failures.length} failing test(s).\n` +
+      `backend testFast: ${results.failures.length} failing test(s).\n` +
       shown.map((f) => `  ${f.name}\n    ${f.message}`).join('\n') +
       more
+    );
+  } else if (results.executed === 0) {
+    // Results were written by this run but hold no testcase at all - the same hole as
+    // above, reached when gradle exits 0 anyway.
+    return (
+      'backend testFast: results were written but 0 tests ran.\n' +
+      '  Green here proves nothing - check the testFast filter.'
     );
   }
 
@@ -205,7 +220,8 @@ function acquireLock(lockPath) {
   }
 }
 
-// Returns null when there are no usable results, [] when everything passed.
+// Returns null when there are no usable results, otherwise { failures, executed }.
+// executed is counted because a green build does not mean tests ran (PLATFORM 7).
 function collectFailures(resultsDir, notOlderThan) {
   let files;
   try {
@@ -217,6 +233,7 @@ function collectFailures(resultsDir, notOlderThan) {
 
   const failures = [];
   let fresh = 0;
+  let executed = 0;
   for (const f of files) {
     const p = path.join(resultsDir, f);
     let xml;
@@ -235,6 +252,7 @@ function collectFailures(resultsDir, notOlderThan) {
     const caseRe = /<testcase\b([^>]*?)(\/>|>([\s\S]*?)<\/testcase>)/g;
     let m;
     while ((m = caseRe.exec(xml))) {
+      executed++;
       const body = m[3] || '';
       const fail = /<(failure|error)\b([^>]*)(\/>|>)/.exec(body);
       if (!fail) continue;
@@ -244,7 +262,7 @@ function collectFailures(resultsDir, notOlderThan) {
       });
     }
   }
-  return fresh ? failures : null;
+  return fresh ? { failures, executed } : null;
 }
 
 function attr(s, name) {

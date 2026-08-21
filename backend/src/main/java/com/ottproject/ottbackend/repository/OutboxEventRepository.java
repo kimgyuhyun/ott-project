@@ -2,10 +2,9 @@ package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.OutboxEvent;
 import com.ottproject.ottbackend.enums.OutboxStatus;
+import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.List;
 
 /**
  * 아웃박스 이벤트 리포지토리

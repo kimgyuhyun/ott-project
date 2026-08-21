@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 에피소드 댓글 좋아요 엔티티
@@ -21,13 +20,13 @@ import java.time.LocalDateTime;
 @Entity
 @Table( // 테이블 매핑
         name = "episode_comment_likes", // 테이블명
-        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id","episode_comment_id"}) // 복합 유니크
-) // 유니크로 동일 사용자 중복 방지
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "episode_comment_id"}) // 복합 유니크
+        ) // 유니크로 동일 사용자 중복 방지
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
-public class EpisodeCommentLike  {
+public class EpisodeCommentLike {
 
     @Id // 기본키 지정
     @GeneratedValue(strategy = GenerationType.IDENTITY) // 자동 증가 전략
@@ -49,7 +48,7 @@ public class EpisodeCommentLike  {
 
     /**
      * 에피소드 댓글 좋아요 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 좋아요를 누른 사용자
      * @param episodeComment 좋아요 대상 에피소드 댓글
      * @return 생성된 EpisodeCommentLike 엔티티

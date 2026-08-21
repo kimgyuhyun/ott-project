@@ -1,5 +1,12 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.dto.ViewingProfileResponseDto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.entity.ViewingProfile;
@@ -8,25 +15,17 @@ import com.ottproject.ottbackend.exception.ViewingProfileLimitExceededException;
 import com.ottproject.ottbackend.exception.ViewingProfileNotFoundException;
 import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.repository.ViewingProfileRepository;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
  * ViewingProfileService 단위 테스트
@@ -49,8 +48,11 @@ class ViewingProfileServiceTest {
 
     private final Clock fixedClock = Clock.fixed(Instant.parse("2026-08-13T00:00:00Z"), ZoneId.of("Asia/Seoul"));
 
-    @Mock private ViewingProfileRepository viewingProfileRepository;
-    @Mock private UserRepository userRepository;
+    @Mock
+    private ViewingProfileRepository viewingProfileRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     private ViewingProfileService service() {
         return new ViewingProfileService(viewingProfileRepository, userRepository, fixedClock);
@@ -90,8 +92,7 @@ class ViewingProfileServiceTest {
         given(viewingProfileRepository.findById(PROFILE_ID)).willReturn(Optional.of(profileOf(MY_ID, "혼자")));
         given(viewingProfileRepository.countByUserId(MY_ID)).willReturn(1L);
 
-        assertThatThrownBy(() -> service().delete(MY_ID, PROFILE_ID))
-                .isInstanceOf(LastViewingProfileException.class);
+        assertThatThrownBy(() -> service().delete(MY_ID, PROFILE_ID)).isInstanceOf(LastViewingProfileException.class);
 
         verify(viewingProfileRepository, never()).delete(any());
     }
@@ -158,8 +159,7 @@ class ViewingProfileServiceTest {
     @Test
     @DisplayName("프로필이 있으면 목록 조회가 새로 만들지 않는다")
     void listProfiles_doesNotCreateWhenPresent() {
-        given(viewingProfileRepository.findByUserIdOrderByIdAsc(MY_ID))
-                .willReturn(List.of(profileOf(MY_ID, "기존")));
+        given(viewingProfileRepository.findByUserIdOrderByIdAsc(MY_ID)).willReturn(List.of(profileOf(MY_ID, "기존")));
 
         List<ViewingProfileResponseDto> profiles = service().listProfiles(MY_ID);
 

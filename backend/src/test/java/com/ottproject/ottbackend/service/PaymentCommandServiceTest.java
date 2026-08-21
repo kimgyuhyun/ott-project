@@ -1,5 +1,16 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateRequestDto;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateSuccessResponseDto;
@@ -12,10 +23,10 @@ import com.ottproject.ottbackend.entity.Payment;
 import com.ottproject.ottbackend.entity.PaymentMethod;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
-import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
 import com.ottproject.ottbackend.enums.PaymentMethodType;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
+import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
 import com.ottproject.ottbackend.mybatis.PaymentQueryMapper;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
@@ -23,6 +34,9 @@ import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,22 +49,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.times;
 
 /**
  * PaymentCommandService.applyWebhookEvent 단위 테스트
@@ -68,17 +66,38 @@ import static org.mockito.Mockito.times;
 @ExtendWith(MockitoExtension.class)
 class PaymentCommandServiceTest {
 
-    @Mock private MembershipPlanRepository membershipPlanRepository;
-    @Mock private PaymentRepository paymentRepository;
-    @Mock private IdempotencyKeyRepository idempotencyKeyRepository;
-    @Mock private PaymentGateway paymentGateway; // 재검증 경로가 쓰는 계약
-    @Mock private PlayerProgressReadService playerProgressReadService;
-    @Mock private MembershipSubscriptionRepository subscriptionRepository;
-    @Mock private PaymentQueryMapper paymentQueryMapper;
-    @Mock private PaymentMethodRepository paymentMethodRepository;
-    @Mock private MembershipCommandService membershipCommandService;
-    @Mock private OutboxEventRepository outboxEventRepository;
-    @Mock private ObjectMapper objectMapper;
+    @Mock
+    private MembershipPlanRepository membershipPlanRepository;
+
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private IdempotencyKeyRepository idempotencyKeyRepository;
+
+    @Mock
+    private PaymentGateway paymentGateway; // 재검증 경로가 쓰는 계약
+
+    @Mock
+    private PlayerProgressReadService playerProgressReadService;
+
+    @Mock
+    private MembershipSubscriptionRepository subscriptionRepository;
+
+    @Mock
+    private PaymentQueryMapper paymentQueryMapper;
+
+    @Mock
+    private PaymentMethodRepository paymentMethodRepository;
+
+    @Mock
+    private MembershipCommandService membershipCommandService;
+
+    @Mock
+    private OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private PaymentCommandService service;
@@ -104,8 +123,8 @@ class PaymentCommandServiceTest {
     /** 9900원 PENDING 결제(세션 sess_1, 사용자 1) */
     private Payment pendingPayment() {
         MembershipPlan plan = basicPlan();
-        return Payment.createPendingPayment(userWithId(1L), plan, PaymentProvider.IMPORT,
-                "sess_1", new Money(9900L, "KRW"));
+        return Payment.createPendingPayment(
+                userWithId(1L), plan, PaymentProvider.IMPORT, "sess_1", new Money(9900L, "KRW"));
     }
 
     private PaymentWebhookEventDto event(PaymentStatus status) {
@@ -119,15 +138,13 @@ class PaymentCommandServiceTest {
     private MembershipSubscription activeSubscription() {
         MembershipPlan plan = basicPlan();
         // 팩토리가 ACTIVE + autoRenew=true 로 만든다
-        return MembershipSubscription.createSubscription(
-                userWithId(1L), plan, NOW.minusDays(10), NOW.plusDays(20));
+        return MembershipSubscription.createSubscription(userWithId(1L), plan, NOW.minusDays(10), NOW.plusDays(20));
     }
 
     @Test
     @DisplayName("같은 eventId 는 두 번 처리되지 않는다(멱등) - 결제 조회조차 하지 않음")
     void duplicateEventIdIsIgnored() {
-        given(idempotencyKeyRepository.findByKeyValue("evt-1"))
-                .willReturn(Optional.of(mock(IdempotencyKey.class)));
+        given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.of(mock(IdempotencyKey.class)));
 
         service.applyWebhookEvent(1L, event(PaymentStatus.FAILED));
 
@@ -388,7 +405,8 @@ class PaymentCommandServiceTest {
         given(idempotencyKeyRepository.findByKeyValue("evt-1")).willReturn(Optional.empty());
         given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
         org.mockito.BDDMockito.willThrow(new RuntimeException("subscribe boom"))
-                .given(membershipCommandService).subscribe(anyLong(), any());
+                .given(membershipCommandService)
+                .subscribe(anyLong(), any());
 
         // 과거 회귀: 리스너의 블랭킷 catch 로 구독 생성 실패가 묻혀 돈만 받고 혜택이 안 나갔다
         assertThatThrownBy(() -> service.applyWebhookEvent(1L, succeededEvent()))
@@ -430,7 +448,8 @@ class PaymentCommandServiceTest {
     @DisplayName("위조 failed 웹훅 - 아임포트 실제 상태가 paid 면 400 거부(결제/구독 손대지 않음)")
     void forgedFailedWebhookIsRejected() {
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, PaymentGateway.ReconcileStatus.PAID));
+        given(paymentGateway.findPaymentBySessionId("sess_1"))
+                .willReturn(reconcile(true, PaymentGateway.ReconcileStatus.PAID));
 
         assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("failed")))
                 .isInstanceOf(ResponseStatusException.class)
@@ -459,7 +478,8 @@ class PaymentCommandServiceTest {
         ReflectionTestUtils.setField(payment, "id", 1L); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
         MembershipSubscription sub = activeSubscription();
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, PaymentGateway.ReconcileStatus.FAILED));
+        given(paymentGateway.findPaymentBySessionId("sess_1"))
+                .willReturn(reconcile(true, PaymentGateway.ReconcileStatus.FAILED));
         given(paymentQueryMapper.findByProviderSessionId("sess_1")).willReturn(payment);
         given(idempotencyKeyRepository.findByKeyValue("imp_1:FAILED")).willReturn(Optional.empty());
         given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
@@ -476,7 +496,8 @@ class PaymentCommandServiceTest {
     @DisplayName("위조 cancelled 웹훅 - 아임포트가 paid 라고 하면 400 거부(임의 해지 예약 방어)")
     void forgedCanceledWebhookIsRejected() {
         given(paymentGateway.verifyWebhookBasicValidation(any(), any())).willReturn(true);
-        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(true, PaymentGateway.ReconcileStatus.PAID));
+        given(paymentGateway.findPaymentBySessionId("sess_1"))
+                .willReturn(reconcile(true, PaymentGateway.ReconcileStatus.PAID));
 
         assertThatThrownBy(() -> service.processWebhook(new HttpHeaders(), iamportBody("cancelled")))
                 .isInstanceOf(ResponseStatusException.class)
@@ -490,7 +511,8 @@ class PaymentCommandServiceTest {
     void iamportWebhookEventIdCombinesImpUidAndStatus() {
         // imp_uid 단독이면 정상적인 paid→cancelled 전이의 두 번째가 "이미 처리됨"으로 삼켜진다
         assertThat(service.parseWebhookPayload(iamportBody("paid")).eventId).isEqualTo("imp_1:SUCCEEDED");
-        assertThat(service.parseWebhookPayload(iamportBody("cancelled")).eventId).isEqualTo("imp_1:CANCELED");
+        assertThat(service.parseWebhookPayload(iamportBody("cancelled")).eventId)
+                .isEqualTo("imp_1:CANCELED");
     }
 
     // ===== 환불 정책: 7일 이내 AND 전혀 시청하지 않음 =====
@@ -498,8 +520,13 @@ class PaymentCommandServiceTest {
     /** 결제일이 daysAgo 일 전인 SUCCEEDED 결제(사용자 1, 9900원) */
     private Payment succeededPaymentPaidDaysAgo(long daysAgo) {
         MembershipPlan plan = basicPlan();
-        Payment payment = Payment.createSucceededPayment(userWithId(1L), plan, PaymentProvider.IMPORT,
-                "imp_1", new Money(9900L, "KRW"), LocalDateTime.now().minusDays(daysAgo));
+        Payment payment = Payment.createSucceededPayment(
+                userWithId(1L),
+                plan,
+                PaymentProvider.IMPORT,
+                "imp_1",
+                new Money(9900L, "KRW"),
+                LocalDateTime.now().minusDays(daysAgo));
         return payment;
     }
 
@@ -514,7 +541,8 @@ class PaymentCommandServiceTest {
         // 3단계가 락을 잡고 다시 읽는다(1단계의 findById 와 별개다)
         given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
         given(idempotencyKeyRepository.findByKeyValue("payment.refund:1")).willReturn(Optional.empty());
-        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(1L), any())).willReturn(0);
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(1L), any()))
+                .willReturn(0);
         given(paymentGateway.issueRefund("imp_1", 9900L)).willReturn(rr);
         given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
                 .willReturn(Optional.of(sub));
@@ -554,7 +582,8 @@ class PaymentCommandServiceTest {
     @DisplayName("시청 이력이 있으면 환불 불가 - 콘텐츠 소비 후 환불 방지")
     void refundRejectedWhenWatched() {
         given(paymentRepository.findById(1L)).willReturn(Optional.of(succeededPaymentPaidDaysAgo(1)));
-        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(1L), any())).willReturn(1); // 1초
+        given(playerProgressReadService.sumWatchedSecondsSincePaidEpisodes(eq(1L), any()))
+                .willReturn(1); // 1초
 
         assertThatThrownBy(() -> service.refundIfEligible(1L, 1L))
                 .isInstanceOf(ResponseStatusException.class)

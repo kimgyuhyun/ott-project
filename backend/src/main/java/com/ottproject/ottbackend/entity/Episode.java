@@ -1,14 +1,13 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 에피소드 엔티티
@@ -58,7 +57,10 @@ public class Episode {
     @JoinColumn(name = "anime_id", nullable = false) //
     private Anime anime; // 에피소드가 속한 애니 정보
 
-    @OneToMany(mappedBy = "episode", cascade = CascadeType.ALL, orphanRemoval = true) // 일대다 관계, cascade로 연쇄 삭제, 고아 객체 제거
+    @OneToMany(
+            mappedBy = "episode",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true) // 일대다 관계, cascade로 연쇄 삭제, 고아 객체 제거
     private List<EpisodeComment> episodeComments = new ArrayList<>(); // 에피소드 댓글 목록
 
     @CreatedDate // 생성일시 자동 설정
@@ -73,7 +75,7 @@ public class Episode {
 
     /**
      * 에피소드 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param anime 애니메이션 엔티티
      * @param episodeNumber 에피소드 번호 (1 이상)
      * @param title 에피소드 제목 (필수, 공백 불허)
@@ -83,8 +85,8 @@ public class Episode {
      * @return 생성된 Episode 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static Episode createEpisode(Anime anime, Integer episodeNumber, String title, 
-                                       String thumbnailUrl, String videoUrl, Integer duration) {
+    public static Episode createEpisode(
+            Anime anime, Integer episodeNumber, String title, String thumbnailUrl, String videoUrl, Integer duration) {
         // 필수 필드 검증
         if (anime == null) {
             throw new IllegalArgumentException("애니메이션은 필수입니다.");
@@ -126,7 +128,7 @@ public class Episode {
 
     /**
      * 공개된 에피소드 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param anime 애니메이션 엔티티
      * @param episodeNumber 에피소드 번호 (1 이상)
      * @param title 에피소드 제목 (필수, 공백 불허)
@@ -137,9 +139,14 @@ public class Episode {
      * @return 생성된 Episode 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static Episode createReleasedEpisode(Anime anime, Integer episodeNumber, String title, 
-                                               String thumbnailUrl, String videoUrl, Integer duration, 
-                                               LocalDateTime releaseDate) {
+    public static Episode createReleasedEpisode(
+            Anime anime,
+            Integer episodeNumber,
+            String title,
+            String thumbnailUrl,
+            String videoUrl,
+            Integer duration,
+            LocalDateTime releaseDate) {
         // 공개일 검증
         if (releaseDate == null || releaseDate.isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("공개일은 현재 시간 이후여야 합니다.");
@@ -152,7 +159,7 @@ public class Episode {
 
     /**
      * 초안 에피소드 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param anime 애니메이션 엔티티
      * @param episodeNumber 에피소드 번호 (1 이상)
      * @param title 에피소드 제목 (필수, 공백 불허)
@@ -196,8 +203,8 @@ public class Episode {
      */
     public void setAnime(Anime anime) {
         this.anime = anime;
-        // 양방향 관계 설정 
-        if (anime != null && !anime.getEpisodes().contains(this)) { 
+        // 양방향 관계 설정
+        if (anime != null && !anime.getEpisodes().contains(this)) {
             anime.getEpisodes().add(this);
         }
     }

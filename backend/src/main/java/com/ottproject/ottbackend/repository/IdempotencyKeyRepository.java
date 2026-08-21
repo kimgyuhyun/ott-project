@@ -2,12 +2,11 @@ package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.enums.IdempotencyKeyStatus;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 /**
  * IdempotencyKeyRepository
@@ -21,14 +20,12 @@ import java.util.Optional;
  */
 @Repository
 public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, Long> {
-	Optional<IdempotencyKey> findByKeyValue(String keyValue);
+    Optional<IdempotencyKey> findByKeyValue(String keyValue);
 
-	/**
-	 * 오래된 선점 키 조회(대사 배치용)
-	 * - IdempotencyKey 에는 updatedAt 이 없어 경과 시간 기준은 createdAt 뿐이다.
-	 */
-	List<IdempotencyKey> findByPurposeAndStatusAndCreatedAtBefore(
-			String purpose, IdempotencyKeyStatus status, LocalDateTime createdAtBefore);
+    /**
+     * 오래된 선점 키 조회(대사 배치용)
+     * - IdempotencyKey 에는 updatedAt 이 없어 경과 시간 기준은 createdAt 뿐이다.
+     */
+    List<IdempotencyKey> findByPurposeAndStatusAndCreatedAtBefore(
+            String purpose, IdempotencyKeyStatus status, LocalDateTime createdAtBefore);
 }
-
-

@@ -1,7 +1,7 @@
 package com.ottproject.ottbackend.controller;
 
-import com.ottproject.ottbackend.dto.SubtitleDto;
 import com.ottproject.ottbackend.dto.SkipMetaResponseDto;
+import com.ottproject.ottbackend.dto.SubtitleDto;
 import com.ottproject.ottbackend.dto.UserSettingsDto;
 import com.ottproject.ottbackend.service.PlayerService;
 import com.ottproject.ottbackend.service.SettingsService;
@@ -10,11 +10,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpSession;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * PlayerController
@@ -41,8 +40,7 @@ public class PlayerController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/episodes/{episodeId}/subtitles")
     public ResponseEntity<List<SubtitleDto>> getSubtitles(
-            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId
-    ) {
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId) {
         List<SubtitleDto> subtitles = playerService.getSubtitlesByEpisode(episodeId);
         return ResponseEntity.ok(subtitles);
     }
@@ -51,8 +49,7 @@ public class PlayerController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/episodes/{episodeId}/subtitles/default")
     public ResponseEntity<SubtitleDto> getDefaultSubtitle(
-            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId
-    ) {
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId) {
         SubtitleDto subtitle = playerService.getDefaultSubtitle(episodeId);
         if (subtitle == null) {
             return ResponseEntity.notFound().build();
@@ -65,8 +62,7 @@ public class PlayerController {
     @GetMapping("/episodes/{episodeId}/subtitles/{language}")
     public ResponseEntity<SubtitleDto> getSubtitleByLanguage(
             @Parameter(description = "에피소드 ID") @PathVariable Long episodeId,
-            @Parameter(description = "언어 코드") @PathVariable String language
-    ) {
+            @Parameter(description = "언어 코드") @PathVariable String language) {
         SubtitleDto subtitle = playerService.getSubtitleByLanguage(episodeId, language);
         if (subtitle == null) {
             return ResponseEntity.notFound().build();
@@ -78,8 +74,7 @@ public class PlayerController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/episodes/{episodeId}/skips")
     public ResponseEntity<SkipMetaResponseDto> getSkips(
-            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId
-    ) {
+            @Parameter(description = "에피소드 ID") @PathVariable Long episodeId) {
         SkipMetaResponseDto skip = playerService.getSkipMetaByEpisode(episodeId);
         if (skip == null) {
             return ResponseEntity.notFound().build();

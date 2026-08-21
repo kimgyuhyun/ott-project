@@ -23,6 +23,27 @@
             "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/backend-test-mirror.js\"",
             "timeout": 150,
             "statusMessage": "running backend testFast"
+          },
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/frontend-type-mirror.js\"",
+            "timeout": 150,
+            "statusMessage": "type-checking frontend"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "bash",
+            "command": "node \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/format-on-edit.js\"",
+            "timeout": 120,
+            "statusMessage": "formatting edited file"
           }
         ]
       }

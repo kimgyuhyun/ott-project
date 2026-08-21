@@ -19,9 +19,9 @@ package com.ottproject.ottbackend.enums; // 결제 상태 enum 패키지 선언
  * - SUCCEEDED 전환 시 `providerPaymentId`/`receiptUrl` 세팅, REFUNDED 전환 시 `refundedAmount`/`refundedAt` 세팅
  */
 public enum PaymentStatus { // 결제 상태
-    PENDING,   // 결제 진행 중(승인 전)
+    PENDING, // 결제 진행 중(승인 전)
     SUCCEEDED, // 결제 승인 완료(멤버십 활성/연장 트리거)
-    FAILED,    // 결제 실패(승인 거절 등)
-    CANCELED,  // 결제 취소(사용자/세션 만료 등)
-    REFUNDED   // 환불 완료(부분/전액)
+    FAILED, // 결제 실패(승인 거절 등)
+    CANCELED, // 결제 취소(사용자/세션 만료 등)
+    REFUNDED // 환불 완료(부분/전액)
 }

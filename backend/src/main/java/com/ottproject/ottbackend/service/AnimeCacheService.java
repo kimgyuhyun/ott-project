@@ -5,15 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.dto.AnimeDetailDto;
 import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.GenreSimpleDto;
+import java.time.Duration;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-
-import java.time.Duration;
-import java.util.List;
 
 /**
  * AnimeCacheService
@@ -81,34 +80,34 @@ public class AnimeCacheService {
             }
 
             log.info("[Cache][Anime] popular MISS key={}", POPULAR_KEY);
-            List<AnimeListDto> data = animeQueryService.list(
-                    null, // status
-                    null, // genreIds
-                    null, // minRating
-                    null, // year
-                    null, // quarter
-                    null, // type
-                    null, // isDub
-                    null, // isSubtitle
-                    null, // isExclusive
-                    null, // isCompleted
-                    null, // isNew
-                    null, // isPopular
-                    "rating", // sort
-                    0, // page
-                    10, // size
-                    null // tagIds
-            ).getItems();
+            List<AnimeListDto> data = animeQueryService
+                    .list(
+                            null, // status
+                            null, // genreIds
+                            null, // minRating
+                            null, // year
+                            null, // quarter
+                            null, // type
+                            null, // isDub
+                            null, // isSubtitle
+                            null, // isExclusive
+                            null, // isCompleted
+                            null, // isNew
+                            null, // isPopular
+                            "rating", // sort
+                            0, // page
+                            10, // size
+                            null // tagIds
+                            )
+                    .getItems();
             stringRedisTemplate.opsForValue().set(POPULAR_KEY, objectMapper.writeValueAsString(data), POPULAR_TTL);
             return data;
 
         } catch (Exception e) {
             log.error("[Cache][Anime] popular failed key={} error={} - DB 폴백", POPULAR_KEY, e.getMessage(), e);
-            return animeQueryService.list(
-                    null, null, null, null, null, null,
-                    null, null, null, null, null, null,
-                    "rating", 0, 10, null
-            ).getItems();
+            return animeQueryService
+                    .list(null, null, null, null, null, null, null, null, null, null, null, null, "rating", 0, 10, null)
+                    .getItems();
         }
     }
 

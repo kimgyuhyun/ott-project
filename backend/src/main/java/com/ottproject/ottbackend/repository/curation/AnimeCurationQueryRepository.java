@@ -1,5 +1,7 @@
 package com.ottproject.ottbackend.repository.curation;
 
+import static com.ottproject.ottbackend.entity.QAnime.anime;
+
 import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.entity.Anime;
@@ -8,13 +10,10 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import com.querydsl.jpa.impl.JPAUpdateClause;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-
 import java.time.LocalDateTime;
 import java.util.List;
-
-import static com.ottproject.ottbackend.entity.QAnime.anime;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
 /**
  * 관리자 애니 큐레이션 동적 검색 리포지토리 (QueryDSL)
@@ -132,7 +131,8 @@ public class AnimeCurationQueryRepository {
             return null; // 조건 없음
         }
         String trimmed = keyword.trim();
-        return anime.title.containsIgnoreCase(trimmed)
+        return anime.title
+                .containsIgnoreCase(trimmed)
                 .or(anime.titleEn.containsIgnoreCase(trimmed))
                 .or(anime.titleJp.containsIgnoreCase(trimmed));
     }

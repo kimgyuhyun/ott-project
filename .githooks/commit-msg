@@ -1,0 +1,47 @@
+#!/bin/sh
+# 커밋 메시지가 Conventional Commits 형식인지 검사한다.
+#
+# 왜 두는가: 이 저장소는 커밋 1110개 중 907개(82%)가 이미 이 형식인데, 최근 60개에서는
+# 11개(18%)로 떨어졌다. 그리고 히스토리에 'eat:', 'fixr' 같은 오타와 'security:',
+# 'harden:', 'ops:' 같은 비표준 타입이 남아 있다. 의지만으로는 지켜지지 않는다는 증거라
+# 기계가 볼 수 있는 부분만 기계에게 넘긴다.
+#
+# 검사하지 않는 것: 문체, 언어, 내용. 정규식이 판단할 수 없는 것은 판단하지 않는다.
+#
+# 활성화: .githooks/pre-commit 과 같다 (git config core.hooksPath .githooks).
+# 우회: git commit --no-verify. 훅은 강제 수단이 아니라 기본값이다.
+
+set -e
+
+MSG_FILE="$1"
+SUBJECT=$(sed -n '1p' "$MSG_FILE")
+
+# git 이 스스로 만드는 메시지와 작성 중인 특수 커밋은 대상이 아니다.
+case "$SUBJECT" in
+  "Merge "*|"Revert "*|"fixup!"*|"squash!"*|"amend!"*|"#"*|"") exit 0 ;;
+esac
+
+TYPES='feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert'
+FAIL=''
+
+# 타입 접두사. 스코프는 선택, '!' 는 파괴적 변경 표기.
+if ! printf '%s' "$SUBJECT" | grep -Eq "^($TYPES)(\([a-z0-9._/-]+\))?!?: .+"; then
+  FAIL="타입 접두사가 없거나 표준 타입이 아니다."
+elif [ "${#SUBJECT}" -gt 72 ]; then
+  FAIL="제목이 ${#SUBJECT}자다. 72자 이하로 줄여라."
+elif printf '%s' "$SUBJECT" | grep -q '\.$'; then
+  FAIL="제목을 마침표로 끝내지 않는다."
+fi
+
+[ -z "$FAIL" ] && exit 0
+
+echo "commit-msg: $FAIL" >&2
+echo "  받은 제목: $SUBJECT" >&2
+echo "" >&2
+echo "  형식: <타입>[(스코프)][!]: <설명>" >&2
+echo "  타입: feat fix docs style refactor perf test build ci chore revert" >&2
+echo "  예:   fix: raise the test mirror timeout above what the suite actually takes" >&2
+echo "        feat(payment): cache the Iamport access token" >&2
+echo "" >&2
+echo "  의도한 것이면 git commit --no-verify 로 통과시킬 수 있다." >&2
+exit 1

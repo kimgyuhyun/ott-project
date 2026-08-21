@@ -2,8 +2,6 @@ package com.ottproject.ottbackend.dto;
 
 import com.ottproject.ottbackend.validation.ContentOrRatingRequired;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 

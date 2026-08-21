@@ -38,7 +38,8 @@ public class AdminController {
      */
     @GetMapping("/user/{userId}/subscription")
     public ResponseEntity<Object> getUserSubscription(@PathVariable Long userId) {
-        return adminSubscriptionService.findActiveSubscription(userId)
+        return adminSubscriptionService
+                .findActiveSubscription(userId)
                 .map(dto -> ResponseEntity.ok((Object) dto))
                 .orElseGet(() -> ResponseEntity.ok((Object) "활성 구독 없음"));
     }

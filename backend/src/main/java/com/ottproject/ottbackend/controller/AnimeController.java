@@ -4,21 +4,20 @@ import com.ottproject.ottbackend.dto.AnimeDetailDto;
 import com.ottproject.ottbackend.dto.AnimeListDto;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import com.ottproject.ottbackend.service.AnimeQueryService;
 import com.ottproject.ottbackend.service.AnimeCacheService;
+import com.ottproject.ottbackend.service.AnimeQueryService;
 import com.ottproject.ottbackend.service.FavoriteAnimeService;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.data.redis.core.ZSetOperations;
 import com.ottproject.ottbackend.service.PersonalizedRecommendationService;
 import com.ottproject.ottbackend.util.SecurityUtil;
-import lombok.RequiredArgsConstructor;
-import jakarta.servlet.http.HttpSession;
-import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-
+import jakarta.servlet.http.HttpSession;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * AnimeController
@@ -31,8 +30,8 @@ import java.util.List;
  * - GET /api/anime/{aniId}: 상세 조회(로그인 시 isFavorited 포함)
  */
 @RequiredArgsConstructor
-@RestController 
-@RequestMapping("/api/anime") 
+@RestController
+@RequestMapping("/api/anime")
 public class AnimeController {
 
     private final AnimeQueryService queryService;
@@ -48,7 +47,7 @@ public class AnimeController {
     @Operation(summary = "애니 목록 조회", description = "필터/정렬/페이지네이션을 적용해 애니 목록을 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping
-    public PagedResponse<AnimeListDto> list( 
+    public PagedResponse<AnimeListDto> list(
             @RequestParam(required = false) AnimeStatus status,
             @RequestParam(required = false, name = "genreIds") List<Long> genreIds,
             @RequestParam(required = false) Double minRating,
@@ -64,14 +63,25 @@ public class AnimeController {
             @RequestParam(defaultValue = "id") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false, name = "tagIds") List<Long> tagIds
-    ) {
-        
+            @RequestParam(required = false, name = "tagIds") List<Long> tagIds) {
+
         return queryService.list(
-            status, genreIds, minRating, year, quarter, type,
-            isDub, isSubtitle, isExclusive, isCompleted, isNew, isPopular,
-            sort, page, size, tagIds
-        );
+                status,
+                genreIds,
+                minRating,
+                year,
+                quarter,
+                type,
+                isDub,
+                isSubtitle,
+                isExclusive,
+                isCompleted,
+                isNew,
+                isPopular,
+                sort,
+                page,
+                size,
+                tagIds);
     }
 
     /**
@@ -81,9 +91,7 @@ public class AnimeController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/{aniId}")
     public AnimeDetailDto detail(
-            @Parameter(description = "애니 ID", required = true) @PathVariable Long aniId, 
-            HttpSession session
-    ) {
+            @Parameter(description = "애니 ID", required = true) @PathVariable Long aniId, HttpSession session) {
         Long userId = securityUtil.getCurrentUserIdOrNull(session);
         AnimeDetailDto dto = animeCacheService.getDetailPublic(aniId); // 공용부는 캐시에서
         if (dto == null) return null; // 작품 없음
@@ -97,32 +105,32 @@ public class AnimeController {
     @Operation(summary = "개인화 추천 애니메이션 조회", description = "사용자 찜/시청/평점 기반 개인화 추천 애니메이션 목록을 반환합니다.")
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/recommended")
-    public List<AnimeListDto> getRecommended(
-            @RequestParam(defaultValue = "6") int size
-    ) {
+    public List<AnimeListDto> getRecommended(@RequestParam(defaultValue = "6") int size) {
         Long userId = securityUtil.getCurrentUserIdOrNull(null);
-        
+
         if (userId != null) {
             return personalizedRecommendationService.getPersonalizedRecommendations(userId, size);
         } else {
-            return queryService.list(
-                    null, // status
-                    null, // genreIds
-                    null, // minRating
-                    null, // year
-                    null, // quarter
-                    null, // type
-                    null, // isDub
-                    null, // isSubtitle
-                    null, // isExclusive
-                    null, // isCompleted
-                    null, // isNew
-                    true, // isPopular
-                    "rating", // sort
-                    0, // page
-                    size, // size
-                    null // tagIds
-            ).getItems();
+            return queryService
+                    .list(
+                            null, // status
+                            null, // genreIds
+                            null, // minRating
+                            null, // year
+                            null, // quarter
+                            null, // type
+                            null, // isDub
+                            null, // isSubtitle
+                            null, // isExclusive
+                            null, // isCompleted
+                            null, // isNew
+                            true, // isPopular
+                            "rating", // sort
+                            0, // page
+                            size, // size
+                            null // tagIds
+                            )
+                    .getItems();
         }
     }
 
@@ -154,7 +162,12 @@ public class AnimeController {
                 .filter(t -> t.getValue() != null)
                 .map(t -> t.getValue().toString())
                 .filter(s -> {
-                    try { Long.parseLong(s); return true; } catch (Exception e) { return false; }
+                    try {
+                        Long.parseLong(s);
+                        return true;
+                    } catch (Exception e) {
+                        return false;
+                    }
                 })
                 .map(Long::valueOf)
                 .toList();
@@ -169,8 +182,7 @@ public class AnimeController {
     @GetMapping("/weekly/{day}")
     public List<AnimeListDto> getWeeklyByDay(
             @Parameter(description = "요일 (monday..sunday)", required = true) @PathVariable String day,
-            @RequestParam(defaultValue = "50") int limit
-    ) {
+            @RequestParam(defaultValue = "50") int limit) {
         return queryService.getWeeklyByDay(day, limit);
     }
 
@@ -225,10 +237,7 @@ public class AnimeController {
     @Operation(summary = "사용자 활동 기록", description = "시청/찜/평점 활동을 기록하여 개인화 추천에 활용합니다.")
     @ApiResponse(responseCode = "200", description = "기록 성공")
     @PostMapping("/activity")
-    public void recordActivity(
-            @RequestParam Long animeId,
-            @RequestParam String activityType
-    ) {
+    public void recordActivity(@RequestParam Long animeId, @RequestParam String activityType) {
         Long userId = securityUtil.getCurrentUserIdOrNull(null);
         if (userId != null) {
             personalizedRecommendationService.recordUserActivity(userId, animeId, activityType);

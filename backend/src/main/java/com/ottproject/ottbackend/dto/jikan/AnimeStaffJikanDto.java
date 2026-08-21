@@ -1,10 +1,9 @@
 package com.ottproject.ottbackend.dto.jikan;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.List;
 
 @Getter
 @Setter
@@ -18,7 +17,7 @@ public class AnimeStaffJikanDto {
     public static class StaffItem {
         private Person person;
         private List<String> positions;
-        
+
         @Getter
         @Setter
         @JsonIgnoreProperties(ignoreUnknown = true)
@@ -26,7 +25,7 @@ public class AnimeStaffJikanDto {
             private Long mal_id;
             private String name;
         }
-        
+
         // 편의 메서드: person.name을 직접 접근
         public String getName() {
             return person != null ? person.getName() : null;
@@ -37,5 +36,3 @@ public class AnimeStaffJikanDto {
         }
     }
 }
-
-

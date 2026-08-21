@@ -22,18 +22,21 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class BillingRetryConsumer {
 
-	private final RecurringBillingService recurringBillingService; // 재청구 로직 위임
+    private final RecurringBillingService recurringBillingService; // 재청구 로직 위임
 
-	@RabbitListener(queues = RabbitConfig.RETRY_QUEUE)
-	public void onBillingRetry(BillingRetryMessageDto message) {
-		log.info("정기결제 재시도 메시지 수신 - subscriptionId: {}, attempt: {}",
-				message.getSubscriptionId(), message.getAttempt());
-		try {
-			recurringBillingService.retryBilling(message.getSubscriptionId(), message.getAttempt());
-		} catch (Exception e) {
-			// 재큐잉하지 않고 폐기 → 무한 루프 방지. 스윕 안전망이 이후 주기에서 복구한다.
-			log.error("정기결제 재시도 처리 실패 - subscriptionId: {}, attempt: {}",
-					message.getSubscriptionId(), message.getAttempt(), e);
-		}
-	}
+    @RabbitListener(queues = RabbitConfig.RETRY_QUEUE)
+    public void onBillingRetry(BillingRetryMessageDto message) {
+        log.info(
+                "정기결제 재시도 메시지 수신 - subscriptionId: {}, attempt: {}", message.getSubscriptionId(), message.getAttempt());
+        try {
+            recurringBillingService.retryBilling(message.getSubscriptionId(), message.getAttempt());
+        } catch (Exception e) {
+            // 재큐잉하지 않고 폐기 → 무한 루프 방지. 스윕 안전망이 이후 주기에서 복구한다.
+            log.error(
+                    "정기결제 재시도 처리 실패 - subscriptionId: {}, attempt: {}",
+                    message.getSubscriptionId(),
+                    message.getAttempt(),
+                    e);
+        }
+    }
 }

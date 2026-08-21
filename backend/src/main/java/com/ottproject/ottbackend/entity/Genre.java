@@ -1,14 +1,13 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * 장르 엔티티
@@ -22,7 +21,6 @@ import java.util.Set;
  * - createdAt/updatedAt: 생성/수정 시각
  * - animes: 역방향 연관(다대다)
  */
-
 @Entity
 @Table(name = "genres")
 @Getter
@@ -64,16 +62,16 @@ public class Genre {
      */
     @ManyToMany(mappedBy = "genres", fetch = FetchType.LAZY) // 다대다 관계, 지연 로딩
     private Set<Anime> animes = new HashSet<>(); // 해당 장르를 가진 애니 목록
-    
+
     // ===== Getter 메서드 =====
     public String getName() {
         return name;
     }
-    
+
     // ===== 정적 팩토리 메서드 =====
     /**
      * 장르 생성
-     * 
+     *
      * @param name 장르명 (필수)
      * @param description 장르 설명 (선택)
      * @param color 장르 색상 (필수)
@@ -86,7 +84,7 @@ public class Genre {
         if (color == null || color.trim().isEmpty()) {
             throw new IllegalArgumentException("장르 색상은 필수입니다.");
         }
-        
+
         Genre genre = new Genre();
         genre.name = name.trim();
         genre.description = description != null ? description.trim() : "";
@@ -94,7 +92,7 @@ public class Genre {
         genre.isActive = true;
         genre.createdAt = LocalDateTime.now();
         genre.updatedAt = LocalDateTime.now();
-        
+
         return genre;
     }
 }

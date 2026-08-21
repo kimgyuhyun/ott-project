@@ -2,14 +2,14 @@ package com.ottproject.ottbackend.controller;
 
 import com.ottproject.ottbackend.service.RatingService;
 import com.ottproject.ottbackend.util.SecurityUtil;
-import jakarta.servlet.http.HttpSession;
-import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpSession;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 /**
  * RatingController
@@ -37,10 +37,8 @@ public class RatingController {
     @ApiResponse(responseCode = "401", description = "인증 필요")
     @PostMapping
     public ResponseEntity<Double> createOrUpdate(
-            @Parameter(description = "애니메이션 ID", required = true) 
-            @PathVariable Long aniId, 
-            @Parameter(description = "평점 (1.0 ~ 5.0)", required = true) 
-            @RequestParam Double score, 
+            @Parameter(description = "애니메이션 ID", required = true) @PathVariable Long aniId,
+            @Parameter(description = "평점 (1.0 ~ 5.0)", required = true) @RequestParam Double score,
             HttpSession session) {
         Long userId = securityUtil.requireCurrentUserId(session);
         ratingService.createOrUpdateRating(userId, aniId, score);
@@ -52,9 +50,7 @@ public class RatingController {
     @ApiResponse(responseCode = "401", description = "인증 필요")
     @GetMapping("/me")
     public ResponseEntity<Double> myRating(
-            @Parameter(description = "애니메이션 ID", required = true) 
-            @PathVariable Long aniId, 
-            HttpSession session) {
+            @Parameter(description = "애니메이션 ID", required = true) @PathVariable Long aniId, HttpSession session) {
         Long userId = securityUtil.requireCurrentUserId(session);
         return ResponseEntity.ok(ratingService.getUserRating(userId, aniId));
     }
@@ -63,8 +59,7 @@ public class RatingController {
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping("/stats")
     public ResponseEntity<java.util.Map<String, Object>> stats(
-            @Parameter(description = "애니메이션 ID", required = true) 
-            @PathVariable Long aniId) {
+            @Parameter(description = "애니메이션 ID", required = true) @PathVariable Long aniId) {
         java.util.Map<String, Object> body = new java.util.HashMap<>();
         body.put("distribution", ratingService.getDistribution(aniId));
         body.put("average", ratingService.getAverage(aniId));
@@ -76,13 +71,9 @@ public class RatingController {
     @ApiResponse(responseCode = "401", description = "인증 필요")
     @DeleteMapping
     public ResponseEntity<Void> delete(
-            @Parameter(description = "애니메이션 ID", required = true) 
-            @PathVariable Long aniId, 
-            HttpSession session) {
+            @Parameter(description = "애니메이션 ID", required = true) @PathVariable Long aniId, HttpSession session) {
         Long userId = securityUtil.requireCurrentUserId(session);
         ratingService.deleteMyRating(userId, aniId);
         return ResponseEntity.noContent().build();
     }
 }
-
-

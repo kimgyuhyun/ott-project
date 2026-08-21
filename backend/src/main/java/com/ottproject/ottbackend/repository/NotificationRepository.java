@@ -2,14 +2,13 @@ package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.Notification;
 import com.ottproject.ottbackend.enums.NotificationType;
+import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.time.LocalDateTime;
 
 /**
  * NotificationRepository
@@ -25,48 +24,48 @@ import java.time.LocalDateTime;
  */
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
-    
+
     /**
      * 사용자별 알림 목록 조회 (최신순, 페이징)
      */
     Page<Notification> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
-    
+
     /**
      * 사용자별 읽지 않은 알림 개수 조회
      */
     @Query("SELECT COUNT(n) FROM Notification n WHERE n.user.id = :userId AND n.isRead = false")
     long countUnreadByUserId(@Param("userId") Long userId);
-    
+
     /**
      * 사용자별 특정 타입 알림 조회
      */
-    Page<Notification> findByUserIdAndTypeOrderByCreatedAtDesc(
-            Long userId, NotificationType type, Pageable pageable);
-    
+    Page<Notification> findByUserIdAndTypeOrderByCreatedAtDesc(Long userId, NotificationType type, Pageable pageable);
+
     /**
      * 사용자별 읽지 않은 알림 조회
      */
-    Page<Notification> findByUserIdAndIsReadOrderByCreatedAtDesc(
-            Long userId, Boolean isRead, Pageable pageable);
-    
+    Page<Notification> findByUserIdAndIsReadOrderByCreatedAtDesc(Long userId, Boolean isRead, Pageable pageable);
+
     /**
      * 특정 기간 이전의 읽은 알림 조회 (아카이빙용)
      */
     @Query("SELECT n FROM Notification n WHERE n.isRead = true AND n.createdAt < :cutoffDate")
     Page<Notification> findReadNotificationsBefore(@Param("cutoffDate") LocalDateTime cutoffDate, Pageable pageable);
-    
+
     /**
      * 사용자별 특정 콘텐츠 관련 알림 중복 확인
      */
     // contentId 뒤의 경계(쉼표 또는 닫는 중괄호)까지 함께 봐야 한다.
     // 경계 없이 '%"contentId":1%' 로 찾으면 "contentId":123 에도 걸려서,
     // 123번 콘텐츠의 안 읽은 알림 하나가 1번 콘텐츠 알림을 통째로 막아버린다.
-    @Query(value = "SELECT COUNT(*) FROM notifications n " +
-            "WHERE n.user_id = :userId AND n.type = :type AND n.is_read = false " +
-            "AND (n.data LIKE CONCAT('%\"contentId\":', :contentId, ',%') " +
-            "  OR n.data LIKE CONCAT('%\"contentId\":', :contentId, '}%'))",
+    @Query(
+            value = "SELECT COUNT(*) FROM notifications n "
+                    + "WHERE n.user_id = :userId AND n.type = :type AND n.is_read = false "
+                    + "AND (n.data LIKE CONCAT('%\"contentId\":', :contentId, ',%') "
+                    + "  OR n.data LIKE CONCAT('%\"contentId\":', :contentId, '}%'))",
             nativeQuery = true)
-    long countDuplicateNotifications(@Param("userId") Long userId, @Param("type") String type, @Param("contentId") String contentId);
+    long countDuplicateNotifications(
+            @Param("userId") Long userId, @Param("type") String type, @Param("contentId") String contentId);
 
     /**
      * 사용자별 특정 콘텐츠 + 특정 활동 타입 알림 중복 확인
@@ -74,12 +73,16 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
     // 좋아요(COMMENT_LIKE)와 대댓글(COMMENT_REPLY)은 서로 다른 알림이므로 중복 판정 키를 공유하면 안 된다.
     // activityType 을 빼면 내 댓글에 안 읽은 좋아요 알림이 하나만 있어도 대댓글 알림이 통째로 삼켜진다.
     // 값이 따옴표로 닫히므로 contentId 와 달리 별도 경계 문자가 필요 없다("COMMENT_LIKE" 는 접두어 충돌이 없다).
-    @Query(value = "SELECT COUNT(*) FROM notifications n " +
-            "WHERE n.user_id = :userId AND n.type = :type AND n.is_read = false " +
-            "AND n.data LIKE CONCAT('%\"activityType\":\"', :activityType, '\"%') " +
-            "AND (n.data LIKE CONCAT('%\"contentId\":', :contentId, ',%') " +
-            "  OR n.data LIKE CONCAT('%\"contentId\":', :contentId, '}%'))",
+    @Query(
+            value = "SELECT COUNT(*) FROM notifications n "
+                    + "WHERE n.user_id = :userId AND n.type = :type AND n.is_read = false "
+                    + "AND n.data LIKE CONCAT('%\"activityType\":\"', :activityType, '\"%') "
+                    + "AND (n.data LIKE CONCAT('%\"contentId\":', :contentId, ',%') "
+                    + "  OR n.data LIKE CONCAT('%\"contentId\":', :contentId, '}%'))",
             nativeQuery = true)
-    long countDuplicateNotifications(@Param("userId") Long userId, @Param("type") String type,
-                                     @Param("contentId") String contentId, @Param("activityType") String activityType);
+    long countDuplicateNotifications(
+            @Param("userId") Long userId,
+            @Param("type") String type,
+            @Param("contentId") String contentId,
+            @Param("activityType") String activityType);
 }

@@ -1,14 +1,13 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * 캐릭터 엔티티
@@ -38,10 +37,8 @@ public class Character {
     @Column(nullable = false, unique = true)
     private String name; // 캐릭터 이름 (한글)
 
-
     @Column(unique = true)
     private Long malId; // Jikan MAL ID (글로벌 식별자)
-
 
     @Column(nullable = true)
     private String nameEn; // 캐릭터 이름 (영어)
@@ -71,12 +68,14 @@ public class Character {
     private Set<Anime> animes = new HashSet<>(); // 캐릭터가 나온 애니메이션 목록
 
     // ===== 성우 연관 =====
-    @ManyToMany(fetch = FetchType.LAZY, cascade = {CascadeType.MERGE})
+    @ManyToMany(
+            fetch = FetchType.LAZY,
+            cascade = {CascadeType.MERGE})
     @JoinTable(
-        name = "character_voice_actors", // 조인 테이블
-        joinColumns = @JoinColumn(name = "character_id", referencedColumnName = "id"), // 현재 FK
-        inverseJoinColumns = @JoinColumn(name = "voice_actor_id", referencedColumnName = "id") // 대상 FK
-    )
+            name = "character_voice_actors", // 조인 테이블
+            joinColumns = @JoinColumn(name = "character_id", referencedColumnName = "id"), // 현재 FK
+            inverseJoinColumns = @JoinColumn(name = "voice_actor_id", referencedColumnName = "id") // 대상 FK
+            )
     private Set<VoiceActor> voiceActors = new HashSet<>(); // 캐릭터를 연기한 성우 목록
 
     // ===== 편의 메서드 =====
@@ -99,20 +98,20 @@ public class Character {
         this.voiceActors.remove(voiceActor);
         voiceActor.getCharacters().remove(this);
     }
-    
+
     // ===== Getter 메서드 =====
     public Set<Anime> getAnimes() {
         return animes;
     }
-    
+
     public Set<VoiceActor> getVoiceActors() {
         return voiceActors;
     }
-    
+
     // ===== 정적 팩토리 메서드 =====
     /**
      * 캐릭터 생성
-     * 
+     *
      * @param name 캐릭터 이름 (필수)
      * @param nameEn 영어 이름 (선택)
      * @param nameJp 일본어 이름 (선택)
@@ -120,12 +119,12 @@ public class Character {
      * @param description 설명 (선택)
      * @return 생성된 Character 엔티티
      */
-    public static Character createCharacter(String name, String nameEn, String nameJp, 
-                                          String imageUrl, String description) {
+    public static Character createCharacter(
+            String name, String nameEn, String nameJp, String imageUrl, String description) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("캐릭터 이름은 필수입니다.");
         }
-        
+
         Character character = new Character();
         character.name = name.trim();
         character.nameEn = nameEn != null ? nameEn.trim() : null;
@@ -135,7 +134,7 @@ public class Character {
         character.isActive = true;
         character.createdAt = LocalDateTime.now();
         character.updatedAt = LocalDateTime.now();
-        
+
         return character;
     }
 }

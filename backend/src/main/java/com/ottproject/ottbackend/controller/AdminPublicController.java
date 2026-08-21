@@ -6,6 +6,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
@@ -14,13 +20,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.HashMap;
 
 /**
  * Admin 공개 컨텐츠(FAQ/혜택/CTA) 정적 제공 1단계 컨트롤러
@@ -45,8 +44,8 @@ public class AdminPublicController { // 공개 컨트롤러 시작
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping(value = "/faq", produces = MediaType.APPLICATION_JSON_VALUE) // GET /faq JSON 반환
     public ResponseEntity<List<Map<String, Object>>> getFaq(
-            @Parameter(description = "언어 코드 (ko, en, 기본값: ko)", required = false) 
-            @RequestParam(defaultValue = "ko") String locale) { // locale 기본 ko
+            @Parameter(description = "언어 코드 (ko, en, 기본값: ko)", required = false) @RequestParam(defaultValue = "ko")
+                    String locale) { // locale 기본 ko
         List<Map<String, Object>> all = readListJson("admin/faq.json"); // 전체 JSON 로드
         List<Map<String, Object>> filtered = all.stream() // 스트림 변환
                 .filter(it -> locale.equalsIgnoreCase(String.valueOf(it.getOrDefault("locale", "ko")))) // locale 일치 필터
@@ -58,8 +57,8 @@ public class AdminPublicController { // 공개 컨트롤러 시작
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping(value = "/benefits", produces = MediaType.APPLICATION_JSON_VALUE) // GET /benefits JSON
     public ResponseEntity<List<Map<String, Object>>> getBenefits(
-            @Parameter(description = "언어 코드 (ko, en, 기본값: ko)", required = false) 
-            @RequestParam(defaultValue = "ko") String locale) { // locale 파라미터
+            @Parameter(description = "언어 코드 (ko, en, 기본값: ko)", required = false) @RequestParam(defaultValue = "ko")
+                    String locale) { // locale 파라미터
         List<Map<String, Object>> all = readListJson("admin/benefits.json"); // JSON 로드
         List<Map<String, Object>> filtered = all.stream() // 스트림 변환
                 .filter(it -> locale.equalsIgnoreCase(String.valueOf(it.getOrDefault("locale", "ko")))) // locale 필터
@@ -71,8 +70,8 @@ public class AdminPublicController { // 공개 컨트롤러 시작
     @ApiResponse(responseCode = "200", description = "조회 성공")
     @GetMapping(value = "/cta", produces = MediaType.APPLICATION_JSON_VALUE) // GET /cta JSON
     public ResponseEntity<Map<String, Object>> getCta(
-            @Parameter(description = "언어 코드 (ko, en, 기본값: ko)", required = false) 
-            @RequestParam(defaultValue = "ko") String locale) { // locale 파라미터
+            @Parameter(description = "언어 코드 (ko, en, 기본값: ko)", required = false) @RequestParam(defaultValue = "ko")
+                    String locale) { // locale 파라미터
         List<Map<String, Object>> all = readListJson("admin/cta.json"); // JSON 로드
         Map<String, Object> first = all.stream() // 스트림 변환
                 .filter(it -> locale.equalsIgnoreCase(String.valueOf(it.getOrDefault("locale", "ko")))) // locale 필터
@@ -105,5 +104,3 @@ public class AdminPublicController { // 공개 컨트롤러 시작
         }
     }
 }
-
-

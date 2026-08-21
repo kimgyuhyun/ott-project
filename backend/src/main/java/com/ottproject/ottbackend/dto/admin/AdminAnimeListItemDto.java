@@ -3,11 +3,10 @@ package com.ottproject.ottbackend.dto.admin;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.enums.SyncOrigin;
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
 
 /**
  * 관리자 큐레이션 목록/상세 항목

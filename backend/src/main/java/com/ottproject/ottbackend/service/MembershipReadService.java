@@ -2,16 +2,13 @@ package com.ottproject.ottbackend.service;
 
 import com.ottproject.ottbackend.dto.MembershipPlanDto;
 import com.ottproject.ottbackend.dto.UserMembershipDto;
-import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.mybatis.MembershipQueryMapper;
-import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * MembershipReadService

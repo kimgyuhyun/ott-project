@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.dto;
 
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import lombok.*;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import lombok.*;
 
 /**
  * 상세 화면(상단 히어로 + 탭) 전용 DTO
@@ -76,12 +75,12 @@ public class AnimeDetailDto {
     // 에피소드 집계
     private Integer totalEpisodes; // 총 에피소드(anime.total_episodes 에서 조인)
     private Integer currentEpisodes; // 현재 업로드 화수
-    
+
     // 연관 목록
     private List<GenreSimpleDto> genres; // 장르 목록(뱃지)
     private List<StudioSimpleDto> studios; // 제작사 목록
     private List<EpisodeDto> episodes; // 에피소드 목록(Episode 엔티티 기반)
-    
+
     // 타임 스탬프 상세 기준
     private LocalDateTime createdAt; // 생성일시
     private LocalDateTime updatedAt; // 수정일시

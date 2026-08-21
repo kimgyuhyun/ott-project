@@ -1,8 +1,11 @@
 package com.ottproject.ottbackend.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ottproject.ottbackend.entity.AuthEvent;
 import com.ottproject.ottbackend.enums.AuthEventType;
 import com.ottproject.ottbackend.enums.AuthProvider;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -11,10 +14,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.TestPropertySource;
-
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * AuthEventRepository 의 일일 통계 집계 쿼리 검증
@@ -28,10 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DataJpaTest
 @Import(JpaSliceTestSupport.class)
-@TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
-})
+@TestPropertySource(properties = {"spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"})
 class AuthEventRepositoryTest {
 
     @Autowired
@@ -47,8 +43,8 @@ class AuthEventRepositoryTest {
      * AuthEvent.of 는 발생 시각을 현재로 고정하므로, 경계를 보려면 저장 전에 시각을 덮어써야 한다.
      */
     private void persistEvent(Long userId, AuthEventType type, LocalDateTime occurredAt) {
-        AuthEvent event = AuthEvent.of(
-                userId, "user@example.com", type, AuthProvider.LOCAL, "127.0.0.1", "agent", "sess", null);
+        AuthEvent event =
+                AuthEvent.of(userId, "user@example.com", type, AuthProvider.LOCAL, "127.0.0.1", "agent", "sess", null);
         event.setOccurredAt(occurredAt);
         entityManager.persist(event);
     }
@@ -73,7 +69,8 @@ class AuthEventRepositoryTest {
             persistEvent(1L, AuthEventType.LOGOUT, START.plusHours(3));
 
             assertThat(countLoginSuccess()).isEqualTo(1);
-            assertThat(authEventRepository.countByTypeBetween(AuthEventType.LOGIN_FAIL, START, END)).isEqualTo(1);
+            assertThat(authEventRepository.countByTypeBetween(AuthEventType.LOGIN_FAIL, START, END))
+                    .isEqualTo(1);
         }
 
         @Test

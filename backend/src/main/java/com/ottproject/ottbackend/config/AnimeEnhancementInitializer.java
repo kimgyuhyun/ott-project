@@ -1,14 +1,14 @@
-//package com.ottproject.ottbackend.config;
+// package com.ottproject.ottbackend.config;
 //
-//import com.ottproject.ottbackend.service.AnimeEnhancementService;
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.boot.CommandLineRunner;
-//import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-//import org.springframework.core.annotation.Order;
-//import org.springframework.stereotype.Component;
+// import com.ottproject.ottbackend.service.AnimeEnhancementService;
+// import lombok.RequiredArgsConstructor;
+// import lombok.extern.slf4j.Slf4j;
+// import org.springframework.boot.CommandLineRunner;
+// import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+// import org.springframework.core.annotation.Order;
+// import org.springframework.stereotype.Component;
 //
-///**
+/// **
 // * 애니메이션 데이터 보완 자동 초기화
 // *
 // * 큰 흐름
@@ -18,12 +18,12 @@
 // * 필드 개요
 // * - animeEnhancementService: 애니메 데이터 보완 서비스
 // */
-//@Component
-//@RequiredArgsConstructor
-//@Slf4j
-//@ConditionalOnProperty(name = "anime.enhancement.auto-enabled", havingValue = "true", matchIfMissing = false)
-//@Order(7) // (TMDB 한국어 정보 보완)
-//public class AnimeEnhancementInitializer implements CommandLineRunner {
+// @Component
+// @RequiredArgsConstructor
+// @Slf4j
+// @ConditionalOnProperty(name = "anime.enhancement.auto-enabled", havingValue = "true", matchIfMissing = false)
+// @Order(7) // (TMDB 한국어 정보 보완)
+// public class AnimeEnhancementInitializer implements CommandLineRunner {
 //
 //    private final AnimeEnhancementService animeEnhancementService;
 //
@@ -44,4 +44,4 @@
 //            log.error("❌ 애니메이션 데이터 보완 자동 초기화 실패", e);
 //        }
 //    }
-//}
+// }

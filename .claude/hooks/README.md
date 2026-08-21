@@ -1,12 +1,35 @@
 # Claude Code hooks for this repo
 
-Two kinds live here. A **mirror** only reports; a **leash** refuses to let something run.
-Something gets a leash only when finding out afterwards is too late to fix it.
+Three kinds live here. A **mirror** only reports; a **leash** refuses to let something run;
+a **fixer** repairs the thing instead of complaining about it. Something gets a leash only
+when finding out afterwards is too late to fix it, and a fixer only when the repair is
+mechanical enough that nobody would ever want to review it.
 
 `block-bare-compose.js` (leash, PreToolUse) denies `docker compose up` without
 `docker-compose.netlock.yml` (and any `docker run`) when Claude Code tries to run it. See
 the header comment in the script for why. Deploys must go through `deploy-rolling.ps1` /
 `deploy.ps1`.
+
+`format-on-edit.js` (fixer, PostToolUse) formats what Claude just edited, so the
+formatters never have anything left to complain about: `./gradlew spotlessApply` for
+`.java` under `backend/src`, and the local prettier for anything under `frontend/`. It
+exists because spotless uses `ratchetFrom 'origin/main'`: on a push straight to main the
+CI checkout *is* `origin/main`, nothing differs, and the CI gate checks zero files. Local
+is the only place that gate holds. Prettier has no such hole - the frontend half is there
+to keep the two sides symmetric and to stop a red CI over whitespace. The hook blocks
+nothing; it exits 2 only to tell Claude the file on disk changed, since editing a stale
+copy would fail.
+
+Only formatters belong here. Both are deterministic and auto-fixing, so there is nothing
+to decide. `eslint --fix` deliberately stays out: some of its rules change what the code
+means, and a fix nobody looked at is not something to apply behind Claude's back.
+
+`frontend-type-mirror.js` (mirror, Stop) runs `tsc --noEmit` when a turn ends. The backend
+gets this for free - testFast has to compile before it runs anything - but the frontend has
+no tests, so nothing type-checks it until CI runs `next build`. It re-runs only when
+`frontend/src`, `tsconfig.json`, `package.json` or `next.config.ts` changed since the last
+clean run: gradle skips an unchanged `testFast` by itself, tsc does not and costs the same
+3.9s every time, so the skip has to happen before tsc starts.
 
 `backend-test-mirror.js` (mirror, Stop) runs `./gradlew testFast` when a turn ends and
 hands any failures back to Claude, so a red test is caught in seconds instead of ten

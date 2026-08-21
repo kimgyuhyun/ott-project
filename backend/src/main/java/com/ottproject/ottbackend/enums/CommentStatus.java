@@ -10,9 +10,9 @@ package com.ottproject.ottbackend.enums;
  * - ACTIVE/DELETED/REPORTED
  */
 public enum CommentStatus { // 댓글 상태
-    ACTIVE("활성"),      // 정상
-    DELETED("삭제됨"),   // 삭제됨
-    REPORTED("신고됨");  // 신고됨
+    ACTIVE("활성"), // 정상
+    DELETED("삭제됨"), // 삭제됨
+    REPORTED("신고됨"); // 신고됨
 
     private final String displayName; // 표시 이름
 
@@ -24,4 +24,3 @@ public enum CommentStatus { // 댓글 상태
         return displayName; // 값 반환
     }
 }
-

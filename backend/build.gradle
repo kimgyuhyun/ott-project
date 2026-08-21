@@ -157,15 +157,15 @@ flyway {
 // palantir-java-format 을 쓴다. google-java-format 과 같은 "옵션 없음" 계열이라 설정을
 // 다시 논의할 여지가 없고, 빌더·스트림 체인 줄바꿈이 이 코드베이스의 손글씨에 더 가깝다.
 //
-// ratchetFrom: origin/main 과 다른 파일만 검사한다. 327개 파일 30k 줄을 한꺼번에
-// 재작성하지 않고, 건드린 파일부터 규약에 들어오게 하는 것이 목적이다.
-// 한계를 알고 쓴다 — main 에 직접 push 하면 HEAD 와 origin/main 이 같아 검사 대상이
-// 0건이 된다. 그 경로의 실질 강제는 로컬(IDE·훅)이고, CI 의 이 게이트는 PR 에서 작동한다.
+// 전 파일을 검사한다. 예전에는 ratchetFrom 'origin/main' 으로 "건드린 파일만" 검사해
+// 일괄 재작성을 피했지만, Spotless 의 포맷 단위가 파일 전체라서 옛 파일을 한 줄만 고쳐도
+// 그 파일이 통째로 다시 쓰였다(실측: 5줄 수정 -> 57+/59- diff). 게다가 main 에 직접 push
+// 하면 HEAD 와 origin/main 이 같아 검사 대상이 0건이 되어 게이트가 조용히 통과했다.
+// 그래서 프론트(Prettier)와 같은 방식으로 한 번에 일괄 적용하고 ratchet 을 걷어냈다.
+// 일괄 포맷 커밋은 .git-blame-ignore-revs 에 등록해 blame 에서 건너뛴다.
 // spotlessCheck 는 check 에 붙으므로 CI 의 clean build 가 자동으로 실행한다.
-// ratchetFrom 이 git 히스토리를 읽으므로 CI checkout 에 fetch-depth: 0 이 필요하다.
 spotless {
 	java {
-		ratchetFrom 'origin/main'
 		palantirJavaFormat()
 		removeUnusedImports()
 		trimTrailingWhitespace()

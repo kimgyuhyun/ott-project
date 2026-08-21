@@ -12,11 +12,9 @@ import java.time.LocalDateTime;
  * - paymentId/providerRefundId/refundedAmount/refundedAt/message
  */
 public class PaymentRefundResponseDto { // 환불 응답 DTO 클래스 시작
-	public Long paymentId; // 내부 결제 레코드 ID
-	public String providerRefundId; // 외부 환불 식별자(선택)
-	public Long refundedAmount; // 환불 금액(최소 화폐단위)
-	public LocalDateTime refundedAt; // 환불 완료 시각
-	public String message; // 환불 메모/사유(선택)
+    public Long paymentId; // 내부 결제 레코드 ID
+    public String providerRefundId; // 외부 환불 식별자(선택)
+    public Long refundedAmount; // 환불 금액(최소 화폐단위)
+    public LocalDateTime refundedAt; // 환불 완료 시각
+    public String message; // 환불 메모/사유(선택)
 }
-
-

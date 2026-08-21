@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import lombok.*;
 
 /**
  * 일일 통계 스냅샷 엔티티
@@ -23,9 +22,9 @@ import java.time.ZoneId;
  * - createdAt/updatedAt: 생성/갱신 시각
  */
 @Entity
-@Table(name = "daily_stats", uniqueConstraints = {
-        @UniqueConstraint(name = "ux_daily_stats_date", columnNames = "stat_date")
-})
+@Table(
+        name = "daily_stats",
+        uniqueConstraints = {@UniqueConstraint(name = "ux_daily_stats_date", columnNames = "stat_date")})
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -89,8 +88,8 @@ public class DailyStats {
      * @param signupCount 신규 가입자 수
      * @param activeUserCount DAU
      */
-    public void updateCounts(long loginSuccessCount, long loginFailCount, long logoutCount,
-                             long signupCount, long activeUserCount) {
+    public void updateCounts(
+            long loginSuccessCount, long loginFailCount, long logoutCount, long signupCount, long activeUserCount) {
         this.loginSuccessCount = loginSuccessCount;
         this.loginFailCount = loginFailCount;
         this.logoutCount = logoutCount;

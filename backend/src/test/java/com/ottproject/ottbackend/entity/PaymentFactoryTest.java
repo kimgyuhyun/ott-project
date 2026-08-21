@@ -1,16 +1,15 @@
 package com.ottproject.ottbackend.entity;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Payment 정적 팩토리 검증
@@ -43,8 +42,7 @@ class PaymentFactoryTest {
         @Test
         @DisplayName("PENDING 상태로 세션 ID 를 달고 생성된다")
         void createsPendingWithSessionId() {
-            Payment payment = Payment.createPendingPayment(
-                    user, plan, PaymentProvider.IMPORT, "  sess_1  ", price);
+            Payment payment = Payment.createPendingPayment(user, plan, PaymentProvider.IMPORT, "  sess_1  ", price);
 
             assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
             assertThat(payment.getProviderSessionId()).isEqualTo("sess_1");
@@ -54,8 +52,7 @@ class PaymentFactoryTest {
         @Test
         @DisplayName("세션 ID 가 없으면 거부한다 - 웹훅이 결제를 되찾을 수 없다")
         void rejectsMissingSessionId() {
-            assertThatThrownBy(() -> Payment.createPendingPayment(
-                    user, plan, PaymentProvider.IMPORT, "  ", price))
+            assertThatThrownBy(() -> Payment.createPendingPayment(user, plan, PaymentProvider.IMPORT, "  ", price))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -67,8 +64,8 @@ class PaymentFactoryTest {
         @Test
         @DisplayName("SUCCEEDED 상태로 결제 ID 와 완료 시각을 달고 생성된다")
         void createsSucceededWithPaymentId() {
-            Payment payment = Payment.createSucceededPayment(
-                    user, plan, PaymentProvider.IMPORT, "  pay_1  ", price, at);
+            Payment payment =
+                    Payment.createSucceededPayment(user, plan, PaymentProvider.IMPORT, "  pay_1  ", price, at);
 
             assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
             assertThat(payment.getProviderPaymentId()).isEqualTo("pay_1");
@@ -79,11 +76,11 @@ class PaymentFactoryTest {
         @Test
         @DisplayName("결제 ID 나 완료 시각이 없으면 거부한다")
         void rejectsMissingPaymentIdOrPaidAt() {
-            assertThatThrownBy(() -> Payment.createSucceededPayment(
-                    user, plan, PaymentProvider.IMPORT, null, price, at))
+            assertThatThrownBy(
+                            () -> Payment.createSucceededPayment(user, plan, PaymentProvider.IMPORT, null, price, at))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> Payment.createSucceededPayment(
-                    user, plan, PaymentProvider.IMPORT, "pay_1", price, null))
+            assertThatThrownBy(() ->
+                            Payment.createSucceededPayment(user, plan, PaymentProvider.IMPORT, "pay_1", price, null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -95,8 +92,7 @@ class PaymentFactoryTest {
         @Test
         @DisplayName("FAILED 상태로 실패 시각을 달고 생성되며 결제 완료 시각은 비어 있다")
         void createsFailedWithFailedAt() {
-            Payment payment = Payment.createFailedPayment(
-                    user, plan, PaymentProvider.IMPORT, "sess_1", price, at);
+            Payment payment = Payment.createFailedPayment(user, plan, PaymentProvider.IMPORT, "sess_1", price, at);
 
             assertThat(payment.getStatus()).isEqualTo(PaymentStatus.FAILED);
             assertThat(payment.getFailedAt()).isEqualTo(at);
@@ -106,8 +102,8 @@ class PaymentFactoryTest {
         @Test
         @DisplayName("실패 시각이 없으면 거부한다")
         void rejectsMissingFailedAt() {
-            assertThatThrownBy(() -> Payment.createFailedPayment(
-                    user, plan, PaymentProvider.IMPORT, "sess_1", price, null))
+            assertThatThrownBy(() ->
+                            Payment.createFailedPayment(user, plan, PaymentProvider.IMPORT, "sess_1", price, null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
@@ -125,30 +121,25 @@ class PaymentFactoryTest {
         void rejectsZeroAmount() {
             Money free = new Money(0L, "KRW");
 
-            assertThatThrownBy(() -> Payment.createPendingPayment(
-                    user, plan, PaymentProvider.IMPORT, "sess_1", free))
+            assertThatThrownBy(() -> Payment.createPendingPayment(user, plan, PaymentProvider.IMPORT, "sess_1", free))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("금액이 없으면 거부한다")
         void rejectsNullPrice() {
-            assertThatThrownBy(() -> Payment.createPendingPayment(
-                    user, plan, PaymentProvider.IMPORT, "sess_1", null))
+            assertThatThrownBy(() -> Payment.createPendingPayment(user, plan, PaymentProvider.IMPORT, "sess_1", null))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
         @Test
         @DisplayName("사용자/플랜/제공자가 없으면 거부한다")
         void rejectsMissingOwnerPlanOrProvider() {
-            assertThatThrownBy(() -> Payment.createPendingPayment(
-                    null, plan, PaymentProvider.IMPORT, "sess_1", price))
+            assertThatThrownBy(() -> Payment.createPendingPayment(null, plan, PaymentProvider.IMPORT, "sess_1", price))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> Payment.createPendingPayment(
-                    user, null, PaymentProvider.IMPORT, "sess_1", price))
+            assertThatThrownBy(() -> Payment.createPendingPayment(user, null, PaymentProvider.IMPORT, "sess_1", price))
                     .isInstanceOf(IllegalArgumentException.class);
-            assertThatThrownBy(() -> Payment.createPendingPayment(
-                    user, plan, null, "sess_1", price))
+            assertThatThrownBy(() -> Payment.createPendingPayment(user, plan, null, "sess_1", price))
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }

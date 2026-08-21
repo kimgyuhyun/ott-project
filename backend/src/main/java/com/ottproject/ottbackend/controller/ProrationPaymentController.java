@@ -1,17 +1,16 @@
 package com.ottproject.ottbackend.controller;
 
-import com.ottproject.ottbackend.dto.ProrationPaymentRequestDto;
 import com.ottproject.ottbackend.dto.PaymentCompleteRequestDto;
+import com.ottproject.ottbackend.dto.ProrationPaymentRequestDto;
 import com.ottproject.ottbackend.service.ProrationPaymentService;
 import com.ottproject.ottbackend.util.SecurityUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.servlet.http.HttpSession;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 /**
  * ProrationPaymentController
@@ -36,8 +35,7 @@ public class ProrationPaymentController {
     @ApiResponse(responseCode = "400", description = "잘못된 요청: 유효하지 않은 플랜 또는 차액 없음")
     @PostMapping("/api/payments/proration")
     public ResponseEntity<Map<String, Object>> createProrationCheckout(
-            @RequestBody ProrationPaymentRequestDto request,
-            HttpSession session) {
+            @RequestBody ProrationPaymentRequestDto request, HttpSession session) {
         Long userId = securityUtil.requireCurrentUserId(session);
         Map<String, Object> response = prorationPaymentService.createProrationCheckout(userId, request);
         return ResponseEntity.ok(response);
@@ -53,8 +51,8 @@ public class ProrationPaymentController {
             @RequestBody(required = false) PaymentCompleteRequestDto dto,
             HttpSession session) {
         Long userId = securityUtil.requireCurrentUserId(session);
-        Map<String, Object> response = prorationPaymentService.completeProrationPayment(
-                userId, paymentId, dto == null ? null : dto.impUid);
+        Map<String, Object> response =
+                prorationPaymentService.completeProrationPayment(userId, paymentId, dto == null ? null : dto.impUid);
         return ResponseEntity.ok(response);
     }
 }

@@ -18,5 +18,3 @@ public class MypageStatsDto {
     private long reviewCount;
     private long commentCount;
 }
-
-

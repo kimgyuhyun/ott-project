@@ -1,5 +1,14 @@
 package com.ottproject.ottbackend.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.ottproject.ottbackend.config.SecurityConfig;
 import com.ottproject.ottbackend.dto.PagedResponse;
 import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
@@ -17,30 +26,20 @@ import com.ottproject.ottbackend.service.AnimeEnhancementService;
 import com.ottproject.ottbackend.service.LocalUserDetailsService;
 import com.ottproject.ottbackend.service.OAuth2UserService;
 import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 관리자 애니 API 인가(Authorization) 규칙 테스트
@@ -67,33 +66,51 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // application.yml 의 OAuth2 등록정보는 환경변수 기반이라 테스트에서는 비어 있고,
 // OAuth2ClientProperties 가 기동 시 "Client id of registration 'google' must not be empty" 로 컨텍스트를 깨뜨린다.
 // 인가 규칙만 검증하면 되므로 더미 자격증명으로 프로퍼티 검증만 통과시킨다(실제 소셜 로그인은 하지 않음).
-@TestPropertySource(properties = {
-        "spring.security.oauth2.client.registration.google.client-id=test",
-        "spring.security.oauth2.client.registration.google.client-secret=test",
-        "spring.security.oauth2.client.registration.kakao.client-id=test",
-        "spring.security.oauth2.client.registration.kakao.client-secret=test",
-        "spring.security.oauth2.client.registration.naver.client-id=test",
-        "spring.security.oauth2.client.registration.naver.client-secret=test"
-})
+@TestPropertySource(
+        properties = {
+            "spring.security.oauth2.client.registration.google.client-id=test",
+            "spring.security.oauth2.client.registration.google.client-secret=test",
+            "spring.security.oauth2.client.registration.kakao.client-id=test",
+            "spring.security.oauth2.client.registration.kakao.client-secret=test",
+            "spring.security.oauth2.client.registration.naver.client-id=test",
+            "spring.security.oauth2.client.registration.naver.client-secret=test"
+        })
 class AdminAnimeAuthorizationTest {
 
     @Autowired
     private MockMvc mvc;
 
     // 컨트롤러 의존성
-    @MockitoBean private AnimeCurationService animeCurationService;
-    @MockitoBean private SimpleAnimeDataCollectorService collectorService;
-    @MockitoBean private AnimeEnhancementService animeEnhancementService;
+    @MockitoBean
+    private AnimeCurationService animeCurationService;
+
+    @MockitoBean
+    private SimpleAnimeDataCollectorService collectorService;
+
+    @MockitoBean
+    private AnimeEnhancementService animeEnhancementService;
 
     // SecurityConfig / 필터 의존성
-    @MockitoBean private LocalUserDetailsService localUserDetailsService;
-    @MockitoBean private OAuth2UserService oAuth2UserService;
-    @MockitoBean private OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
-    @MockitoBean private OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
-    @MockitoBean private UserRepository userRepository; // SessionAuthenticationFilter 가 사용
-    @MockitoBean private ClientRegistrationRepository clientRegistrationRepository; // oauth2Login 구성에 필요
+    @MockitoBean
+    private LocalUserDetailsService localUserDetailsService;
 
-    private static final String BULK_BODY = """
+    @MockitoBean
+    private OAuth2UserService oAuth2UserService;
+
+    @MockitoBean
+    private OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
+
+    @MockitoBean
+    private OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
+
+    @MockitoBean
+    private UserRepository userRepository; // SessionAuthenticationFilter 가 사용
+
+    @MockitoBean
+    private ClientRegistrationRepository clientRegistrationRepository; // oauth2Login 구성에 필요
+
+    private static final String BULK_BODY =
+            """
             {"condition":{"year":2026},"isActive":false,"expectedCount":1}
             """;
     private static final String PREVIEW_BODY = """
@@ -133,7 +150,8 @@ class AdminAnimeAuthorizationTest {
          */
         private String basePath() {
             return AdminAnimeController.class.getAnnotation(
-                    org.springframework.web.bind.annotation.RequestMapping.class).value()[0];
+                            org.springframework.web.bind.annotation.RequestMapping.class)
+                    .value()[0];
         }
 
         @Test
@@ -171,7 +189,8 @@ class AdminAnimeAuthorizationTest {
         @WithAnonymousUser
         void cannotUpdate() throws Exception {
             mvc.perform(patch("/api/admin/anime/1")
-                            .contentType(MediaType.APPLICATION_JSON).content(UPDATE_BODY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(UPDATE_BODY))
                     .andExpect(status().is4xxClientError());
         }
 
@@ -180,7 +199,8 @@ class AdminAnimeAuthorizationTest {
         @WithAnonymousUser
         void cannotBulkUpdate() throws Exception {
             mvc.perform(patch("/api/admin/anime/bulk")
-                            .contentType(MediaType.APPLICATION_JSON).content(BULK_BODY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(BULK_BODY))
                     .andExpect(status().is4xxClientError());
         }
     }
@@ -208,7 +228,8 @@ class AdminAnimeAuthorizationTest {
         @WithMockUser(roles = "USER")
         void updateIsForbidden() throws Exception {
             mvc.perform(patch("/api/admin/anime/1")
-                            .contentType(MediaType.APPLICATION_JSON).content(UPDATE_BODY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(UPDATE_BODY))
                     .andExpect(status().isForbidden());
         }
 
@@ -217,7 +238,8 @@ class AdminAnimeAuthorizationTest {
         @WithMockUser(roles = "USER")
         void previewIsForbidden() throws Exception {
             mvc.perform(post("/api/admin/anime/bulk/preview")
-                            .contentType(MediaType.APPLICATION_JSON).content(PREVIEW_BODY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(PREVIEW_BODY))
                     .andExpect(status().isForbidden());
         }
 
@@ -226,7 +248,8 @@ class AdminAnimeAuthorizationTest {
         @WithMockUser(roles = "USER")
         void bulkUpdateIsForbidden() throws Exception {
             mvc.perform(patch("/api/admin/anime/bulk")
-                            .contentType(MediaType.APPLICATION_JSON).content(BULK_BODY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(BULK_BODY))
                     .andExpect(status().isForbidden());
         }
 
@@ -265,7 +288,8 @@ class AdminAnimeAuthorizationTest {
             givenServiceReturnsSomething();
 
             mvc.perform(patch("/api/admin/anime/1")
-                            .contentType(MediaType.APPLICATION_JSON).content(UPDATE_BODY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(UPDATE_BODY))
                     .andExpect(status().isOk());
         }
 
@@ -276,7 +300,8 @@ class AdminAnimeAuthorizationTest {
             givenServiceReturnsSomething();
 
             mvc.perform(post("/api/admin/anime/bulk/preview")
-                            .contentType(MediaType.APPLICATION_JSON).content(PREVIEW_BODY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(PREVIEW_BODY))
                     .andExpect(status().isOk());
         }
 
@@ -287,7 +312,8 @@ class AdminAnimeAuthorizationTest {
             givenServiceReturnsSomething();
 
             mvc.perform(patch("/api/admin/anime/bulk")
-                            .contentType(MediaType.APPLICATION_JSON).content(BULK_BODY))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(BULK_BODY))
                     .andExpect(status().isOk());
         }
     }

@@ -1,11 +1,10 @@
 package com.ottproject.ottbackend.dto;
 
+import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 /**
  * 내 별점 목록 아이템 DTO
@@ -22,5 +21,3 @@ public class MyRatingItemDto {
     private Double score;
     private LocalDateTime updatedAt;
 }
-
-

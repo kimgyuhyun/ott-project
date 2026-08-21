@@ -28,5 +28,3 @@ public class AdminContentRequestDto { // DTO 시작
     private String actionText; // CTA 텍스트
     private String actionUrl; // CTA URL
 }
-
-

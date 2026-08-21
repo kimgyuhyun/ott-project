@@ -1,14 +1,13 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * 성우 엔티티
@@ -38,10 +37,8 @@ public class VoiceActor {
     @Column(nullable = false)
     private String name; // 성우 이름 (한글)
 
-
     @Column(unique = true)
     private Long malId; // Jikan MAL ID (글로벌 식별자)
-
 
     @Column(nullable = true)
     private String nameEn; // 성우 이름 (영어)
@@ -94,20 +91,20 @@ public class VoiceActor {
         this.characters.remove(character);
         character.getVoiceActors().remove(this);
     }
-    
+
     // ===== Getter 메서드 =====
     public Set<Anime> getAnimes() {
         return animes;
     }
-    
+
     public Set<Character> getCharacters() {
         return characters;
     }
-    
+
     // ===== 정적 팩토리 메서드 =====
     /**
      * 성우 생성
-     * 
+     *
      * @param name 성우 이름 (필수)
      * @param nameEn 영어 이름 (선택)
      * @param nameJp 일본어 이름 (선택)
@@ -115,12 +112,12 @@ public class VoiceActor {
      * @param description 설명 (선택)
      * @return 생성된 VoiceActor 엔티티
      */
-    public static VoiceActor createVoiceActor(String name, String nameEn, String nameJp, 
-                                            String profileUrl, String description) {
+    public static VoiceActor createVoiceActor(
+            String name, String nameEn, String nameJp, String profileUrl, String description) {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("성우 이름은 필수입니다.");
         }
-        
+
         VoiceActor voiceActor = new VoiceActor();
         voiceActor.name = name.trim();
         voiceActor.nameEn = nameEn != null ? nameEn.trim() : null;
@@ -130,7 +127,7 @@ public class VoiceActor {
         voiceActor.isActive = true;
         voiceActor.createdAt = LocalDateTime.now();
         voiceActor.updatedAt = LocalDateTime.now();
-        
+
         return voiceActor;
     }
 }

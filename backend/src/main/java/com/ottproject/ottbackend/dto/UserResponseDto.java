@@ -3,9 +3,8 @@ package com.ottproject.ottbackend.dto;
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
-import lombok.*;
-
 import java.time.LocalDateTime;
+import lombok.*;
 
 /**
  * 사용자 정보 응답 DTO

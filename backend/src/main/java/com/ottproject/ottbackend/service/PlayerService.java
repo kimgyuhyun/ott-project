@@ -1,32 +1,31 @@
 package com.ottproject.ottbackend.service;
 
-import com.ottproject.ottbackend.dto.SubtitleDto;
+import com.ottproject.ottbackend.dto.EpisodeProgressResponseDto;
 import com.ottproject.ottbackend.dto.RecentAnimeWatchDto;
 import com.ottproject.ottbackend.dto.SkipMetaResponseDto;
-import com.ottproject.ottbackend.dto.EpisodeProgressResponseDto;
-import com.ottproject.ottbackend.entity.Subtitle;
+import com.ottproject.ottbackend.dto.SubtitleDto;
+import com.ottproject.ottbackend.entity.EpisodeProgress;
 import com.ottproject.ottbackend.entity.EpisodeSkipMeta;
 import com.ottproject.ottbackend.entity.SkipUsage;
-import com.ottproject.ottbackend.entity.EpisodeProgress;
+import com.ottproject.ottbackend.entity.Subtitle;
 import com.ottproject.ottbackend.enums.SkipType;
-import com.ottproject.ottbackend.repository.SubtitleRepository;
-import com.ottproject.ottbackend.repository.EpisodeSkipMetaRepository;
-import com.ottproject.ottbackend.repository.SkipUsageRepository;
-import com.ottproject.ottbackend.repository.UserRepository;
-import com.ottproject.ottbackend.repository.EpisodeRepository;
-import com.ottproject.ottbackend.repository.EpisodeProgressRepository;
 import com.ottproject.ottbackend.mybatis.EpisodeMapper;
 import com.ottproject.ottbackend.mybatis.PlayerProgressQueryMapper;
+import com.ottproject.ottbackend.repository.EpisodeProgressRepository;
+import com.ottproject.ottbackend.repository.EpisodeRepository;
+import com.ottproject.ottbackend.repository.EpisodeSkipMetaRepository;
+import com.ottproject.ottbackend.repository.SkipUsageRepository;
+import com.ottproject.ottbackend.repository.SubtitleRepository;
+import com.ottproject.ottbackend.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.stream.Collectors;
 
 /**
  * PlayerService
@@ -58,30 +57,31 @@ public class PlayerService {
     private final ProgressBufferService progressBuffer;
 
     // === 자막 관련 기능 ===
-    
+
     public List<SubtitleDto> getSubtitlesByEpisode(Long episodeId) {
         List<Subtitle> subtitles = subtitleRepository.findByEpisodeId(episodeId);
-        return subtitles.stream()
-                .map(this::convertToSubtitleDto)
-                .collect(Collectors.toList());
+        return subtitles.stream().map(this::convertToSubtitleDto).collect(Collectors.toList());
     }
 
     public SubtitleDto getDefaultSubtitle(Long episodeId) {
-        return subtitleRepository.findByEpisodeIdAndIsDefaultTrue(episodeId)
+        return subtitleRepository
+                .findByEpisodeIdAndIsDefaultTrue(episodeId)
                 .map(this::convertToSubtitleDto)
                 .orElse(null);
     }
 
     public SubtitleDto getSubtitleByLanguage(Long episodeId, String language) {
-        return subtitleRepository.findByEpisodeIdAndLanguage(episodeId, language)
+        return subtitleRepository
+                .findByEpisodeIdAndLanguage(episodeId, language)
                 .map(this::convertToSubtitleDto)
                 .orElse(null);
     }
 
     // === 스킵 관련 기능 ===
-    
+
     public SkipMetaResponseDto getSkipMetaByEpisode(Long episodeId) {
-        return skipMetaRepository.findByEpisodeId(episodeId)
+        return skipMetaRepository
+                .findByEpisodeId(episodeId)
                 .map(this::convertToSkipMetaDto)
                 .orElse(null);
     }
@@ -94,8 +94,7 @@ public class PlayerService {
         var usage = SkipUsage.createSkipUsage(
                 userId != null ? userRepository.findById(userId).orElse(null) : null,
                 episodeRepository.findById(episodeId).orElseThrow(),
-                type
-        );
+                type);
         usage.setSkipPosition(atSec);
         skipUsageRepository.save(usage);
     }
@@ -109,14 +108,15 @@ public class PlayerService {
         if (type != null) {
             try {
                 t = SkipType.valueOf(type.toUpperCase());
-            } catch (IllegalArgumentException ignored) {}
+            } catch (IllegalArgumentException ignored) {
+            }
         }
         if (t == null) return;
         trackUsage(userId, episodeId, t, atSec);
     }
 
     // === 에피소드 관련 기능 ===
-    
+
     /**
      * 다음 에피소드 정보 조회
      * @param currentEpisodeId 현재 에피소드 ID
@@ -129,7 +129,7 @@ public class PlayerService {
         }
         return episodeMapper.findNextEpisode(current.getAnimeId(), current.getEpisodeNumber());
     }
-    
+
     /**
      * 사용자별 스트림 URL 생성
      * @param userId 사용자 ID
@@ -139,7 +139,7 @@ public class PlayerService {
     public String getStreamUrl(Long userId, Long episodeId) {
         return playbackAuthService.buildSignedStreamUrl(userId, episodeId);
     }
-    
+
     /**
      * 에피소드 재생 권한 검사
      * @param userId 사용자 ID
@@ -151,7 +151,7 @@ public class PlayerService {
     }
 
     // === 진행률 관련 기능 ===
-    
+
     /**
      * 진행률 멱등 저장(있으면 갱신, 없으면 생성)
      *
@@ -187,10 +187,10 @@ public class PlayerService {
                 userId,
                 episodeId,
                 (positionSec != null && positionSec >= 0) ? positionSec : null, // 음수는 무시 = 기존 위치 유지
-                (durationSec != null && durationSec > 0) ? durationSec : null,  // 0 이하는 무시 = 기존 길이 유지
+                (durationSec != null && durationSec > 0) ? durationSec : null, // 0 이하는 무시 = 기존 길이 유지
                 LocalDateTime.now());
     }
-    
+
     /**
      * 진행률 단건 조회 - 아직 DB 에 반영되지 않은 버퍼 값을 먼저 본다
      */
@@ -198,14 +198,15 @@ public class PlayerService {
         var buffered = progressBuffer.read(userId, episodeId);
         if (buffered.isPresent()) return buffered;
 
-        return progressRepository.findByUser_IdAndEpisode_Id(userId, episodeId)
+        return progressRepository
+                .findByUser_IdAndEpisode_Id(userId, episodeId)
                 .map(p -> EpisodeProgressResponseDto.builder()
                         .positionSec(p.getPositionSec())
                         .durationSec(p.getDurationSec())
                         .updatedAt(p.getUpdatedAt())
                         .build());
     }
-    
+
     /**
      * 진행률 벌크 조회(에피소드 ID 집합) - 아직 DB 에 반영되지 않은 버퍼 값으로 덮어쓴다
      */
@@ -215,18 +216,17 @@ public class PlayerService {
 
         for (EpisodeProgress p : list) {
             map.put(
-                p.getEpisode().getId(),
-                EpisodeProgressResponseDto.builder()
-                    .positionSec(p.getPositionSec())
-                    .durationSec(p.getDurationSec())
-                    .updatedAt(p.getUpdatedAt())
-                    .build()
-            );
+                    p.getEpisode().getId(),
+                    EpisodeProgressResponseDto.builder()
+                            .positionSec(p.getPositionSec())
+                            .durationSec(p.getDurationSec())
+                            .updatedAt(p.getUpdatedAt())
+                            .build());
         }
         map.putAll(progressBuffer.readAll(userId, episodeIds));
         return map;
     }
-    
+
     /**
      * 사용자의 시청 기록 조회 (페이지네이션, 90일 제한)
      */
@@ -234,40 +234,41 @@ public class PlayerService {
         size = com.ottproject.ottbackend.util.PageLimitUtil.clampSize(size); // 상한 강제. 아래 PageRequest 가 이 값을 쓴다
         // 90일 전 날짜 계산
         LocalDateTime ninetyDaysAgo = LocalDateTime.now().minus(90, ChronoUnit.DAYS);
-        
+
         // 사용자의 진행률이 있는 에피소드들을 조회 (90일 제한)
-        var progressList = progressRepository.findByUser_IdAndUpdatedAtAfterOrderByUpdatedAtDesc(userId, ninetyDaysAgo, 
-            org.springframework.data.domain.PageRequest.of(page, size));
-        
+        var progressList = progressRepository.findByUser_IdAndUpdatedAtAfterOrderByUpdatedAtDesc(
+                userId, ninetyDaysAgo, org.springframework.data.domain.PageRequest.of(page, size));
+
         // 결과 구성
         Map<String, Object> result = new HashMap<>();
-        result.put("content", progressList.getContent().stream()
-            .map(p -> Map.of(
-                "episodeId", p.getEpisode().getId(),
-                "animeId", p.getEpisode().getAnime().getId(),
-                "episodeNumber", p.getEpisode().getEpisodeNumber(),
-                "positionSec", p.getPositionSec(),
-                "durationSec", p.getDurationSec(),
-                "updatedAt", p.getUpdatedAt()
-            ))
-            .collect(Collectors.toList()));
+        result.put(
+                "content",
+                progressList.getContent().stream()
+                        .map(p -> Map.of(
+                                "episodeId", p.getEpisode().getId(),
+                                "animeId", p.getEpisode().getAnime().getId(),
+                                "episodeNumber", p.getEpisode().getEpisodeNumber(),
+                                "positionSec", p.getPositionSec(),
+                                "durationSec", p.getDurationSec(),
+                                "updatedAt", p.getUpdatedAt()))
+                        .collect(Collectors.toList()));
         result.put("totalElements", progressList.getTotalElements());
         result.put("totalPages", progressList.getTotalPages());
         result.put("currentPage", page);
         result.put("size", size);
-        
+
         return result;
     }
 
     /**
      * 애니별 최신 1건 시청 기록 (최신순)
      */
-    public Map<String, Object> getRecentAnimeHistory(Long userId, int page, int size,
-                                                     java.time.LocalDateTime cursorUpdatedAt,
-                                                     Long cursorAnimeId) {
-        size = com.ottproject.ottbackend.util.PageLimitUtil.clampSize(size); // 상한 강제. 매퍼 LIMIT·offset·응답 size 가 모두 이 값에서 나온다
-        List<RecentAnimeWatchDto> items = playerQueryMapper.findRecentAnimeByUser(
-                userId, size, page * size, cursorUpdatedAt, cursorAnimeId);
+    public Map<String, Object> getRecentAnimeHistory(
+            Long userId, int page, int size, java.time.LocalDateTime cursorUpdatedAt, Long cursorAnimeId) {
+        size = com.ottproject.ottbackend.util.PageLimitUtil.clampSize(
+                size); // 상한 강제. 매퍼 LIMIT·offset·응답 size 가 모두 이 값에서 나온다
+        List<RecentAnimeWatchDto> items =
+                playerQueryMapper.findRecentAnimeByUser(userId, size, page * size, cursorUpdatedAt, cursorAnimeId);
         Map<String, Object> result = new HashMap<>();
         result.put("items", items);
         result.put("currentPage", page);

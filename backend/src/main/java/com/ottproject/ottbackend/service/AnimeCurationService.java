@@ -12,15 +12,14 @@ import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.curation.AnimeCurationQueryRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.List;
-import java.util.Objects;
 
 /**
  * 관리자 애니 큐레이션 서비스
@@ -57,8 +56,7 @@ public class AnimeCurationService {
     @Transactional(readOnly = true)
     public PagedResponse<AdminAnimeListItemDto> search(AnimeCurationSearchCondition condition, int page, int size) {
         size = com.ottproject.ottbackend.util.PageLimitUtil.clampSize(size); // 상한 강제. 조회와 응답의 size 가 모두 이 값에서 나온다
-        List<AdminAnimeListItemDto> items = curationQueryRepository.search(condition, page, size)
-                .stream()
+        List<AdminAnimeListItemDto> items = curationQueryRepository.search(condition, page, size).stream()
                 .map(AdminAnimeListItemDto::from)
                 .toList();
         long total = curationQueryRepository.countByCondition(condition);
@@ -139,10 +137,10 @@ public class AnimeCurationService {
         requireNonEmptyCondition(condition);
 
         long affectedCount = curationQueryRepository.countByCondition(condition);
-        List<AdminAnimeListItemDto> sample = curationQueryRepository.search(condition, 0, BULK_PREVIEW_SAMPLE_SIZE)
-                .stream()
-                .map(AdminAnimeListItemDto::from)
-                .toList();
+        List<AdminAnimeListItemDto> sample =
+                curationQueryRepository.search(condition, 0, BULK_PREVIEW_SAMPLE_SIZE).stream()
+                        .map(AdminAnimeListItemDto::from)
+                        .toList();
 
         return new AnimeBulkCurationPreviewResponse(affectedCount, sample);
     }
@@ -176,9 +174,10 @@ public class AnimeCurationService {
         // 그 사이 동기화 배치가 행을 늘렸을 수 있고, 그러면 운영자가 승인한 것보다 많은 작품이 바뀐다.
         long actualCount = curationQueryRepository.countByCondition(condition);
         if (actualCount != request.getExpectedCount()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "대상 건수가 미리보기와 다릅니다. 다시 확인해 주세요. (미리보기: "
-                            + request.getExpectedCount() + ", 현재: " + actualCount + ")");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "대상 건수가 미리보기와 다릅니다. 다시 확인해 주세요. (미리보기: " + request.getExpectedCount() + ", 현재: " + actualCount
+                            + ")");
         }
 
         entityManager.flush(); // 대기 중인 더티 체킹 변경을 벌크보다 먼저 DB 에 반영
@@ -194,8 +193,7 @@ public class AnimeCurationService {
 
     private void requireNonEmptyCondition(AnimeCurationSearchCondition condition) {
         if (condition == null || condition.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "조건 없는 일괄 수정은 허용되지 않습니다. 조건을 하나 이상 지정해 주세요.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "조건 없는 일괄 수정은 허용되지 않습니다. 조건을 하나 이상 지정해 주세요.");
         }
     }
 
@@ -214,13 +212,15 @@ public class AnimeCurationService {
 
     /** 수정용 로딩 — 쓰기 락을 잡는다(동시 수정 방어). 쓰기 트랜잭션에서만 호출할 것. */
     private Anime loadOrThrow(Long animeId) {
-        return animeRepository.findById(animeId)
+        return animeRepository
+                .findById(animeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "애니메이션을 찾을 수 없습니다."));
     }
 
     /** 조회용 로딩 — 락을 잡지 않는다. readOnly 트랜잭션에서 FOR UPDATE 가 나가면 PostgreSQL 이 거부한다. */
     private Anime loadForReadOrThrow(Long animeId) {
-        return animeRepository.findByIdWithoutLock(animeId)
+        return animeRepository
+                .findByIdWithoutLock(animeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "애니메이션을 찾을 수 없습니다."));
     }
 }

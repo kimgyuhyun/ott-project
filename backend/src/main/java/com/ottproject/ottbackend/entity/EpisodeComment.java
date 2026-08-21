@@ -2,14 +2,13 @@ package com.ottproject.ottbackend.entity;
 
 import com.ottproject.ottbackend.enums.CommentStatus;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * 에피소드 댓글 엔티티
@@ -41,7 +40,7 @@ public class EpisodeComment {
     @Enumerated(EnumType.STRING) // enum 을 문자열로 저장
     private CommentStatus status = CommentStatus.ACTIVE; // 댓글 상태 (활성, 삭제됨, 신고됨)
 
-    @ManyToOne(fetch = FetchType.LAZY)  // 다대일 관계 ,지연 로딩
+    @ManyToOne(fetch = FetchType.LAZY) // 다대일 관계 ,지연 로딩
     @JoinColumn(name = "user_id") // 외래키 설정
     private User user; // 댓글 작성자
 
@@ -53,7 +52,10 @@ public class EpisodeComment {
     @JoinColumn(name = "parent_id") // 외래키 설정
     private EpisodeComment parent; // 부모 댓글(대댓글 구조)
 
-    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true) // 일대다 관계, cascade 로 연쇄 삭제, 고아 객체 제거
+    @OneToMany(
+            mappedBy = "parent",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true) // 일대다 관계, cascade 로 연쇄 삭제, 고아 객체 제거
     private List<EpisodeComment> replies = new ArrayList<>(); // 대댓글 목록
 
     @CreatedDate
@@ -68,7 +70,7 @@ public class EpisodeComment {
 
     /**
      * 에피소드 댓글 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 댓글 작성자
      * @param episode 댓글 대상 에피소드
      * @param content 댓글 내용 (1-500자)
@@ -106,7 +108,7 @@ public class EpisodeComment {
 
     /**
      * 에피소드 대댓글 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 댓글 작성자
      * @param episode 댓글 대상 에피소드
      * @param parentComment 부모 댓글
@@ -159,7 +161,7 @@ public class EpisodeComment {
 
         return comment;
     }
-    
+
     // ===== 편의 메서드 =====
 
     /**
@@ -183,7 +185,6 @@ public class EpisodeComment {
     public boolean isReply() {
         return parent != null; // 부모가 있으면 대댓글
     }
-
 
     /**
      * 대댓글 추가 메서드

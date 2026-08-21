@@ -3,12 +3,11 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.enums.UserRole;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 사용자 엔티티
@@ -40,7 +39,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email; // 이메일 (고유값, 필수)
 
-    @Column(nullable = true)            // 소셜 로그인은 비밀번호 없음
+    @Column(nullable = true) // 소셜 로그인은 비밀번호 없음
     private String password; // 비밀번호 (자체 로그인용)
 
     @Column(nullable = false)
@@ -93,7 +92,7 @@ public class User {
 
     /**
      * 로컬 사용자 생성 (이메일/비밀번호 기반)
-     * 
+     *
      * @param email 이메일 (필수)
      * @param password 비밀번호 (필수)
      * @param name 사용자 이름 (필수)
@@ -109,7 +108,7 @@ public class User {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("사용자 이름은 필수입니다.");
         }
-        
+
         User user = new User();
         user.email = normalizeEmail(email);
         user.password = password;
@@ -122,13 +121,13 @@ public class User {
         user.profileImage = null;
         user.createdAt = LocalDateTime.now();
         user.updatedAt = LocalDateTime.now();
-        
+
         return user;
     }
-    
+
     /**
      * 소셜 사용자 생성 (OAuth 기반)
-     * 
+     *
      * @param email 이메일 (필수)
      * @param name 사용자 이름 (필수)
      * @param authProvider 인증 제공자 (필수)
@@ -136,8 +135,8 @@ public class User {
      * @param profileImage 프로필 이미지 URL (선택)
      * @return 생성된 User 엔티티
      */
-    public static User createSocialUser(String email, String name, AuthProvider authProvider, 
-                                      String providerId, String profileImage) {
+    public static User createSocialUser(
+            String email, String name, AuthProvider authProvider, String providerId, String profileImage) {
         if (email == null || email.trim().isEmpty()) {
             throw new IllegalArgumentException("이메일은 필수입니다.");
         }
@@ -150,7 +149,7 @@ public class User {
         if (providerId == null || providerId.trim().isEmpty()) {
             throw new IllegalArgumentException("제공자 ID는 필수입니다.");
         }
-        
+
         User user = new User();
         user.email = normalizeEmail(email);
         user.password = null; // 소셜 로그인은 비밀번호 없음
@@ -163,13 +162,13 @@ public class User {
         user.profileImage = profileImage != null ? profileImage.trim() : null;
         user.createdAt = LocalDateTime.now();
         user.updatedAt = LocalDateTime.now();
-        
+
         return user;
     }
-    
+
     /**
      * 관리자 사용자 생성
-     * 
+     *
      * @param email 이메일 (필수)
      * @param password 비밀번호 (필수)
      * @param name 사용자 이름 (필수)
@@ -185,7 +184,7 @@ public class User {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("사용자 이름은 필수입니다.");
         }
-        
+
         User user = new User();
         user.email = normalizeEmail(email);
         user.password = password;

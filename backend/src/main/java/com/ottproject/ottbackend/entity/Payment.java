@@ -3,12 +3,11 @@ package com.ottproject.ottbackend.entity;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * Payment 엔티티
@@ -36,71 +35,71 @@ public class Payment { // 엔티티 시작
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // 결제 레코드 PK
-    
+
     @ManyToOne(fetch = FetchType.LAZY) // 사용자와 다대일 연관(지연 로딩)
     @JoinColumn(name = "user_id", nullable = false) // FK: user.id
     private User user; // 결제한 사용자
-    
+
     @ManyToOne(fetch = FetchType.LAZY) // 플랜과 다대일 연관(지연 로딩)
     @JoinColumn(name = "plan_id", nullable = false) // FK: membership_plans.id
     private MembershipPlan membershipPlan; // 결제 대상 플랜
-    
+
     @Enumerated(EnumType.STRING) // enum 의 문자열 값으로 저장
     @Column(nullable = false)
     private PaymentProvider provider; // 결제 제공자(STRIPE/IMPORT 등)
-    
+
     @Embedded // Money VO 임베드
     private Money price; // 결제 금액/통화 VO
-    
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private PaymentStatus status = PaymentStatus.PENDING; // 초기 상태 PENDING
-    
+
     // 유니크: 정기결제 재청구가 PG 호출 전에 결정적 merchant_uid 로 PENDING 을 선삽입하고,
     // 중복 배달의 두 번째 삽입이 여기서 떨어지는 것이 이중 청구를 막는 1차 방어선이다.
     // NULL 은 서로 충돌하지 않으므로 값이 없는 행에는 영향이 없다.
     // 운영 스키마는 V20260729100000 마이그레이션이 만든다(여기 선언은 매핑 일치 + 테스트 스키마용).
     @Column(length = 255, unique = true)
     private String providerSessionId; // 체크아웃 세션 식별자(merchant_uid)
-    
+
     @Column(length = 255)
     private String providerPaymentId; // 최종 결제 식별자
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "payment_method_id")
     private PaymentMethod paymentMethod; // 사용된 결제수단
-    
+
     @Column(length = 2048)
     private String receiptUrl; // 영수증 URL(성공 시)
-    
+
     @Column(length = 2048)
     private String description; // 결제 설명
-    
+
     @Column(columnDefinition = "TEXT")
     private String metadata; // JSON 형태의 메타데이터
-    
+
     @Column
     private LocalDateTime paidAt; // 성공 시각
-    
+
     @Column
     private LocalDateTime failedAt; // 실패 시각
-    
+
     @Column
     private LocalDateTime canceledAt; // 취소 시각
-    
+
     @Column
     private Long refundedAmount; // 환불 금액(최소 화폐단위)
-    
+
     @Column
     private LocalDateTime refundedAt; // 환불 완료 시각
-    
+
     @Column
     private LocalDateTime completedAt; // 결제 완료 시각
-    
+
     @CreatedDate // 생성 시각 자동 기록
     @Column(nullable = false)
     private LocalDateTime createdAt; // 생성 시각
-    
+
     @LastModifiedDate // 수정 시각 자동 기록
     @Column(nullable = false)
     private LocalDateTime updatedAt; // 수정 시각
@@ -109,7 +108,7 @@ public class Payment { // 엔티티 시작
 
     /**
      * 대기 중인 결제 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 결제 사용자
      * @param membershipPlan 결제 대상 플랜
      * @param provider 결제 제공자
@@ -118,8 +117,8 @@ public class Payment { // 엔티티 시작
      * @return 생성된 Payment 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static Payment createPendingPayment(User user, MembershipPlan membershipPlan, 
-                                              PaymentProvider provider, String sessionId, Money price) {
+    public static Payment createPendingPayment(
+            User user, MembershipPlan membershipPlan, PaymentProvider provider, String sessionId, Money price) {
         // 필수 필드 검증
         if (user == null) {
             throw new IllegalArgumentException("사용자는 필수입니다.");
@@ -151,7 +150,7 @@ public class Payment { // 엔티티 시작
 
     /**
      * 성공한 결제 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 결제 사용자
      * @param membershipPlan 결제 대상 플랜
      * @param provider 결제 제공자
@@ -161,9 +160,13 @@ public class Payment { // 엔티티 시작
      * @return 생성된 Payment 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static Payment createSucceededPayment(User user, MembershipPlan membershipPlan, 
-                                                PaymentProvider provider, String paymentId, 
-                                                Money price, LocalDateTime paidAt) {
+    public static Payment createSucceededPayment(
+            User user,
+            MembershipPlan membershipPlan,
+            PaymentProvider provider,
+            String paymentId,
+            Money price,
+            LocalDateTime paidAt) {
         // 필수 필드 검증
         if (user == null) {
             throw new IllegalArgumentException("사용자는 필수입니다.");
@@ -200,7 +203,7 @@ public class Payment { // 엔티티 시작
 
     /**
      * 실패한 결제 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 결제 사용자
      * @param membershipPlan 결제 대상 플랜
      * @param provider 결제 제공자
@@ -210,9 +213,13 @@ public class Payment { // 엔티티 시작
      * @return 생성된 Payment 엔티티
      * @throws IllegalArgumentException 필수 필드가 null이거나 유효하지 않은 경우
      */
-    public static Payment createFailedPayment(User user, MembershipPlan membershipPlan, 
-                                             PaymentProvider provider, String sessionId, 
-                                             Money price, LocalDateTime failedAt) {
+    public static Payment createFailedPayment(
+            User user,
+            MembershipPlan membershipPlan,
+            PaymentProvider provider,
+            String sessionId,
+            Money price,
+            LocalDateTime failedAt) {
         // 필수 필드 검증
         if (user == null) {
             throw new IllegalArgumentException("사용자는 필수입니다.");

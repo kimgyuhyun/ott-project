@@ -1,13 +1,12 @@
 package com.ottproject.ottbackend.entity;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.ottproject.ottbackend.enums.PaymentMethodType;
 import com.ottproject.ottbackend.enums.PaymentProvider;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.time.LocalDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * PaymentMethod 상태 전이 검증

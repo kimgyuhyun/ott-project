@@ -7,15 +7,14 @@ import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.Episode;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.EpisodeRepository;
+import java.util.Comparator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.Comparator;
-import java.util.List;
 
 /**
  * AdminEpisodeService
@@ -46,7 +45,8 @@ public class AdminEpisodeService {
      * 아직 flush 되지 않은 에피소드는 알림 쪽에서 보이지 않는다.
      */
     public AdminEpisodeDetailDto createEpisode(Long animeId, EpisodeCreateRequest request) {
-        Anime anime = animeRepository.findById(animeId)
+        Anime anime = animeRepository
+                .findById(animeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "애니메이션이 존재하지 않습니다."));
 
         if (request == null || request.getEpisodeNumber() == null) {
@@ -56,8 +56,7 @@ public class AdminEpisodeService {
         boolean duplicated = episodeRepository.findByAnime_Id(animeId).stream()
                 .anyMatch(e -> request.getEpisodeNumber().equals(e.getEpisodeNumber()));
         if (duplicated) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "이미 등록된 화수입니다: " + request.getEpisodeNumber());
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이미 등록된 화수입니다: " + request.getEpisodeNumber());
         }
 
         Episode episode;
@@ -68,8 +67,7 @@ public class AdminEpisodeService {
                     request.getTitle(),
                     request.getThumbnailUrl(),
                     request.getVideoUrl(),
-                    request.getDuration()
-            );
+                    request.getDuration());
         } catch (IllegalArgumentException e) {
             // 팩토리의 필수값 검증은 도메인 규칙이다. 500 이 아니라 400 으로 돌려준다.
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
@@ -111,7 +109,8 @@ public class AdminEpisodeService {
      * 알림은 보내지 않는다. 이건 새 화수가 아니라 기존 화수의 수정이라, 찜한 사용자에게 다시 알리면 스팸이 된다.
      */
     public AdminEpisodeDetailDto updateEpisode(Long animeId, Long episodeId, EpisodeUpdateRequest request) {
-        Episode episode = episodeRepository.findById(episodeId) // 쓰기 트랜잭션이라 락을 잡아도 된다
+        Episode episode = episodeRepository
+                .findById(episodeId) // 쓰기 트랜잭션이라 락을 잡아도 된다
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "에피소드가 존재하지 않습니다."));
 
         // 경로의 작품과 실제 소속이 다르면 남의 작품 화수를 고치는 셈이 된다.

@@ -1,9 +1,21 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.ottproject.ottbackend.dto.AnimeDetailDto;
 import com.ottproject.ottbackend.dto.GenreSimpleDto;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,19 +27,6 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-
-import java.time.Duration;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
 
 /**
  * AnimeCacheService 단위 테스트
@@ -44,9 +43,14 @@ class AnimeCacheServiceTest {
     private static final String GENRES_KEY = "ott:anime:genres:v1";
     private static final String POPULAR_KEY = "ott:anime:popular:v1";
 
-    @Mock private StringRedisTemplate stringRedisTemplate;
-    @Mock private ValueOperations<String, String> valueOps;
-    @Mock private AnimeQueryService animeQueryService;
+    @Mock
+    private StringRedisTemplate stringRedisTemplate;
+
+    @Mock
+    private ValueOperations<String, String> valueOps;
+
+    @Mock
+    private AnimeQueryService animeQueryService;
 
     // 실제 Boot 구성과 동일하게 JavaTime 을 등록한 ObjectMapper — 직렬화 함정을 진짜로 검증하기 위함
     private final ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
@@ -161,7 +165,8 @@ class AnimeCacheServiceTest {
         void detailFallsBackToDbOnRedisFailure() {
             given(stringRedisTemplate.opsForValue()).willReturn(valueOps);
             given(valueOps.get("ott:anime:detail:v1:5")).willThrow(new RuntimeException("redis down"));
-            given(animeQueryService.detail(5L)).willReturn(AnimeDetailDto.builder().aniId(5L).build());
+            given(animeQueryService.detail(5L))
+                    .willReturn(AnimeDetailDto.builder().aniId(5L).build());
 
             AnimeDetailDto result = service.getDetailPublic(5L);
 

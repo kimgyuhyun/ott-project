@@ -1,8 +1,14 @@
 package com.ottproject.ottbackend.repository;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.enums.AnimeStatus;
+import java.time.LocalDateTime;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Tag;
@@ -22,13 +28,6 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * 읽기 전용 트랜잭션에서의 단건 조회 동작 검증 (실제 PostgreSQL)
@@ -54,12 +53,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @Import(JpaSliceTestSupport.class)
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
-@TestPropertySource(properties = {
-        // Flyway 마이그레이션 대신 엔티티 기준 스키마를 만든다(이 테스트는 스키마 이력이 아니라 락 동작을 본다).
-        "spring.flyway.enabled=false",
-        "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
-        "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
-})
+@TestPropertySource(
+        properties = {
+            // Flyway 마이그레이션 대신 엔티티 기준 스키마를 만든다(이 테스트는 스키마 이력이 아니라 락 동작을 본다).
+            "spring.flyway.enabled=false",
+            "spring.jpa.hibernate.ddl-auto=create", // create-drop 이 아니다: 종료 시 drop DDL 이 이미 내려간 컨테이너에 붙으려다 30초를 버린다
+            "spring.jpa.properties.hibernate.hbm2ddl.halt_on_error=true"
+        })
 @Transactional(propagation = Propagation.NOT_SUPPORTED) // @DataJpaTest 의 감싸는 트랜잭션을 끈다
 class AnimeRepositoryReadOnlyLockTest {
 
@@ -129,8 +129,7 @@ class AnimeRepositoryReadOnlyLockTest {
     @Test
     @DisplayName("읽기 전용 트랜잭션에서 락 없는 조회는 정상 동작한다 - 큐레이션 단건 조회가 쓰는 경로")
     void lockFreeFindSucceedsInsideReadOnlyTransaction() {
-        Optional<Anime> found = readOnlyTransaction()
-                .execute(status -> animeRepository.findByIdWithoutLock(animeId));
+        Optional<Anime> found = readOnlyTransaction().execute(status -> animeRepository.findByIdWithoutLock(animeId));
 
         assertThat(found).isPresent();
         assertThat(found.get().getTitle()).isEqualTo("작품");

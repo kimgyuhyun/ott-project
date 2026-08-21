@@ -20,7 +20,7 @@ import lombok.*;
 @NoArgsConstructor // 기본 생성자
 @AllArgsConstructor // 전체 필드 생성자
 public class UpdateEpisodeCommentsRequestDto { // 에피소드 댓글 수정 요청 DTO 시작
-    
+
     @NotBlank(message = "내용은 필수입니다.") // 공백 불가 검증
     @Size(max = 1000, message = "내용은 최대 1000자입니다.") // 길이 제한
     private String content; // 수정할 내용 본문

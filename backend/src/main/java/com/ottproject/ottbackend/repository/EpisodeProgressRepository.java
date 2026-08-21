@@ -1,12 +1,11 @@
 package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.EpisodeProgress;
-import org.springframework.data.repository.Repository;
-
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.repository.Repository;
 
 /**
  * EpisodeProgressRepository
@@ -25,15 +24,18 @@ import java.util.Optional;
  * - findByUser_IdAndEpisode_IdIn: 여러 에피소드 진행률 벌크 조회
  */
 public interface EpisodeProgressRepository extends Repository<EpisodeProgress, Long> { // 진행률
-	Optional<EpisodeProgress> findByUser_IdAndEpisode_Id(Long userId, Long episodeId); // 단건
-	List<EpisodeProgress> findByUser_IdAndEpisode_IdIn(Long userId, Collection<Long> episodeIds); // 벌크
+    Optional<EpisodeProgress> findByUser_IdAndEpisode_Id(Long userId, Long episodeId); // 단건
 
-	// 마이페이지용 시청 기록 목록 조회 (최근 시청 순)
-	List<EpisodeProgress> findByUser_IdOrderByUpdatedAtDesc(Long userId);
+    List<EpisodeProgress> findByUser_IdAndEpisode_IdIn(Long userId, Collection<Long> episodeIds); // 벌크
 
-	// 마이페이지용 시청 기록 목록 조회 (페이지네이션 지원)
-	org.springframework.data.domain.Page<EpisodeProgress> findByUser_IdOrderByUpdatedAtDesc(Long userId, org.springframework.data.domain.Pageable pageable);
+    // 마이페이지용 시청 기록 목록 조회 (최근 시청 순)
+    List<EpisodeProgress> findByUser_IdOrderByUpdatedAtDesc(Long userId);
 
-	// 마이페이지용 시청 기록 목록 조회 (90일 제한, 페이지네이션 지원)
-	org.springframework.data.domain.Page<EpisodeProgress> findByUser_IdAndUpdatedAtAfterOrderByUpdatedAtDesc(Long userId, LocalDateTime dateAfter, org.springframework.data.domain.Pageable pageable);
+    // 마이페이지용 시청 기록 목록 조회 (페이지네이션 지원)
+    org.springframework.data.domain.Page<EpisodeProgress> findByUser_IdOrderByUpdatedAtDesc(
+            Long userId, org.springframework.data.domain.Pageable pageable);
+
+    // 마이페이지용 시청 기록 목록 조회 (90일 제한, 페이지네이션 지원)
+    org.springframework.data.domain.Page<EpisodeProgress> findByUser_IdAndUpdatedAtAfterOrderByUpdatedAtDesc(
+            Long userId, LocalDateTime dateAfter, org.springframework.data.domain.Pageable pageable);
 }

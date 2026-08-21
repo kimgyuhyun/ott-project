@@ -1,12 +1,11 @@
 package com.ottproject.ottbackend.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 /**
  * 평점 엔티티
@@ -55,7 +54,7 @@ public class Rating {
 
     /**
      * 평점 생성 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 평점 작성자
      * @param anime 평점 대상 애니메이션
      * @param score 평점 (1-10)
@@ -90,7 +89,7 @@ public class Rating {
 
     /**
      * 평점 수정 (비즈니스 로직 캡슐화)
-     * 
+     *
      * @param user 사용자
      * @param anime 애니메이션
      * @param score 새로운 평점 (1-10)

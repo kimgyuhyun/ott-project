@@ -7,6 +7,9 @@ import com.ottproject.ottbackend.mybatis.RatingQueryMapper;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.RatingRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,10 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +37,8 @@ public class RatingService {
         User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
         Anime anime = animeRepository.findById(aniId).orElseThrow();
 
-        Rating rating = ratingRepository.findByUserIdAndAnimeId(userId, aniId)
+        Rating rating = ratingRepository
+                .findByUserIdAndAnimeId(userId, aniId)
                 .orElseGet(() -> Rating.createRating(user, anime, 0.0));
         rating.setScore(score);
         ratingRepository.save(rating);
@@ -79,12 +79,16 @@ public class RatingService {
                         try {
                             double d = Double.parseDouble(ratingObj.toString());
                             bucketKey = String.format("%.1f", Math.max(1.0, Math.min(5.0, Math.round(d * 2.0) / 2.0)));
-                        } catch (Exception ignore) {}
+                        } catch (Exception ignore) {
+                        }
                     }
 
                     if (countObj instanceof Number) countVal = ((Number) countObj).intValue();
                     else if (countObj != null) {
-                        try { countVal = Integer.valueOf(countObj.toString()); } catch (Exception ignore) {}
+                        try {
+                            countVal = Integer.valueOf(countObj.toString());
+                        } catch (Exception ignore) {
+                        }
                     }
 
                     if (bucketKey != null && result.containsKey(bucketKey) && countVal != null) {
@@ -130,12 +134,14 @@ public class RatingService {
                 anime.setRating(avg == null ? 0.0 : avg);
                 anime.setRatingCount(cnt == null ? 0 : cnt.intValue());
                 animeRepository.save(anime);
-                log.debug("Aggregates updated aniId={}, rating={}, ratingCount={}", aniId, anime.getRating(), anime.getRatingCount());
+                log.debug(
+                        "Aggregates updated aniId={}, rating={}, ratingCount={}",
+                        aniId,
+                        anime.getRating(),
+                        anime.getRatingCount());
             }
         } catch (Exception e) {
             log.warn("updateAnimeAggregates failed aniId={}, error={}", aniId, e.toString());
         }
     }
 }
-
-

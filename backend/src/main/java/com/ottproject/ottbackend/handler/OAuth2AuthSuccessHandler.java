@@ -10,16 +10,15 @@ import com.ottproject.ottbackend.util.ClientRequestUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
-
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * OAuth2AuthSuccessHandler
@@ -49,14 +48,20 @@ public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHand
      * @param authentication 인증 성공 정보
      */
     @Override
-    public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
-                                        Authentication authentication) throws IOException, ServletException {
+    public void onAuthenticationSuccess(
+            HttpServletRequest request, HttpServletResponse response, Authentication authentication)
+            throws IOException, ServletException {
         log.info("OAuth2 로그인 성공: {}", authentication.getName());
 
         // 소셜 로그인 성공 감사 로그 기록(비동기) - 통계 스냅샷의 원천 데이터가 됨
-        authEventService.record(AuthEventType.LOGIN_SUCCESS, resolveProvider(authentication), authentication.getName(),
-                ClientRequestUtil.clientIp(request), ClientRequestUtil.userAgent(request),
-                request.getSession(true).getId(), null);
+        authEventService.record(
+                AuthEventType.LOGIN_SUCCESS,
+                resolveProvider(authentication),
+                authentication.getName(),
+                ClientRequestUtil.clientIp(request),
+                ClientRequestUtil.userAgent(request),
+                request.getSession(true).getId(),
+                null);
 
         // 요청 헤더에서 Accept 타입 확인 (AJAX 요청인지 일반 요청인지 판단)
         String acceptHeader = request.getHeader("Accept");
@@ -70,8 +75,8 @@ public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHand
             // 신규 사용자 여부 확인
             boolean isNewUser = false;
             if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User) {
-                org.springframework.security.oauth2.core.user.OAuth2User oauth2User = 
-                    (org.springframework.security.oauth2.core.user.OAuth2User) authentication.getPrincipal();
+                org.springframework.security.oauth2.core.user.OAuth2User oauth2User =
+                        (org.springframework.security.oauth2.core.user.OAuth2User) authentication.getPrincipal();
                 isNewUser = Boolean.TRUE.equals(oauth2User.getAttribute("isNewUser"));
 
                 // 세션에 로그인 식별 및 신규 사용자 플래그를 저장하여 프론트 요청에서 참조 가능하도록 함
@@ -91,9 +96,10 @@ public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHand
                         });
                     }
                     session.setAttribute("isNewUser", isNewUser);
-                } catch (Exception ignore) { }
+                } catch (Exception ignore) {
+                }
             }
-            
+
             // 1) 환경변수 우선
             String envOrigin = System.getenv("FRONTEND_ORIGIN");
 
@@ -111,7 +117,9 @@ public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHand
                 calculatedOrigin = request.getScheme() + "://" + hostHeader;
             } else {
                 calculatedOrigin = request.getScheme() + "://" + request.getServerName()
-                        + ((request.getServerPort() == 80 || request.getServerPort() == 443) ? "" : (":" + request.getServerPort()));
+                        + ((request.getServerPort() == 80 || request.getServerPort() == 443)
+                                ? ""
+                                : (":" + request.getServerPort()));
             }
 
             String redirectUrl = calculatedOrigin + "/oauth2/success?newUser=" + isNewUser;
@@ -132,12 +140,12 @@ public class OAuth2AuthSuccessHandler extends SimpleUrlAuthenticationSuccessHand
         successResponse.put("success", true);
         successResponse.put("message", "소셜 로그인이 성공했습니다.");
         successResponse.put("username", authentication.getName());
-        
+
         // 신규 사용자 여부 확인
         boolean isNewUser = false;
         if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User) {
-            org.springframework.security.oauth2.core.user.OAuth2User oauth2User = 
-                (org.springframework.security.oauth2.core.user.OAuth2User) authentication.getPrincipal();
+            org.springframework.security.oauth2.core.user.OAuth2User oauth2User =
+                    (org.springframework.security.oauth2.core.user.OAuth2User) authentication.getPrincipal();
             isNewUser = Boolean.TRUE.equals(oauth2User.getAttribute("isNewUser"));
         }
         successResponse.put("isNewUser", isNewUser);

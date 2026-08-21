@@ -53,13 +53,20 @@ public class AuthEventService {
      */
     @Async
     @Transactional
-    public void record(AuthEventType type, AuthProvider provider, String email,
-                       String ip, String userAgent, String sessionId, String failReason) {
+    public void record(
+            AuthEventType type,
+            AuthProvider provider,
+            String email,
+            String ip,
+            String userAgent,
+            String sessionId,
+            String failReason) {
         try {
             Long userId = null;
             if (email != null && !email.isBlank()) {
                 // 이메일로 사용자 식별 시도(없으면 null 유지 → 실패/미식별 케이스)
-                userId = userRepository.findByEmail(email.trim().toLowerCase())
+                userId = userRepository
+                        .findByEmail(email.trim().toLowerCase())
                         .map(User::getId)
                         .orElse(null);
             }
@@ -68,8 +75,15 @@ public class AuthEventService {
             authEventRepository.save(event); // DB 적재
 
             // 파일 감사 로그 이중화 (DB 와 별개로 추적 가능)
-            auditLog.info("event={} provider={} email={} userId={} ip={} sessionId={} reason={}",
-                    type, provider, email, userId, ip, sessionId, failReason);
+            auditLog.info(
+                    "event={} provider={} email={} userId={} ip={} sessionId={} reason={}",
+                    type,
+                    provider,
+                    email,
+                    userId,
+                    ip,
+                    sessionId,
+                    failReason);
         } catch (Exception ex) {
             // 감사 로그 적재 실패가 인증 흐름을 깨지 않도록 방어
             auditLog.error("인증 이벤트 기록 실패: type={}, email={}, error={}", type, email, ex.getMessage(), ex);

@@ -1,9 +1,8 @@
 package com.ottproject.ottbackend.dto;
 
 import com.ottproject.ottbackend.enums.NotificationType;
-import lombok.*;
-
 import java.time.LocalDateTime;
+import lombok.*;
 
 /**
  * 알림 DTO
@@ -31,4 +30,3 @@ public class NotificationDto {
     private Boolean isRead; // 읽음 여부
     private LocalDateTime createdAt; // 생성 시각
 }
-

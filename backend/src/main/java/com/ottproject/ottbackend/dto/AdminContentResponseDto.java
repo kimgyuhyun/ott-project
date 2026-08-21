@@ -1,9 +1,8 @@
 package com.ottproject.ottbackend.dto;
 
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
 
 /**
  * Admin 컨텐츠 응답 DTO
@@ -29,5 +28,3 @@ public class AdminContentResponseDto { // DTO 시작
     private LocalDateTime createdAt; // 생성 시각
     private LocalDateTime updatedAt; // 수정 시각
 }
-
-

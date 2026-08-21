@@ -2,10 +2,9 @@ package com.ottproject.ottbackend.mybatis;
 
 import com.ottproject.ottbackend.dto.*;
 import com.ottproject.ottbackend.enums.AnimeStatus;
-import org.apache.ibatis.annotations.Mapper; // MyBatis 매퍼 애노테이션
-import org.apache.ibatis.annotations.Param;  // MyBatis 파라미터 바인딩
-
 import java.util.List;
+import org.apache.ibatis.annotations.Mapper; // MyBatis 매퍼 애노테이션
+import org.apache.ibatis.annotations.Param; // MyBatis 파라미터 바인딩
 
 /**
  * AnimeQueryMapper
@@ -43,8 +42,7 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
             @Param("offset") int offset, // 오프셋
             @Param("cursorId") Long cursorId,
             @Param("cursorRating") Double cursorRating,
-            @Param("cursorIsPopular") Boolean cursorIsPopular
-    );
+            @Param("cursorIsPopular") Boolean cursorIsPopular);
 
     long countAniList( // 목록 총 개수 // 페이지네이션용
             @Param("status") AnimeStatus status, // 위와 동일 필터들
@@ -60,53 +58,59 @@ public interface AnimeQueryMapper { // 목록 상세/연관 조회 정의
             @Param("isExclusive") Boolean isExclusive,
             @Param("isCompleted") Boolean isCompleted,
             @Param("isNew") Boolean isNew,
-            @Param("isPopular") Boolean isPopular
-    );
+            @Param("isPopular") Boolean isPopular);
 
     // 주간 요일별 조회
-    List<AnimeListDto> findWeeklyByDay(
-            @Param("day") String day,
-            @Param("limit") int limit
-    );
+    List<AnimeListDto> findWeeklyByDay(@Param("day") String day, @Param("limit") int limit);
 
     // 상세: 태그 목록 조회(선택)
     java.util.List<TagSimpleDto> findTagsByAniId(@Param("aniId") Long aniId);
-    
+
     // 상세: 태그/성우/감독 조회 (더보기 모달용)
     List<String> findTagNamesByAniId(@Param("aniId") Long aniId); // 태그 이름 리스트
+
     String findVoiceActorsByAniId(@Param("aniId") Long aniId); // 성우 이름 (콤마 구분)
+
     String findDirectorsByAniId(@Param("aniId") Long aniId); // 감독 이름 (콤마 구분)
 
     AnimeDetailDto findAniDetailByAniId(@Param("aniId") Long aniId); // 상세 헤더/더보기 영역 조회(aniId 기준, anime 기준)
+
     AnimeDetailDto findAniDetailByAniIdWithUser( // 사용자 포함 상세 조회 메서드 시그니처
             @Param("aniId") Long aniId, // 조회할 애니 ID
             @Param("currentUserId") Long currentUserId // 현재 사용자 ID(비로그인 null 허용)
-    ); // 인터페이스 메서드 끝
+            ); // 인터페이스 메서드 끝
 
     List<EpisodeDto> findEpisodesByAniId(@Param("aniId") Long aniId); // 상세: 에피소드 리스트 (anime 기준)
+
     List<GenreSimpleDto> findGenresByAniId(@Param("aniId") Long aniId); // 상세: 장르 리스트 (anime 기준)
+
     List<StudioSimpleDto> findStudiosByAniId(@Param("aniId") Long aniId); // 상세: 제작사 리스트 (anime 기준)
 
     // 마스터: 전체 장르/태그 목록
     List<GenreSimpleDto> findAllGenres();
+
     List<TagSimpleDto> findAllTags();
 
     // 필터 옵션 목록
     List<String> findAllSeasons(); // 시즌 목록
-    List<StatusOptionDto> findAllStatuses(); // 상태 목록  
+
+    List<StatusOptionDto> findAllStatuses(); // 상태 목록
+
     List<TypeOptionDto> findAllTypes(); // 타입 목록
 
     // 개인화 추천용 메서드들
     List<Long> findFavoriteAnimeIds(@Param("userId") Long userId); // 사용자 찜한 작품 ID 목록
+
     List<Long> findWatchedAnimeIds(@Param("userId") Long userId); // 사용자 시청한 작품 ID 목록
-    List<Long> findHighRatedAnimeIds(@Param("userId") Long userId, @Param("minRating") Double minRating); // 사용자 높은 평점 작품 ID 목록
+
+    List<Long> findHighRatedAnimeIds(
+            @Param("userId") Long userId, @Param("minRating") Double minRating); // 사용자 높은 평점 작품 ID 목록
+
     List<Long> findTagIdsByAnimeId(@Param("aniId") Long aniId); // 작품의 태그 ID 목록
 
     // 트렌딩: ID 목록으로 카드 리스트 조회
     List<AnimeListDto> findAniListByIds(@Param("ids") List<Long> ids);
-    
+
     // 년도/분기 옵션 조회
     List<com.ottproject.ottbackend.dto.YearOptionDto> findYearOptions();
 }
-
-

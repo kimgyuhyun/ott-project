@@ -1,9 +1,18 @@
 package com.ottproject.ottbackend.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.repository.AnimeRepository;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,16 +23,6 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 /**
  * AnimeEnhancementService 의 보완 대상 선별/재확인 규칙 검증
@@ -39,9 +38,14 @@ import static org.mockito.Mockito.verify;
 @MockitoSettings(strictness = Strictness.LENIENT) // 일부 케이스는 TMDB 스텁까지 가지 않는다
 class AnimeEnhancementServiceTest {
 
-    @Mock private AnimeRepository animeRepository;
-    @Mock private TmdbApiService tmdbApiService;
-    @Mock private ObjectProvider<AnimeEnhancementService> selfProvider;
+    @Mock
+    private AnimeRepository animeRepository;
+
+    @Mock
+    private TmdbApiService tmdbApiService;
+
+    @Mock
+    private ObjectProvider<AnimeEnhancementService> selfProvider;
 
     private AnimeEnhancementService animeEnhancementService;
 

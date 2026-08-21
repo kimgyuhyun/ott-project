@@ -15,12 +15,11 @@ import com.ottproject.ottbackend.repository.ReviewReportRepository;
 import com.ottproject.ottbackend.repository.ReviewRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.util.PageLimitUtil;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 /**
  * ReviewsService
@@ -49,15 +48,16 @@ public class ReviewsService {
     private final ReviewReportRepository reviewReportRepository; // 신고 기록 CUD(중복방지/임계치)
 
     private static final int REPORT_HIDE_THRESHOLD = 5; // 서로 다른 사용자 신고가 이 수 이상이면 숨김(REPORTED)
+
     @Transactional(readOnly = true) // 읽기 전용 트랜잭션
     public PagedResponse<ReviewResponseDto> list(Long aniId, Long currentUserId, String sort, int page, int size) {
         size = PageLimitUtil.clampSize(size); // 상한 강제. 아래 limit/offset 과 응답의 size 가 모두 이 값에서 나온다
         int limit = size; // LIMIT 계산
-        int offset = Math.max(page, 0) * size; /// OFFSET 계산(0 미만 보호)
+        int offset = Math.max(page, 0) * size; // / OFFSET 계산(0 미만 보호)
         List<ReviewResponseDto> items = reviewQueryMapper // 목록 데이터 조회
                 .findReviewsByAniId(aniId, currentUserId, sort, limit, offset);
         long total = reviewQueryMapper.countReviewsByAniId(aniId); // 총 개수 조회(페이지네이션)
-        return new PagedResponse<>(items,total,page,size); // 표준 페이지 응답
+        return new PagedResponse<>(items, total, page, size); // 표준 페이지 응답
     }
 
     @Transactional(readOnly = true) // 읽기 전용 트랜젝션
@@ -67,20 +67,22 @@ public class ReviewsService {
 
     public Long create(Long userId, Long aniListId, String content) {
         User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
-        Anime animeList = animeListRepository.findById(aniListId) // NEW 애니 조회(필수)
+        Anime animeList = animeListRepository
+                .findById(aniListId) // NEW 애니 조회(필수)
                 .orElseThrow(() -> new IllegalArgumentException("animeList not found: " + aniListId));
 
         Review review = Review.createReview( // 리뷰 엔티티 생성
                 user, // 연관: 작성자
                 animeList, // NEW 연관: 대상 애니
                 content // 내용(선택)
-        );
+                );
 
         return reviewRepository.save(review).getId(); // 저장 후 ID 반환
     }
 
     public void update(Long reviewId, Long userId, String content) { // 본인 리뷰 수정
-        Review review = reviewRepository.findById(reviewId)
+        Review review = reviewRepository
+                .findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId)); // 락 조회
         if (!review.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
         if (content != null) review.updateContent(content); // 내용 갱신(길이/공백/상태 검증 포함)
@@ -88,7 +90,8 @@ public class ReviewsService {
     }
 
     public void deleteSoft(Long reviewId, Long userId) { // 본인 리뷰 소프트 삭제(상태 전환)
-        Review review = reviewRepository.findById(reviewId)
+        Review review = reviewRepository
+                .findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId)); // 락 조회
         if (!review.getUser().getId().equals(userId)) throw new SecurityException("forbidden"); // 소유자 검증
         review.setStatus(ReviewStatus.DELETED); // 상태 전환
@@ -97,7 +100,8 @@ public class ReviewsService {
 
     public void report(Long reviewId, Long userId) { // 리뷰 신고(사용자당 1회, 임계치 초과 시에만 숨김)
         User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
-        Review review = reviewRepository.findById(reviewId)
+        Review review = reviewRepository
+                .findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
 
         if (reviewReportRepository.existsByReview_IdAndUser_Id(reviewId, userId)) {
@@ -118,7 +122,8 @@ public class ReviewsService {
 
         // on 시도
         User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
-        Review review = reviewRepository.findById(reviewId)
+        Review review = reviewRepository
+                .findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
         try {
             reviewLikeRepository.save(ReviewLike.createLike(user, review));
@@ -130,9 +135,9 @@ public class ReviewsService {
         }
     }
 
-
     public void updateStatus(Long reviewId, ReviewStatus status) { // 상태 갱신 공용
-        Review review = reviewRepository.findById(reviewId)
+        Review review = reviewRepository
+                .findById(reviewId)
                 .orElseThrow(() -> new IllegalArgumentException("review not found: " + reviewId));
         review.setStatus(status);
         reviewRepository.save(review);

@@ -10,5 +10,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface EpisodeCommentReportRepository extends JpaRepository<EpisodeCommentReport, Long> {
     boolean existsByEpisodeComment_IdAndUser_Id(Long episodeCommentId, Long userId); // 사용자당 1회 신고 여부
+
     long countByEpisodeComment_Id(Long episodeCommentId); // 해당 댓글 누적 신고 수
 }

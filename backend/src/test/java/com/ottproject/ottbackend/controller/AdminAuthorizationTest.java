@@ -1,5 +1,8 @@
 package com.ottproject.ottbackend.controller;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.ottproject.ottbackend.config.SecurityConfig;
 import com.ottproject.ottbackend.handler.OAuth2AuthFailureHandler;
 import com.ottproject.ottbackend.handler.OAuth2AuthSuccessHandler;
@@ -12,16 +15,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
  * 관리자 API 인가(Authorization) 규칙 테스트
@@ -42,60 +42,70 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // 인가 규칙만 검증하면 되므로 더미 자격증명을 넣어 프로퍼티 검증만 통과시킨다(실제 소셜 로그인은 하지 않음).
 @WebMvcTest(controllers = AdminStatsController.class)
 @Import({SecurityConfig.class, SessionAuthenticationFilter.class, WebSliceTestSupport.class})
-@TestPropertySource(properties = {
-        "spring.security.oauth2.client.registration.google.client-id=test",
-        "spring.security.oauth2.client.registration.google.client-secret=test",
-        "spring.security.oauth2.client.registration.kakao.client-id=test",
-        "spring.security.oauth2.client.registration.kakao.client-secret=test",
-        "spring.security.oauth2.client.registration.naver.client-id=test",
-        "spring.security.oauth2.client.registration.naver.client-secret=test"
-})
+@TestPropertySource(
+        properties = {
+            "spring.security.oauth2.client.registration.google.client-id=test",
+            "spring.security.oauth2.client.registration.google.client-secret=test",
+            "spring.security.oauth2.client.registration.kakao.client-id=test",
+            "spring.security.oauth2.client.registration.kakao.client-secret=test",
+            "spring.security.oauth2.client.registration.naver.client-id=test",
+            "spring.security.oauth2.client.registration.naver.client-secret=test"
+        })
 class AdminAuthorizationTest {
 
     @Autowired
     private MockMvc mvc;
 
     // 컨트롤러 의존성
-    @MockitoBean private AdminStatsService adminStatsService;
+    @MockitoBean
+    private AdminStatsService adminStatsService;
 
     // SecurityConfig / 필터 의존성
-    @MockitoBean private LocalUserDetailsService localUserDetailsService;
-    @MockitoBean private OAuth2UserService oAuth2UserService;
-    @MockitoBean private OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
-    @MockitoBean private OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
-    @MockitoBean private UserRepository userRepository; // SessionAuthenticationFilter 가 사용
-    @MockitoBean private ClientRegistrationRepository clientRegistrationRepository; // oauth2Login 구성에 필요
+    @MockitoBean
+    private LocalUserDetailsService localUserDetailsService;
+
+    @MockitoBean
+    private OAuth2UserService oAuth2UserService;
+
+    @MockitoBean
+    private OAuth2AuthSuccessHandler oAuth2AuthSuccessHandler;
+
+    @MockitoBean
+    private OAuth2AuthFailureHandler oAuth2AuthFailureHandler;
+
+    @MockitoBean
+    private UserRepository userRepository; // SessionAuthenticationFilter 가 사용
+
+    @MockitoBean
+    private ClientRegistrationRepository clientRegistrationRepository; // oauth2Login 구성에 필요
 
     @Test
     @DisplayName("비로그인은 관리자 통계에 접근할 수 없다")
     @WithAnonymousUser
     void anonymousIsDenied() throws Exception {
-        mvc.perform(get("/api/admin/stats/daily"))
-                .andExpect(status().is4xxClientError());
+        mvc.perform(get("/api/admin/stats/daily")).andExpect(status().is4xxClientError());
     }
 
     @Test
     @DisplayName("일반 사용자(ROLE_USER)는 관리자 통계에 접근할 수 없다 - 권한 상승 방지")
     @WithMockUser(roles = "USER")
     void normalUserIsForbidden() throws Exception {
-        mvc.perform(get("/api/admin/stats/daily"))
-                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/admin/stats/daily")).andExpect(status().isForbidden());
     }
 
     @Test
     @DisplayName("관리자(ROLE_ADMIN)는 관리자 통계에 접근할 수 있다")
     @WithMockUser(roles = "ADMIN")
     void adminIsAllowed() throws Exception {
-        mvc.perform(get("/api/admin/stats/daily"))
-                .andExpect(status().isOk());
+        mvc.perform(get("/api/admin/stats/daily")).andExpect(status().isOk());
     }
 
     @Test
     @DisplayName("일반 사용자는 통계 재집계(POST)도 할 수 없다")
     @WithMockUser(roles = "USER")
     void normalUserCannotRebuildStats() throws Exception {
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                        .post("/api/admin/stats/daily/rebuild"))
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(
+                        "/api/admin/stats/daily/rebuild"))
                 .andExpect(status().isForbidden());
     }
 }

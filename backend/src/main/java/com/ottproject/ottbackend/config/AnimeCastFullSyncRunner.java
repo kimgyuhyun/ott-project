@@ -1,34 +1,34 @@
-//package com.ottproject.ottbackend.config;
+// package com.ottproject.ottbackend.config;
 //
-//import com.ottproject.ottbackend.dto.jikan.AnimeCharactersJikanDto;
-//import com.ottproject.ottbackend.entity.Character;
-//import com.ottproject.ottbackend.entity.VoiceActor;
-//import com.ottproject.ottbackend.repository.AnimeRepository;
-//import com.ottproject.ottbackend.repository.CharacterRepository;
-//import com.ottproject.ottbackend.repository.VoiceActorRepository;
-//import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
-//import lombok.RequiredArgsConstructor;
-//import lombok.extern.slf4j.Slf4j;
-//import org.springframework.boot.CommandLineRunner;
-//import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-//import org.springframework.core.annotation.Order;
-//import org.springframework.jdbc.core.JdbcTemplate;
-//import org.springframework.stereotype.Component;
-//import org.springframework.transaction.annotation.Transactional;
+// import com.ottproject.ottbackend.dto.jikan.AnimeCharactersJikanDto;
+// import com.ottproject.ottbackend.entity.Character;
+// import com.ottproject.ottbackend.entity.VoiceActor;
+// import com.ottproject.ottbackend.repository.AnimeRepository;
+// import com.ottproject.ottbackend.repository.CharacterRepository;
+// import com.ottproject.ottbackend.repository.VoiceActorRepository;
+// import com.ottproject.ottbackend.service.SimpleAnimeDataCollectorService;
+// import lombok.RequiredArgsConstructor;
+// import lombok.extern.slf4j.Slf4j;
+// import org.springframework.boot.CommandLineRunner;
+// import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+// import org.springframework.core.annotation.Order;
+// import org.springframework.jdbc.core.JdbcTemplate;
+// import org.springframework.stereotype.Component;
+// import org.springframework.transaction.annotation.Transactional;
 //
-//import java.util.List;
-//import java.util.Objects;
+// import java.util.List;
+// import java.util.Objects;
 //
-///**
+/// **
 // * 한 방 풀 동기화 러너
 // * - 애니 malId 기준으로 캐릭터/성우 마스터 upsert 후 조인 3종을 모두 채운다
 // */
-//@Component
-//@RequiredArgsConstructor
-//@Slf4j
-//@ConditionalOnProperty(name = "anime.cast.full-sync.enabled", havingValue = "true", matchIfMissing = false)
-//@Order(60)
-//public class AnimeCastFullSyncRunner implements CommandLineRunner {
+// @Component
+// @RequiredArgsConstructor
+// @Slf4j
+// @ConditionalOnProperty(name = "anime.cast.full-sync.enabled", havingValue = "true", matchIfMissing = false)
+// @Order(60)
+// public class AnimeCastFullSyncRunner implements CommandLineRunner {
 //
 //    private final SimpleAnimeDataCollectorService collectorService;
 //    private final AnimeRepository animeRepository;
@@ -59,7 +59,8 @@
 //
 //                // 캐릭터/성우 마스터에 없으면 생성(최소정보)
 //                @SuppressWarnings("unchecked")
-//                List<java.util.Map<String,Object>> rows = (List<java.util.Map<String,Object>>) map.getOrDefault("characters", List.of());
+//                List<java.util.Map<String,Object>> rows = (List<java.util.Map<String,Object>>)
+// map.getOrDefault("characters", List.of());
 //                for (var row : rows) {
 //                    @SuppressWarnings("unchecked")
 //                    var cm = (java.util.Map<String,Object>) row.getOrDefault("character", java.util.Map.of());
@@ -115,7 +116,8 @@
 //                "SELECT EXISTS(SELECT 1 FROM anime_characters WHERE anime_id=? AND character_id=?)",
 //                Boolean.class, animeId, characterId);
 //        if (!Boolean.TRUE.equals(exists)) {
-//            jdbcTemplate.update("INSERT INTO anime_characters(anime_id, character_id) VALUES (?,?)", animeId, characterId);
+//            jdbcTemplate.update("INSERT INTO anime_characters(anime_id, character_id) VALUES (?,?)", animeId,
+// characterId);
 //        }
 //    }
 //
@@ -124,7 +126,8 @@
 //                "SELECT EXISTS(SELECT 1 FROM character_voice_actors WHERE character_id=? AND voice_actor_id=?)",
 //                Boolean.class, characterId, voiceActorId);
 //        if (!Boolean.TRUE.equals(exists)) {
-//            jdbcTemplate.update("INSERT INTO character_voice_actors(character_id, voice_actor_id) VALUES (?,?)", characterId, voiceActorId);
+//            jdbcTemplate.update("INSERT INTO character_voice_actors(character_id, voice_actor_id) VALUES (?,?)",
+// characterId, voiceActorId);
 //        }
 //    }
 //
@@ -140,6 +143,6 @@
 //    }
 //
 //    private static String trim(String s) { return s == null ? null : s.trim(); }
-//}
+// }
 //
 //

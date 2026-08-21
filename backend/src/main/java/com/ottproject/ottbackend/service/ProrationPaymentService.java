@@ -14,7 +14,11 @@ import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
-
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,12 +29,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
 
 /**
  * ProrationPaymentService
@@ -81,22 +79,24 @@ public class ProrationPaymentService {
     public Map<String, Object> createProrationCheckout(Long userId, ProrationPaymentRequestDto request) {
         // 현재 활성 구독 조회
         LocalDateTime now = LocalDateTime.now();
-        MembershipSubscription currentSubscription = subscriptionRepository.findActiveEffectiveByUser(
-                userId, MembershipSubscriptionStatus.ACTIVE, now
-        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
+        MembershipSubscription currentSubscription = subscriptionRepository
+                .findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
 
         // 대상 플랜 조회
-        MembershipPlan targetPlan = planRepository.findByCode(request.getPlanCode())
+        MembershipPlan targetPlan = planRepository
+                .findByCode(request.getPlanCode())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "플랜이 존재하지 않습니다."));
 
         // 업그레이드인지 확인
-        if (targetPlan.getPrice().getAmount() <= currentSubscription.getMembershipPlan().getPrice().getAmount()) {
+        if (targetPlan.getPrice().getAmount()
+                <= currentSubscription.getMembershipPlan().getPrice().getAmount()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "업그레이드만 차액 결제가 가능합니다.");
         }
 
         // 차액 계산 (구독 조회에 쓴 기준 시각을 그대로 사용)
         Integer prorationAmount = calculateProrationAmount(currentSubscription, targetPlan, now);
-        
+
         if (prorationAmount <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "차액이 없습니다.");
         }
@@ -108,20 +108,21 @@ public class ProrationPaymentService {
         // 결제 엔티티 생성
         // merchant_uid는 아임포트 정책상 최대 40자 → "proration_"(10) + 하이픈 제거 UUID 30자 = 40자로 고정한다.
         // (초과 시 아임포트가 40자로 잘라 반환하여 webhook 조회/재검증에서 merchant_uid 불일치가 발생했음)
-        String providerSessionId = "proration_" + UUID.randomUUID().toString().replace("-", "").substring(0, 30);
+        String providerSessionId =
+                "proration_" + UUID.randomUUID().toString().replace("-", "").substring(0, 30);
         User user = User.reference(userId);
         Payment payment = Payment.createPendingPayment(
                 user,
                 targetPlan,
                 com.ottproject.ottbackend.enums.PaymentProvider.IMPORT,
                 providerSessionId,
-                new com.ottproject.ottbackend.entity.Money(chargeAmount, "KRW")
-        );
+                new com.ottproject.ottbackend.entity.Money(chargeAmount, "KRW"));
         payment.describeAs("플랜 업그레이드 차액 결제");
-        payment.attachMetadata("{\"type\":\"proration\",\"currentPlanCode\":\"" +
-            currentSubscription.getMembershipPlan().getCode() + 
-            "\",\"targetPlanCode\":\"" + targetPlan.getCode() + 
-            "\",\"paymentService\":\"" + (request.getPaymentService() != null ? request.getPaymentService() : "kakaopay") + "\"}");
+        payment.attachMetadata("{\"type\":\"proration\",\"currentPlanCode\":\""
+                + currentSubscription.getMembershipPlan().getCode()
+                + "\",\"targetPlanCode\":\""
+                + targetPlan.getCode() + "\",\"paymentService\":\""
+                + (request.getPaymentService() != null ? request.getPaymentService() : "kakaopay") + "\"}");
 
         paymentRepository.save(payment);
 
@@ -138,8 +139,7 @@ public class ProrationPaymentService {
         response.put("pg", pg);
         response.put("redirectUrl", null); // 차액 결제는 리다이렉트 없음
 
-        log.info("차액 결제 세션 생성 완료 - userId: {}, paymentId: {}, amount: {}", 
-                userId, payment.getId(), prorationAmount);
+        log.info("차액 결제 세션 생성 완료 - userId: {}, paymentId: {}, amount: {}", userId, payment.getId(), prorationAmount);
 
         return response;
     }
@@ -180,7 +180,8 @@ public class ProrationPaymentService {
     @Transactional(readOnly = true)
     public ProrationCompletionTarget prepareProrationCompletion(Long userId, Long paymentId) {
         // 결제 조회
-        Payment payment = paymentRepository.findById(paymentId) // 락 없는 빠른 경로
+        Payment payment = paymentRepository
+                .findById(paymentId) // 락 없는 빠른 경로
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "결제를 찾을 수 없습니다."));
 
         // 사용자 확인
@@ -209,7 +210,8 @@ public class ProrationPaymentService {
      */
     @Transactional
     public Map<String, Object> confirmProrationPayment(Long userId, Long paymentId, String impUid) {
-        Payment payment = paymentRepository.findByIdForUpdate(paymentId) // 락을 잡고 최신 상태로 다시 읽는다
+        Payment payment = paymentRepository
+                .findByIdForUpdate(paymentId) // 락을 잡고 최신 상태로 다시 읽는다
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "결제를 찾을 수 없습니다."));
 
         if (payment.getStatus() != PaymentStatus.PENDING) { // 재검증 중에 다른 요청이 먼저 확정함
@@ -223,14 +225,15 @@ public class ProrationPaymentService {
         // 플랜 변경 처리
         String metadata = payment.getMetadata();
         String targetPlanCode = extractTargetPlanCodeFromMetadata(metadata);
-        MembershipPlan targetPlan = planRepository.findByCode(targetPlanCode)
+        MembershipPlan targetPlan = planRepository
+                .findByCode(targetPlanCode)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "대상 플랜을 찾을 수 없습니다."));
 
         // 현재 구독 조회
         LocalDateTime now = LocalDateTime.now();
-        MembershipSubscription currentSubscription = subscriptionRepository.findActiveEffectiveByUser(
-                userId, MembershipSubscriptionStatus.ACTIVE, now
-        ).orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
+        MembershipSubscription currentSubscription = subscriptionRepository
+                .findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, now)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "유효한 구독이 없습니다."));
 
         // 플랜 즉시 변경(교체와 예약 해제를 함께 — 예약이 남으면 배치가 같은 변경을 또 적용한다)
         currentSubscription.changePlanTo(targetPlan);
@@ -247,8 +250,7 @@ public class ProrationPaymentService {
                     userId,
                     targetPlan.getCode(), // 업그레이드된 플랜 코드(영수증 한글 표기는 컨슈머에서 코드로 매핑)
                     payment.getPrice() != null ? payment.getPrice().getAmount() : null, // 차액 청구액
-                    payment.getPaidAt()
-            );
+                    payment.getPaidAt());
             OutboxEvent outbox = OutboxEvent.create(
                     "Payment", // aggregateType
                     String.valueOf(payment.getId()), // aggregateId
@@ -257,7 +259,7 @@ public class ProrationPaymentService {
                     evt.getEventId(), // eventId
                     objectMapper.writeValueAsString(evt), // payload(JSON)
                     LocalDateTime.now() // 적재 시각
-            );
+                    );
             outboxEventRepository.save(outbox);
             log.info("차액 결제 아웃박스 적재 완료 - eventId: {}, paymentId: {}", evt.getEventId(), payment.getId());
         } catch (Exception e) {
@@ -269,15 +271,19 @@ public class ProrationPaymentService {
         Map<String, Object> response = new HashMap<>();
         response.put("success", true);
         response.put("paymentId", paymentId);
-        response.put("planChangeResult", Map.of(
-            "changeType", "UPGRADE",
-            "effectiveDate", now.toString(),
-            "prorationAmount", payment.getPrice().getAmount(),
-            "message", "플랜이 즉시 업그레이드되었습니다."
-        ));
+        response.put(
+                "planChangeResult",
+                Map.of(
+                        "changeType",
+                        "UPGRADE",
+                        "effectiveDate",
+                        now.toString(),
+                        "prorationAmount",
+                        payment.getPrice().getAmount(),
+                        "message",
+                        "플랜이 즉시 업그레이드되었습니다."));
 
-        log.info("차액 결제 완료 처리 완료 - userId: {}, paymentId: {}, targetPlan: {}", 
-                userId, paymentId, targetPlanCode);
+        log.info("차액 결제 완료 처리 완료 - userId: {}, paymentId: {}, targetPlan: {}", userId, paymentId, targetPlanCode);
 
         return response;
     }
@@ -288,7 +294,8 @@ public class ProrationPaymentService {
      * - 기준 시각(now)을 파라미터로 받는 순수 함수: 내부에서 LocalDateTime.now() 를 부르면
      *   시간을 고정할 수 없어 결정적 테스트가 불가능하다. 테스트 접근을 위해 package-private.
      */
-    Integer calculateProrationAmount(MembershipSubscription subscription, MembershipPlan targetPlan, LocalDateTime now) {
+    Integer calculateProrationAmount(
+            MembershipSubscription subscription, MembershipPlan targetPlan, LocalDateTime now) {
         LocalDateTime endAt = subscription.getEndAt();
 
         // 무기한 구독(endAt=null)은 남은 일수를 정의할 수 없어 차액을 계산하지 않는다.
@@ -304,15 +311,16 @@ public class ProrationPaymentService {
         if (remainingDays <= 0) {
             return 0;
         }
-        
+
         // 현재 플랜과 새 플랜의 일일 가격 차이
-        Integer currentDailyPrice = (int) (subscription.getMembershipPlan().getPrice().getAmount() / 30);
+        Integer currentDailyPrice =
+                (int) (subscription.getMembershipPlan().getPrice().getAmount() / 30);
         Integer newDailyPrice = (int) (targetPlan.getPrice().getAmount() / 30);
         Integer dailyDifference = newDailyPrice - currentDailyPrice;
-        
+
         // 차액 = 일일 차이 × 남은 일수
         Integer prorationAmount = (int) (dailyDifference * remainingDays);
-        
+
         return Math.max(0, prorationAmount);
     }
 
@@ -345,7 +353,7 @@ public class ProrationPaymentService {
         if (paymentService == null) {
             return "kakaopay.TC0ONETIME";
         }
-        
+
         switch (paymentService.toLowerCase()) {
             case "kakao":
                 return "kakaopay.TC0ONETIME";

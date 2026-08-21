@@ -25,7 +25,7 @@ public final class PageLimitUtil {
      */
     public static final int MAX_PAGE_SIZE = 100;
 
-    private PageLimitUtil() { }
+    private PageLimitUtil() {}
 
     /**
      * 페이지 크기를 상한 이하로 자른다.

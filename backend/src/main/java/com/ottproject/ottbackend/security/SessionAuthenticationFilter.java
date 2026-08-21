@@ -7,6 +7,8 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
+import java.util.Collections;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -15,9 +17,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
-import java.util.Collections;
 
 /**
  * SessionAuthenticationFilter
@@ -34,9 +33,11 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
     private final UserRepository userRepository;
 
     @Override
-    protected void doFilterInternal(@NonNull HttpServletRequest request,
-                                    @NonNull HttpServletResponse response,
-                                    @NonNull FilterChain filterChain) throws ServletException, IOException {
+    protected void doFilterInternal(
+            @NonNull HttpServletRequest request,
+            @NonNull HttpServletResponse response,
+            @NonNull FilterChain filterChain)
+            throws ServletException, IOException {
         // 이미 인증된 경우는 통과
         if (SecurityContextHolder.getContext().getAuthentication() == null) {
             HttpSession session = request.getSession(false);
@@ -57,8 +58,7 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
                     if (roleName != null) {
                         GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + roleName);
                         UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                                email, null, Collections.singletonList(authority)
-                        );
+                                email, null, Collections.singletonList(authority));
                         SecurityContextHolder.getContext().setAuthentication(auth);
                     }
                 }
@@ -68,5 +68,3 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-
-

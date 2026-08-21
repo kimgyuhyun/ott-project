@@ -3,13 +3,6 @@ package com.ottproject.ottbackend.service;
 import com.ottproject.ottbackend.dto.EpisodeProgressFlushDto;
 import com.ottproject.ottbackend.dto.EpisodeProgressResponseDto;
 import com.ottproject.ottbackend.mybatis.PlayerProgressQueryMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
-import org.springframework.data.redis.core.StringRedisTemplate;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -19,6 +12,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
 
 /**
  * ProgressBufferService
@@ -60,10 +59,12 @@ public class ProgressBufferService {
      * 진행률 버퍼 기록(DB 접근 없음)
      */
     public void write(Long userId, Long episodeId, int positionSec, int durationSec) {
-        redisTemplate.opsForHash().put(
-                BUFFER_KEY,
-                field(userId, episodeId),
-                positionSec + ":" + durationSec + ":" + System.currentTimeMillis());
+        redisTemplate
+                .opsForHash()
+                .put(
+                        BUFFER_KEY,
+                        field(userId, episodeId),
+                        positionSec + ":" + durationSec + ":" + System.currentTimeMillis());
     }
 
     /**
@@ -82,7 +83,8 @@ public class ProgressBufferService {
      * 버퍼에 있는 진행률 일괄 조회(에피소드 ID 기준, 없는 것은 결과에서 빠진다)
      */
     public Map<Long, EpisodeProgressResponseDto> readAll(Long userId, Collection<Long> episodeIds) {
-        List<Object> fields = episodeIds.stream().map(id -> (Object) field(userId, id)).toList();
+        List<Object> fields =
+                episodeIds.stream().map(id -> (Object) field(userId, id)).toList();
         List<Long> ids = new ArrayList<>(episodeIds);
 
         Map<Long, EpisodeProgressResponseDto> result = new HashMap<>();
@@ -95,7 +97,8 @@ public class ProgressBufferService {
      * 버퍼에서 제거(진행률 삭제 시 — 남아 있으면 다음 flush 가 되살린다)
      */
     public void evict(Long userId, Collection<Long> episodeIds) {
-        Object[] fields = episodeIds.stream().map(id -> (Object) field(userId, id)).toArray();
+        Object[] fields =
+                episodeIds.stream().map(id -> (Object) field(userId, id)).toArray();
         if (fields.length == 0) return;
         redisTemplate.opsForHash().delete(BUFFER_KEY, fields);
         redisTemplate.opsForHash().delete(FLUSHING_KEY, fields);
@@ -158,8 +161,7 @@ public class ProgressBufferService {
                 try {
                     progressQueryMapper.upsertProgressBatch(List.of(row));
                 } catch (Exception rowEx) {
-                    log.error("진행률 반영 실패 - userId: {}, episodeId: {} (버림)",
-                            row.getUserId(), row.getEpisodeId(), rowEx);
+                    log.error("진행률 반영 실패 - userId: {}, episodeId: {} (버림)", row.getUserId(), row.getEpisodeId(), rowEx);
                 }
             }
         }
@@ -186,8 +188,8 @@ public class ProgressBufferService {
         return EpisodeProgressResponseDto.builder()
                 .positionSec(Integer.valueOf(parts[0]))
                 .durationSec(Integer.valueOf(parts[1]))
-                .updatedAt(LocalDateTime.ofInstant(
-                        Instant.ofEpochMilli(Long.parseLong(parts[2])), ZoneId.systemDefault()))
+                .updatedAt(
+                        LocalDateTime.ofInstant(Instant.ofEpochMilli(Long.parseLong(parts[2])), ZoneId.systemDefault()))
                 .build();
     }
 }
