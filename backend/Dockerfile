@@ -1,3 +1,14 @@
+# jar 를 어디서 가져올지 고른다.
+#   builder(기본) = 이 파일 하나로 소스에서 앱까지 만든다. docker-compose.dev.yml 의 개발
+#                   스택과, 레지스트리를 못 믿을 때 소스에서 다시 만드는 침해 대응 절차
+#                   (_incident_2026-06-20)가 이 경로에 의존하므로 기본값으로 남긴다.
+#   ctxjar        = CI 전용. 러너가 테스트까지 마친 bootJar 를 빌드 컨텍스트에서 받는다.
+#                   컨테이너 안에서 Gradle 을 다시 돌리지 않아 실측 112초가 빠지고,
+#                   테스트를 통과한 산출물이 그대로 배포된다(PLATFORM 7절 CI 순서).
+# COPY --from=${ARG} 는 buildkit 이 거부한다("variable expansion is not supported for
+# --from"). FROM 으로 한 번 받아 별칭을 만드는 것이 공식 우회다.
+ARG JAR_SOURCE=builder
+
 # Build stage
 FROM amazoncorretto:21@sha256:ff30d87dbb7b21774b003ad16ec233b3173be069e861803008f87ff829a4e706 AS builder
 WORKDIR /app
@@ -28,10 +39,19 @@ RUN ./gradlew build -x test --no-daemon     # 실제 빌드 실행
 # 실행 가능한 bootJar만 고정 이름으로 추출 (Spring Boot가 만드는 -plain.jar 제외)
 RUN cp "$(ls build/libs/*.jar | grep -v -- '-plain.jar' | head -n1)" /app/app.jar
 
+# CI 경로: 러너가 만든 jar 를 컨텍스트에서 받는다.
+# JAR_SOURCE=builder 일 때 buildkit 이 이 스테이지를 통째로 건너뛰므로, 컨텍스트에
+# app.jar 가 없어도 기본 빌드는 영향받지 않는다.
+FROM amazoncorretto:21@sha256:ff30d87dbb7b21774b003ad16ec233b3173be069e861803008f87ff829a4e706 AS ctxjar
+WORKDIR /app
+COPY app.jar /app/app.jar
+
+FROM ${JAR_SOURCE} AS jarsrc
+
 # Runtime stage
 FROM amazoncorretto:21@sha256:ff30d87dbb7b21774b003ad16ec233b3173be069e861803008f87ff829a4e706
 WORKDIR /app
-COPY --from=builder /app/app.jar app.jar
+COPY --from=jarsrc /app/app.jar app.jar
 
 # 비root 실행 (amazoncorretto:21엔 useradd가 없어 passwd 항목을 직접 추가)
 RUN printf 'spring:x:1001:1001::/home/spring:/sbin/nologin\n' >> /etc/passwd \

@@ -183,10 +183,25 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # 위 "Build backend (Gradle)" 이 만든 jar 를 그대로 이미지에 넣는다(JAR_SOURCE=ctxjar).
+      # 예전에는 이 스텝이 컨테이너 안에서 Gradle 배포판부터 다시 받아 빌드를 통째로 한 번 더
+      # 돌렸다. 실측(성공한 main run 7개): yum 15.7s + dependencies 29.0s + build 67.8s
+      # = 112.5s(±6.2s)를 매 실행마다 중복으로 썼다. 스텝 자체 편차가 ±6.9s 라 이 폭은
+      # 러너 편차로 설명되지 않는다.
+      # 속도와 별개로: 지금까지는 테스트를 거친 jar 와 배포되는 jar 가 서로 다른 빌드였다
+      # (컨테이너 안은 build -x test). 이제 테스트를 통과한 산출물이 그대로 나간다.
+      # jar 를 컨텍스트 루트에 두는 이유: backend/.dockerignore 가 build 를 제외하므로
+      # build/libs 를 그대로는 COPY 할 수 없다.
       - name: Build & Push backend image (by commit SHA)
         if: github.ref == 'refs/heads/main'
         run: |
-          docker build --pull -t ${{ steps.img.outputs.ref }}:${{ github.sha }} -f backend/Dockerfile backend/
+          # Spring Boot 가 만드는 -plain.jar 를 빼고 실행 가능한 bootJar 만 고른다.
+          # ls 대신 find 를 쓴다 - 이 블록은 iac-lint 의 shellcheck 대상이라
+          # Dockerfile 과 같은 `ls | grep` 를 쓰면 SC2010 으로 잡혀 파이프라인이 막힌다(로컬 확인).
+          jar=$(find backend/build/libs -maxdepth 1 -name '*.jar' ! -name '*-plain.jar' | head -n1)
+          test -n "$jar" || { echo "bootJar not found in backend/build/libs"; exit 1; }
+          cp "$jar" backend/app.jar
+          docker build --pull --build-arg JAR_SOURCE=ctxjar -t ${{ steps.img.outputs.ref }}:${{ github.sha }} -f backend/Dockerfile backend/
           docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
       - name: Scan backend image (gate on fixable CRITICAL)
         if: github.ref == 'refs/heads/main'
