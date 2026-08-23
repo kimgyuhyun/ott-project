@@ -290,22 +290,11 @@ jobs:
         run: |
           cd frontend
           npm ci
-      # 브라우저 바이너리를 캐시한다. 이 스텝이 e2e 잡에서 가장 길었다(실측 33초 / 잡 전체 112초.
-      # 참고로 스펙 5건의 실제 실행은 9초다 - 나머지는 전부 환경 준비다).
-      # 키에 Playwright 버전을 넣는 이유: 버전이 오르면 브라우저 리비전도 바뀌는데, 키가 그대로면
-      # 낡은 바이너리를 복원해놓고 install 이 다시 받는다. 캐시가 있으나 마나가 된다.
-      - name: Resolve the Playwright version
-        id: pw
-        run: |
-          v=$(node -p "require('./frontend/package-lock.json').packages['node_modules/@playwright/test'].version")
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-      - name: Cache Playwright browsers
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
-      # 캐시가 맞아도 이 스텝은 그대로 둔다. --with-deps 가 까는 시스템 라이브러리는 러너에 있는
-      # 것이라 캐시 대상이 아니고, 브라우저가 이미 있으면 install 이 다운로드를 건너뛴다.
+      # 브라우저를 캐시하지 않는다. 한 번 붙였다가 뺐고, 이유를 남겨 다시 시도하지 않게 한다.
+      # 이 스텝이 e2e 잡에서 가장 길지만(실측 33~45초), 그 시간은 브라우저 다운로드가 아니라
+      # --with-deps 가 도는 apt 설치다("Switching to root user to install dependencies").
+      # 그건 러너 시스템 라이브러리라 ~/.cache/ms-playwright 캐시로는 건드릴 수 없다.
+      # 실측(run 32639629691 attempt 2): 캐시는 3초에 복원됐는데 설치는 45초 그대로였다.
       # chromium 하나만 받는다. 세 브라우저를 다 받으면 이 구간이 훨씬 길어진다.
       - name: Install Playwright chromium
         run: |
