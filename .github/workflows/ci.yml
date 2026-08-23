@@ -130,6 +130,12 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
+      # 의존성·빌드 캐시. 없으면 매 실행마다 의존성을 새로 받고 전부 다시 컴파일한다.
+      # 이 잡이 파이프라인에서 가장 길다(실측 395초 / 전체 514초).
+      # wrapper-validation 과 같은 저장소·같은 SHA 라 새로 신뢰할 의존성이 늘지 않는다.
+      # 캐시 쓰기는 기본적으로 기본 브랜치에서만 일어난다 - PR 이 캐시를 오염시키지 않는다.
+      - name: Set up Gradle (dependency + build cache)
+        uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
       - name: Build backend (Gradle)
         # 테스트를 함께 실행한다(-x test 제거). 핵심 로직 회귀가 빌드 시점에 잡히도록 하는 것이 목적이므로
         # 테스트가 깨지면 이미지 push/배포로 진행되지 않아야 한다.
@@ -284,8 +290,23 @@ jobs:
         run: |
           cd frontend
           npm ci
-      # --with-deps 는 컨테이너가 아닌 러너에 브라우저 실행에 필요한 시스템 라이브러리를 깐다.
-      # chromium 하나만 받는다. 세 브라우저를 다 받으면 다운로드가 이 잡에서 가장 긴 구간이 된다.
+      # 브라우저 바이너리를 캐시한다. 이 스텝이 e2e 잡에서 가장 길었다(실측 33초 / 잡 전체 112초.
+      # 참고로 스펙 5건의 실제 실행은 9초다 - 나머지는 전부 환경 준비다).
+      # 키에 Playwright 버전을 넣는 이유: 버전이 오르면 브라우저 리비전도 바뀌는데, 키가 그대로면
+      # 낡은 바이너리를 복원해놓고 install 이 다시 받는다. 캐시가 있으나 마나가 된다.
+      - name: Resolve the Playwright version
+        id: pw
+        run: |
+          v=$(node -p "require('./frontend/package-lock.json').packages['node_modules/@playwright/test'].version")
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+      # 캐시가 맞아도 이 스텝은 그대로 둔다. --with-deps 가 까는 시스템 라이브러리는 러너에 있는
+      # 것이라 캐시 대상이 아니고, 브라우저가 이미 있으면 install 이 다운로드를 건너뛴다.
+      # chromium 하나만 받는다. 세 브라우저를 다 받으면 이 구간이 훨씬 길어진다.
       - name: Install Playwright chromium
         run: |
           cd frontend
