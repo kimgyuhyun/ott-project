@@ -130,4 +130,41 @@ if ($LASTEXITCODE -ne 0) { throw 'promtool check config failed - rules NOT reloa
 docker kill -s HUP ott-prometheus | Out-Null
 if ($LASTEXITCODE -ne 0) { throw 'prometheus SIGHUP failed - alert rules were not reloaded' }
 
+# Read-only smoke through nginx (same block as deploy-rolling.ps1).
+# The health wait above reaches the backend BY CONTAINER NAME from inside nginx, so it never
+# exercises nginx's own server/location blocks. A broken proxy_pass or a wrong server_name
+# passes every check so far and shows up only as a dead site. These three probes enter the
+# way a browser does: TLS, SNI, routing, upstream, security filters.
+#
+# GET only - no login, no account, no writes. That is what makes it safe to run against
+# production on every deploy, and it is why loadtest/main.js is NOT used here: that one
+# needs the 500 seeded accounts from seed-users.sql and writes progress rows.
+#
+# --resolve pins the public name to loopback so the request never leaves the host while
+# still sending laputa.kozow.com as SNI. The SNI matters: the 443 default_server has
+# ssl_reject_handshake on, so a missing or wrong SNI is refused during the handshake and
+# would read as an outage even when the site is fine.
+#
+# Judged on the exact expected code, never on "no error" - same rule as the checks above.
+# Runs last, after both reloads, so it tests the config that is actually serving.
+Write-Host '=== VERIFY public entry points through nginx (read-only) ==='
+
+# 1. Frontend: location / -> ott-frontend:3000
+$smokeFront = "$(docker exec ott-nginx curl -s -o /dev/null -w '%{http_code}' --max-time 10 --resolve laputa.kozow.com:443:127.0.0.1 https://laputa.kozow.com/)".Trim()
+if ($smokeFront -ne '200') { throw "SMOKE FAILED: GET / returned '$smokeFront' (expected 200) - nginx routing or the frontend is down" }
+Write-Host '  GET /             -> 200'
+
+# 2. API: location /api/ -> ott-app:8090. The byte count is what proves the query ran -
+#    a 200 with an empty body would mean the route works but the list came back empty.
+$smokeApi = "$(docker exec ott-nginx curl -s -o /dev/null -w '%{http_code}:%{size_download}' --max-time 10 --resolve laputa.kozow.com:443:127.0.0.1 https://laputa.kozow.com/api/anime)".Trim()
+if ($smokeApi -notmatch '^200:') { throw "SMOKE FAILED: GET /api/anime returned '$smokeApi' (expected 200:<bytes>) - nginx -> backend routing is broken" }
+if ([int]($smokeApi -split ':')[1] -lt 100) { throw "SMOKE FAILED: GET /api/anime returned '$smokeApi' - a 200 with no list, so the query or the data is gone" }
+Write-Host "  GET /api/anime    -> $smokeApi (code:bytes)"
+
+# 3. Security filter chain: an anonymous call to an authenticated endpoint must be refused.
+#    A 200 here is a hole, not a pass.
+$smokeAuth = "$(docker exec ott-nginx curl -s -o /dev/null -w '%{http_code}' --max-time 10 --resolve laputa.kozow.com:443:127.0.0.1 https://laputa.kozow.com/api/users/me)".Trim()
+if ($smokeAuth -ne '401') { throw "SMOKE FAILED: anonymous GET /api/users/me returned '$smokeAuth' (expected 401) - the security filter chain is not refusing anonymous access" }
+Write-Host '  GET /api/users/me -> 401 (anonymous refused)'
+
 Write-Host '=== DEPLOY OK ==='
