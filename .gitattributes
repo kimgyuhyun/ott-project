@@ -17,3 +17,10 @@ proxy/*.conf text eol=lf
 # 문제가 없지만, CRLF 로 체크아웃된 훅을 리눅스 sh 가 실행하면 셔뱅부터 깨지고
 # 로컬에서 shellcheck 를 돌리면 SC1017 이 파일 전체에 뜬다(실측 24건, 전부 오탐).
 .githooks/* text eol=lf
+
+# java 소스. 이 줄이 없으면 Spotless 가 GIT_ATTRIBUTES 로 기대 줄바꿈을 정할 때 윈도우
+# (core.autocrlf=true)는 CRLF 를, 리눅스 러너는 LF 를 기대한다. 양쪽이 각자 일관되면
+# 문제가 없지만, 어떤 도구가 윈도우에서 LF 로 파일을 쓰는 순간 그 파일만 어긋나
+# 로컬 spotlessCheck 만 깨진다(2026-08-23 실측: 로컬 9개 위반, 같은 커밋의 CI 는 전 잡 통과).
+# 저장소 blob 은 이미 388개 전부 LF 라 이 줄은 blob 을 바꾸지 않는다 - 워킹트리만 맞춘다.
+*.java text eol=lf
