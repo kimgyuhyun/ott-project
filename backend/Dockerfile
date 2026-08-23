@@ -51,12 +51,19 @@ FROM ${JAR_SOURCE} AS jarsrc
 # Runtime stage
 FROM amazoncorretto:21@sha256:ff30d87dbb7b21774b003ad16ec233b3173be069e861803008f87ff829a4e706
 WORKDIR /app
-COPY --from=jarsrc /app/app.jar app.jar
+# --chown 으로 복사 시점에 소유권을 정한다. 뒤에서 chown -R 로 훑으면 106MB jar 가
+# 통째로 레이어에 복제돼 이미지가 그만큼 커진다(실측: 1.14GB 중 106MB 가 그 중복분).
+COPY --from=jarsrc --chown=1001:1001 /app/app.jar app.jar
 
 # 비root 실행 (amazoncorretto:21엔 useradd가 없어 passwd 항목을 직접 추가)
+# chown 에 -R 을 쓰지 않는다. 열어야 하는 것은 디렉터리 /app 하나다 - 앱이 그 안에
+# logs/ 를 만들어야 하기 때문이고(application-prod.yml 의 logs/ott-backend.log 는
+# 워킹디렉터리 기준 상대경로), 그 안의 jar 는 읽기만 되면 된다.
+# prod 는 read_only + /app/logs tmpfs 라 이 소유권이 필요 없지만, e2e·dev 스택은
+# read_only 가 없어 컨테이너 쓰기 레이어에 로그를 쓰므로 여기서 열어둬야 한다.
 RUN printf 'spring:x:1001:1001::/home/spring:/sbin/nologin\n' >> /etc/passwd \
     && mkdir -p /home/spring \
-    && chown -R 1001:1001 /app /home/spring
+    && chown 1001:1001 /app /home/spring
 
 # 환경변수로 프로파일 설정 (여기에 추가)
 ENV SPRING_PROFILES_ACTIVE=dev HOME=/home/spring
