@@ -33,14 +33,28 @@
 `e2e.yml` 은 `-p ott-e2e` 로 프로젝트를 분리하고 컨테이너를 `ott-e2e-*` 로 두며 호스트
 포트는 `127.0.0.1:8080` 하나만 연다.
 
-## 실행
+## CI 에서 자동으로 돈다
+
+`ci.yml` 의 `e2e` 잡이 매 main push 마다 이 스펙들을 돌린다. 손으로 돌리는 것은 스펙을
+고치는 중이거나 실패를 재현할 때다.
+
+- **배포 게이트다.** CD 가 CI 의 `conclusion == 'success'` 로 걸려 있어서(`cd.yml`),
+  이 잡이 실패하면 배포가 나가지 않는다.
+- **main 에서만 돈다.** `backend`/`frontend` 잡이 이미지를 main 에서만 push 해서 PR 에는
+  당길 이미지가 없다. PR 까지 덮으려면 여기서 이미지를 다시 빌드해야 하는데 그 값이 가장 비싸다.
+- **시크릿이 필요 없다.** `docker-compose.e2e.yml` 이 `.env` 를 읽지 않고 값을 자기 안에
+  갖고 있다. `migration` 잡이 Postgres 를 `ci/ci` 리터럴로 띄우는 것과 같은 방식이다.
+- 실패하면 Playwright 리포트와 트레이스가 아티팩트로 올라간다(7일 보관). 트레이스에는
+  스텝별 DOM 스냅샷과 네트워크가 들어 있어 재현 없이 원인을 볼 수 있다.
+
+## 손으로 실행
 
 ```bash
 # 1. E2E 스택 (프로덕션과 완전히 분리된다)
 docker compose -p ott-e2e -f docker-compose.e2e.yml up -d
 
 # 2. 테스트 계정 심기 (비밀번호는 직접 정한다)
-docker exec -i ott-e2e-postgres psql -U root -d ott_project_db -v pw="$E2E_PASSWORD" -f - < frontend/e2e/seed-e2e-user.sql
+docker exec -i ott-e2e-postgres psql -U e2e -d ott_e2e -v pw="$E2E_PASSWORD" -f - < frontend/e2e/seed-e2e-user.sql
 
 # 3. 실행
 cd frontend
@@ -52,6 +66,10 @@ docker compose -p ott-e2e -f docker-compose.e2e.yml down -v
 
 애니 데이터는 따로 심지 않아도 된다. 새 볼륨에서 Flyway 가 스키마를 만들면서
 `V2025_08_21__seed_demo_data.sql` 등이 애니와 에피소드, 플랜을 함께 넣는다.
+
+`.env` 도 필요 없다. 이 스택은 DB 자격증명(`e2e/e2e/ott_e2e`)과 앱 설정을 compose 파일 안에
+리터럴로 갖고 있다. OAuth·결제·메일 키는 더미다 - 비면 앱이 뜨지 않아서 넣어둘 뿐,
+E2E 시나리오가 그 경로를 타지 않으므로 유효한 값일 필요가 없다.
 
 계정이 필요 없는 스펙만 프로덕션에 쏠 때 (읽기 전용이라 안전):
 
@@ -101,7 +119,10 @@ CSS 모듈 클래스를 선택자로 쓰지 않는다. 빌드마다 해시가 �
 
 같은 것을 다시 겪지 않도록 남긴다. 둘 다 compose 파일 주석에도 적어 뒀다.
 
-- **`Invalid CORS request` 로 로그인 403** — `APP_CORS_ALLOWED_ORIGINS` 를 `.env` 가
-  프로덕션 도메인으로 덮는다. 진입점 포트를 바꾸면 이 값도 같이 바꿔야 한다.
+- **`Invalid CORS request` 로 로그인 403** — `APP_CORS_ALLOWED_ORIGINS` 에 진입점이 없으면
+  브라우저가 보낸 `Origin` 이 걸린다. CORS 와 Origin 검증 필터가 같은 값을 쓴다
+  (`SecurityConfig.resolveAllowedOrigins`). 진입점 포트를 바꾸면 이 값도 같이 바꿔야 한다.
+  (처음에는 `.env` 를 읽고 있었고 그 값이 프로덕션 도메인이라 걸렸다. 지금은 `.env` 를
+  읽지 않지만, 값을 빼먹으면 같은 증상이 나온다.)
 - **로그인 직후 세션이 사라짐** — 진입점이 http 라서 `COOKIE_SECURE=true` 면 쿠키가
   내려가지 않는다. E2E 스택은 `false`, `SameSite=lax`, `COOKIE_DOMAIN=127.0.0.1` 로 둔다.
