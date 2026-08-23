@@ -6,7 +6,15 @@
 // (or deploy.ps1 for a deliberate single-instance rollback), which pin the file set.
 //
 // Allowed: any compose command carrying netlock.yml, the dev overlay
-// (docker-compose.dev.yml), and every non-up subcommand (ps/logs/exec/down/build).
+// (docker-compose.dev.yml), the E2E stack (docker-compose.e2e.yml), and every
+// non-up subcommand (ps/logs/exec/down/build).
+//
+// Why e2e.yml is on the list: it carries the egress lock itself rather than taking it
+// from an overlay - its default network is `internal: true`, so the frontend has no
+// internet, which is the invariant this hook exists to protect. It also runs under its
+// own project name (-p ott-e2e) with ott-e2e-* container names and only 127.0.0.1:8080
+// published, so it cannot replace or reach the production stack.
+// If that file ever stops locking egress, take it off this list.
 
 const DEPLOY_HINT =
   'Use .\\deploy-rolling.ps1 (or .\\deploy.ps1 for a deliberate single-instance rollback). ' +
@@ -46,7 +54,12 @@ process.stdin.on('end', () => {
       break;
     }
     if (/^docker(\s+|-)compose\b/.test(s) && /\bup(\s|$)/.test(s)) {
-      if (/netlock/.test(s) || /docker-compose\.dev\.yml/.test(s)) continue;
+      if (
+        /netlock/.test(s) ||
+        /docker-compose\.dev\.yml/.test(s) ||
+        /docker-compose\.e2e\.yml/.test(s)
+      )
+        continue;
       reason =
         'Blocked: this compose up has no docker-compose.netlock.yml, so it would ' +
         'deploy with frontend egress OPEN. ' +

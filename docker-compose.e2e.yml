@@ -1,0 +1,185 @@
+# [E2E 전용] Playwright 를 돌리기 위한 독립 스택
+#
+# 실행 (반드시 -p ott-e2e 로 프로젝트 이름을 분리할 것):
+#   docker compose -p ott-e2e -f docker-compose.e2e.yml up -d
+# 정리:
+#   docker compose -p ott-e2e -f docker-compose.e2e.yml down -v
+#
+# 전체 절차는 frontend/e2e/README.md 참고.
+#
+# 왜 독립 스택인가
+#   docker-compose.dev.yml 은 베이스 compose 의 오버레이라 container_name 과 포트가
+#   프로덕션과 같다. 이 호스트에서 그걸 올리면 실서비스 컨테이너가 교체되고 netlock 이 빠진다.
+#   프로젝트 이름을 분리하면 컨테이너·네트워크·볼륨이 전부 별개가 되어 실서비스를 건드리지 않는다.
+#   docker-compose.multi.yml 이 같은 이유로 같은 방식을 쓴다 — 그 파일이 이 파일의 원본이다.
+#
+# multi.yml 과 다른 점
+#   저쪽은 백엔드 다중 인스턴스 관찰이 목적이라 nginx 와 frontend 를 뺐다. E2E 는 브라우저가
+#   사용자와 같은 경로로 들어가야 하므로 둘 다 필요하다. 대신 nginx 를 8080 에 둬서 실서비스
+#   80/443 과 겹치지 않게 한다.
+#
+# 네트워크 별칭을 쓰는 이유
+#   container_name 은 ott-e2e-* 로 바꿔야 충돌하지 않는데, nginx/nginx.conf 는 upstream 을
+#   ott-app / ott-frontend 로 적고 있다. 별칭을 주면 이 스택 안에서만 그 이름으로 해석되므로
+#   nginx 설정 파일을 따로 만들지 않아도 된다. 별칭은 네트워크 단위라 실서비스와 섞이지 않는다.
+#
+# 데이터
+#   새 빈 볼륨에서 Flyway 가 스키마를 만들고, V2025_08_21__seed_demo_data.sql 이 데모 애니 1개와
+#   에피소드 5개, 플랜 2개를 심는다. 그래서 애니 픽스처를 따로 만들 필요가 없다.
+#   테스트 계정만 frontend/e2e/seed-e2e-user.sql 로 추가하면 된다.
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: ott-e2e-postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      default:
+        aliases: [ott-postgres]
+    # 호스트 포트 미개방: 실서비스 5432 와 충돌 방지
+
+  redis:
+    image: redis:7-alpine
+    container_name: ott-e2e-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    networks:
+      default:
+        aliases: [ott-redis]
+
+  kafka:
+    image: apache/kafka:3.7.0
+    container_name: ott-e2e-kafka
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@ott-e2e-kafka:9093"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      # 호스트 노출용 EXTERNAL 리스너는 뺐다(실서비스 9092 와 충돌 방지). 내부 통신만 한다.
+      KAFKA_LISTENERS: "INTERNAL://:9094,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://ott-e2e-kafka:9094"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    networks:
+      default:
+        aliases: [ott-kafka]
+
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: ott-e2e-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ott
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-ott-local}
+    networks:
+      default:
+        aliases: [ott-rabbitmq]
+
+  app:
+    # 실서비스가 지금 돌리고 있는 것과 같은 이미지를 기본값으로 둔다. 다른 코드로 E2E 를 돌리면
+    # 무엇을 검증한 것인지 말할 수 없다. 태그는 커밋 SHA 다(PLATFORM 8절 - latest 를 쓰지 않는다).
+    # 다른 빌드를 보려면 APP_IMAGE 로 덮어쓴다. 현재 배포본 확인:
+    #   docker inspect ott-app --format '{{.Config.Image}}'
+    image: ${APP_IMAGE:-ghcr.io/kimgyuhyun/ott-backend:a43e457c760f3e3ddd9d50640de137f628cbacf7}
+    container_name: ott-e2e-app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      kafka:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+    env_file:
+      - .env
+    networks:
+      default:
+        aliases: [ott-app]
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      # 접속 대상을 이 스택 안으로 돌린다(.env 값을 덮어쓴다). 별칭 덕분에 이름은 실서비스와 같다.
+      DB_HOST: ott-postgres
+      DB_PORT: "5432"
+      REDIS_HOST: ott-redis
+      REDIS_PORT: "6379"
+      KAFKA_BOOTSTRAP_SERVERS: ott-kafka:9094
+      RABBITMQ_HOST: ott-rabbitmq
+      RABBITMQ_PORT: "5672"
+      RABBITMQ_USER: ott
+      # 진입점이 http://127.0.0.1:8080 이라 HTTPS 전제를 풀어야 한다.
+      # Secure 쿠키는 http 로 내려가지 않으므로 그대로 두면 로그인 직후 세션이 사라진다.
+      COOKIE_DOMAIN: 127.0.0.1
+      COOKIE_SECURE: "false"
+      COOKIE_SAME_SITE: lax
+      BASE_URL: http://127.0.0.1:8080
+      # CORS 와 Origin 검증 필터가 같은 값을 쓴다(SecurityConfig.resolveAllowedOrigins).
+      # .env 가 이 값을 프로덕션 도메인으로 덮고 있어서 그대로 두면 브라우저가 보낸
+      # Origin: http://127.0.0.1:8080 이 걸려 로그인이 403 "Invalid CORS request" 로 끝난다.
+      # 진입점 포트를 바꾸면 여기도 같이 바꿔야 한다.
+      APP_CORS_ALLOWED_ORIGINS: http://127.0.0.1:8080,http://localhost:8080
+
+  frontend:
+    image: ${FRONT_IMAGE:-ghcr.io/kimgyuhyun/ott-frontend:a43e457c760f3e3ddd9d50640de137f628cbacf7}
+    container_name: ott-e2e-frontend
+    depends_on:
+      - app
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_BACKEND_ORIGIN: http://ott-app:8090
+      NEXT_PUBLIC_FRONTEND_ORIGIN: http://127.0.0.1:8080
+    networks:
+      default:
+        aliases: [ott-frontend]
+
+  nginx:
+    image: nginx:alpine
+    container_name: ott-e2e-nginx
+    depends_on:
+      - frontend
+      - app
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      # 개발용 설정(HTTP, server_name 무관)을 쓴다. nginx.prod.conf 는 인증서와
+      # server_name laputa.kozow.com 을 요구하고 443 default_server 에 ssl_reject_handshake 가
+      # 걸려 있어 로컬에서는 뜨지 않는다.
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      default:
+        aliases: [ott-nginx]
+      egress: {}
+
+networks:
+  # [SECURITY] 프론트 아웃바운드 차단. 2026-06 XMRig 침해는 프론트 컨테이너가 런타임에
+  # 감염된 뒤 인터넷으로 나갈 수 있었기 때문에 성립했다(docker-compose.netlock.yml 헤더 참고).
+  # E2E 스택도 같은 이미지를 같은 방식으로 띄우므로 같은 잠금을 건다. 짧게 뜨는 스택이라
+  # 괜찮다고 두면, 그 예외가 다음 스택의 기본값이 된다.
+  #
+  # 프로덕션 netlock 과 다른 점: 아웃바운드 프록시 2개를 두지 않고 app 도 internal 에 둔다.
+  # E2E 시나리오는 OAuth·결제·메일·TMDB 를 타지 않아 백엔드도 인터넷이 필요 없다.
+  # 필요 없는 것을 열지 않는 쪽이 항상 맞다.
+  default:
+    internal: true
+  # nginx 의 호스트 포트 publish 에만 쓴다. internal 전용 컨테이너는 포트를 publish 할 수 없다.
+  egress:
+    driver: bridge
+
+volumes:
+  postgres_data:

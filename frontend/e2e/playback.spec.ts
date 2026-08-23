@@ -23,19 +23,25 @@ import { login } from "./support";
 test.describe("재생 경로", () => {
   test("로그인한 사용자가 목록에서 상세를 열고 재생을 시작한다", async ({
     page,
+    request,
   }) => {
     await login(page);
 
-    await page.goto("/");
-
-    const poster = page.locator("img[alt]").first();
-    await poster.waitFor({ state: "visible" });
-    const title = await poster.getAttribute("alt");
+    // 목록 API 에서 제목을 받아 그 포스터를 정확히 집는다.
+    // img[alt] 를 first() 로 잡으면 안 된다 - 로그인하면 헤더에 기본 프로필 아바타
+    // (alt="default")가 붙고 그것이 DOM 에서 애니 그리드보다 앞선다. 비로그인으로는
+    // 보이지 않아서 놓치기 쉬운 함정이다(실측 2026-08-23: 이것 때문에 한 번 깨졌다).
+    const listed = await (await request.get("/api/anime")).json();
+    const title: string | undefined = listed?.items?.[0]?.title;
     expect(
       title,
-      "포스터에 alt 가 없으면 목록이 비어 있다는 뜻이다",
+      "목록 API 가 비었으면 시드 데이터가 없다는 뜻이다",
     ).toBeTruthy();
 
+    await page.goto("/");
+
+    const poster = page.locator(`img[alt="${title}"]`).first();
+    await poster.waitFor({ state: "visible" });
     await poster.click();
 
     // 모달이 열렸다는 것은 상세 조회가 성공했다는 뜻이다(getAnimeDetail 실패 시 열리지 않는다).

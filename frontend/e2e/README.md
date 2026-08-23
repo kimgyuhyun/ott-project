@@ -22,34 +22,38 @@
 
 ## 어디에 쏘는가
 
-**개발 스택에 쏜다. 프로덕션에 쏘지 않는다.**
+**`docker-compose.e2e.yml` 전용 스택에 쏜다. 프로덕션에 쏘지 않는다.**
 
 로그인이 필요한 두 스펙은 테스트 계정을 DB 에 심어야 하는데, 그 계정은 실제로 로그인이
 되므로 운영 DB 에 두면 그대로 공격 표면이 된다. 같은 이유로 부하 테스트도 CD 에서 빼 뒀다.
 배포 후 프로덕션 확인은 `deploy-rolling.ps1` 의 읽기 전용 스모크가 담당한다 — 역할이 다르다.
 
-`authorization.spec.ts` 만 계정이 필요 없어서 어느 스택에든 안전하게 쏠 수 있다.
-
-⚠ **개발 스택은 프로덕션과 컨테이너 이름·포트가 같다.** `docker-compose.dev.yml` 은 베이스
-compose 를 그대로 쓰므로 `ott-app`, `ott-nginx`, 80/443 이 겹친다. 프로덕션이 떠 있는
-호스트에서 개발 스택을 올리면 프로덕션이 교체된다. 다른 기기에서 돌리거나, 프로덕션을
-내린 뒤에 올린다.
+`docker-compose.dev.yml` 은 쓰면 안 된다. 베이스 compose 의 오버레이라 container_name 과
+포트가 프로덕션과 같아서, 실서비스가 도는 호스트에서 올리면 프로덕션이 교체된다.
+`e2e.yml` 은 `-p ott-e2e` 로 프로젝트를 분리하고 컨테이너를 `ott-e2e-*` 로 두며 호스트
+포트는 `127.0.0.1:8080` 하나만 연다.
 
 ## 실행
 
 ```bash
-# 1. 개발 스택 (프로덕션이 떠 있지 않은 기기에서)
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+# 1. E2E 스택 (프로덕션과 완전히 분리된다)
+docker compose -p ott-e2e -f docker-compose.e2e.yml up -d
 
 # 2. 테스트 계정 심기 (비밀번호는 직접 정한다)
-docker exec -i ott-postgres psql -U root -d ott_project_db -v pw="$E2E_PASSWORD" -f - < frontend/e2e/seed-e2e-user.sql
+docker exec -i ott-e2e-postgres psql -U root -d ott_project_db -v pw="$E2E_PASSWORD" -f - < frontend/e2e/seed-e2e-user.sql
 
 # 3. 실행
 cd frontend
-E2E_PASSWORD=... npm run e2e
+E2E_BASE_URL=http://127.0.0.1:8080 E2E_PASSWORD=... npm run e2e
+
+# 4. 정리 (볼륨까지 지워 다음 실행이 깨끗한 DB 에서 시작하게 한다)
+docker compose -p ott-e2e -f docker-compose.e2e.yml down -v
 ```
 
-계정이 필요 없는 스펙만 돌릴 때:
+애니 데이터는 따로 심지 않아도 된다. 새 볼륨에서 Flyway 가 스키마를 만들면서
+`V2025_08_21__seed_demo_data.sql` 등이 애니와 에피소드, 플랜을 함께 넣는다.
+
+계정이 필요 없는 스펙만 프로덕션에 쏠 때 (읽기 전용이라 안전):
 
 ```bash
 cd frontend && E2E_BASE_URL=https://laputa.kozow.com npx playwright test authorization
@@ -59,7 +63,7 @@ cd frontend && E2E_BASE_URL=https://laputa.kozow.com npx playwright test authori
 
 | 변수           | 기본값             | 무엇                                         |
 | -------------- | ------------------ | -------------------------------------------- |
-| `E2E_BASE_URL` | `http://localhost` | 쏠 대상                                      |
+| `E2E_BASE_URL` | `http://localhost` | 쏠 대상. E2E 스택은 `http://127.0.0.1:8080`  |
 | `E2E_EMAIL`    | `e2e@e2e.local`    | 로그인 계정                                  |
 | `E2E_PASSWORD` | 없음(필수)         | `seed-e2e-user.sql` 에 넘긴 값과 같아야 한다 |
 
@@ -70,12 +74,34 @@ CSS 모듈 클래스를 선택자로 쓰지 않는다. 빌드마다 해시가 �
 
 1. 역할과 이름 — `getByRole("button", { name: ... })`
 2. 사용자에게 보이는 텍스트 — `getByText(/재생하기/)`
-3. `img[alt]` 처럼 의미가 있는 속성
+3. 의미 있는 속성 — `img[alt="<제목>"]`
+
+**`img[alt]` 를 `first()` 로 잡지 말 것.** 로그인하면 헤더에 기본 프로필 아바타
+(`alt="default"`)가 붙고 그것이 DOM 에서 애니 그리드보다 앞선다. 비로그인으로 보면
+안 보여서 놓치기 쉽다. `playback.spec.ts` 는 목록 API 에서 제목을 받아 그 포스터를
+정확히 집는 방식으로 피한다.
 
 ## 검증 상태 (2026-08-23)
 
-- `authorization.spec.ts` — 프로덕션 대상으로 실제 실행해 3건 통과. 단언이 실제로 실패하는지도
-  반대 조건으로 확인했다(`/` 는 로그인으로 안 가고, `/api/anime` 는 200 이라 각각 실패).
-- `playback.spec.ts`, `membership.spec.ts` — 비로그인으로 갈 수 있는 구간까지 선택자를 실제
-  화면에서 확인했다(포스터 `img[alt]`, 상세 모달, `"1화 재생하기"`, 플랜 이름과 가격, CTA 문구).
-  로그인 이후 구간은 테스트 계정이 있는 스택에서 처음 돌릴 때 확인해야 한다.
+전용 스택에서 **5건 전부 통과**(4.6초). 통과만 보지 않고 각 단언이 실제로 실패할 수 있는지
+반대 조건으로 확인했다:
+
+| 단언                 | 이가 있는지 확인한 방법          | 결과                 |
+| -------------------- | -------------------------------- | -------------------- |
+| 보호 페이지 → 로그인 | `/` 로 바꿔서 실행               | 실패 ✅              |
+| 익명 API 401         | `/api/anime`(200) 로 바꿔서 실행 | 실패 ✅              |
+| 로그인 성립          | 틀린 비밀번호로 실행             | 두 스펙 모두 실패 ✅ |
+| `<video>` 부착       | 비로그인으로 `/player` 직행      | 실패 ✅              |
+
+마지막 항목이 중요하다. 비로그인도 `/player` 까지는 도달하므로 URL 만 보면 통과해버린다.
+`<video>` 는 재생권한 판정과 HLS 서명 URL 발급이 끝나야 붙기 때문에, 이 단언이 "정말 재생까지
+갔는가"를 구분한다.
+
+## 처음 세팅할 때 걸렸던 것
+
+같은 것을 다시 겪지 않도록 남긴다. 둘 다 compose 파일 주석에도 적어 뒀다.
+
+- **`Invalid CORS request` 로 로그인 403** — `APP_CORS_ALLOWED_ORIGINS` 를 `.env` 가
+  프로덕션 도메인으로 덮는다. 진입점 포트를 바꾸면 이 값도 같이 바꿔야 한다.
+- **로그인 직후 세션이 사라짐** — 진입점이 http 라서 `COOKIE_SECURE=true` 면 쿠키가
+  내려가지 않는다. E2E 스택은 `false`, `SameSite=lax`, `COOKIE_DOMAIN=127.0.0.1` 로 둔다.

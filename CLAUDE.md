@@ -86,6 +86,7 @@ New-Item -ItemType Junction -Path $HOME\.claude\skills -Target C:\dev-standards\
 - `.ha.yml` 백엔드 2인스턴스 오버레이 (prod+netlock 뒤에 붙여씀)
 - `.monitoring.yml` Prometheus/Grafana/Loki (배포 스크립트에 항상 포함 — 빠지면 `--remove-orphans`가 지움)
 - `.multi.yml` 다중 인스턴스 실험용 독립 스택(`-p ott-multi`로 분리 실행)
+- `.e2e.yml` Playwright E2E용 독립 스택(`-p ott-e2e`, nginx 127.0.0.1:8080). egress 잠금을 자체 포함하므로 netlock 없이 단독 실행이 맞다. 절차는 `frontend/e2e/README.md`
 - `.pgadmin.yml`, `.certbot.yml` opt-in 유틸리티
 
 ## 함정
