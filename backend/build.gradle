@@ -220,7 +220,38 @@ test {
 	testLogging {
 		events "passed", "skipped", "failed" // 실행 결과를 로그로 남겨 CI 에서 확인 가능하게
 	}
+	// 전체 컨텍스트 테스트는 여기서 빼고 아래 contextTest 가 별도 JVM 으로 돌린다. 이유는 그 태스크 주석 참고.
+	filter {
+		excludeTestsMatching 'com.ottproject.ottbackend.ApplicationContextLoadsTest'
+	}
 }
+
+// 전체 컨텍스트를 띄우는 테스트 전용 태스크. 분리한 이유는 격리가 아니라 오염 때문이다.
+// @SpringBootTest 는 JpaAuditingConfig 를 함께 올리는데, @EnableJpaAuditing 이 끌어오는
+// AnnotationBeanConfigurerAspect 는 aspectOf() 싱글턴이라 JVM 전역이고 BeanFactory 참조를
+// static 으로 붙든다. 스프링 테스트 컨텍스트는 캐싱되어 닫히지 않으므로 그 참조가 계속 살아남고,
+// 그 뒤에 도는 슬라이스는 Auditing 을 켠 적이 없는데도 AuditingEntityListener 가 붙어
+// @CreatedDate 를 저장 시각으로 덮어쓴다(JpaSliceTestSupport 주석의 경고와 같은 현상).
+// 실측: UserRepositorySignupCountTest 가 픽스처에 심은 과거 가입 시각이 now() 로 덮여
+// 집계 범위를 벗어나면서 2건이 깨졌다(CI 32637244146, 로컬 재현 동일).
+// 같은 JVM 안에서는 실행 순서를 바꿔도 해결되지 않는다 — 오염이 JVM 전역이기 때문이다.
+// 그래서 태스크를 나눠 JVM 을 분리한다. 어느 쪽 테스트도 약화시키지 않는 유일한 방법이다.
+tasks.register('contextTest', Test) {
+	description = 'Runs the full-context test in its own JVM (see comment: JVM-wide auditing pollution).'
+	group = 'verification'
+	testClassesDirs = sourceSets.test.output.classesDirs
+	classpath = sourceSets.test.runtimeClasspath
+	useJUnitPlatform()
+	filter {
+		includeTestsMatching 'com.ottproject.ottbackend.ApplicationContextLoadsTest'
+	}
+	testLogging {
+		events "passed", "skipped", "failed"
+	}
+}
+
+// check 에 붙여 CI 의 clean build 가 자동으로 실행하게 한다. 붙이지 않으면 아무도 돌리지 않는다.
+check.dependsOn 'contextTest'
 
 // 편집 직후 되먹임용 빠른 테스트. CI 와 test 태스크는 그대로 전량 실행한다 — 커버리지는 줄이지 않는다.
 // Testcontainers 를 쓰는 13개 클래스(@Tag("testcontainers"))만 뺀다. 실측으로 전량 104초,
