@@ -220,10 +220,13 @@ jobs:
       packages: read          # ghcr pull (GITHUB_TOKEN)
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Use Node.js 18
+      # Playwright 는 Node 20 이상을 요구한다. 18 에서는 install 이 바로 거부하고 잡이 죽는다
+      # (실측: CI 32638019679 - "Playwright requires Node.js 20 or higher").
+      # frontend 잡은 18 그대로 둔다. 그쪽은 Next 빌드용이고 이 제약과 무관하다.
+      - name: Use Node.js 20
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
       - name: Login to ghcr
@@ -241,8 +244,14 @@ jobs:
           echo "front=${REGISTRY}/$owner/ott-frontend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
 
       # 비밀번호를 워크플로에 적지 않는다. 이 DB 는 잡이 끝나면 버려지므로 매번 새로 만들면 된다.
+      # add-mask 를 먼저 건다. 걸지 않으면 뒤따르는 스텝의 env 그룹에 평문으로 찍힌다
+      # (실측: CI 32638019679 로그에 그대로 남았다). 버려지는 계정이라 유출돼도 쓸 데는 없지만,
+      # 워크플로 로그는 저장소 접근자 전원이 보므로 자격증명을 흘리는 습관을 남기지 않는다(PLATFORM 7절).
       - name: Generate a throwaway account password
-        run: echo "E2E_PASSWORD=$(openssl rand -hex 16)" >> "$GITHUB_ENV"
+        run: |
+          pw=$(openssl rand -hex 16)
+          echo "::add-mask::$pw"
+          echo "E2E_PASSWORD=$pw" >> "$GITHUB_ENV"
 
       - name: Start the E2E stack
         env:
