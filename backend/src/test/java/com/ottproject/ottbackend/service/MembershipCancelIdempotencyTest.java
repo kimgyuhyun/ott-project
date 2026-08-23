@@ -55,12 +55,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  *   목으로 증명할 수 없다. idempotency_keys.key_value 의 유니크 제약이 빠지면 목 기반 테스트는
  *   전부 통과하는 채로 운영에서 중복 처리가 난다(ARCHITECTURE 15절).
  *
- * 테스트 환경에 대한 메모(ARCHITECTURE 15절과의 차이)
- * - 15절은 동시성/멱등 재현을 @SpringBootTest + Testcontainers 로 하라고 한다. 이 프로젝트에는 아직
- *   @SpringBootTest 가 하나도 없어서, 전체 컨텍스트를 띄우면 Redis/Kafka/RabbitMQ/메일까지 함께 붙는다.
- *   결함은 서비스-DB 경계에 있으므로 그 부담을 지는 대신, 같은 이유로 슬라이스를 쓰는 기존
- *   PaymentMerchantUidUniqueTest / MembershipSubscriptionLockTest 와 같은 구성을 따랐다.
- *   핵심 요구(실제 커밋, 실제 스레드 2개, 테스트 메서드에 @Transactional 없음)는 그대로 지킨다.
+ * 테스트 환경 선택 근거(ARCHITECTURE 15절)
+ * - 15절은 동시성/멱등 재현에 실제 커밋과 실제 스레드를 요구하고, 컨텍스트 범위는 @SpringBootTest 든
+ *   검증 대상 서비스를 @Import 한 슬라이스든 무방하다고 둔다. 결함이 서비스-DB 경계에 있으므로 슬라이스를
+ *   골랐다. 전체 컨텍스트는 Redis/Kafka/RabbitMQ/메일과 스케줄러까지 끌어와 재현과 무관한 실패를 만든다.
+ *   같은 이유로 슬라이스를 쓰는 PaymentMerchantUidUniqueTest / MembershipSubscriptionLockTest 와 같은 구성이다.
+ * - 15절이 요구하는 것(실제 커밋, 실제 스레드 2개, 테스트 메서드에 @Transactional 없음,
+ *   서비스는 목이 아닌 실물 주입)은 그대로 지킨다.
  * - 감싸는 트랜잭션을 끄는 이유도 같다. 서비스가 자기 @Transactional 로 진짜 커밋을 해야 경합이 재현된다.
  */
 @DataJpaTest

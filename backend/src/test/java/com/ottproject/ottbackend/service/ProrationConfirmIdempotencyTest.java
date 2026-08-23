@@ -68,11 +68,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * - ProrationPaymentServiceTest 는 차액 계산(순수 함수)만 본다. 두 번째 요청이 첫 요청의 커밋까지
  *   실제로 대기하는지는 그 테스트로 증명되지 않는다(ARCHITECTURE 15절).
  *
- * 테스트 환경에 대한 메모(ARCHITECTURE 15절과의 차이)
- * - 15절은 @SpringBootTest + Testcontainers 를 요구하지만 이 프로젝트에는 @SpringBootTest 가 하나도
- *   없어 전체 컨텍스트를 띄우면 Redis/Kafka/RabbitMQ/메일까지 붙는다. 결함이 서비스-DB 경계에 있으므로
- *   PaymentConfirmIdempotencyTest 와 같은 슬라이스 구성을 따랐다.
- *   핵심 요구(실제 커밋, 실제 스레드 2개, 테스트 메서드에 @Transactional 없음)는 그대로 지킨다.
+ * 테스트 환경 선택 근거(ARCHITECTURE 15절)
+ * - 15절은 동시성/멱등 재현에 실제 커밋과 실제 스레드를 요구하고, 컨텍스트 범위는 @SpringBootTest 든
+ *   검증 대상 서비스를 @Import 한 슬라이스든 무방하다고 둔다. 결함이 서비스-DB 경계에 있으므로
+ *   PaymentConfirmIdempotencyTest 와 같은 슬라이스 구성을 골랐다. 전체 컨텍스트는
+ *   Redis/Kafka/RabbitMQ/메일과 스케줄러까지 끌어와 재현과 무관한 실패를 만든다.
+ * - 15절이 요구하는 것(실제 커밋, 실제 스레드 2개, 테스트 메서드에 @Transactional 없음,
+ *   서비스는 목이 아닌 실물 주입)은 그대로 지킨다.
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
