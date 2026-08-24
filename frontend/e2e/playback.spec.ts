@@ -27,15 +27,32 @@ test.describe("재생 경로", () => {
   }) => {
     await login(page);
 
-    // 목록 API 에서 제목을 받아 그 포스터를 정확히 집는다.
+    // 오늘 요일 탭에 실제로 렌더되는 목록에서 제목을 받는다.
     // img[alt] 를 first() 로 잡으면 안 된다 - 로그인하면 헤더에 기본 프로필 아바타
     // (alt="default")가 붙고 그것이 DOM 에서 애니 그리드보다 앞선다. 비로그인으로는
     // 보이지 않아서 놓치기 쉬운 함정이다(실측 2026-08-23: 이것 때문에 한 번 깨졌다).
-    const listed = await (await request.get("/api/anime")).json();
-    const title: string | undefined = listed?.items?.[0]?.title;
+    //
+    // 예전에는 /api/anime 의 첫 항목을 썼는데 그건 날짜에 따라 깨졌다. 홈의 요일 탭은
+    // 오늘 요일로 열리고(WeeklySchedule 의 getCurrentDayIndex), 목록 API 의 첫 항목은
+    // id 최신순이라 대개 다른 요일 애니다. 그러면 그 포스터가 화면에 없다.
+    // 실제로 2026-08-23(일)에 통과하던 이 테스트가 하루 뒤 월요일에 깨졌다 - 그날 첫
+    // 항목이 "일요신작 …" 이었고 일요일 탭에만 렌더됐다.
+    // 요일 배열과 인덱스 변환은 WeeklySchedule 과 같은 규칙이다(월=0 … 일=6).
+    const days = ["월", "화", "수", "목", "금", "토", "일"];
+    const dayOfWeek = new Date().getDay(); // 0=일
+    const today = days[dayOfWeek === 0 ? 6 : dayOfWeek - 1];
+
+    // 이 엔드포인트는 broadcast_day = today AND is_new = TRUE 로 이미 걸러 내려주므로
+    // 홈의 그 탭에 그려지는 목록과 같다.
+    const weekly = await (
+      await request.get(
+        `/api/anime/weekly/${encodeURIComponent(today)}?limit=20`,
+      )
+    ).json();
+    const title: string | undefined = weekly?.[0]?.title;
     expect(
       title,
-      "목록 API 가 비었으면 시드 데이터가 없다는 뜻이다",
+      `${today}요일 신작이 비었으면 시드 데이터가 없다는 뜻이다`,
     ).toBeTruthy();
 
     await page.goto("/");
