@@ -423,7 +423,22 @@ jobs:
         run: |
           cd frontend
           npx prettier --check .
-      - name: Build frontend
+      # main 에서는 돌리지 않는다. 아래 이미지 빌드가 컨테이너 안에서 같은 next build 를
+      # 다시 하기 때문이다(PLATFORM 7절: 같은 산출물을 이미지 안에서 다시 만들지 않는다).
+      #
+      # 백엔드처럼 "러너 산출물을 이미지에 넣는" 방향은 프론트에서 안전하지 않다. 둘 다 실측했다.
+      #   1) sharp 네이티브 바이너리가 빌드 플랫폼에 묶인다. 러너는 ubuntu(glibc)라
+      #      @img/sharp-linux-x64 를 받는데 런타임은 node:20-alpine(musl)이라
+      #      @img/sharp-linuxmusl-x64 가 필요하다. 현재 이미지 안에는 musl 쪽이 들어 있고,
+      #      그건 빌드가 alpine 안에서 돌기 때문이다.
+      #   2) 저장소 루트에 package-lock.json 이 커밋돼 있어 Next 가 그곳을 workspace root 로
+      #      잡는다. 그래서 러너 빌드는 standalone 을 frontend/ 아래로 중첩해 내보내는데,
+      #      Dockerfile 은 server.js 가 평평하게 있는 레이아웃을 기대한다(도커 빌드는
+      #      컨텍스트가 frontend/ 뿐이라 중첩되지 않는다).
+      # 둘 다 우회할 수는 있지만 프론트는 임계경로가 아니라 얻는 시간이 0 이다. 그래서
+      # 빌드를 이미지 안에 하나만 두고, 러너 빌드는 이미지를 만들지 않는 PR 의 컴파일 게이트로만 남긴다.
+      - name: Build frontend (PR only - main builds it inside the image)
+        if: github.ref != 'refs/heads/main'
         run: |
           cd frontend
           npm run build
