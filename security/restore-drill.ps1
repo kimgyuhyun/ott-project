@@ -45,7 +45,21 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$base = $PSScriptRoot           # alert-common.ps1 이 웹훅 파일을 찾는 기준 경로
 Set-Location (Join-Path $PSScriptRoot '..')
+
+# Check 모드는 예약 작업으로 무인 실행된다. 실패해도 아무도 안 보면 "백업이 멈췄다"를
+# 잡으려고 만든 검사가 자기도 조용히 멈춰 있는 꼴이 되므로, 실패는 디스코드로 알린다.
+# 발송 함수는 alert-common.ps1 의 것을 그대로 쓴다 — 그 파일 주석대로 이 함수는 이미
+# 두 번 고쳐졌고(웹훅 파싱, 한글 깨짐) 복사본을 늘리면 다음 수정이 한쪽에만 적용된다.
+# 그쪽이 요구하는 전제는 $base 와 Log 두 개다.
+$logFile = Join-Path $PSScriptRoot 'restore-drill.log'
+function Log($m) {
+    $line = "{0} {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $m
+    Write-Host $line
+    try { Add-Content -Path $logFile -Value $line -Encoding UTF8 } catch { }
+}
+. (Join-Path $PSScriptRoot 'alert-common.ps1')
 
 $Remote      = 'r2:ott-db-backups'
 $Project     = 'ott-restore-test'
@@ -285,4 +299,16 @@ function Invoke-FullMode {
     }
 }
 
-if ($Mode -eq 'Check') { Invoke-CheckMode } else { Invoke-FullMode }
+# Check 모드만 알림으로 감싼다. Full 모드는 사람이 보고 있는 자리에서 손으로 돌리는 것이라
+# 화면의 오류로 충분하고, 무인 실행이 아니므로 알림을 보낼 이유가 없다.
+if ($Mode -eq 'Check') {
+    try {
+        Invoke-CheckMode
+    }
+    catch {
+        Log "restore check FAILED: $($_.Exception.Message)"
+        Send-DiscordAlert (":rotating_light: 백업 점검 실패 — $($_.Exception.Message)`n확인: .\security\restore-drill.ps1 -Mode Check")
+        exit 1
+    }
+}
+else { Invoke-FullMode }
