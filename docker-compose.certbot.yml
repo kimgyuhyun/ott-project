@@ -28,8 +28,23 @@ services:
     #   SETUID, SETGID   — 마스터가 워커를 nginx 유저로 내린다
     #   CHOWN            — 기동 시 /var/cache/nginx/* 를 워커 유저 소유로 맞춘다
     #   DAC_OVERRIDE     — 그 캐시 경로가 nginx 소유라 root 마스터가 접근하려면 필요
-    # read_only 는 걸지 않았다 — prod 의 nginx 와 같은 이유로 쓰기 경로 실측이 먼저다.
-    # 그쪽과 함께 처리한다.
+    #
+    # [SECURITY 2026-08-30] read_only 추가.
+    # 이 컨테이너는 따로 실측하지 않았다 — 발급할 때만 뜨는 스택이라 지금 떠 있지 않고,
+    # 80 번을 물어서 프로덕션 nginx 와 충돌하므로 재보겠다고 띄울 수도 없다.
+    # 대신 프로덕션 nginx 의 실측(2주 기동분 docker diff)을 그대로 적용한다. 근거:
+    #   - 이미지가 같다(nginx:alpine).
+    #   - 여기가 쓰는 설정(nginx.prod.http.conf)은 프로덕션 설정의 진부분집합이다.
+    #     ACME 웹루트 서빙과 200 응답뿐이고, proxy_cache_path·access_log·pid·*_temp 같은
+    #     파일 경로 지시어가 하나도 없다(확인함). 프록시가 없으니 proxy_temp 로 흘릴 일도 없다.
+    #   - /run/nginx.pid 와 /var/cache/nginx/*_temp 는 설정과 무관하게 기동 시
+    #     ngx_create_paths() 가 만드는 컴파일 기본값이라 여기서도 똑같이 필요하다.
+    # 캐시 크기만 프로덕션(64m)보다 작게 잡는다 — 프록시 버퍼 스필이 없어서 쓸 일이 없다.
+    # /var/www/certbot 은 볼륨이라 read_only 와 무관하게 계속 쓸 수 있다(certbot 챌린지 파일).
+    read_only: true
+    tmpfs:
+      - /run:noexec,nosuid,nodev,size=4m
+      - /var/cache/nginx:noexec,nosuid,nodev,size=16m
     security_opt:
       - no-new-privileges:true
     cap_drop:
