@@ -89,9 +89,15 @@ DLQ 는 "크기"가 아니라 "유입"을 본다. 브로커측 큐 깊이를 주
 
 ### DB 백업
 - **스크립트**: `security/db-backup.ps1`
-- **방식**: `pg_dump` → age 로 암호화 → Cloudflare R2 업로드
+- **방식**: `pg_dump` + `pg_dumpall --globals-only` → age 로 암호화 → Cloudflare R2 업로드
+- **파일 두 개**: `db_<시각>.sql.age`(데이터)와 `globals_<시각>.sql.age`(롤). 복원할 때 globals를 먼저 적용해야 `GRANT`가 통과한다 — 2026-08-30 이전 백업에는 globals가 없어 그대로는 복원되지 않는다
 - **주기/보존**: 매일 새벽, 30일 보존 (호스트 예약 작업)
-- **복구**: R2에서 받아 age 개인키로 복호화 후 restore. 개인키는 repo·서버가 아닌 별도 비밀번호 관리자에 보관한다
+- **복구**: 절차는 `restore-runbook.md`. 개인키는 repo·서버가 아닌 별도 비밀번호 관리자에 보관한다
+
+### 복원 검증
+- **스크립트**: `security/restore-drill.ps1` — 백업이 있다는 것과 복원이 된다는 것은 다르다. 그 차이를 정기적으로 확인한다
+- **매일(개인키 불필요)**: `-Mode Check` — 최신 백업의 존재·신선도·age 형식·크기 급변. `db-backup.ps1` 뒤에 이어서 돌린다
+- **분기(개인키 필요)**: `-Mode Full -KeyFile <경로>` — 격리 스택(`-p ott-restore-test`)에 실제로 복원하고 스키마·데이터·`ott_app` 권한까지 확인 후 철거한다. 실서비스는 건드리지 않는다
 
 ### 로그 백업
 - **스크립트**: `security/log-backup.ps1` — 로그를 호스트 밖으로 내보내 침해 시 삭제·조작에 대비

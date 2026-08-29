@@ -1,0 +1,73 @@
+# [복원 훈련 전용] 백업이 실제로 되살아나는지 확인하기 위한 일회용 스택 — 2026-08-30
+#
+# 직접 올리지 말고 security\restore-drill.ps1 을 통해서 쓴다. 그 스크립트가
+# 덤프 준비 → 기동 → 복원 → 검증 → 철거까지 한 번에 하고, 검증이 실패하면 종료 코드로 알린다.
+#
+# 왜 독립 스택인가 (docker-compose.e2e.yml 과 같은 이유):
+#   반드시 -p ott-restore-test 로 프로젝트 이름을 분리한다. 그래야 컨테이너·네트워크·볼륨이
+#   전부 별개가 되어 실서비스 postgres 를 건드리지 않는다. 컨테이너 이름도 겹치지 않게 한다.
+#
+# 격리:
+#   - 네트워크 internal: true — 복원은 전부 로컬이라 인터넷이 필요 없다. 필요 없는 것은 열지 않는다.
+#   - 호스트 포트를 하나도 열지 않는다. 접근은 docker exec 로만 한다.
+#     (실서비스 5432 와 겹칠 일이 원천적으로 없다)
+#   - 볼륨은 이 프로젝트 전용이고 스크립트가 down -v 로 매번 지운다. 훈련은 항상 빈 DB 에서 시작해야
+#     의미가 있다 — 남은 데이터 위에 복원하면 "복원이 됐는지"를 판정할 수 없다.
+#
+# 하드닝은 프로덕션과 같이 건다. 2026-08-30 에 실서비스 postgres 를 read_only 로 돌리면서
+# 필요한 경로가 /run/postgresql 하나뿐이라는 걸 실측했고, 같은 이미지라 그대로 적용된다.
+# (e2e.yml 머리말과 같은 이유: 짧게 뜨는 스택이라 괜찮다고 두면 그 예외가 다음 스택의 기본값이 된다)
+services:
+  postgres:
+    image: postgres:15
+    pull_policy: missing
+    container_name: ott-restore-postgres
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    environment:
+      # 덤프는 `pg_dump -U root ott_project_db` 로 뜬 평문 SQL 이라 CREATE DATABASE 가 없다.
+      # 받는 쪽에 같은 이름의 빈 DB 가 미리 있어야 한다.
+      POSTGRES_DB: ott_project_db
+      # 부트스트랩 계정을 일부러 root 가 아닌 이름으로 둔다.
+      # 복원은 globals(pg_dumpall --globals-only) 를 먼저 적용하는데 그 안에 CREATE ROLE root 와
+      # CREATE ROLE ott_app 이 들어 있다. 부트스트랩을 root 로 두면 "role root already exists" 로
+      # 걸려서, 그걸 피하려고 ON_ERROR_STOP 을 끄게 되고 그러면 복원 검증이 무의미해진다.
+      # 겹치지 않는 이름을 쓰면 두 롤 다 깨끗하게 생성되고 ON_ERROR_STOP=1 을 끝까지 유지할 수 있다.
+      POSTGRES_USER: drill_admin
+      POSTGRES_PASSWORD: restore-drill-throwaway   # 격리된 일회용 스택 전용. 실서비스 비밀번호와 무관하다.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - restore_data:/var/lib/postgresql/data
+    read_only: true
+    tmpfs:
+      - /run/postgresql:noexec,nosuid,nodev,size=8m
+      # /tmp 는 열지 않는다. restore-drill.ps1 이 덤프를 컨테이너 안에 두지 않고 psql 의
+      # 표준입력으로 흘려보내기 때문이다(실서비스 postgres 의 같은 자리 주석 참고).
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
+    mem_limit: 2g
+    cpus: 2.0
+    networks:
+      - default
+
+volumes:
+  restore_data:
+
+networks:
+  default:
+    internal: true
