@@ -1,15 +1,48 @@
-version: '3.8'
-
+# 인증서 최초 발급용 임시 HTTP 스택(opt-in). 갱신은 renew-cert.cmd 가 프로덕션 nginx 를
+# 그대로 쓰므로 이 파일은 발급 때만 뜬다.
+#
+# [SECURITY 2026-08-29] 하드닝 추가. PLATFORM 2절은 "모든 컨테이너"를 대상으로 하는데
+# 이 파일은 2026-07-31 전수 적용에서 통째로 빠져 있었다(그 커밋은 prod/monitoring 만 훑었다).
+# 짧게 뜨는 스택이라는 것은 예외 사유가 아니다 — 이건 80 번을 인터넷에 직접 여는 컨테이너다.
 services:
   nginx-cert:
     image: nginx:alpine
+    pull_policy: missing          # 근거는 docker-compose.yml 상단 주석 참고
     container_name: ott-nginx-cert
+    logging:                      # 도커 기본은 무제한. base 의 x-logging 은 파일을 넘어오지 않는다.
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     ports:
+      # 0.0.0.0 유지. HTTP-01 챌린지는 Let's Encrypt 가 인터넷에서 이 포트로 직접 들어와야
+      # 성립하므로 루프백으로 좁힐 수 없다. PLATFORM 3절이 인터넷에 여는 것을 허용하는
+      # 80/443 안이기도 하다. 발급이 끝나면 이 스택을 내리는 것이 잠그는 방법이다.
       - "80:80"
     volumes:
       - ./nginx/nginx.prod.http.conf:/etc/nginx/conf.d/default.conf:ro
       - certbot-etc:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot
+    # capability 는 prod 의 nginx 와 같은 근거다(docker-compose.prod.yml 의 nginx 주석 참고):
+    #   NET_BIND_SERVICE — 컨테이너 안에서 80 을 직접 듣는다
+    #   SETUID, SETGID   — 마스터가 워커를 nginx 유저로 내린다
+    #   CHOWN            — 기동 시 /var/cache/nginx/* 를 워커 유저 소유로 맞춘다
+    #   DAC_OVERRIDE     — 그 캐시 경로가 nginx 소유라 root 마스터가 접근하려면 필요
+    # read_only 는 걸지 않았다 — prod 의 nginx 와 같은 이유로 쓰기 경로 실측이 먼저다.
+    # 그쪽과 함께 처리한다.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETUID
+      - SETGID
+    # prod nginx 와 같은 값. 하는 일은 더 적지만(TLS 종료가 없다) 따로 잴 이유가 없다.
+    mem_limit: 256m
+    cpus: 1.5
     networks:
       - default
 
