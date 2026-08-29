@@ -101,6 +101,17 @@ services:                         # 서비스 정의 시작
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      # [2026-08-30] 아래 kafka_data 볼륨이 실제로는 한 번도 쓰이지 않고 있었다.
+      # apache/kafka 이미지는 KAFKA_LOG_DIRS 를 주지 않으면 기본 경로(/tmp/kafka-logs)를
+      # 쓰는데, 그건 컨테이너 쓰기 레이어다. 실측(2026-08-29): /var/lib/kafka/data 는
+      # 항목 0개(2024-02 이미지 빌드 시각 그대로), /tmp/kafka-logs 에 20.6MB —
+      # __cluster_metadata-0(브로커 정체성), __consumer_offsets, payment.succeeded 와
+      # 그 DLT 가 전부 거기 있었다.
+      # 즉 컨테이너를 재생성하는 배포 한 번이면 브로커 상태가 통째로 사라지는 상태였다.
+      # 아웃박스로 확보한 내구성이 브로커 쪽에서 컨테이너 수명에 묶여 있었던 셈이다.
+      # 이 값을 볼륨 경로로 고정해서 그 연결을 끊는다. 기존 데이터는 이 줄을 넣기 전에
+      # 정상 종료 상태에서 볼륨으로 옮겼다(cluster.id 보존).
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
