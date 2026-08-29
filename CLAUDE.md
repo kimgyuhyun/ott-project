@@ -49,7 +49,7 @@
 - `frontend/` Next.js App Router, `src/lib/api/*` 도메인별 API 클라이언트
 - `edge/` Cloudflare Worker (HLS 스트림 서명)
 - `nginx/`, `monitoring/`, `pgadmin/`, `security/` 각 설정
-- `docs/` deployment.md · messaging.md · operations.md · security.md · streaming.md · incident-2026-06.md (아래 참고, 내용 옮겨적지 말 것)
+- `docs/` deployment.md · messaging.md · operations.md · security.md · streaming.md · incident-2026-06.md · adr/ (아래 참고, 내용 옮겨적지 말 것)
 - `.deploy/`, `_incident_2026-06-20/` 과거 침해 사고 기록 — 참고용, 손대지 말 것
 
 ## 새 기기 세팅
@@ -103,6 +103,7 @@ actionlint 와 shellcheck 는 gitleaks 와 달리 winget 이 `Links` 가 아니�
 - postgres/redis는 `data` 네트워크에 격리되어 프론트에서 도달 불가해야 함 — 배포 스크립트가 자동 검증
 - 카프카는 의도적으로 무인증(내부망 전용 결정, 문서화됨)
 - `docs/` 문서는 최근 최신화됨 — 배포 절차 상세는 `docs/deployment.md`, 운영 체크리스트는 `docs/operations.md`, 보안 설계는 `docs/security.md`, 메시징(Kafka/RabbitMQ)은 `docs/messaging.md`, HLS 서명 재생은 `docs/streaming.md` 참고
+- 구조를 **왜** 그렇게 골랐는지는 `docs/adr/` — 결정 하나당 파일 하나. 기존 결정을 뒤집을 때는 파일을 고치지 말고 새 ADR 을 쓰고 이전 것을 `대체됨` 으로 바꾼다
 
 ## 탐색 제외
 `node_modules/`, `.gradle/`, `build/`, `dist/`, `.next/`, `logs/`, 테스트 코드 전체
