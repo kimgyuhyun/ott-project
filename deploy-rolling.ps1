@@ -180,6 +180,12 @@ foreach ($name in $Instances) {
     Write-Host "  $name -> socks -> 1.1.1.1: DENIED (ruleset)"
 }
 
+# [SECURITY 2026-08-29] Container hardening (PLATFORM 2절). Every check above is about the
+# network; nothing here ever looked at no-new-privileges / capabilities / limits /
+# read-only rootfs / tmpfs flags after a deploy. The script explains why, and is shared
+# with deploy.ps1 so the two cannot drift.
+& .\security\check-container-hardening.ps1 -ComposeFiles $ComposeFiles
+
 # --- 4. Apply any nginx config change -----------------------------------------
 # The conf is a single-file bind mount, so compose sees no change when only its
 # CONTENTS change and step 1 leaves nginx running the config it parsed at startup.

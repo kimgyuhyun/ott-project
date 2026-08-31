@@ -52,6 +52,20 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # [SECURITY 2026-08-29] 리소스 상한. PLATFORM 2절 "컨테이너 리소스 상한(CPU, 메모리)을
+    # 설정한다" 는 [절대]인데 2026-07-31 의 전수 적용에서 이 파일만 빠져 있었다
+    # (그 커밋은 docker-compose.prod.yml 과 .monitoring.yml 만 훑었다).
+    #
+    # 다른 서비스와 달리 실측 근거가 없다. 이 컨테이너는 opt-in 이라 지금 떠 있지 않고,
+    # 상한을 정하려고 프로덕션 데이터 망에 붙여 띄우는 것은 순서가 거꾸로다. 그래서
+    # 성격이 가장 가까운 grafana(웹 UI, opt-in, 실측 48MB, 512m/0.5)에 맞춘다.
+    # 목적은 사이징이 아니라 봉쇄이므로 이 정도면 충분하다 — 실제로 띄워서 docker stats 가
+    # 이 천장에 가까워지면 그때 실측값으로 바꾸고 근거를 여기 적는다.
+    mem_limit: 512m
+    cpus: 0.5
+    # read_only 는 아직 걸지 않았다. 이 이미지는 /var/lib/pgadmin 볼륨 밖에도 쓰는 곳이
+    # 있는데(gunicorn 임시 파일, 세션) 컨테이너가 떠 있지 않아 docker diff 로 전수 확인을
+    # 할 수 없었다. app/frontend 때처럼 실측 후 여는 경로를 정한다.
     ports:
       - "127.0.0.1:5050:5050"   # 루프백 전용 노출 (외부 X). 접속 주소는 종전과 동일.
     volumes:

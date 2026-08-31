@@ -109,6 +109,17 @@ if ($smtpDeny -eq '0') { throw 'SECURITY INVARIANT FAILED: ott-app reached a non
 if ($smtpDeny -ne '97') { throw "SOCKS allow-list probe returned an unexpected result (curl exit '$smtpDeny') - not treating it as denied" }
 Write-Host '  ott-app -> socks -> 1.1.1.1: DENIED (ruleset)'
 
+# [SECURITY 2026-08-29] Container hardening (PLATFORM 2절), same script as
+# deploy-rolling.ps1, so the checks cannot drift between the two deploy paths.
+# The file set must match the one deployed above - this script is the SINGLE-instance
+# layout, so no ha overlay here.
+& .\security\check-container-hardening.ps1 -ComposeFiles @(
+    '-f', 'docker-compose.yml',
+    '-f', 'docker-compose.prod.yml',
+    '-f', 'docker-compose.netlock.yml',
+    '-f', 'docker-compose.monitoring.yml'
+)
+
 # Apply any nginx config change.
 # The conf is a single-file bind mount, so the `up -d` above does not recreate
 # nginx when only its CONTENTS change, and the running process keeps the config it
