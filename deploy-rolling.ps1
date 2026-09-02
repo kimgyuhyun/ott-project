@@ -186,6 +186,11 @@ foreach ($name in $Instances) {
 # with deploy.ps1 so the two cannot drift.
 & .\security\check-container-hardening.ps1 -ComposeFiles $ComposeFiles
 
+# [SECURITY 2026-09-02] DB account privileges (PLATFORM 4절). The runtime account has a
+# silent fallback to the postgres SUPERUSER on both sides (compose's ${DB_APP_USERNAME:-root}
+# and the initdb script's exit 0), and nothing checked which account was actually serving.
+& .\security\check-db-privileges.ps1 -ComposeFiles $ComposeFiles
+
 # --- 4. Apply any nginx config change -----------------------------------------
 # The conf is a single-file bind mount, so compose sees no change when only its
 # CONTENTS change and step 1 leaves nginx running the config it parsed at startup.

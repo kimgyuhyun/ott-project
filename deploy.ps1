@@ -113,12 +113,20 @@ Write-Host '  ott-app -> socks -> 1.1.1.1: DENIED (ruleset)'
 # deploy-rolling.ps1, so the checks cannot drift between the two deploy paths.
 # The file set must match the one deployed above - this script is the SINGLE-instance
 # layout, so no ha overlay here.
-& .\security\check-container-hardening.ps1 -ComposeFiles @(
+# Held in a variable rather than repeated per check: both post-deploy checks must see
+# the same stack, and two inline copies is exactly the drift the comment above warns of.
+$checkFiles = @(
     '-f', 'docker-compose.yml',
     '-f', 'docker-compose.prod.yml',
     '-f', 'docker-compose.netlock.yml',
     '-f', 'docker-compose.monitoring.yml'
 )
+& .\security\check-container-hardening.ps1 -ComposeFiles $checkFiles
+
+# [SECURITY 2026-09-02] DB account privileges (PLATFORM 4절). The runtime account has a
+# silent fallback to the postgres SUPERUSER on both sides (compose's ${DB_APP_USERNAME:-root}
+# and the initdb script's exit 0), and nothing checked which account was actually serving.
+& .\security\check-db-privileges.ps1 -ComposeFiles $checkFiles
 
 # Apply any nginx config change.
 # The conf is a single-file bind mount, so the `up -d` above does not recreate
