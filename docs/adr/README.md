@@ -17,6 +17,7 @@
 | [0007](0007-shedlock-scheduler.md) | 다중 인스턴스 스케줄러는 ShedLock 분산락으로 하나만 돌린다 | 채택 | 실측 (50건 → 100건 → 50건) |
 | [0008](0008-hls-cascade-signing.md) | HLS 서명은 엣지에서 검증하고 하위 URI 에 캐스케이드로 붙인다 | 채택 | 대안 3개 비교 |
 | [0009](0009-no-volume-noexec.md) | 명명 볼륨에는 noexec 를 걸지 않는다 | 채택 | 규칙 범위 밖 — 비용/이득 비교 |
+| [0010](0010-ci-hands-digest-to-cd.md) | 배포할 이미지는 CI 가 digest 로 지목하고 CD 는 그것만 받는다 | 채택 | 실측 (RepoDigests 0번이 로컬 이름) |
 
 ## 아직 안 쓴 후보
 

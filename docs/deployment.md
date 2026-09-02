@@ -51,8 +51,35 @@
 - **CD** (`.github/workflows/cd.yml`) — main push 시 self-hosted 러너에서 `deploy-rolling.ps1` 을 실행
 - **배포 방식**: Self-hosted runner 사용
 - **보안**: SSH(22) 포트는 닫고 GitHub Actions로만 배포
-- **레지스트리**: GitHub Container Registry(ghcr.io, 비공개). CD가 커밋 이미지를 digest로 고정해 배포
+- **레지스트리**: GitHub Container Registry(ghcr.io, 비공개)
   (구 Docker Hub `para98` 는 침해 이력으로 폐기)
+
+#### 이미지 잡의 스텝 순서
+이미지 4개(backend · frontend · 프록시 2개)를 모두 같은 순서로 다룬다.
+
+```
+빌드 → Trivy 스캔 → push(:<commit-sha>) → 레지스트리 digest 캡처 → 아티팩트 업로드
+```
+
+- 스캔이 push **앞**이라, 수정 가능한 CRITICAL 이 있으면 이미지가 GHCR 에 올라가지 않는다.
+  Trivy 는 빌드가 러너 로컬 데몬에 남긴 태그를 읽으므로 레지스트리 왕복이 필요 없다
+- 이미지 잡은 시크릿 스캔·워크플로 린트·마이그레이션 검증이 **끝난 뒤에** 시작한다(`needs:`).
+  없을 때는 병렬로 돌아서, 시크릿이 커밋에 있어도 이미지가 적재됐다
+
+#### CI 가 CD 에 배포 대상을 알려주는 방법
+CI 는 push 직후 각 이미지의 레지스트리 digest 를 캡처해 `image-digest-<이미지명>` 아티팩트로
+올린다(`.github/scripts/capture-image-digest.sh`). CD 는 그 아티팩트를 받아
+`ghcr.io/<owner>/<name>@sha256:...` 로 pull 한다 — **태그를 조립하지도, 태그를 digest 로
+해석하지도 않는다.** 그래서 CI 가 스캔하고 E2E 가 검증한 그 바이트가 그대로 배포된다.
+
+- 태그만 넘기면 태그→digest 해석이 CD 의 pull 시점에 일어나, CI 종료와 CD 의 pull 사이에
+  같은 태그가 덮어써졌을 때 그 이미지가 배포된다. 왜 이 구조인지와 대안 비교는
+  [ADR 0010](adr/0010-ci-hands-digest-to-cd.md)
+- 아티팩트 보존기간(기본 90일)이 곧 "과거 릴리스로 되돌릴 수 있는 한계"다. 그보다 오래된
+  릴리스는 revert 커밋 → CI → CD 로 되돌린다
+- 수동 배포(`workflow_dispatch`)에는 `ci_run_id` 선택 입력이 있다. 비우면 main 의 최근 성공
+  CI 를 조회하고 그 커밋이 HEAD 와 다르면 실패한다. 값을 넣으면 그 릴리스의 digest 로
+  배포한다(롤백). 태그 폴백은 없다
 
 ### 품질 게이트
 | 검사 | 막으려는 것 | 통과 기준 |
@@ -62,7 +89,7 @@
 | 빌드 도구 무결성 | Gradle wrapper JAR 교체(공급망) | 배포 해시와 일치 |
 | 테스트 실행 건수 | "빌드 성공"이 테스트 실행을 보장하지 않는 문제 | 결과 XML 의 실행 건수가 하한 이상 + Testcontainers 필수 클래스가 전부 실행됨 |
 | 정적 분석 (SpotBugs) | 보안 결함, 그리고 나머지 지적의 증가 | 보안 범주 0건 + 총 지적이 베이스라인 이하 |
-| 이미지 취약점 (Trivy) | 수정 가능한 CRITICAL | 백엔드·프론트 이미지 각각 무탐지 |
+| 이미지 취약점 (Trivy) | 수정 가능한 CRITICAL | 이미지 4개(backend·frontend·프록시 2개) 각각 무탐지. push **앞**에서 돌아 불량 이미지는 GHCR 에 올라가지 않는다 |
 | 액션 고정 | 서드파티 액션의 태그 이동 | 모든 `uses:` 가 커밋 SHA |
 
 - 판정 스크립트는 `.github/scripts/` (`check-test-count.sh`, `check-spotbugs-security.sh`).

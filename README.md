@@ -78,7 +78,9 @@
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-CD-black?style=flat-square&logo=github-actions)
 
 - **nginx** 리버스 프록시(HTTPS · secure_link), **Docker Compose** 단일 호스트 구성
-- **GitHub Actions** → **GHCR**(비공개 레지스트리) 이미지 빌드/푸시 후 서버 배포 — 커밋 SHA 태깅 + digest 고정
+- **GitHub Actions** → **GHCR**(비공개 레지스트리) 이미지 빌드/푸시 후 서버 배포 — 커밋 SHA 태깅.
+  배포 대상은 CI 가 push 직후 캡처한 digest 로 지목하고 CD 는 `@sha256:` 으로만 받는다 —
+  [ADR 0010](docs/adr/0010-ci-hands-digest-to-cd.md)
 - 레지스트리 이전(**Docker Hub → GHCR**)과 장기 자격증명 대신 `GITHUB_TOKEN` 단기 토큰을 쓰는 건
   **2026-06 크립토재킹 사고**의 재발 방지 조치다 — [사고 회고](docs/incident-2026-06.md)
 - **CI 품질 게이트** — main 으로 가는 모든 커밋이 통과해야 하는 검사를 파이프라인에 고정했다.
