@@ -318,6 +318,8 @@ security/uptime.log
 security/uptime.state
 security/alert-relay.log
 security/alert-relay.state
+security/cert-renew.log
+security/cert-renew.state
 standards/
 
 # Claude Code: 훅 등록(.claude/settings.json)은 커밋해서 머신 간에 따라가야 한다.
