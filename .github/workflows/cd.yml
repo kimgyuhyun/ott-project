@@ -3,13 +3,21 @@ name: CD
 # ============================================================================
 # 보안 재설계 (2026-06-24, XMRig 재감염 대응)
 # ----------------------------------------------------------------------------
-# CI(ci.yml)가 ghcr.io 비공개 레지스트리로 push + Trivy 스캔 통과한 이미지를,
-# self-hosted 러너가 commit-sha 태그로 pull → "digest로 고정" → egress 차단 보안
-# 스택(docker-compose.netlock.yml)으로 배포 → 백엔드 헬스 + 프론트엔드 egress
-# 차단을 검증(둘 중 하나라도 실패하면 배포 실패 처리).
+# CI(ci.yml)가 Trivy 스캔을 통과시킨 뒤 ghcr.io 비공개 레지스트리로 push 한 이미지를,
+# self-hosted 러너가 digest 로 pull → egress 차단 보안 스택(docker-compose.netlock.yml)
+# 으로 배포 → 백엔드 헬스 + 프론트엔드 egress 차단을 검증(둘 중 하나라도 실패하면 배포 실패).
 #   * 인증: GITHUB_TOKEN(단기). 장기 자격증명 불필요.
-#   * digest 고정: 태그 덮어쓰기 공격 무력화 + 스캔한 그 이미지 그대로 배포.
 #   * 이미지가 혹시 오염돼도 frontend는 egress가 없어 드로퍼/채굴 불가(다층 방어).
+#
+# digest 가 어디서 오는가 (2026-09-02)
+#   CI 가 push 직후 레지스트리 digest 를 캡처해 image-digest-<이미지명> 아티팩트로 올린다.
+#   CD 는 그 아티팩트를 받아 `ghcr.io/<owner>/<name>@sha256:...` 로 pull 한다. 태그를
+#   조립하지도, 태그를 digest 로 해석하지도 않는다.
+#   예전에는 CD 가 commit-sha 태그로 pull 한 뒤 docker inspect 로 digest 를 뽑아 "고정"
+#   했다. 그 방식이 막는 것은 pull 이후 구간(롤링 교체 중 태그 스왑)뿐이고, CI 종료와
+#   CD 의 pull 사이에 같은 태그가 덮어써지면 그 악성 이미지의 digest 를 그대로 고정해
+#   배포했다. 지금은 CI 가 스캔한 그 바이트가 그대로 배포된다.
+#   workflow_run 이벤트는 잡 output 을 나르지 않아서 아티팩트가 유일한 전달 수단이다.
 # ============================================================================
 on:
   workflow_run:
@@ -17,10 +25,16 @@ on:
     types:
       - completed
   workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: '이미지 digest 를 가져올 CI 실행 ID(비우면 main 의 최근 성공 CI 를 쓴다). 과거 릴리스로 되돌릴 때만 채운다.'
+        required: false
+        type: string
 
 permissions:
   contents: read
   packages: read          # ghcr pull (GITHUB_TOKEN)
+  actions: read           # 다른 워크플로 실행(CI)의 아티팩트 조회·다운로드
 
 jobs:
   deploy:
@@ -43,10 +57,73 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # 어느 CI 실행의 digest 를 쓸지 먼저 정한다.
+      #   자동(workflow_run)   : 방금 끝난 그 실행.
+      #   수동 + ci_run_id 지정: 그 실행. 과거 릴리스로 되돌릴 때의 경로라 커밋 일치를 요구하지 않는다.
+      #   수동 + 미지정        : main 의 가장 최근 성공한 CI push 실행. 그 실행의 커밋이 지금
+      #                          체크아웃된 HEAD 와 다르면 실패시킨다.
+      # 태그 폴백은 두지 않는다. 남기면 수동 배포 한 번으로 태그 해석 구간이 다시 열린다.
+      - name: Resolve the CI run that published the image digests
+        id: cirun
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUT_RUN_ID: ${{ inputs.ci_run_id }}
+          EVENT_RUN_ID: ${{ github.event.workflow_run.id }}
+          EVENT_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          Set-Location $env:GITHUB_WORKSPACE
+
+          $runId = $env:EVENT_RUN_ID
+          $expectedCommit = $env:EVENT_HEAD_SHA
+
+          if (-not $runId) {
+            if ($env:INPUT_RUN_ID) {
+              $runId = $env:INPUT_RUN_ID.Trim()
+              $expectedCommit = ''
+              Write-Host "using the CI run given as input: $runId (commit match not enforced)"
+            } else {
+              $head = (git rev-parse HEAD).Trim()
+              $uri = "$env:GITHUB_API_URL/repos/$env:GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" +
+                     "?branch=main&status=success&event=push&per_page=1"
+              $resp = Invoke-RestMethod -Uri $uri -Headers @{
+                Authorization          = "Bearer $env:GH_TOKEN"
+                Accept                 = 'application/vnd.github+json'
+                'X-GitHub-Api-Version' = '2022-11-28'
+              }
+              if (@($resp.workflow_runs).Count -lt 1) { throw 'no successful CI run on main - nothing to deploy' }
+              $latest = @($resp.workflow_runs)[0]
+              if ($latest.head_sha -ne $head) {
+                throw "the latest successful CI run is for commit $($latest.head_sha) but HEAD is $head - wait for CI, or pass ci_run_id"
+              }
+              $runId = "$($latest.id)"
+              $expectedCommit = $latest.head_sha
+              Write-Host "resolved the latest successful CI run on main: $runId"
+            }
+          }
+
+          if (-not $runId) { throw 'could not determine which CI run to take the image digests from' }
+          "run_id=$runId"                   | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "expected_commit=$expectedCommit" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
+      # merge-multiple 로 4개 아티팩트(backend/frontend/프록시 2개)를 ci-digests\ 한 폴더에 모은다.
+      # proxies 는 matrix 잡이라 아티팩트 이름에 이미지명이 들어가 있다(ci.yml 참고).
+      - name: Download the image digests published by that CI run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          run-id: ${{ steps.cirun.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: image-digest-*
+          merge-multiple: true
+          path: ci-digests
+
       - name: Deploy (ghcr digest-pinned + egress-locked secure stack)
         shell: powershell -ExecutionPolicy Bypass -File {0}
         env:
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          EXPECTED_COMMIT: ${{ steps.cirun.outputs.expected_commit }}
           OWNER: ${{ github.repository_owner }}
           AGE_KEY: ${{ secrets.AGE_KEY }}
         run: |
@@ -56,15 +133,48 @@ jobs:
           Set-Location $env:GITHUB_WORKSPACE
           Write-Host '=== CD START (ghcr digest) ==='
 
-          $sha = $env:HEAD_SHA
-          if (-not $sha) { $sha = (git rev-parse HEAD).Trim() }
-          $owner   = $env:OWNER.ToLower()
-          $appTag  = "ghcr.io/$owner/ott-backend:$sha"
-          $frontTag= "ghcr.io/$owner/ott-frontend:$sha"
-          # 아웃바운드 프록시 2개 — 백엔드/프론트와 같은 방식(커밋 SHA 태그 → digest 고정).
-          $squidTag= "ghcr.io/$owner/ott-egress-proxy:$sha"
-          $sockdTag= "ghcr.io/$owner/ott-smtp-proxy:$sha"
+          $owner = $env:OWNER.ToLower()
+
+          # CI 가 push 직후 캡처한 digest 를 읽는다. 태그를 조립하지 않는다 - 조립하면
+          # 태그→digest 해석이 이 시점으로 돌아와, CI 종료와 여기 사이에 태그가 덮어써졌을 때
+          # 그 이미지를 배포하게 된다.
+          # 파일 한 줄 형식: "<커밋SHA> ghcr.io/<owner>/<이미지명>@sha256:<64자리>"
+          function Read-PinnedImage([string]$name) {
+            $path = Join-Path $PWD "ci-digests\$name.txt"
+            if (-not (Test-Path $path)) { throw "digest file missing: $path (CI published no image-digest-$name)" }
+            $parts = @(((Get-Content $path -Raw).Trim()) -split '\s+')
+            if ($parts.Count -ne 2) { throw "malformed digest file: $path" }
+            $repo = "ghcr.io/$owner/$name"
+            if ($parts[1] -cnotmatch ('^' + [regex]::Escape($repo) + '@sha256:[0-9a-f]{64}$')) {
+              throw "unexpected image ref for ${name}: $($parts[1])"
+            }
+            return [pscustomobject]@{ Commit = $parts[0]; Ref = $parts[1] }
+          }
+
+          $pinned = [ordered]@{}
+          foreach ($n in 'ott-backend', 'ott-frontend', 'ott-egress-proxy', 'ott-smtp-proxy') {
+            $pinned[$n] = Read-PinnedImage $n
+          }
+
+          # 이미지 4개가 같은 커밋에서 나왔는지 확인한다. 섞이면 무엇이 돌고 있는지 특정할 수 없다.
+          $commits = @($pinned.Values | ForEach-Object { $_.Commit } | Sort-Object -Unique)
+          if ($commits.Count -ne 1) { throw "image digests come from different commits: $($commits -join ', ')" }
+          $sha = $commits[0]
+
+          # 자동 배포와 자동 해석 경로에서는 배포 대상 커밋이 정해져 있다.
+          # ci_run_id 를 손으로 넣은 롤백 경로에서만 비어 있다.
+          $expected = $env:EXPECTED_COMMIT
+          if ($expected -and $expected -ne $sha) { throw "digests are from commit $sha but this run targets $expected" }
+          if (-not $expected) { Write-Host "WARNING: deploying images built from $sha, which may differ from the checked-out tree" }
+
+          $appImage   = $pinned['ott-backend'].Ref
+          $frontImage = $pinned['ott-frontend'].Ref
+          $squidImage = $pinned['ott-egress-proxy'].Ref
+          $sockdImage = $pinned['ott-smtp-proxy'].Ref
           Write-Host "commit=$sha"
+          Write-Host "pinned backend : $appImage"
+          Write-Host "pinned frontend: $frontImage"
+          Write-Host "pinned proxies : $squidImage / $sockdImage"
 
           # --- 1) DB 백업 (age 암호화, 실패해도 진행) ---
           # 평문 .sql을 backups\에 남기지 않는다: 덤프는 TEMP에 뜨고 즉시 암호화한 뒤
@@ -125,25 +235,29 @@ jobs:
             Remove-Item $keyFile -Force -ErrorAction SilentlyContinue
           }
 
-          # --- 3) commit-sha 태그로 pull (러너는 직전 'Log in to ghcr' 스텝에서 인증됨) ---
-          Write-Host '=== PULL from ghcr ==='
-          docker pull $appTag;   if ($LASTEXITCODE -ne 0) { throw "pull failed: $appTag" }
-          docker pull $frontTag; if ($LASTEXITCODE -ne 0) { throw "pull failed: $frontTag" }
-          docker pull $squidTag; if ($LASTEXITCODE -ne 0) { throw "pull failed: $squidTag" }
-          docker pull $sockdTag; if ($LASTEXITCODE -ne 0) { throw "pull failed: $sockdTag" }
+          # --- 3) digest 로 pull (러너는 직전 'Log in to ghcr' 스텝에서 인증됨) ---
+          # 태그가 아니라 digest 로 당기므로 레지스트리의 태그가 지금 무엇을 가리키든 무관하다.
+          # 예전에 있던 'docker inspect --format {{index .RepoDigests 0}}' 단계는 사라졌다.
+          # 이미 digest 를 들고 있고, 0번이 우리 레포라는 보장도 없었다 - 아래 5)의
+          # 'docker tag $appImage ott-backend:clean' 이 만든 짧은 이름이 RepoDigests 에
+          # 함께 들어가고, 그게 0번을 차지한다. 2026-09-02 이 러너에서 실측한 값이다:
+          #   [0] ott-backend@sha256:25b15ac...        <- 예전 코드가 고르던 것
+          #   [1] ghcr.io/kimgyuhyun/ott-backend@sha256:25b15ac...
+          # 이미지 4개 전부 같은 상태였다. 즉 배포 직전 "고정"이 레지스트리 이름이 아니라
+          # 로컬 이름을 가리키고 있었고, :clean 태그가 언제 붙었는지에 따라 값이 뒤집혔다.
+          Write-Host '=== PULL from ghcr (by digest) ==='
+          foreach ($img in $appImage, $frontImage, $squidImage, $sockdImage) {
+            docker pull $img; if ($LASTEXITCODE -ne 0) { throw "pull failed: $img" }
+          }
 
-          # --- 4) digest 고정 (RepoDigests) ---
-          $appImage   = "$(docker inspect --format '{{index .RepoDigests 0}}' $appTag)".Trim()
-          $frontImage = "$(docker inspect --format '{{index .RepoDigests 0}}' $frontTag)".Trim()
-          $squidImage = "$(docker inspect --format '{{index .RepoDigests 0}}' $squidTag)".Trim()
-          $sockdImage = "$(docker inspect --format '{{index .RepoDigests 0}}' $sockdTag)".Trim()
-          if (-not $appImage -or -not $frontImage) { throw 'failed to resolve image digests' }
-          if (-not $squidImage -or -not $sockdImage) { throw 'failed to resolve proxy image digests' }
-          Write-Host "pinned backend : $appImage"
-          Write-Host "pinned frontend: $frontImage"
-          Write-Host "pinned proxies : $squidImage / $sockdImage"
+          # digest 로만 당긴 이미지는 로컬에 repo 태그가 없다. 아래 6)의 docker image prune 이
+          # 직전 릴리스 이미지를 지워 로컬 롤백 지점을 없앨 수 있으므로 커밋 SHA 태그를 붙여 둔다.
+          docker tag $appImage   "ghcr.io/$owner/ott-backend:$sha"
+          docker tag $frontImage "ghcr.io/$owner/ott-frontend:$sha"
+          docker tag $squidImage "ghcr.io/$owner/ott-egress-proxy:$sha"
+          docker tag $sockdImage "ghcr.io/$owner/ott-smtp-proxy:$sha"
 
-          # --- 5) 보안 게이트: pull된 이미지에 마이너 IOC 없는지 스캔 ---
+          # --- 4) 보안 게이트: pull된 이미지에 마이너 IOC 없는지 스캔 ---
           # 오탐 방지를 위해 "특정성 높은 IOC만 대소문자 구분"으로 검사한다.
           #  - 내용(content) grep: C2 IP / 채굴풀 / 드로퍼명처럼 정상 코드엔 없는 문자열만.
           #    ('javae'는 Java의 'JavaE/JavaEE'에 오탐되므로 content에서 제외)
@@ -155,7 +269,7 @@ jobs:
             Write-Host "scan clean: $img"
           }
 
-          # --- 5b) 컨테이너가 마운트할 설정 파일을 러너 작업폴더 밖으로 복사 ---
+          # --- 4b) 컨테이너가 마운트할 설정 파일을 러너 작업폴더 밖으로 복사 ---
           # 도커 데스크톱의 bind mount 는 로그인한 데스크톱 계정 권한으로 열린다. 러너
           # 작업폴더에는 평문 .env 가 있어 그 계정에 읽기를 줄 수 없으므로, 마운트되는
           # 설정 파일만 이 폴더로 내보낸다(compose 의 마운트 원본도 이 경로를 가리킨다).
@@ -197,7 +311,7 @@ jobs:
           }
           Write-Host "config copied to $cfgRoot ($((Get-ChildItem $cfgRoot -Recurse -File).Count) files)"
 
-          # --- 6) 배포: digest 고정 이미지 + egress 차단 스택 + 무중단 순차 교체 ---
+          # --- 5) 배포: digest 고정 이미지 + egress 차단 스택 + 무중단 순차 교체 ---
           # 배포 명령을 여기에 복사해두지 않고 deploy-rolling.ps1 을 호출한다.
           # 예전에는 CD 가 compose 명령을 따로 들고 있어서, 수동 배포와 CD 가 서로 다른
           # 파일 세트를 배포하는 드리프트가 생겼다(2026-07-20: 수동은 2인스턴스인데
@@ -229,7 +343,7 @@ jobs:
           docker tag $squidImage ott-egress-proxy:clean
           docker tag $sockdImage ott-smtp-proxy:clean
 
-          # --- 7) 검증: 백엔드 헬스 + 프론트엔드 egress 차단(보안 불변식) ---
+          # --- 6) 검증: 백엔드 헬스 + 프론트엔드 egress 차단(보안 불변식) ---
           # 기동 직후엔 백엔드가 아직 listen 전이라 wget이 'connection refused'(stderr)를 낸다.
           # PowerShell(Stop)에서 네이티브 stderr는 종료성 오류가 되므로 try/catch로 감싸 재시도한다.
           Write-Host '=== VERIFY ==='

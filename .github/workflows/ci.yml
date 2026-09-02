@@ -3,9 +3,18 @@ name: CI
 # ============================================================================
 # 보안 재설계 (2026-06-24): Docker Hub(para98, 공개·침해이력) → GitHub Container
 # Registry(ghcr.io, 비공개) 전환. 인증은 GITHUB_TOKEN(단기 토큰) → 장기 자격증명
-# (REGISTRY_USER/PASSWORD) 불필요. main push 시에만 이미지를 :<commit-sha>로 push하고
-# Trivy로 스캔(수정 가능한 CRITICAL이 있으면 실패 → CD로 진행 안 됨).
-# 배포(CD)는 cd.yml이 이 이미지를 digest로 고정해 받아간다.
+# (REGISTRY_USER/PASSWORD) 불필요.
+#
+# main push 시 이미지 4개(backend / frontend / 프록시 2개)를 이 순서로 다룬다:
+#   빌드 → Trivy 스캔 → push(:<commit-sha>) → 레지스트리 digest 캡처 → 아티팩트 업로드
+# 스캔이 push 앞에 있으므로 수정 가능한 CRITICAL 이 있으면 이미지가 GHCR 에 올라가지
+# 않는다. 예전에는 push 뒤에 스캔해서 불량 이미지가 레지스트리에 남았고, 스캔은 배포만
+# 막는 게이트였다.
+#
+# 캡처한 digest 는 image-digest-<이미지명> 아티팩트로 올린다. CD(cd.yml)는 태그가 아니라
+# 이 digest 로 pull 하므로, CI 가 스캔한 그 이미지가 그대로 배포된다. 태그만 넘기면 CI
+# 종료와 CD 의 pull 사이에 같은 태그가 덮어써졌을 때 CD 가 그 이미지를 배포한다.
+# workflow_run 이벤트는 잡 output 을 나르지 않아서 아티팩트가 유일한 전달 수단이다.
 # ============================================================================
 on:
   push:
@@ -114,6 +123,10 @@ jobs:
     permissions:
       contents: read
       packages: write          # ghcr push (GITHUB_TOKEN)
+    # 같은 워크플로 안(e2e)에서는 잡 output 으로 digest 를 넘긴다. CD 는 워크플로가 달라
+    # output 이 닿지 않으므로 아래에서 아티팩트로도 올린다.
+    outputs:
+      digest: ${{ steps.digest.outputs.ref }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -192,7 +205,7 @@ jobs:
       # (컨테이너 안은 build -x test). 이제 테스트를 통과한 산출물이 그대로 나간다.
       # jar 를 컨텍스트 루트에 두는 이유: backend/.dockerignore 가 build 를 제외하므로
       # build/libs 를 그대로는 COPY 할 수 없다.
-      - name: Build & Push backend image (by commit SHA)
+      - name: Build backend image
         if: github.ref == 'refs/heads/main'
         run: |
           # Spring Boot 가 만드는 -plain.jar 를 빼고 실행 가능한 bootJar 만 고른다.
@@ -202,7 +215,8 @@ jobs:
           test -n "$jar" || { echo "bootJar not found in backend/build/libs"; exit 1; }
           cp "$jar" backend/app.jar
           docker build --pull --build-arg JAR_SOURCE=ctxjar -t ${{ steps.img.outputs.ref }}:${{ github.sha }} -f backend/Dockerfile backend/
-          docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
+      # push 앞이다. 여기서 실패하면 이미지가 GHCR 에 올라가지 않는다.
+      # Trivy 는 방금 build 가 러너 로컬 데몬에 남긴 그 태그를 읽으므로 레지스트리가 필요 없다.
       - name: Scan backend image (gate on fixable CRITICAL)
         if: github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -210,8 +224,27 @@ jobs:
           image-ref: ${{ steps.img.outputs.ref }}:${{ github.sha }}
           severity: 'CRITICAL'
           ignore-unfixed: true
-          exit-code: '1'   # [2026-07-18] 게이트 활성화: 패치 가능한 CRITICAL 이 있으면 CI 실패 → push/배포 차단. ignore-unfixed 라 고칠 수 없는 취약점엔 안 막힘(무한 실패 방지).
+          exit-code: '1'   # [2026-07-18] 게이트 활성화: 패치 가능한 CRITICAL 이 있으면 CI 실패 → push 안 됨 → 배포 차단. ignore-unfixed 라 고칠 수 없는 취약점엔 안 막힘(무한 실패 방지).
           format: 'table'
+      - name: Push backend image (by commit SHA)
+        if: github.ref == 'refs/heads/main'
+        run: docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
+      - name: Capture backend image digest
+        id: digest
+        if: github.ref == 'refs/heads/main'
+        env:
+          IMAGE_REPO: ${{ steps.img.outputs.ref }}
+          IMAGE_TAG: ${{ github.sha }}
+          COMMIT_SHA: ${{ github.sha }}
+          OUT_FILE: digests/ott-backend.txt
+        run: bash .github/scripts/capture-image-digest.sh
+      - name: Upload backend image digest
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-digest-ott-backend
+          path: digests/ott-backend.txt
+          if-no-files-found: error   # 조용히 빈 아티팩트를 올리면 CD 가 배포 직전에야 막힌다
 
 # E2E. 브라우저로 사용자와 같은 경로(nginx -> 프론트 -> 백엔드 -> DB)를 지난다.
   # 단위와 슬라이스는 프로세스 안에서만 보므로 프론트가 부르는 경로와 컨트롤러 매핑이 어긋나거나
@@ -257,12 +290,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Compute image refs
+      # 태그를 다시 조립하지 않고 backend/frontend 잡이 캡처한 digest 를 그대로 받는다.
+      # 태그로 당기면 E2E 가 검증한 이미지와 CD 가 배포하는 이미지를 잇는 식별자가 없다.
+      - name: Resolve image digests from the build jobs
         id: img
+        env:
+          APP_DIGEST: ${{ needs.backend.outputs.digest }}
+          FRONT_DIGEST: ${{ needs.frontend.outputs.digest }}
         run: |
-          owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
-          echo "app=${REGISTRY}/$owner/ott-backend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
-          echo "front=${REGISTRY}/$owner/ott-frontend:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          test -n "$APP_DIGEST"   || { echo "backend job published no digest"; exit 1; }
+          test -n "$FRONT_DIGEST" || { echo "frontend job published no digest"; exit 1; }
+          echo "app=$APP_DIGEST" >> "$GITHUB_OUTPUT"
+          echo "front=$FRONT_DIGEST" >> "$GITHUB_OUTPUT"
 
       # 비밀번호를 워크플로에 적지 않는다. 이 DB 는 잡이 끝나면 버려지므로 매번 새로 만들면 된다.
       # add-mask 를 먼저 건다. 걸지 않으면 뒤따르는 스텝의 env 그룹에 평문으로 찍힌다
@@ -374,9 +413,7 @@ jobs:
       # --pull 은 붙이지 않는다: 베이스가 digest 로 고정돼 있어 받아올 다른 이미지가 없다.
       - name: Build image
         run: docker build -t ${{ steps.img.outputs.ref }}:${{ github.sha }} ${{ matrix.context }}
-      - name: Push image (by commit SHA)
-        if: github.ref == 'refs/heads/main'
-        run: docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
+      # push 앞이다. 이 잡은 push 전 검사가 하나도 없었다 - build 다음이 바로 push 였다.
       - name: Scan image (gate on fixable CRITICAL)
         if: github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -386,12 +423,36 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'
           format: 'table'
+      - name: Push image (by commit SHA)
+        if: github.ref == 'refs/heads/main'
+        run: docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
+      - name: Capture image digest
+        if: github.ref == 'refs/heads/main'
+        env:
+          IMAGE_REPO: ${{ steps.img.outputs.ref }}
+          IMAGE_TAG: ${{ github.sha }}
+          COMMIT_SHA: ${{ github.sha }}
+          OUT_FILE: digests/${{ matrix.name }}.txt
+        run: bash .github/scripts/capture-image-digest.sh
+      # 잡 output 을 쓰지 않는다. matrix 잡의 output 은 leg 끼리 서로 덮어써서 이미지 2개의
+      # digest 를 개별로 내보낼 수 없다. 아티팩트 이름에 matrix.name 을 넣으면 leg 마다
+      # 다른 아티팩트가 생기고, 소비 측(CD)이 image-digest-* 패턴으로 한 폴더에 모은다.
+      - name: Upload image digest
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-digest-${{ matrix.name }}
+          path: digests/${{ matrix.name }}.txt
+          if-no-files-found: error
 
   frontend:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write          # ghcr push (GITHUB_TOKEN)
+    # backend 잡과 같은 이유(e2e 는 output, CD 는 아티팩트).
+    outputs:
+      digest: ${{ steps.digest.outputs.ref }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -452,11 +513,10 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build & Push frontend image (by commit SHA)
+      - name: Build frontend image
         if: github.ref == 'refs/heads/main'
-        run: |
-          docker build --target production --pull -t ${{ steps.img.outputs.ref }}:${{ github.sha }} -f frontend/Dockerfile frontend/
-          docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
+        run: docker build --target production --pull -t ${{ steps.img.outputs.ref }}:${{ github.sha }} -f frontend/Dockerfile frontend/
+      # push 앞이다(backend 잡과 같은 이유).
       - name: Scan frontend image (gate on fixable CRITICAL)
         if: github.ref == 'refs/heads/main'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -464,5 +524,24 @@ jobs:
           image-ref: ${{ steps.img.outputs.ref }}:${{ github.sha }}
           severity: 'CRITICAL'
           ignore-unfixed: true
-          exit-code: '1'   # [2026-07-18] 게이트 활성화: 패치 가능한 CRITICAL 이 있으면 CI 실패 → push/배포 차단. ignore-unfixed 라 고칠 수 없는 취약점엔 안 막힘.
+          exit-code: '1'   # [2026-07-18] 게이트 활성화: 패치 가능한 CRITICAL 이 있으면 CI 실패 → push 안 됨 → 배포 차단. ignore-unfixed 라 고칠 수 없는 취약점엔 안 막힘.
           format: 'table'
+      - name: Push frontend image (by commit SHA)
+        if: github.ref == 'refs/heads/main'
+        run: docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
+      - name: Capture frontend image digest
+        id: digest
+        if: github.ref == 'refs/heads/main'
+        env:
+          IMAGE_REPO: ${{ steps.img.outputs.ref }}
+          IMAGE_TAG: ${{ github.sha }}
+          COMMIT_SHA: ${{ github.sha }}
+          OUT_FILE: digests/ott-frontend.txt
+        run: bash .github/scripts/capture-image-digest.sh
+      - name: Upload frontend image digest
+        if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-digest-ott-frontend
+          path: digests/ott-frontend.txt
+          if-no-files-found: error
