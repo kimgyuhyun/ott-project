@@ -258,6 +258,14 @@ $smokeAuth = "$(docker exec ott-nginx curl -s -o /dev/null -w '%{http_code}' --m
 if ($smokeAuth -ne '401') { throw "SMOKE FAILED: anonymous GET /api/users/me returned '$smokeAuth' (expected 401) - the security filter chain is not refusing anonymous access" }
 Write-Host '  GET /api/users/me -> 401 (anonymous refused)'
 
+# [SECURITY 2026-09-02] Observability pipeline (PLATFORM 9절). Runs LAST on purpose: it
+# asserts that the backend's logs are reaching loki, and the smoke tests above have just
+# generated the traffic that produces them. Running it next to the other two checks would
+# ask that question seconds after the instances were replaced, when the answer is still
+# arriving. loki/alloy/grafana configs are bind mounts with no reload path, so an edit to
+# any of them applies silently or not at all - this is what notices.
+& .\security\check-observability.ps1 -ComposeFiles $ComposeFiles
+
 Write-Host '=== ROLLING DEPLOY OK ==='
 
 # FIRST RUN (switching from 1 instance to 2):

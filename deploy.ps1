@@ -186,4 +186,9 @@ $smokeAuth = "$(docker exec ott-nginx curl -s -o /dev/null -w '%{http_code}' --m
 if ($smokeAuth -ne '401') { throw "SMOKE FAILED: anonymous GET /api/users/me returned '$smokeAuth' (expected 401) - the security filter chain is not refusing anonymous access" }
 Write-Host '  GET /api/users/me -> 401 (anonymous refused)'
 
+# [SECURITY 2026-09-02] Observability pipeline (PLATFORM 9절), same script as
+# deploy-rolling.ps1. Runs LAST for the same reason: it asserts the backend's logs are
+# reaching loki, and the smoke tests above have just generated them.
+& .\security\check-observability.ps1 -ComposeFiles $checkFiles
+
 Write-Host '=== DEPLOY OK ==='
