@@ -66,7 +66,16 @@ foreach ($id in $ids) {
     # them, so requiring them spelled out is about the rule staying decidable from the
     # config (PLATFORM preamble) - and it is what catches a literal `exec`, the one edit
     # that really does open the mount.
-    if ($hc.Tmpfs) {
+    #
+    # Tested through PSObject.Properties rather than as `if ($hc.Tmpfs)`, which is what
+    # this was and what it will look like it should go back to. docker OMITS the Tmpfs key
+    # entirely for a container that opens none - it does not emit null - so the plain form
+    # reads a property that is not there. That is silently $false locally and a terminating
+    # PropertyNotFoundException under the Set-StrictMode -Version Latest that cd.yml sets,
+    # which is why this passed every local run and failed every deploy from 2026-08-30
+    # (when ott-rabbitmq's tmpfs was removed, making it the first container without the
+    # key) until 2026-09-02. Local runs cannot catch this class on their own.
+    if ($hc.PSObject.Properties['Tmpfs'] -and $hc.Tmpfs) {
         foreach ($path in $hc.Tmpfs.PSObject.Properties.Name) {
             $opts = $hc.Tmpfs.$path -split ','
             if ($opts -contains 'exec') { throw "SECURITY INVARIANT FAILED: $name mounts tmpfs $path with exec - a writable AND executable path is exactly how the 2026-06 XMRig landed" }
