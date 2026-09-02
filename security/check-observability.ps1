@@ -152,7 +152,14 @@ $targets = ($tgtRaw | ConvertFrom-Json).data.activeTargets
 if (-not $targets) { throw 'SECURITY INVARIANT FAILED: prometheus reports no active scrape targets - it is running but collecting nothing' }
 $down = @($targets | Where-Object { $_.health -ne 'up' })
 if ($down.Count -gt 0) {
-    $detail = ($down | ForEach-Object { "$($_.scrapeUrl)=$($_.health)" }) -join ', '
+    # lastError 를 함께 찍는다. 예전에는 '<url>=down' 만 남아서, 배포가 왜 막혔는지 알려면
+    # 매번 러너에 붙어 컨테이너 로그를 따로 파야 했다(2026-09-03: 메트릭 하나가 음수를 반환해
+    # 스크레이프가 500 이었는데, 그 사실이 배포 로그 어디에도 없었다). Prometheus 는 마지막
+    # 스크레이프 실패 사유를 targets API 에 그대로 들고 있으므로 옮겨 적기만 하면 된다.
+    $detail = ($down | ForEach-Object {
+        $err = if ($_.lastError) { $_.lastError } else { '(no error reported)' }
+        "$($_.scrapeUrl)=$($_.health) [$err]"
+    }) -join ', '
     throw "SECURITY INVARIANT FAILED: prometheus has $($down.Count) target(s) not up ($detail). Metrics for those instances are missing."
 }
 Write-Host "  prometheus : $($targets.Count) scrape target(s), all up"

@@ -285,12 +285,27 @@ springdoc:
   swagger-ui:
     enabled: false
 
-# Actuator 설정 (health: UptimeRobot 모니터링용 / prometheus: 내부 Prometheus 스크레이프용)
+# Actuator 설정 (health: UptimeRobot 모니터링용 / prometheus: 내부 Prometheus 스크레이프용
+#                metrics: /actuator/prometheus 가 죽었을 때 원인을 찾는 진단용)
+#
+# metrics 를 연 이유 (2026-09-03)
+#   메트릭 하나가 잘못된 값을 내면 /actuator/prometheus 가 통째로 500 이 되고, 그 인스턴스의
+#   지표 전부가 사라진다. 실제로 FunctionCounter 하나가 음수(-148.0)를 반환해 892줄이 한꺼번에
+#   없어졌다. 그런데 어느 메트릭인지 알 방법이 없었다 - 예외 메시지에 값만 있고 이름이 없고,
+#   실패한 스크레이프는 Prometheus 에 아무것도 남기지 않으며, includedNames 필터는 문제
+#   컬렉터가 이름을 노출하지 않아 통하지 않는다. 결국 특정하지 못한 채 재기동으로 덮었다.
+#   /actuator/metrics 는 레지스트리를 JSON 으로 직접 읽어 음수 카운터 검증을 거치지 않으므로,
+#   /actuator/prometheus 가 500 인 상태에서도 이름 열거와 값 확인이 된다.
+#   재발 시: GET /actuator/metrics 로 이름을 훑고 GET /actuator/metrics/{name} 으로 값을 본다.
+#
+# 도달 범위는 prometheus 와 같다(8090 은 루프백+internal, nginx 가 공개하지 않음).
+# PLATFORM 1절의 "actuator 는 health 외에 외부로 공개하지 않는다" 를 어기지 않는다 -
+# 외부 공개가 아니라 내부망 노출이고, 그 경로는 prometheus 가 이미 쓰고 있다.
 management:
   endpoints:
     web:
       exposure:
-        include: health,prometheus   # prometheus 는 도커 내부망에서만 도달(8090 은 루프백+internal), nginx 는 공개하지 않음
+        include: health,prometheus,metrics
   endpoint:
     health:
       show-details: never
