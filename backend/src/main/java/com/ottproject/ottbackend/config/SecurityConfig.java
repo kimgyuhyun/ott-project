@@ -177,6 +177,15 @@ public class SecurityConfig {
                                 .permitAll() // Spring Actuator 헬스체크 (모니터링용)
                                 .requestMatchers("/actuator/prometheus")
                                 .permitAll() // Prometheus 스크레이프용 (도커 내부망 전용, nginx 미공개)
+                                // /actuator/prometheus 가 500 일 때 어느 메트릭이 깨졌는지 찾는 진단용.
+                                // 그 엔드포인트는 메트릭 하나가 잘못된 값을 내면 통째로 실패해서
+                                // 이름조차 알 수 없다(2026-09-03 실측: FunctionCounter 가 -148.0 을
+                                // 반환해 892줄이 36분간 사라졌고 끝내 특정하지 못했다).
+                                // 이쪽은 레지스트리를 JSON 으로 직접 읽어 그 검증을 거치지 않는다.
+                                // 도달 범위는 위 두 줄과 같다 - 8090 은 루프백+internal 이고 nginx 가
+                                // 공개하지 않는다. 노출 목록은 application-prod.yml 에 함께 있다.
+                                .requestMatchers("/actuator/metrics", "/actuator/metrics/**")
+                                .permitAll() // 메트릭 진단용 (도커 내부망 전용, nginx 미공개)
                                 .requestMatchers("/api/search/**")
                                 .permitAll() // 검색(자동완성/본검색) 익명 허용
                                 .requestMatchers("/api/payments/webhook", "/api/payments/*/webhook")
