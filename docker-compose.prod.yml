@@ -181,9 +181,10 @@ services:
       - .env  # REDIS_PASSWORD 주입
     # [SECURITY 2026-07-18] requirepass 인증. base 의 command 는 배열이라 오버라이드가
     # 통째로 대체하므로 기존 --save ""/--appendonly no 플래그를 함께 유지한다.
-    # ${REDIS_PASSWORD:-} 는 .env 에 값이 있으면 인증 강제, 비어있으면 --requirepass ""
-    # 로 인증 비활성(기존 동작 보존). Spring 은 application-prod.yml 의 REDIS_PASSWORD 로 접속.
-    command: ["redis-server", "--save", "", "--appendonly", "no", "--requirepass", "${REDIS_PASSWORD:-}"]
+    # [SECURITY 2026-09-04] ${REDIS_PASSWORD:?} 로 필수화. 이전 :- 폴백은 .env 가 없거나 값이
+    # 비면 --requirepass "" 로 조용히 무인증 기동했다. 이제는 기동이 실패해 즉시 드러난다.
+    # Spring 은 application-prod.yml 의 REDIS_PASSWORD 로 접속.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD required}"]
     # [SECURITY 2026-07-31] 아래 하드닝은 app/frontend 에만 걸려 있었다(PLATFORM 2절은
     # "모든 컨테이너"를 요구). cap_add 는 추측이 아니라 각 이미지의 실제 entrypoint 를
     # 읽고 필요한 것만 되돌린 것이다.
