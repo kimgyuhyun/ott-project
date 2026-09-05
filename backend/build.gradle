@@ -29,7 +29,10 @@ version = '0.0.1-SNAPSHOT'
 // Spring Boot 3.5.4 기본 관리버전을 보안 수정본으로 상향(동일 minor라 호환):
 //   tomcat-embed-core 10.1.43 -> 10.1.55  (CVE-2026-41293 / -43512 / -43515)
 //   spring-security    6.5.2  -> 6.5.9   (CVE-2026-22732)
-ext['tomcat.version'] = '10.1.55'
+// [SECURITY 2026-09-05] tomcat-embed-core 10.1.55 -> 10.1.59
+//   (CVE-2026-65182 / -65905 / -68525). Trivy 가 안내한 수정본은 10.1.58 이지만
+//   Maven Central 에 10.1.58 이 없어 다음 릴리스인 10.1.59 를 쓴다.
+ext['tomcat.version'] = '10.1.59'
 ext['spring-security.version'] = '6.5.9'
 
 java {
