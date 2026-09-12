@@ -38,7 +38,7 @@ anime:
 # TMDB API 설정
 tmdb:
   api:
-    key: ${TMDB_API_KEY:236d5aa8a13b426e168fe110d66f899b}
+    key: ${TMDB_API_KEY:}
     base-url: https://api.themoviedb.org/3
 
 # Jikan API Rate Limiting 설정
