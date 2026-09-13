@@ -17,7 +17,7 @@ import styles from "./settings.module.css";
  * 사용자 설정, 비밀번호 변경, 이메일 변경 등
  */
 export default function SettingsPage() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   type Notifications = {
     workUpdates?: boolean;
     communityActivity?: boolean;
@@ -57,11 +57,6 @@ export default function SettingsPage() {
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
-  });
-
-  const [userInfo, setUserInfo] = useState({
-    email: "kgh9806@naver.com",
-    name: "김규현",
   });
 
   // 사용자 설정 로드
@@ -231,7 +226,7 @@ export default function SettingsPage() {
             <div className={styles.accountItem}>
               <div className={styles.accountInfo}>
                 <span className={styles.accountLabel}>이메일</span>
-                <span className={styles.accountValue}>{userInfo.email}</span>
+                <span className={styles.accountValue}>{user?.email}</span>
               </div>
             </div>
 
