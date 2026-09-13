@@ -8,18 +8,10 @@ export default function Footer() {
         <div className={styles.brand}>LAPUTAL</div>
 
         <div className={styles.companyBlock}>
-          <div className={styles.blockTitle}>(주)라퓨타사업자 정보</div>
+          <div className={styles.blockTitle}>안내</div>
           <ul className={styles.infoList}>
-            <li>상호 : 주식회사 라퓨타 / 대표 : 김규현</li>
-            <li>
-              주소 : 경원대로 1366 7층 더조은컴퓨터아카데미 인천캠퍼스(부평동
-              534-48)
-            </li>
-            <li>
-              사업자등록번호 : 231-43-8250 / 통신판매번호 : 제
-              2025-인천부평-7011호
-            </li>
-            <li>이메일 : kgh9806@naver.com / 대표전화 : 1644-1477</li>
+            <li>개인 포트폴리오 프로젝트입니다.</li>
+            <li>실제 운영 중인 서비스나 등록된 사업자가 아닙니다.</li>
           </ul>
         </div>
 
