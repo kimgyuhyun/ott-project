@@ -16,11 +16,28 @@
 - 규칙 문서는 이 저장소 밖 `C:\dev-standards` 에 있다. 저장소 안에 복사하지 않는다. 이 저장소는 공개이므로 규칙 문서 내용을 커밋하거나 README에 옮겨 적지 않는다(`.gitignore` 의 `standards/` 줄은 실수로 복사됐을 때를 막기 위해 남겨둔다).
 - 이 프로젝트는 규칙 문서보다 먼저 만들어졌다. 기존 코드가 규칙과 다른 곳이 남아 있으므로, 주변 코드를 근거로 규칙을 판단하지 않는다.
 
+### 프로젝트 전제
+
+PLATFORM 0절의 항목이다. 규칙이 이 값에 따라 갈리므로 비워두지 않는다. 값이 바뀌는 변경(인스턴스 증설, 결제 추가, Runner 이전, 도메인 교체)은 이 표를 먼저 고친 뒤 시작한다.
+
+| 항목 | 값 |
+|---|---|
+| 앱 인스턴스 수 | 2 (`docker-compose.ha.yml` 의 ott-app·ott-app-2, `deploy-rolling.ps1` 이 하나씩 교체). DB 커넥션 상한 = Hikari 20 × 2 = 40 |
+| 프론트엔드 형태 | SSR 컨테이너, 같은 호스트 (Next.js standalone `node server.js`, `default` 망에만 붙고 nginx 가 3000 으로 프록시) |
+| 사이트 경계 | 공용 무료 도메인 (`laputa.kozow.com`, 프론트와 API 가 같은 오리진이지만 교차 사이트로 취급) |
+| 인증 방식 | 서버 세션 + 세션 쿠키 (Spring Session Redis, JSESSIONID `Secure; HttpOnly; SameSite=Lax`). 이메일·비밀번호 로그인과 소셜(Google·Kakao·Naver). CSRF 토큰은 기본 꺼짐, `OriginValidationFilter` 로 출처 검증 |
+| 결제 형태 | 정기(빌링키 `customer_uid`, 아임포트 V1 `api.iamport.kr`), 웹훅 수신 `/api/payments/webhook` |
+| Runner 위치 | CD 는 프로덕션 호스트와 같은 머신 (Windows, Docker Desktop, `cd.yml` self-hosted 가 `AGE_KEY` 로 `.env` 복호화). CI 빌드·스캔·push 는 GitHub 호스팅 |
+| 엣지 프록시 | 없음 (Cloudflare 는 R2·Worker·Turnstile 용도). Docker Desktop SNAT 때문에 nginx `$remote_addr` 가 브리지 게이트웨이 하나로 모여, 속도 제한은 클라이언트별이 아니라 전체 총량으로만 동작 |
+| 실사용자와 개인정보 | 없음(포트폴리오, 테스트 계정). 저장 항목: 이메일·이름·비밀번호(BCrypt)·프로필 이미지 URL·소셜 providerId(`User`), 로그인 시도 이메일·IP·User-Agent(`AuthEvent`), 카드 브랜드·끝 4자리·만료 월/연·빌링키 식별자(`PaymentMethod`) |
+| Redis 역할 | 세션 + 캐시 + 분산 락(ShedLock) + DB 에 아직 안 내려간 시청 진행률 버퍼 + 로그인 실패 카운터·메일 인증 코드. 영속화 꺼짐(`--save "" --appendonly no`), 재시작하면 전원 로그아웃되고 미반영 진행률이 사라진다 |
+
 ### 언제 무엇을 읽는가
 아래 작업을 시작하기 전에 해당 절을 먼저 읽는다. 기억에 의존해 규칙을 적용하지 않는다. 측정·재현 절차는 dev-standards 스킬이 자동으로 열어주므로 이 표에는 규칙 절만 적는다.
 
 | 시작하는 작업 | 먼저 읽을 절 |
 |---|---|
+| 새 프로젝트 시작, 인스턴스 증설, 결제 추가, Runner 이전, 도메인 교체 | PLATFORM 0 — 위 전제 표를 먼저 고친다 |
 | 엔티티, DTO, Controller, Service 새로 만들기 | ARCHITECTURE 1, 2, 7 |
 | 트랜잭션 경계 잡기, 데이터 접근 수단 고르기 | ARCHITECTURE 3, 4 |
 | 인덱스 추가·삭제 | ARCHITECTURE 8 — 측정 절차는 `index-measurement` 스킬 |
@@ -42,41 +59,15 @@
 | 부하 테스트 | PLATFORM 10 — 실행 절차는 `load-test` 스킬 |
 | 배포 후 보안 점검 | PLATFORM 1~5 — 점검 절차는 `security-audit` 스킬 |
 
-절차 스킬은 `C:\dev-standards\skills\` 에 있고 `~\.claude\skills` 정션으로 연결돼 있다. 정션이 없으면 스킬이 조용히 사라지므로 새 기기에서는 아래 "새 기기 세팅"을 먼저 본다.
+절차 스킬은 `C:\dev-standards\skills\` 에 있고 `~\.claude\skills` 정션으로 연결돼 있다. 정션이 없으면 스킬이 조용히 사라지므로 새 기기에서는 클론 직후 `docs/setup.md` 를 먼저 한다.
 
 ## 폴더
 - `backend/` Spring Boot (config/controller/dto/entity/repository/security/service 등 표준 레이어드)
 - `frontend/` Next.js App Router, `src/lib/api/*` 도메인별 API 클라이언트
 - `edge/` Cloudflare Worker (HLS 스트림 서명)
 - `nginx/`, `monitoring/`, `pgadmin/`, `security/` 각 설정
-- `docs/` deployment.md · messaging.md · operations.md · security.md · streaming.md · restore-runbook.md · incident-2026-06.md · adr/ (아래 참고, 내용 옮겨적지 말 것)
+- `docs/` setup.md(새 기기 세팅) · deployment.md · messaging.md · operations.md · security.md · streaming.md · restore-runbook.md · incident-2026-06.md · adr/ (아래 참고, 내용 옮겨적지 말 것)
 - `.deploy/`, `_incident_2026-06-20/` 과거 침해 사고 기록 — 참고용, 손대지 말 것
-
-## 새 기기 세팅
-`git pull` 로 따라오지 않는 것이 일곱 있다. 일곱 다 빠져도 경고가 없고 검사만 조용히 사라지므로, 클론 직후 한 번에 해둔다.
-
-```powershell
-git config core.hooksPath .githooks            # 없으면 git 훅 2개가 통째로 안 돎
-git config blame.ignoreRevsFile .git-blame-ignore-revs
-winget install gitleaks                        # 없으면 pre-commit 이 커밋을 전부 막는다
-winget install rhysd.actionlint                # 없으면 iac-lint 를 로컬에서 못 돌린다 (CI 가 고정한 1.7.12 와 같은 버전)
-winget install koalaman.shellcheck             # actionlint 가 run: 블록을 검사할 때 쓴다 - 없으면 그 검사만 조용히 빠지고 exit 0 이 나온다
-cd frontend; npm ci                            # 없으면 prettier·tsc 훅이 조용히 통과
-New-Item -ItemType Junction -Path $HOME\.claude\skills -Target C:\dev-standards\skills   # 없으면 절차 스킬이 조용히 사라짐
-```
-
-actionlint 와 shellcheck 는 gitleaks 와 달리 winget 이 `Links` 가 아니라
-`%LOCALAPPDATA%\Microsoft\WinGet\Packages\<패키지ID>\` 에 두기 때문에 PATH 에 안 잡힌다.
-그 두 폴더를 PATH 에 넣고 쓴다. `iac-lint` 잡이 도는 명령은 `actionlint` 와
-`shellcheck -x .github/scripts/*.sh .githooks/pre-commit` 둘이다.
-
-`.claude/settings.local.json` 은 `.gitignore` 대상이라 직접 만든다. JDK 경로가 기기마다 달라서 분리해 둔 파일이고, 이게 없으면 `backend-test-mirror.js` 가 JAVA_HOME 을 못 찾아 조용히 통과한다.
-
-```json
-{ "env": { "JAVA_HOME": "C:\\Users\\USER\\.jdks\\liberica-21.0.7" } }
-```
-
-확인: `git config core.hooksPath` 가 `.githooks` 를 출력하고 `gitleaks version` 과 `actionlint -version` 이 돌면 된다.
 
 ## 실행/배포
 - 개발: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`
@@ -85,16 +76,7 @@ actionlint 와 shellcheck 는 gitleaks 와 달리 winget 이 `Links` 가 아니�
 - 실제 배포는 main push 시 CD(cd.yml)가 self-hosted 러너에서 `deploy-rolling.ps1`을 자동 실행 — 수동 배포는 로컬 확인/롤백용
 - **절대 하면 안 됨**: 맨손 `docker compose up` (netlock 오버레이 없이 실행하면 프론트 아웃바운드가 열림 — 2026-06 XMRig 침해 원인)
 - `.env`는 커밋되지 않음 — 배포 전 `.env.enc`를 SOPS+age로 복호화해야 함
-
-## compose 파일 용도
-- `docker-compose.yml` 베이스(공유 정의, 단독 실행 금지)
-- `.prod.yml` 프로덕션 오버라이드 / `.dev.yml` 개발용(구 override.yml, 자동병합 방지 위해 개명)
-- `.netlock.yml` 프론트 egress 차단 + 클린 이미지 고정 (프로덕션 필수)
-- `.ha.yml` 백엔드 2인스턴스 오버레이 (prod+netlock 뒤에 붙여씀)
-- `.monitoring.yml` Prometheus/Grafana/Loki (배포 스크립트에 항상 포함 — 빠지면 `--remove-orphans`가 지움)
-- `.multi.yml` 다중 인스턴스 실험용 독립 스택(`-p ott-multi`로 분리 실행)
-- `.e2e.yml` Playwright E2E용 독립 스택(`-p ott-e2e`, nginx 127.0.0.1:8080). egress 잠금을 자체 포함하므로 netlock 없이 단독 실행이 맞다. 절차는 `frontend/e2e/README.md`
-- `.pgadmin.yml`, `.certbot.yml` opt-in 유틸리티
+- compose 파일별 용도와 조합은 `docs/deployment.md` 의 "compose 파일 구성" 표
 
 ## 함정
 - `ott-app-2`(HA 2번째 인스턴스)가 떠 있으면 `deploy.ps1`은 실행을 거부하고 중단함(단일 인스턴스로 되돌리는 걸 막는 가드) — 통상은 `deploy-rolling.ps1` 사용. 의도적으로 단일 인스턴스로 롤백할 때만 `docker rm -f ott-app-2` 후 `deploy.ps1` 실행
@@ -102,7 +84,6 @@ actionlint 와 shellcheck 는 gitleaks 와 달리 winget 이 `Links` 가 아니�
 - 롤링 배포 중 컬럼 DROP/RENAME 마이그레이션은 구버전 인스턴스를 깨뜨림 — expand/contract 패턴 사용, 테이블 추가·nullable 컬럼·DEFAULT 있는 NOT NULL은 안전
 - postgres/redis는 `data` 네트워크에 격리되어 프론트에서 도달 불가해야 함 — 배포 스크립트가 자동 검증
 - 카프카는 의도적으로 무인증(내부망 전용 결정, 문서화됨)
-- `docs/` 문서는 최근 최신화됨 — 배포 절차 상세는 `docs/deployment.md`, 운영 체크리스트는 `docs/operations.md`, 보안 설계는 `docs/security.md`, 메시징(Kafka/RabbitMQ)은 `docs/messaging.md`, HLS 서명 재생은 `docs/streaming.md` 참고
 - DB 를 백업에서 되살리는 절차는 `docs/restore-runbook.md` — 평상시 점검(`restore-drill.ps1 -Mode Check`)과 실제 복구가 함께 있다. 복원은 globals(롤)를 데이터베이스 덤프보다 **먼저** 적용해야 한다
 - 구조를 **왜** 그렇게 골랐는지는 `docs/adr/` — 결정 하나당 파일 하나. 기존 결정을 뒤집을 때는 파일을 고치지 말고 새 ADR 을 쓰고 이전 것을 `대체됨` 으로 바꾼다
 

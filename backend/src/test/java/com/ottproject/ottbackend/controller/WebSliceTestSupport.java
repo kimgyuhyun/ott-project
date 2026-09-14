@@ -4,9 +4,11 @@ import org.apache.ibatis.mapping.Environment;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.defaults.DefaultSqlSessionFactory;
 import org.apache.ibatis.transaction.jdbc.JdbcTransactionFactory;
+import org.springframework.boot.test.autoconfigure.web.servlet.MockMvcBuilderCustomizer;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.datasource.SimpleDriverDataSource;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 /**
  * 웹 슬라이스(@WebMvcTest) 테스트 공용 설정
@@ -28,5 +30,18 @@ public class WebSliceTestSupport {
         // 쿼리를 실행하지 않으므로 DataSource 는 연결 정보 없는 껍데기로 충분하다.
         cfg.setEnvironment(new Environment("test", new JdbcTransactionFactory(), new SimpleDriverDataSource()));
         return new DefaultSqlSessionFactory(cfg);
+    }
+
+    /**
+     * 모든 MockMvc 요청에 허용된 Origin 을 기본으로 붙인다.
+     *
+     * SecurityConfig 를 가져오는 슬라이스는 OriginValidationFilter 도 함께 돈다. 이 필터는 출처 헤더가
+     * 없는 POST/PUT/PATCH/DELETE 를 403 으로 막으므로, 헤더 없이 보내면 "일반 사용자는 403" 테스트가
+     * 권한 규칙이 아니라 출처 필터 때문에 통과한다(실측: hasRole("ADMIN") 을 없애도 8개가 초록으로 남았다).
+     * 값은 APP_CORS_ALLOWED_ORIGINS 가 없을 때 SecurityConfig 가 쓰는 기본 허용 목록의 http://localhost 다.
+     */
+    @Bean
+    MockMvcBuilderCustomizer allowedOriginByDefault() {
+        return builder -> builder.defaultRequest(MockMvcRequestBuilders.get("/").header("Origin", "http://localhost"));
     }
 }

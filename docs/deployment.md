@@ -16,7 +16,9 @@
 - **내부 통신**: 백엔드(8090), 프론트(3000), DB(5432), Redis(6379), Kafka, RabbitMQ는 컨테이너 내부 통신만 사용
 
 ### 실행 명령 (중요)
-- **운영 배포(권장)**: `.\deploy.ps1` — 아래 4개 파일을 고정으로 묶어 egress 차단과 모니터링까지 적용
+- **운영 배포(통상)**: `.\deploy-rolling.ps1` — 백엔드 2인스턴스를 순차 교체한다. CD(`cd.yml`)도 이 스크립트를 실행한다. 아래 "무중단 배포" 참고
+- **단일 인스턴스 배포**: `.\deploy.ps1` — 아래 4개 파일을 고정으로 묶어 egress 차단과 모니터링까지 적용.
+  `ott-app-2` 가 떠 있으면 실행을 거부하므로, 의도적으로 단일 인스턴스로 되돌릴 때만 `docker rm -f ott-app-2` 후 실행
   - `docker compose -f docker-compose.yml -f docker-compose.prod.yml -f docker-compose.netlock.yml -f docker-compose.monitoring.yml up -d`
   - monitoring 파일을 빼고 올리면 `--remove-orphans` 가 모니터링 스택을 걷어낸다. 반드시 함께 묶을 것.
 - **개발**: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up`
@@ -36,11 +38,12 @@
 |---|---|---|
 | `docker-compose.yml` | 기본 서비스 정의 | O |
 | `docker-compose.prod.yml` | 운영 오버레이 | O |
-| `docker-compose.netlock.yml` | egress 차단·망분리 | O |
+| `docker-compose.netlock.yml` | egress 차단·망분리 + 클린 이미지 고정 | O |
 | `docker-compose.monitoring.yml` | Prometheus/Grafana/Loki | O |
-| `docker-compose.dev.yml` | 개발용 오버레이 | X |
-| `docker-compose.ha.yml` | 백엔드 2인스턴스 오버레이 (무중단 배포용) | 필요 시 |
-| `docker-compose.multi.yml` | **실험 전용** 독립 스택. 다중 인스턴스에서만 드러나는 문제 관찰용 | X |
+| `docker-compose.dev.yml` | 개발용 오버레이 (구 override.yml, 자동병합 방지 위해 개명) | X |
+| `docker-compose.ha.yml` | 백엔드 2인스턴스 오버레이 (무중단 배포용). prod+netlock 뒤에 붙여 쓴다 | 필요 시 |
+| `docker-compose.multi.yml` | **실험 전용** 독립 스택(`-p ott-multi` 로 분리 실행). 다중 인스턴스에서만 드러나는 문제 관찰용 | X |
+| `docker-compose.e2e.yml` | Playwright E2E용 독립 스택(`-p ott-e2e`, nginx 127.0.0.1:8080). egress 잠금을 자체 포함하므로 netlock 없이 단독 실행이 맞다. 절차는 `frontend/e2e/README.md` | X |
 | `docker-compose.certbot.yml` | 인증서 발급 시에만 임시 기동 | X |
 | `docker-compose.pgadmin.yml` | pgAdmin GUI (opt-in). netlock 유지한 채 DB 접근 | X |
 

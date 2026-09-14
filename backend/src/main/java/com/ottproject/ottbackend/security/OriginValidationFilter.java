@@ -26,10 +26,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * 오작동 방지 원칙:
  * - 안전 메서드(GET/HEAD/OPTIONS/TRACE)는 검사하지 않는다(상태 변경이 아님).
- * - Origin/Referer 가 둘 다 없으면 통과시킨다. CSRF 는 "피해자 브라우저가 쿠키를 자동
- *   첨부"해야 성립하는데, 브라우저 문맥이 아니면(SSR 서버간 호출·결제 웹훅 등) 둘 다 없다.
- *   즉 헤더 부재 = 브라우저발 아님 = CSRF 불가 → 막을 이유가 없다(정상 서버 호출을 안 깬다).
- * - 출처가 "있는데 우리 도메인이 아닐 때"만 403. 이게 실제 공격 시그니처다.
+ * - Origin/Referer 가 둘 다 없어도 403. 출처를 확인할 수 없는 상태 변경 요청은 통과시킬 근거가 없다.
+ *   브라우저는 상태 변경 요청에 Origin 을 붙이므로 정상 사용자는 막히지 않는다. 프론트 SSR 의
+ *   백엔드 호출은 GET 뿐이고, k6 부하 테스트는 Origin 을 명시로 보낸다(loadtest/main.js).
+ * - 출처가 있는데 우리 도메인이 아니어도 403. 이게 실제 공격 시그니처다.
  * - 결제 웹훅 경로는 명시적으로도 건너뛴다(오검지가 결제 확정을 깨면 치명적).
  */
 public class OriginValidationFilter extends OncePerRequestFilter {
@@ -68,8 +68,8 @@ public class OriginValidationFilter extends OncePerRequestFilter {
             source = originOf(request.getHeader("Referer")); // Origin 없으면 Referer 로 폴백
         }
 
-        // 출처가 있는데 우리 도메인이 아니면 차단. 둘 다 없으면(브라우저발 아님) 통과.
-        if (source != null && !allowedOrigins.contains(source)) {
+        // 출처가 없거나 우리 도메인이 아니면 차단.
+        if (source == null || !allowedOrigins.contains(source)) {
             log.warn(
                     "CSRF(origin) 차단: method={} path={} origin={}",
                     request.getMethod(),

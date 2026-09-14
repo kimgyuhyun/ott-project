@@ -18,7 +18,7 @@ import org.springframework.mock.web.MockHttpServletResponse;
  * - 안전 메서드(GET 등)는 검사하지 않는다(상태 변경 아님).
  * - 출처가 우리 도메인이면 통과, 다른 도메인이면 403(실제 공격 시그니처).
  * - Origin 이 없으면 Referer 로 폴백해 판정한다.
- * - Origin/Referer 가 둘 다 없으면 통과(브라우저발 아님 = CSRF 불가, 서버간 호출을 안 깬다).
+ * - Origin/Referer 가 둘 다 없으면 403(출처를 확인할 수 없으면 거부한다).
  * - 결제 웹훅 경로는 검사에서 제외(오검지가 결제 확정을 깨면 치명적).
  * - 킬스위치(enabled=false)면 아무 것도 막지 않는다.
  */
@@ -91,9 +91,21 @@ class OriginValidationFilterTest {
     }
 
     @Test
-    @DisplayName("Origin/Referer 둘 다 없으면 통과 - 서버간 호출(SSR/웹훅)은 CSRF 대상 아님")
-    void noHeadersPasses() throws Exception {
+    @DisplayName("Origin/Referer 둘 다 없는 POST 는 403 - 출처를 확인할 수 없으면 거부")
+    void noHeadersBlocked() throws Exception {
         MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/reviews");
+
+        MockHttpServletResponse res = run(filter, req);
+
+        assertThat(res.getStatus()).isEqualTo(403);
+        assertThat(proceeded(req)).isFalse();
+    }
+
+    @Test
+    @DisplayName("결제 웹훅은 출처 헤더가 없어도 통과 - PG 서버는 Origin/Referer 를 보내지 않는다")
+    void paymentWebhookWithoutHeadersPasses() throws Exception {
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/payments/webhook");
+        req.setServletPath("/api/payments/webhook");
 
         MockHttpServletResponse res = run(filter, req);
 
