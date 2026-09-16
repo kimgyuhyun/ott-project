@@ -426,6 +426,10 @@ public class EmailAuthController {
         emailAuthService.changePassword(userEmail, requestDto.getCurrentPassword(), requestDto.getNewPassword());
         // emailAuthService에 changePassword 메서드에 userEmail, currentPassword, newPassword를 태워보냄
         // changePassword 메서드는 userEmail을 키로 사용해 해당 사용자를 찾고 비밀번호를 변경해서 저장함함
+
+        // 비밀번호 변경은 대개 탈취를 의심한 조치다. 다른 기기 세션이 살아 있으면 변경이 아무것도 막지 못하므로
+        // 현재 세션만 남기고 끊는다(PLATFORM 4절). 변경이 실패하면 위에서 예외로 빠져 여기까지 오지 않는다.
+        userSessionRegistry.revokeOthersKeepingCurrent(securityUtil.getCurrentUserIdOrNull(session), session.getId());
         return ResponseEntity.ok("비밀번호가 성공적으로 변경되었습니다.");
         // 프론트에 응답을 보내줌
     }
