@@ -6,6 +6,9 @@ import com.ottproject.ottbackend.enums.IdempotencyKeyStatus;
 import com.ottproject.ottbackend.enums.PaymentStatus;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +36,29 @@ public class PaymentReconciliationService {
     private final PaymentRepository paymentRepository; // 결제 조회/저장
     private final PaymentCommandService paymentCommandService; // 건별 대사(멱등 확정) 위임
     private final IdempotencyKeyRepository idempotencyKeyRepository; // 환불 선점 키 조회
+    private final MeterRegistry meterRegistry; // 판정 불가 카운터 등록용
+
+    // 대사가 결론을 내지 못한 건수. 경보 PaymentReconcileInconclusive 가 이 값만 본다(ARCHITECTURE 5절:
+    // 결론이 안 난 건은 로그가 아니라 경보로 올린다).
+    //
+    // 게이지("마지막 실행 값")가 아니라 카운터인 이유: ShedLock 때문에 주기마다 두 인스턴스 중 하나만 돈다.
+    // 게이지면 락을 못 잡은 쪽이 옛 값을 계속 들고 있어, 해결된 뒤에도 max 가 경보를 붙잡는다.
+    // 카운터는 경보 식이 increase() 로 창 안의 증가분만 보므로 어느 인스턴스가 돌았는지와 무관하다.
+    static final String INCONCLUSIVE_METRIC = "payment.reconcile.inconclusive";
+
+    @PostConstruct
+    void registerCounters() {
+        // 기동 시점에 0 으로 만들어 둔다. 첫 증가 때 시계열이 처음 생기면 increase() 가 그 증가분을 못 본다.
+        inconclusive("pending");
+        inconclusive("refund_claim");
+    }
+
+    private Counter inconclusive(String batch) {
+        return Counter.builder(INCONCLUSIVE_METRIC)
+                .tag("batch", batch)
+                .description("결제 대사가 결론을 내지 못한 건수")
+                .register(meterRegistry);
+    }
 
     /**
      * 결제 대사 배치
@@ -65,6 +91,9 @@ public class PaymentReconciliationService {
                 }
             } catch (Exception e) {
                 log.warn("결제 대사 실패 - paymentId: {}", p.getId(), e);
+                // 예외만 센다. reconcilePending 의 false 에는 결제창 이탈(결제사 기록 없음) 같은 정상 미결이 섞여 있고,
+                // 게이트웨이가 조회 실패도 found=false 로 삼켜(ImportPaymentGateway.findPaymentBySessionId) 둘을 가를 수 없다.
+                inconclusive("pending").increment();
             }
         }
         log.info("결제 대사 배치 완료 - 정리 {}/{}건", resolved, targets.size());
@@ -101,9 +130,14 @@ public class PaymentReconciliationService {
             try {
                 if (paymentCommandService.reconcileRefundClaim(key.getKeyValue())) {
                     resolved++;
+                } else {
+                    // 10분 넘게 CLAIMED 인 선점은 그 자체가 비정상이라, 정리하지 못한 건은 전부 센다.
+                    // 판정 불가인 채로 남으면 그 결제는 API 로 다시 환불할 수 없다.
+                    inconclusive("refund_claim").increment();
                 }
             } catch (Exception e) {
                 log.warn("환불 선점 대사 실패 - key: {}", key.getKeyValue(), e);
+                inconclusive("refund_claim").increment();
             }
         }
         log.info("환불 선점 대사 배치 완료 - 정리 {}/{}건", resolved, targets.size());
