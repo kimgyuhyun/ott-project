@@ -8,6 +8,7 @@ import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
 import com.ottproject.ottbackend.entity.Anime;
+import com.ottproject.ottbackend.exception.AnimeVersionConflictException;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.curation.AnimeCurationQueryRepository;
 import jakarta.persistence.EntityManager;
@@ -85,11 +86,18 @@ public class AnimeCurationService {
      *
      * 잠금: AnimeRepository.findById 에는 @Lock(PESSIMISTIC_WRITE) 가 걸려 있어, 같은 작품을 동시에
      * 수정하려는 다른 트랜잭션은 이 트랜잭션이 끝날 때까지 기다린다.
+     * 이 락은 요청 사이(폼 조회 → 저장)를 지키지 못하므로, 폼이 본 version 을 받아 현재 행과 비교한다.
      *
-     * @return 수정 결과
+     * @return 수정 결과(올라간 version 포함)
      */
     public AdminAnimeDetailDto update(Long animeId, AnimeCurationUpdateRequest request) {
         Anime anime = loadOrThrow(animeId);
+
+        // 영속 엔티티의 version 에 요청값을 덮어쓰면 Hibernate 가 무시하므로 직접 비교한다.
+        // 자동 재시도는 하지 않는다(ARCHITECTURE 9절 재시도 미적용): 어느 수정을 남길지는 사람이 최신 값을 보고 정해야 한다.
+        if (!anime.getVersion().equals(request.getVersion())) {
+            throw new AnimeVersionConflictException(animeId, request.getVersion(), anime.getVersion());
+        }
 
         // 콘텐츠 필드: AnimeEnhancementService 가 덮어쓰는 필드와 정확히 같은 집합이다.
         // 값이 실제로 달라질 때만 반영하고, 그 경우에만 curated 를 켠다.
@@ -123,6 +131,9 @@ public class AnimeCurationService {
         animeCacheService.evictDetail(animeId);
         animeCacheService.evictPopular();
 
+        // version 은 UPDATE 가 나갈 때 올라간다. 커밋 시점까지 미루면 응답에 옛 version 이 실려
+        // 같은 폼의 다음 저장이 자기 자신과 충돌한다.
+        entityManager.flush();
         return AdminAnimeDetailDto.from(anime);
     }
 

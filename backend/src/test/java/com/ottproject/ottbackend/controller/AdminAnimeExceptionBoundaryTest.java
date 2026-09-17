@@ -2,13 +2,20 @@ package com.ottproject.ottbackend.controller;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ottproject.ottbackend.entity.Anime;
+import com.ottproject.ottbackend.exception.AnimeVersionConflictException;
 import com.ottproject.ottbackend.exception.GlobalExceptionHandler;
 import com.ottproject.ottbackend.service.AnimeCurationService;
 import com.ottproject.ottbackend.service.AnimeEnhancementService;
@@ -20,6 +27,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.MediaType;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -80,5 +89,46 @@ class AdminAnimeExceptionBoundaryTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(content().string(not(containsString("api.jikan.moe"))))
                 .andExpect(content().string(not(containsString("배치 수집 실패"))));
+    }
+
+    @Test
+    @DisplayName("단건 큐레이션 수정에 version 이 없으면 400 이고 서비스까지 가지 않는다")
+    void updateWithoutVersionIsBadRequest() throws Exception {
+        mvc.perform(patch("/api/admin/anime/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"새 제목\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(animeCurationService, never()).update(anyLong(), any());
+    }
+
+    /**
+     * 서비스 비교와 커밋 사이 경합은 Hibernate 가 커밋 시점에 ObjectOptimisticLockingFailureException 으로 알린다.
+     * 처리기에 매핑이 없으면 handleAny 로 떨어져 500 이 되고, 관리자는 새로고침 안내 대신 서버 오류를 본다.
+     */
+    @Test
+    @DisplayName("커밋 시점 버전 충돌은 409 로 응답하고 내부 메시지를 싣지 않는다")
+    void commitTimeVersionConflictIsConflict() throws Exception {
+        given(animeCurationService.update(anyLong(), any()))
+                .willThrow(new ObjectOptimisticLockingFailureException(Anime.class, 1L));
+
+        mvc.perform(patch("/api/admin/anime/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"새 제목\",\"version\":0}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"))
+                .andExpect(content().string(not(containsString("com.ottproject"))));
+    }
+
+    @Test
+    @DisplayName("서비스가 판정한 버전 불일치는 409 로 응답한다")
+    void serviceVersionConflictIsConflict() throws Exception {
+        given(animeCurationService.update(anyLong(), any())).willThrow(new AnimeVersionConflictException(1L, 0L, 1L));
+
+        mvc.perform(patch("/api/admin/anime/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"새 제목\",\"version\":0}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
     }
 }

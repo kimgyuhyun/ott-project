@@ -116,8 +116,9 @@ class AdminAnimeAuthorizationTest {
     private static final String PREVIEW_BODY = """
             {"year":2026}
             """;
+    // version 이 빠지면 400 이 나서, 4xx 만 보는 익명 케이스가 인가와 무관하게 통과해버린다
     private static final String UPDATE_BODY = """
-            {"isPopular":true}
+            {"isPopular":true,"version":0}
             """;
 
     /**

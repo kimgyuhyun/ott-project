@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -98,10 +99,12 @@ public class AdminAnimeController {
             description = "제목/줄거리/이미지/배지/노출 여부를 수정합니다. 전달하지 않은 필드는 변경하지 않습니다. "
                     + "콘텐츠(제목/줄거리/이미지)가 실제로 바뀌면 curated 가 켜져 TMDB 자동 보강에서 제외됩니다.")
     @ApiResponse(responseCode = "200", description = "수정 성공")
+    @ApiResponse(responseCode = "400", description = "version 누락")
     @ApiResponse(responseCode = "404", description = "애니메이션 없음")
+    @ApiResponse(responseCode = "409", description = "조회 이후 다른 관리자가 먼저 수정함")
     @PatchMapping("/{animeId}")
     public ResponseEntity<AdminAnimeDetailDto> updateCuration(
-            @PathVariable Long animeId, @RequestBody AnimeCurationUpdateRequest request) {
+            @PathVariable Long animeId, @Valid @RequestBody AnimeCurationUpdateRequest request) {
 
         return ResponseEntity.ok(animeCurationService.update(animeId, request));
     }
