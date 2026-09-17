@@ -6,7 +6,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
 import com.ottproject.ottbackend.dto.PaymentMethodUpdateRequestDto;
 import com.ottproject.ottbackend.entity.PaymentMethod;
 import com.ottproject.ottbackend.entity.User;
@@ -18,7 +17,6 @@ import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -57,56 +55,6 @@ class PaymentMethodServiceTest {
         pm.describeCard("VISA", "4242", 12, 2030);
         pm.applyListingOptions(isDefault, priority, "내 카드");
         return pm;
-    }
-
-    private PaymentMethodRegisterRequestDto registerReq() {
-        PaymentMethodRegisterRequestDto dto = new PaymentMethodRegisterRequestDto();
-        dto.type = PaymentMethodType.KAKAO_PAY;
-        dto.providerMethodId = "billing_key_new";
-        dto.brand = "KAKAO";
-        dto.last4 = "1234";
-        dto.expiryMonth = 3;
-        dto.expiryYear = 2029;
-        dto.isDefault = true;
-        dto.priority = 1;
-        dto.label = "카카오페이";
-        return dto;
-    }
-
-    // ===== 등록 =====
-
-    @Test
-    @DisplayName("등록 - 요청의 표기 정보와 노출 정책이 저장되는 엔티티에 전부 실린다")
-    void registerCarriesEveryRequestedField() {
-        service.register(USER_ID, registerReq());
-
-        ArgumentCaptor<PaymentMethod> saved = ArgumentCaptor.forClass(PaymentMethod.class);
-        verify(paymentMethodRepository).save(saved.capture());
-        PaymentMethod pm = saved.getValue();
-
-        assertThat(pm.getUser().getId()).isEqualTo(USER_ID);
-        assertThat(pm.getType()).isEqualTo(PaymentMethodType.KAKAO_PAY);
-        assertThat(pm.getProviderMethodId()).isEqualTo("billing_key_new");
-        assertThat(pm.getBrand()).isEqualTo("KAKAO");
-        assertThat(pm.getLast4()).isEqualTo("1234");
-        assertThat(pm.getExpiryMonth()).isEqualTo(3);
-        assertThat(pm.getExpiryYear()).isEqualTo(2029);
-        assertThat(pm.isDefault()).isTrue();
-        assertThat(pm.getPriority()).isEqualTo(1);
-        assertThat(pm.getLabel()).isEqualTo("카카오페이");
-    }
-
-    @Test
-    @DisplayName("등록 - provider 는 요청값이 아니라 IMPORT 로 고정된다")
-    void registerForcesImportProvider() {
-        PaymentMethodRegisterRequestDto dto = registerReq();
-        dto.provider = PaymentProvider.STRIPE; // 요청이 다른 값을 보내와도
-
-        service.register(USER_ID, dto);
-
-        ArgumentCaptor<PaymentMethod> saved = ArgumentCaptor.forClass(PaymentMethod.class);
-        verify(paymentMethodRepository).save(saved.capture());
-        assertThat(saved.getValue().getProvider()).isEqualTo(PaymentProvider.IMPORT);
     }
 
     // ===== 기본 수단 지정 =====

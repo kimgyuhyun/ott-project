@@ -1,10 +1,8 @@
 package com.ottproject.ottbackend.service;
 
-import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
 import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentMethodUpdateRequestDto;
 import com.ottproject.ottbackend.entity.PaymentMethod;
-import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import java.util.List;
 import java.util.Optional;
@@ -18,10 +16,10 @@ import org.springframework.web.server.ResponseStatusException;
  * PaymentMethodService
  *
  * 큰 흐름
- * - 저장 결제수단의 등록/목록/기본 지정/부분 수정/소프트 삭제를 처리한다.
+ * - 저장 결제수단의 목록/기본 지정/부분 수정/소프트 삭제를 처리한다.
+ * - 등록은 여기 없다. 결제사에 빌링키 발급을 확인한 뒤 PaymentCommandService.registerBillingKey 가 만든다.
  *
  * 메서드 개요
- * - register: 결제수단 등록
  * - list: 삭제 제외 목록(기본→우선순위 정렬)
  * - setDefault: 기본 수단 단일화
  * - updatePartial: 일부 필드 수정
@@ -33,18 +31,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class PaymentMethodService { // 결제수단 도메인 서비스
 
     private final PaymentMethodRepository paymentMethodRepository;
-
-    /**
-     * 결제수단 등록
-     */
-    public void register(Long userId, PaymentMethodRegisterRequestDto dto) { // 결제수단 등록
-        User user = User.reference(userId);
-        PaymentMethod pm = PaymentMethod.createPaymentMethod(
-                user, com.ottproject.ottbackend.enums.PaymentProvider.IMPORT, dto.type, dto.providerMethodId);
-        pm.describeCard(dto.brand, dto.last4, dto.expiryMonth, dto.expiryYear);
-        pm.applyListingOptions(dto.isDefault, dto.priority, dto.label);
-        paymentMethodRepository.save(pm);
-    }
 
     /**
      * 결제수단 목록 조회(기본 수단 우선)

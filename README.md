@@ -341,7 +341,7 @@ ott-project/
 | `PUT`  | `/api/memberships/change-plan` | 플랜 변경(예약) |
 | `POST` | `/api/payments/checkout` · `/api/payments/{id}/complete` | 결제 생성 · 확정 |
 | `POST` | `/api/payments/webhook` · `/api/payments/{id}/refund` | 결제 웹훅 수신 · 환불 |
-| `GET`/`POST`/`PUT`/`DELETE` | `/api/payment-methods` (+ `/{id}/default`) | 저장 결제수단 CRUD · 기본 지정 |
+| `GET`/`PUT`/`PATCH`/`DELETE` | `/api/payment-methods` (+ `/{id}/default`) | 저장 결제수단 목록 · 기본 지정 · 수정 · 삭제 (등록은 결제 확정 시 서버가 빌링키 발급을 확인해 만든다) |
 | `GET`  | `/api/notifications` · `/api/mypage` | 알림 · 마이페이지 |
 
 ---
