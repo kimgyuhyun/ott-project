@@ -769,7 +769,6 @@ export default function MembershipGuidePage() {
           onChangePaymentMethod={setPaymentMethod}
           selectedPaymentService={selectedPaymentService}
           onSelectPaymentService={setSelectedPaymentService}
-          onOpenCardRegistration={() => {}}
           onPay={handleProrationPaymentSuccess}
         />
       )}
