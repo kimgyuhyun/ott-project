@@ -93,6 +93,8 @@ export interface AdminAnimeDetail extends AdminAnimeItem {
   synopsis: string | null;
   fullSynopsis: string | null;
   backdropUrl: string | null;
+  // 낙관적 락 버전 — 수정 요청에 그대로 실어 보낸다
+  version: number;
 }
 
 // 검색 조건 (AnimeCurationSearchCondition) — 모든 필드가 선택이며 자유 조합된다
@@ -128,6 +130,8 @@ export interface AnimeCurationUpdateRequest {
   isDub?: boolean;
   isSimulcast?: boolean;
   isActive?: boolean;
+  // 폼을 채운 상세 조회의 version(필수). 그 사이 다른 사람이 저장했으면 백엔드가 409 를 낸다.
+  version: number;
 }
 
 // 벌크 미리보기 응답 (AnimeBulkCurationPreviewResponse)
@@ -207,6 +211,7 @@ export async function getAnimeForCuration(
  * PATCH /api/admin/anime/{animeId}
  * - 콘텐츠(제목/줄거리/이미지)를 실제로 바꾸면 백엔드가 curated 를 켠다
  *   → 이후 TMDB 자동 보강이 그 작품을 통째로 건너뛴다. 그래서 보강이 채우던 값도 여기서 관리해야 한다.
+ * - version 이 없으면 400, 폼을 연 뒤 다른 사람이 먼저 저장했으면 409. 응답의 version 이 다음 저장에 쓸 값이다.
  */
 export async function updateAnimeCuration(
   animeId: number,

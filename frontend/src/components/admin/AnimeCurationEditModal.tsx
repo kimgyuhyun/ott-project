@@ -5,6 +5,7 @@ import type {
   AdminAnimeDetail,
   AnimeCurationUpdateRequest,
 } from "@/lib/api/admin";
+import { getErrorStatus } from "@/lib/errorMessage";
 import styles from "@/app/admin/admin.module.css";
 
 interface Props {
@@ -83,6 +84,8 @@ export default function AnimeCurationEditModal({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 저장이 409 로 거절됐는가. 참이면 최신 값 불러오기 버튼을 보여준다.
+  const [conflict, setConflict] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -111,9 +114,9 @@ export default function AnimeCurationEditModal({
    * 바뀐 값만 담은 요청을 만든다.
    * 문자열이 비어 있으면 보내지 않는다 — 빈 문자열은 null 이 아니라서, 백엔드가 "빈 값으로 바꿔달라"로 읽는다.
    */
-  const buildRequest = (): AnimeCurationUpdateRequest => {
+  const buildRequest = (): Omit<AnimeCurationUpdateRequest, "version"> => {
     if (!form || !original) return {};
-    const request: AnimeCurationUpdateRequest = {};
+    const request: Omit<AnimeCurationUpdateRequest, "version"> = {};
 
     CONTENT_KEYS.forEach((key) => {
       const next = form[key].trim();
@@ -143,20 +146,51 @@ export default function AnimeCurationEditModal({
     CONTENT_KEYS.some((key) => buildRequest()[key] !== undefined);
 
   const handleSave = async () => {
-    const request = buildRequest();
-    if (Object.keys(request).length === 0) {
+    const changes = buildRequest();
+    if (!original || Object.keys(changes).length === 0) {
       setError("변경된 내용이 없습니다.");
       return;
     }
     setSaving(true);
     setError(null);
+    setConflict(false);
     try {
-      await updateAnimeCuration(animeId, request);
+      // 폼을 채운 조회의 version 을 싣는다. 그 사이 다른 사람이 저장했으면 409 로 거절된다.
+      const saved = await updateAnimeCuration(animeId, {
+        ...changes,
+        version: original.version,
+      });
+      // 저장 응답의 새 version 을 원본으로 삼는다 — 옛 version 으로 다시 저장하면 자기 자신과 충돌한다.
+      setOriginal(saved);
+      setForm(toForm(saved));
       onSaved();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "저장에 실패했습니다.");
+      if (getErrorStatus(e) === 409) {
+        setConflict(true);
+        setError(
+          "다른 사람이 먼저 수정했습니다. 최신 값을 불러온 뒤 다시 시도해 주세요.",
+        );
+      } else {
+        setError(e instanceof Error ? e.message : "저장에 실패했습니다.");
+      }
     } finally {
       setSaving(false);
+    }
+  };
+
+  /** 409 뒤 최신 값으로 폼을 다시 채운다. 입력 중이던 값은 버려지므로 운영자가 다시 고쳐야 한다. */
+  const reloadLatest = async () => {
+    setLoading(true);
+    setError(null);
+    setConflict(false);
+    try {
+      const detail = await getAnimeForCuration(animeId);
+      setOriginal(detail);
+      setForm(toForm(detail));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "불러오지 못했습니다.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -312,6 +346,15 @@ export default function AnimeCurationEditModal({
               >
                 취소
               </button>
+              {conflict && (
+                <button
+                  className={styles.pagerBtn}
+                  onClick={reloadLatest}
+                  disabled={saving}
+                >
+                  최신 값 불러오기
+                </button>
+              )}
               <button
                 className={styles.button}
                 onClick={handleSave}
