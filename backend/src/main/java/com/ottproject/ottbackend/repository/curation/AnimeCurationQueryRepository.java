@@ -76,7 +76,8 @@ public class AnimeCurationQueryRepository {
      *   호출자(AnimeCurationService)가 실행 전 flush / 실행 후 clear 를 책임진다.
      * - @LastModifiedDate 는 영속성 컨텍스트의 라이프사이클 이벤트로 동작하므로 여기서는 발동하지 않는다.
      *   그대로 두면 updated_at 이 낡은 채 남아 "언제 바뀌었나"를 추적할 수 없다. 그래서 직접 세팅한다.
-     * - Anime 에는 @Version 이 없어 낙관적 락 증가 문제는 없다.
+     * - 이 UPDATE 는 Anime.version 을 올리지 않는다. 벌크 직전에 단건 수정 폼을 연 관리자는 벌크가 바꾼
+     *   배지를 모른 채 저장해도 409 를 받지 않는다(단건 수정은 바뀐 필드만 보내므로 같은 배지를 고쳤을 때만 덮어쓴다).
      *
      * 조건이 비었는지는 여기서 막지 않는다(빈 조건 = 전체). 그 판단은 서비스의 안전장치가 한다.
      */

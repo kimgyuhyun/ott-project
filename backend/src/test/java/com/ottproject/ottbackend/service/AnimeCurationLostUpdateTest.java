@@ -1,12 +1,14 @@
 package com.ottproject.ottbackend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.EntityTestFixtures;
 import com.ottproject.ottbackend.enums.AnimeStatus;
+import com.ottproject.ottbackend.exception.AnimeVersionConflictException;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.JpaSliceTestSupport;
 import com.ottproject.ottbackend.repository.curation.AnimeCurationQueryRepository;
@@ -19,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -30,13 +33,13 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
- * 관리자 단건 큐레이션 수정의 갱신 분실 재현 (실제 PostgreSQL, 실제 커밋)
+ * 관리자 단건 큐레이션 수정의 갱신 분실 방어 검증 (실제 PostgreSQL, 실제 커밋)
  *
  * 결함
  * - update 는 findById 의 PESSIMISTIC_WRITE 로 행을 잠그지만, 그 락은 트랜잭션 하나 동안만 유지된다.
  *   관리자가 수정 폼을 연 조회 요청과 저장 요청은 서로 다른 트랜잭션이라 그 사이를 지켜주지 못한다.
  * - 흐름: A 가 폼을 연다 → B 가 같은 작품을 읽고 제목을 고쳐 저장 → A 가 옛 화면 기준으로 제목을 저장
- *   → B 의 제목이 조용히 사라진다.
+ *   → B 의 제목이 조용히 사라진다. 방어: 폼이 본 version 을 요청에 싣고, 현재 행과 다르면 거절한다.
  *
  * 왜 같은 필드(제목)를 두 번 고치는가
  * - 프론트(AnimeCurationEditModal.buildRequest)는 폼 전체가 아니라 원본과 달라진 필드만 보낸다.
@@ -118,39 +121,70 @@ class AnimeCurationLostUpdateTest {
         return anime;
     }
 
-    private AnimeCurationUpdateRequest titleChange(String title) {
+    private AnimeCurationUpdateRequest titleChange(String title, Long seenVersion) {
         AnimeCurationUpdateRequest request = new AnimeCurationUpdateRequest();
         request.setTitle(title);
+        request.setVersion(seenVersion);
         return request;
     }
 
+    private Anime current() {
+        return animeRepository.findByIdWithoutLock(animeId).orElseThrow();
+    }
+
     /**
-     * 현재 코드의 동작을 기록한다: 갱신 분실이 일어난다(이 테스트는 초록).
-     *
-     * 방어가 들어가면 뒤집혀야 하는 단언
-     * - adminASave 가 성공한다 → 거절(409)돼야 한다
-     * - 최종 제목이 "A 제목" 이다 → "B 제목" 이 남아야 한다
+     * 방어 전(커밋 194b472)에는 A 의 저장이 성공하고 최종 제목이 "A 제목" 이었다. 그 두 단언이 뒤집힌 것이 이 테스트다.
+     * 충돌은 서비스의 version 비교(AnimeVersionConflictException)가 먼저 잡고, 그 비교와 커밋 사이에 끼어든
+     * 경합은 Hibernate 의 UPDATE ... WHERE version=? (ObjectOptimisticLockingFailureException)이 잡는다. 둘 다 409 다.
      */
     @Test
-    @DisplayName("두 관리자가 같은 시점 상태로 제목을 고치면 나중 저장이 먼저 저장을 덮어쓴다(현재 결함)")
-    void laterSaveOverwritesEarlierSave() {
+    @DisplayName("옛 화면 기준 저장은 거절되고 먼저 저장한 관리자의 제목이 남는다")
+    void laterSaveFromStaleFormIsRejected() {
         // 1) 두 관리자가 같은 시점의 상태로 수정 폼을 연다(조회 요청은 여기서 끝난다)
         AdminAnimeDetailDto seenByA = service.get(animeId);
         AdminAnimeDetailDto seenByB = service.get(animeId);
-        assertThat(seenByA.getTitle()).isEqualTo(seenByB.getTitle()).isEqualTo("원래 제목");
+        assertThat(seenByA.getVersion()).isEqualTo(seenByB.getVersion());
 
         // 2) B 가 먼저 저장해 커밋한다
-        service.update(animeId, titleChange("B 제목"));
-        assertThat(animeRepository.findByIdWithoutLock(animeId).orElseThrow().getTitle())
-                .isEqualTo("B 제목");
+        service.update(animeId, titleChange("B 제목", seenByB.getVersion()));
+        assertThat(current().getTitle()).isEqualTo("B 제목");
 
-        // 3) A 가 옛 화면("원래 제목") 기준으로 저장한다 — B 의 수정을 본 적이 없다
-        AdminAnimeDetailDto adminASave = service.update(animeId, titleChange("A 제목"));
+        // 3) A 가 옛 화면 기준으로 저장한다 — B 의 수정을 본 적이 없다
+        Throwable thrown = catchThrowable(() -> service.update(animeId, titleChange("A 제목", seenByA.getVersion())));
 
-        // 결함: 거절되지 않고, B 의 제목이 사라진다
-        assertThat(adminASave.getTitle()).isEqualTo("A 제목");
-        assertThat(animeRepository.findByIdWithoutLock(animeId).orElseThrow().getTitle())
-                .as("B 의 수정이 사라졌다")
-                .isEqualTo("A 제목");
+        assertThat(thrown)
+                .as("A 의 저장이 거절돼야 한다")
+                .isInstanceOfAny(AnimeVersionConflictException.class, ObjectOptimisticLockingFailureException.class);
+        assertThat(current().getTitle()).as("B 의 수정이 남아야 한다").isEqualTo("B 제목");
+    }
+
+    @Test
+    @DisplayName("같은 version 으로 두 번 저장하면 두 번째는 거절된다")
+    void secondSaveWithSameVersionIsRejected() {
+        Long seen = service.get(animeId).getVersion();
+
+        service.update(animeId, titleChange("첫 저장", seen));
+        Throwable thrown = catchThrowable(() -> service.update(animeId, titleChange("두 번째 저장", seen)));
+
+        assertThat(thrown).isInstanceOf(AnimeVersionConflictException.class);
+        assertThat(current().getTitle()).isEqualTo("첫 저장");
+    }
+
+    /**
+     * 응답의 version 은 커밋 후 DB 값과 같아야 한다. 옛 값이 실리면 같은 폼에서 이어서 저장할 때 자기 자신과 충돌한다.
+     */
+    @Test
+    @DisplayName("저장 응답의 version 은 1 올라가 있고, 그 값으로 이어서 저장할 수 있다")
+    void responseCarriesIncrementedVersion() {
+        Long seen = service.get(animeId).getVersion();
+
+        AdminAnimeDetailDto saved = service.update(animeId, titleChange("첫 저장", seen));
+
+        assertThat(saved.getVersion()).isEqualTo(seen + 1);
+        assertThat(current().getVersion()).isEqualTo(seen + 1);
+
+        AdminAnimeDetailDto savedAgain = service.update(animeId, titleChange("이어서 저장", saved.getVersion()));
+        assertThat(savedAgain.getVersion()).isEqualTo(seen + 2);
+        assertThat(current().getTitle()).isEqualTo("이어서 저장");
     }
 }

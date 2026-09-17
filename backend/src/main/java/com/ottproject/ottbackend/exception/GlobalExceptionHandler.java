@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -26,6 +27,7 @@ import org.springframework.web.server.ResponseStatusException;
  * - handleRse: ResponseStatusException → 상태/메시지 반영
  * - handleValidation: 검증 실패 → 첫 필드 에러 메시지 반영(400)
  * - handleDuplicateWebhookEvent: 웹훅 멱등키 경합 → 200(재전송 루프 차단)
+ * - handleVersionConflict: 낙관적 락 버전 불일치 → 409
  * - handleUnreadableRequest: 읽을 수 없는 본문·타입 불일치 → 400
  * - handleAny: 스프링 요청 오류(ErrorResponse 4xx) → 그 상태 코드, 그 외 → 500/Internal error 고정 응답
  *
@@ -100,6 +102,23 @@ public class GlobalExceptionHandler {
                 .body(ApiError.builder()
                         .code("LAST_PROFILE")
                         .message("마지막 프로필은 삭제할 수 없습니다.")
+                        .build());
+    }
+
+    /**
+     * 수정 폼을 연 뒤 다른 사람이 같은 행을 먼저 저장했다 → 409.
+     * - AnimeVersionConflictException: 서비스가 요청 version 과 현재 version 을 비교해 즉시 던진다.
+     * - ObjectOptimisticLockingFailureException: 비교 뒤 UPDATE ... WHERE version=? 이 0행일 때. 단건 수정은 findById 의
+     *   비관적 락이 비교~커밋 구간을 막아 지금은 나지 않지만, 그 락이 빠지거나 다른 @Version 쓰기 경로에서 나면 500 이 아니라 409 로 둔다.
+     * 자동 재시도로 덮지 않는다. 무엇을 남길지는 사람이 최신 값을 다시 보고 정해야 한다.
+     */
+    @ExceptionHandler({AnimeVersionConflictException.class, ObjectOptimisticLockingFailureException.class})
+    public ResponseEntity<ApiError> handleVersionConflict(RuntimeException ex, HttpServletRequest request) {
+        log.warn("버전 충돌 at {}: {}", pathOf(request), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.builder()
+                        .code("VERSION_CONFLICT")
+                        .message("다른 사람이 먼저 수정했습니다. 새로고침 후 다시 시도해 주세요.")
                         .build());
     }
 

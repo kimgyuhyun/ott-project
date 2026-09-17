@@ -1,5 +1,6 @@
 package com.ottproject.ottbackend.dto.admin;
 
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -43,4 +44,8 @@ public class AnimeCurationUpdateRequest {
     private Boolean isSimulcast;
 
     private Boolean isActive;
+
+    // 수정 폼을 채운 조회 응답의 version. 현재 행과 다르면 다른 관리자가 먼저 저장한 것이라 409 로 거절한다.
+    @NotNull(message = "version 은 필수입니다.")
+    private Long version;
 }
