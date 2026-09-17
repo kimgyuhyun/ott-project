@@ -195,15 +195,13 @@ class AnimeCurationLostUpdateTest {
     }
 
     /**
-     * 벌크 큐레이션(QueryDSL 벌크 UPDATE)은 version 을 올리지 않는다. 그래서 벌크가 바꾼 배지를
-     * 그 전에 폼을 연 관리자가 그대로 덮어쓴다 — 단건 수정끼리는 막은 갱신 분실이 이 경로로는 통과한다.
+     * 벌크 큐레이션은 QueryDSL 벌크 UPDATE 라 하이버네이트가 @Version 을 올려주지 않는다. 리포지토리가
+     * 직접 올리지 않으면, 벌크 직전에 폼을 연 관리자가 옛 version 으로 저장해 벌크 결과를 덮어쓴다.
      *
-     * 현재 동작을 기록한다(이 테스트는 초록). 방어가 들어가면 뒤집혀야 하는 단언
-     * - 옛 폼 저장이 성공한다 → 거절(409)돼야 한다
-     * - 최종 isPopular 가 false 다 → 벌크가 켠 true 가 남아야 한다
+     * 방어 전(커밋 1bcc4af)에는 저장이 통과하고 최종 isPopular 가 false 였다. 그 두 단언이 뒤집힌 것이 이 테스트다.
      */
     @Test
-    @DisplayName("벌크가 켠 배지를 옛 폼 저장이 덮어쓴다(현재 결함)")
+    @DisplayName("벌크 뒤 옛 폼 저장은 거절되고 벌크가 켠 배지가 남는다")
     void bulkCurationDoesNotBumpVersion() {
         // 1) 관리자가 수정 폼을 연다(isPopular=false 인 상태)
         AdminAnimeDetailDto seen = service.get(animeId);
@@ -217,11 +215,11 @@ class AnimeCurationLostUpdateTest {
         AnimeCurationUpdateRequest request = new AnimeCurationUpdateRequest();
         request.setIsPopular(false);
         request.setVersion(seen.getVersion());
-        service.update(animeId, request);
+        Throwable thrown = catchThrowable(() -> service.update(animeId, request));
 
-        // 결함: 벌크가 version 을 올리지 않아 옛 version 이 그대로 통과하고, 벌크 결과가 사라진다
-        assertThat(current().getIsPopular()).as("벌크가 켠 배지가 사라졌다").isFalse();
-        assertThat(current().getVersion()).isEqualTo(seen.getVersion() + 1); // 벌크는 세지 않았다
+        assertThat(thrown).as("옛 폼 저장이 거절돼야 한다").isInstanceOf(AnimeVersionConflictException.class);
+        assertThat(current().getIsPopular()).as("벌크가 켠 배지가 남아야 한다").isTrue();
+        assertThat(current().getVersion()).as("벌크도 version 을 올린다").isEqualTo(seen.getVersion() + 1);
     }
 
     /** year=2026 조건으로 isPopular 를 켜는 벌크 요청(대상 1건) */
