@@ -367,6 +367,22 @@ public class Payment { // 엔티티 시작
     }
 
     /**
+     * 결제되지 않은 채 대사 기간을 넘긴 결제를 닫는다(세션 만료).
+     * - 결제사에 기록이 없거나 결제창에 머문(ready) 채로 끝난 결제다. 결제사가 취소했다는 뜻이 아니라서
+     *   applyGatewayCancellation 과 나눈다. 결과 상태는 CANCELED(세션 만료 포함)로 같다.
+     */
+    public void expireUnpaid(LocalDateTime canceledAt) {
+        if (this.status != PaymentStatus.PENDING) {
+            throw new IllegalStateException("대기 중인 결제만 만료 처리할 수 있습니다.");
+        }
+        if (canceledAt == null) {
+            throw new IllegalArgumentException("취소 시각은 필수입니다.");
+        }
+        this.status = PaymentStatus.CANCELED;
+        this.canceledAt = canceledAt;
+    }
+
+    /**
      * 게이트웨이 환불 반영 — 상태와 환불 시각과 환불 금액은 반드시 함께 바뀐다.
      */
     public void applyGatewayRefund(Long refundedAmount, LocalDateTime refundedAt) {

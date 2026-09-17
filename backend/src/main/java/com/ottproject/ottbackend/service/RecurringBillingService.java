@@ -463,14 +463,16 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
      *   그 옆에 고아 구독이 하나 더 생긴다(차액 결제를 대사에서 제외하는 것과 정확히 같은 이유).
      * - paid: 결제 확정 + 원래 구독 연장/복구. 정상 재청구 성공과 같은 결과로 수렴한다.
      * - failed/cancelled: 결제만 닫는다. 던닝 진행 여부는 재시도/스윕 경로가 판단한다.
+     * - ready 는 정상 미결(UNSETTLED), 금액 불일치와 판독 불가(UNKNOWN)는 판정 불가(INCONCLUSIVE)다.
      *
      * 구독 행은 비관적 락으로 읽는다. 경합하면 예외가 나면서 이 건 전체가 롤백되고(결제 확정도 함께),
      * 10분 뒤 다음 대사 주기에 다시 시도한다 — 반쯤 반영된 상태로 커밋되는 것보다 낫다.
      */
     @Transactional
-    public boolean reconcileRebillPayment(Payment payment, PaymentGateway.ReconcileResult r, LocalDateTime now) {
+    public ReconcileOutcome reconcileRebillPayment(
+            Payment payment, PaymentGateway.ReconcileResult r, LocalDateTime now) {
         if (payment.getStatus() != PaymentStatus.PENDING) {
-            return false; // 이미 정리됨
+            return ReconcileOutcome.UNSETTLED; // 이미 정리됨
         }
         Long subscriptionId = RebillMerchantUid.subscriptionIdOf(payment.getProviderSessionId());
 
@@ -483,7 +485,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
                             payment.getId(),
                             expected,
                             r.amount);
-                    return false; // 금액 불일치는 자동 확정하지 않음(수동 확인 대상)
+                    return ReconcileOutcome.INCONCLUSIVE; // 금액 불일치는 자동 확정하지 않는다(사람이 봐야 하므로 판정 불가로 올린다)
                 }
                 payment.markAsSucceeded(r.providerPaymentId, now);
                 if (r.receiptUrl != null) {
@@ -492,21 +494,24 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
                 paymentRepository.save(payment);
                 if (subscriptionId == null) {
                     log.error("재청구 대사 - merchant_uid 에서 구독 ID 추출 실패, 구독 연장 누락: {}", payment.getProviderSessionId());
-                    return true; // 결제는 확정됐으므로 대사 대상에서는 빠진다
+                    return ReconcileOutcome.SETTLED; // 결제는 확정됐으므로 대사 대상에서는 빠진다
                 }
                 subscriptionRepository.findByIdForUpdate(subscriptionId).ifPresent(sub -> extendAfterSuccess(sub, now));
                 log.info("대사로 재청구 확정 - paymentId: {}, subscriptionId: {}", payment.getId(), subscriptionId);
-                return true;
+                return ReconcileOutcome.SETTLED;
             case FAILED:
                 payment.markAsFailed(now);
                 paymentRepository.save(payment);
-                return true;
+                return ReconcileOutcome.SETTLED;
             case CANCELLED:
                 payment.applyGatewayCancellation(now);
                 paymentRepository.save(payment);
-                return true;
+                return ReconcileOutcome.SETTLED;
             default:
-                return false; // READY/UNKNOWN → 판정 불가, 미결 유지
+                // READY 는 결제창에 머물러 있는 정상 미결이다. UNKNOWN 은 결제사 답을 읽지 못한 것이라 판정 불가다.
+                return r.status == PaymentGateway.ReconcileStatus.READY
+                        ? ReconcileOutcome.UNSETTLED
+                        : ReconcileOutcome.INCONCLUSIVE;
         }
     }
 

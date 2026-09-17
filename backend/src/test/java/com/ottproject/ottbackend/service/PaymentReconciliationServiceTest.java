@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.ottproject.ottbackend.entity.IdempotencyKey;
 import com.ottproject.ottbackend.entity.Payment;
@@ -89,23 +91,45 @@ class PaymentReconciliationServiceTest {
     }
 
     @Test
-    @DisplayName("PENDING: 예외로 끝난 건만 센다 — false 에는 결제창 이탈 같은 정상 미결이 섞여 있다")
-    void countsOnlyFailedPendingReconciles() {
+    @DisplayName("PENDING: 판정 불가와 예외로 끝난 건을 세고, 결제창 이탈 같은 정상 미결은 세지 않는다")
+    void countsInconclusiveAndFailedPendingReconciles() {
         Payment settled = mock(Payment.class);
         Payment stillPending = mock(Payment.class);
+        Payment inconclusive = mock(Payment.class);
         Payment broken = mock(Payment.class);
         given(settled.getId()).willReturn(1L);
         given(stillPending.getId()).willReturn(2L);
+        given(inconclusive.getId()).willReturn(4L);
         given(broken.getId()).willReturn(3L);
         given(paymentRepository.findByStatusAndCreatedAtBetween(eq(PaymentStatus.PENDING), any(), any()))
-                .willReturn(List.of(settled, stillPending, broken));
-        given(paymentCommandService.reconcilePending(1L)).willReturn(true);
-        given(paymentCommandService.reconcilePending(2L)).willReturn(false);
+                .willReturn(List.of(settled, stillPending, inconclusive, broken));
+        given(paymentCommandService.reconcilePending(1L)).willReturn(ReconcileOutcome.SETTLED);
+        given(paymentCommandService.reconcilePending(2L)).willReturn(ReconcileOutcome.UNSETTLED); // 결제창 이탈
+        given(paymentCommandService.reconcilePending(4L)).willReturn(ReconcileOutcome.INCONCLUSIVE); // 조회 실패·금액 불일치 등
         given(paymentCommandService.reconcilePending(3L)).willThrow(new RuntimeException("db down"));
 
         service.reconcilePendingPayments();
 
-        assertThat(inconclusive("pending")).isEqualTo(1.0);
+        assertThat(inconclusive("pending")).isEqualTo(2.0);
         assertThat(inconclusive("refund_claim")).isZero();
+    }
+
+    @Test
+    @DisplayName("PENDING: 대사 기간(24시간)을 넘긴 결제는 기간 초과 경로로 보내고, 판정 불가를 센다")
+    void sendsExpiredPendingToExpiryPathAndCountsInconclusive() {
+        Payment closed = mock(Payment.class);
+        Payment unknown = mock(Payment.class);
+        given(closed.getId()).willReturn(10L);
+        given(unknown.getId()).willReturn(11L);
+        // 기간 안 대상은 없어도 기간 초과 대상은 처리돼야 한다
+        given(paymentRepository.findByStatusAndCreatedAtBefore(eq(PaymentStatus.PENDING), any()))
+                .willReturn(List.of(closed, unknown));
+        given(paymentCommandService.reconcileExpiredPending(10L)).willReturn(ReconcileOutcome.SETTLED); // 이탈 → 닫힘
+        given(paymentCommandService.reconcileExpiredPending(11L)).willReturn(ReconcileOutcome.INCONCLUSIVE); // 조회 실패 등
+
+        service.reconcilePendingPayments();
+
+        assertThat(inconclusive("pending")).isEqualTo(1.0);
+        verify(paymentCommandService, never()).reconcilePending(any());
     }
 }

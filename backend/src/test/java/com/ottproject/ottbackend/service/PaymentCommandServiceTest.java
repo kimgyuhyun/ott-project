@@ -648,4 +648,163 @@ class PaymentCommandServiceTest {
         // 무관하게 쌓였고(사용자 1번에 41행), 빌링키가 묶이지 않은 값이라 자동 청구가 전부 거절당했다.
         verify(paymentMethodRepository, never()).save(any());
     }
+
+    // ===== 대사(reconcilePending): 결론을 못 낸 건과 정상 미결을 가른다 =====
+    // 둘 다 false 이던 때는 경보가 판정 불가만 골라 셀 수 없었다(ARCHITECTURE 5절).
+
+    private PaymentGateway.ReconcileResult paidFor(long amount) {
+        PaymentGateway.ReconcileResult r = reconcile(true, PaymentGateway.ReconcileStatus.PAID);
+        r.providerPaymentId = "imp_1";
+        r.amount = amount;
+        return r;
+    }
+
+    private Payment pendingPaymentWithId() {
+        Payment payment = pendingPayment();
+        ReflectionTestUtils.setField(payment, "id", 1L); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
+        return payment;
+    }
+
+    @Test
+    @DisplayName("대사 - 결제사 조회 자체가 실패하면 판정 불가다(결제사에 기록 없음과 구분한다)")
+    void reconcileLookupFailureIsInconclusive() {
+        Payment payment = pendingPaymentWithId();
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        PaymentGateway.ReconcileResult r = reconcile(false, null);
+        r.lookupFailed = true;
+        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(r);
+
+        assertThat(service.reconcilePending(1L)).isEqualTo(ReconcileOutcome.INCONCLUSIVE);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("대사 - 결제사에 기록이 없으면(결제창 이탈) 정상 미결이다")
+    void reconcileNoRecordIsUnsettled() {
+        Payment payment = pendingPaymentWithId();
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentGateway.findPaymentBySessionId("sess_1")).willReturn(reconcile(false, null));
+
+        assertThat(service.reconcilePending(1L)).isEqualTo(ReconcileOutcome.UNSETTLED);
+    }
+
+    @Test
+    @DisplayName("대사 - 승인 금액이 서버 금액과 다르면 확정하지 않고 판정 불가로 올린다")
+    void reconcileAmountMismatchIsInconclusive() {
+        Payment payment = pendingPaymentWithId();
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
+
+        assertThat(service.applyReconcileResult(1L, paidFor(100L), LocalDateTime.now()))
+                .isEqualTo(ReconcileOutcome.INCONCLUSIVE);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("대사 - 결제사 상태를 판독할 수 없으면 판정 불가, ready 는 정상 미결이다")
+    void reconcileUnknownIsInconclusiveButReadyIsUnsettled() {
+        Payment payment = pendingPaymentWithId();
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
+
+        assertThat(service.applyReconcileResult(
+                        1L, reconcile(true, PaymentGateway.ReconcileStatus.UNKNOWN), LocalDateTime.now()))
+                .isEqualTo(ReconcileOutcome.INCONCLUSIVE);
+        assertThat(service.applyReconcileResult(
+                        1L, reconcile(true, PaymentGateway.ReconcileStatus.READY), LocalDateTime.now()))
+                .isEqualTo(ReconcileOutcome.UNSETTLED);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
+    }
+
+    // ===== 대사 기간(24시간)을 넘긴 PENDING: 닫거나 판정 불가로 센다 =====
+    // 그대로 두면 결제창 이탈이 PENDING 으로 영원히 남아, 기간 초과 건에 경보를 걸 수 없었다(운영 53건).
+
+    private Payment pendingPaymentWithSession(String sessionId) {
+        Payment payment = Payment.createPendingPayment(
+                userWithId(1L), basicPlan(), PaymentProvider.IMPORT, sessionId, new Money(9900L, "KRW"));
+        ReflectionTestUtils.setField(payment, "id", 1L); // PK 는 영속화가 채우는 값이라 테스트에서만 주입
+        return payment;
+    }
+
+    private void givenExpiredPending(Payment payment, PaymentGateway.ReconcileResult lookup) {
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+        given(paymentGateway.findPaymentBySessionId(payment.getProviderSessionId()))
+                .willReturn(lookup);
+    }
+
+    @Test
+    @DisplayName("기간 초과 - 결제사에 기록이 없으면(결제창 이탈) CANCELED 로 닫는다")
+    void expiredWithoutGatewayRecordIsClosed() {
+        Payment payment = pendingPaymentWithSession("sess_1");
+        givenExpiredPending(payment, reconcile(false, null));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
+
+        assertThat(service.reconcileExpiredPending(1L)).isEqualTo(ReconcileOutcome.SETTLED);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELED);
+    }
+
+    @Test
+    @DisplayName("기간 초과 - 결제사가 ready(결제창에 머묾)라고 답해도 닫는다. 결제창은 카드만 써서 입금 대기가 없다")
+    void expiredReadyIsClosed() {
+        Payment payment = pendingPaymentWithSession("sess_1");
+        givenExpiredPending(payment, reconcile(true, PaymentGateway.ReconcileStatus.READY));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
+
+        assertThat(service.reconcileExpiredPending(1L)).isEqualTo(ReconcileOutcome.SETTLED);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELED);
+    }
+
+    @Test
+    @DisplayName("기간 초과 - 결제사 조회가 실패하면 닫지 않고 판정 불가다(모르는 것을 이탈로 단정하지 않는다)")
+    void expiredLookupFailureIsInconclusive() {
+        Payment payment = pendingPaymentWithSession("sess_1");
+        PaymentGateway.ReconcileResult failed = reconcile(false, null);
+        failed.lookupFailed = true;
+        givenExpiredPending(payment, failed);
+
+        assertThat(service.reconcileExpiredPending(1L)).isEqualTo(ReconcileOutcome.INCONCLUSIVE);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("기간 초과 - 결제사에 기록이 있는 일반 결제는 기존 대사 규칙으로 정리한다(금액 불일치는 판정 불가)")
+    void expiredWithGatewayRecordUsesNormalReconcile() {
+        Payment payment = pendingPaymentWithSession("sess_1");
+        givenExpiredPending(payment, paidFor(100L));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
+
+        assertThat(service.reconcileExpiredPending(1L)).isEqualTo(ReconcileOutcome.INCONCLUSIVE);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("기간 초과 - 결제사에 기록이 있는 차액 결제는 대사가 확정하지 않고 판정 불가로 넘긴다")
+    void expiredProrationWithGatewayRecordIsInconclusive() {
+        Payment payment = pendingPaymentWithSession("proration_1");
+        givenExpiredPending(payment, paidFor(9900L));
+
+        assertThat(service.reconcileExpiredPending(1L)).isEqualTo(ReconcileOutcome.INCONCLUSIVE);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("기간 초과 - 결제사에 기록이 없는 차액 결제는 닫는다")
+    void expiredProrationWithoutGatewayRecordIsClosed() {
+        Payment payment = pendingPaymentWithSession("proration_1");
+        givenExpiredPending(payment, reconcile(false, null));
+        given(paymentRepository.findByIdForUpdate(1L)).willReturn(Optional.of(payment));
+
+        assertThat(service.reconcileExpiredPending(1L)).isEqualTo(ReconcileOutcome.SETTLED);
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.CANCELED);
+    }
+
+    @Test
+    @DisplayName("기간 초과 - 그사이 다른 경로가 정리했으면 결제사에 묻지 않고 물러난다")
+    void expiredAlreadySettledIsLeftAlone() {
+        Payment payment = pendingPaymentWithSession("sess_1");
+        payment.markAsSucceeded("imp_1", LocalDateTime.now());
+        given(paymentRepository.findById(1L)).willReturn(Optional.of(payment));
+
+        assertThat(service.reconcileExpiredPending(1L)).isEqualTo(ReconcileOutcome.UNSETTLED);
+        verify(paymentGateway, never()).findPaymentBySessionId(any());
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
+    }
 }

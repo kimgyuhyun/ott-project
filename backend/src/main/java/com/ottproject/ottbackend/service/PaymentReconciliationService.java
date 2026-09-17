@@ -11,6 +11,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -62,9 +63,10 @@ public class PaymentReconciliationService {
 
     /**
      * 결제 대사 배치
-     * - 10분마다 실행. 생성 후 5분~24시간 사이의 PENDING 결제만 대상으로 한다.
-     *   (5분 미만: 아직 정상 확정 중일 수 있어 제외 / 24시간 초과: 사실상 미완료 시도라 제외)
-     * - 건별로 별도 트랜잭션에서 정리(PaymentCommandService.reconcilePending 프록시 호출).
+     * - 10분마다 실행. 생성 후 5분~24시간 사이의 PENDING 결제를 결제사 상태로 정리한다(5분 미만은 아직 정상 확정 중일 수 있다).
+     * - 24시간을 넘긴 PENDING 은 빼지 않고 기간 초과 경로(reconcileExpiredPending)로 보낸다. 빼면 결론이 안 난 건이
+     *   조용히 사라진다(ARCHITECTURE 5절). 그 경로는 결제창 이탈을 닫고, 결론을 못 내면 판정 불가로 매 주기 다시 센다.
+     * - 건별로 별도 트랜잭션에서 정리(PaymentCommandService 프록시 호출).
      */
     @Scheduled(cron = "0 */10 * * * *") // 10분마다 실행
     // 다중 인스턴스 중복 대사 방지(외부 결제 API 조회 + 상태 변경을 유발한다).
@@ -78,25 +80,39 @@ public class PaymentReconciliationService {
         LocalDateTime to = now.minusMinutes(5); // 상한: 5분 전
 
         List<Payment> targets = paymentRepository.findByStatusAndCreatedAtBetween(PaymentStatus.PENDING, from, to);
-        if (targets.isEmpty()) {
+        List<Payment> expired = paymentRepository.findByStatusAndCreatedAtBefore(PaymentStatus.PENDING, from);
+        if (targets.isEmpty() && expired.isEmpty()) {
             return; // 대상 없음
         }
-        log.info("결제 대사 배치 시작 - 대상: {}건", targets.size());
+        log.info("결제 대사 배치 시작 - 대상: {}건, 기간 초과: {}건", targets.size(), expired.size());
 
         int resolved = 0;
         for (Payment p : targets) {
-            try {
-                if (paymentCommandService.reconcilePending(p.getId())) {
-                    resolved++;
-                }
-            } catch (Exception e) {
-                log.warn("결제 대사 실패 - paymentId: {}", p.getId(), e);
-                // 예외만 센다. reconcilePending 의 false 에는 결제창 이탈(결제사 기록 없음) 같은 정상 미결이 섞여 있고,
-                // 게이트웨이가 조회 실패도 found=false 로 삼켜(ImportPaymentGateway.findPaymentBySessionId) 둘을 가를 수 없다.
-                inconclusive("pending").increment();
-            }
+            resolved += reconcileOne(p, paymentCommandService::reconcilePending);
         }
-        log.info("결제 대사 배치 완료 - 정리 {}/{}건", resolved, targets.size());
+        for (Payment p : expired) {
+            resolved += reconcileOne(p, paymentCommandService::reconcileExpiredPending);
+        }
+        log.info("결제 대사 배치 완료 - 정리 {}/{}건", resolved, targets.size() + expired.size());
+    }
+
+    /** 결제 한 건 대사. 정리했으면 1, 아니면 0. 판정 불가와 예외는 경보용 카운터로 올린다. */
+    private int reconcileOne(Payment p, Function<Long, ReconcileOutcome> reconcile) {
+        try {
+            switch (reconcile.apply(p.getId())) {
+                case SETTLED -> {
+                    return 1;
+                }
+                // 조회 실패, 상태 판독 불가, 금액 불일치. 사람이 봐야 하는 건이다(ARCHITECTURE 5절).
+                case INCONCLUSIVE -> inconclusive("pending").increment();
+                // 결제창 이탈(결제사 기록 없음), ready, 다른 경로가 먼저 정리한 건. 세면 경보의 정상값이 0 이 아니게 된다.
+                case UNSETTLED -> {}
+            }
+        } catch (Exception e) {
+            log.warn("결제 대사 실패 - paymentId: {}", p.getId(), e);
+            inconclusive("pending").increment();
+        }
+        return 0;
     }
 
     /**
