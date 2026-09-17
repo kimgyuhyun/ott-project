@@ -2,6 +2,7 @@ package com.ottproject.ottbackend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.BDDMockito.given;
 
 import com.ottproject.ottbackend.config.QuerydslConfig;
 import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
@@ -10,10 +11,14 @@ import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.EntityTestFixtures;
+import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.exception.AnimeVersionConflictException;
+import com.ottproject.ottbackend.mybatis.RatingQueryMapper;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.JpaSliceTestSupport;
+import com.ottproject.ottbackend.repository.RatingRepository;
+import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.repository.curation.AnimeCurationQueryRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +66,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
     JpaSliceTestSupport.class,
     QuerydslConfig.class,
     AnimeCurationQueryRepository.class, // 벌크 경로를 실제 SQL 로 태운다(@DataJpaTest 는 일반 @Repository 를 스캔하지 않는다)
-    AnimeCurationService.class
+    AnimeCurationService.class,
+    RatingService.class // 사용자 별점이 같은 행의 집계 컬럼을 쓴다
 })
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그
@@ -93,15 +99,33 @@ class AnimeCurationLostUpdateTest {
     @Autowired
     private AnimeRepository animeRepository;
 
+    @Autowired
+    private RatingService ratingService;
+
+    @Autowired
+    private RatingRepository ratingRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @MockitoBean
+    private RatingQueryMapper ratingQueryMapper; // 집계 조회는 MyBatis 다. 이 테스트의 관심사는 쓰기 쪽이다
+
     @MockitoBean
     private AnimeCacheService animeCacheService; // Redis 캐시 무효화. 이 결함과 무관하다
 
     private Long animeId;
+    private Long userId;
 
     @BeforeEach
     void setUp() {
+        ratingRepository.deleteAll();
         animeRepository.deleteAll();
+        userRepository.deleteAll();
         animeId = animeRepository.save(anime("원래 제목")).getId();
+        userId = userRepository.save(User.createLocalUser("rater@example.com", "encoded", "별점러")).getId();
+        given(ratingQueryMapper.findAverageRatingByAnimeId(animeId)).willReturn(4.0);
+        given(ratingQueryMapper.countRatingsByAnimeId(animeId)).willReturn(1L);
     }
 
     /** not-null 컬럼만 채운 최소 엔티티(AnimeCurationQueryRepositoryTest 와 같은 방식) */
@@ -231,5 +255,35 @@ class AnimeCurationLostUpdateTest {
         bulk.setIsPopular(true);
         bulk.setExpectedCount(1);
         return bulk;
+    }
+
+    /**
+     * 평점 집계는 rating/ratingCount 만 쓴다 — 큐레이션 폼이 편집하지도, 표시하지도 않는 필드다.
+     * 그런데 영속 엔티티를 세터로 고쳐 저장하므로 @Version 이 올라가고, 열려 있던 관리자 폼이 거절된다.
+     * 시청자 행동이 편집자의 폼을 무효화하는 셈이라 이건 거짓 충돌이다.
+     *
+     * 현재 동작을 기록한다(이 테스트는 초록). 방어가 들어가면 뒤집혀야 하는 단언
+     * - version 이 오른다 → 그대로여야 한다
+     * - 폼 저장이 거절된다 → 성공해야 한다
+     */
+    @Test
+    @DisplayName("사용자 별점이 version 을 올려 관리자 폼 저장이 거절된다(현재 결함)")
+    void userRatingBumpsVersionAndBlocksAdminSave() {
+        AdminAnimeDetailDto seen = service.get(animeId); // 관리자가 폼을 연다
+
+        // 그 사이 사용자가 별점을 바꾼다. 등록/수정/삭제 모두 같은 updateAnimeAggregates 를 탄다.
+        // 삭제 경로를 쓰는 이유: 슬라이스에는 Auditing 이 없어 Rating 삽입이 not-null 시각에서 막힌다.
+        ratingService.deleteMyRating(userId, animeId);
+
+        assertThat(current().getRating()).isEqualTo(4.0);
+        assertThat(current().getVersion()).as("집계 쓰기가 version 을 올렸다").isEqualTo(seen.getVersion() + 1);
+
+        AnimeCurationUpdateRequest request = new AnimeCurationUpdateRequest();
+        request.setIsPopular(true);
+        request.setVersion(seen.getVersion());
+        Throwable thrown = catchThrowable(() -> service.update(animeId, request));
+
+        assertThat(thrown).as("별점 때문에 관리자 저장이 거절된다").isInstanceOf(AnimeVersionConflictException.class);
+        assertThat(current().getIsPopular()).isFalse();
     }
 }
