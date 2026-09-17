@@ -29,6 +29,9 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> { // 결
     // 대사 배치용: 특정 상태이면서 생성 시각이 구간 내인 결제 조회(오래된 PENDING 정리)
     List<Payment> findByStatusAndCreatedAtBetween(PaymentStatus status, LocalDateTime from, LocalDateTime to);
 
+    // 대사 배치용: 대사 기간(24시간)을 넘긴 PENDING 결제 조회. 닫거나 판정 불가로 세야 하는 대상이다
+    List<Payment> findByStatusAndCreatedAtBefore(PaymentStatus status, LocalDateTime before);
+
     // 결제 확정 경로 직렬화용 비관적 쓰기 락 조회.
     //
     // 왜 필요한가

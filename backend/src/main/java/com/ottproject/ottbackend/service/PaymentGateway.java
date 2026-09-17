@@ -172,9 +172,12 @@ public interface PaymentGateway { // 게이트웨이 추상화 시작
     /**
      * 결제 상태 역조회 결과
      * - found=false 면 나머지 필드는 의미가 없다.
+     * - lookupFailed=true 면 조회 자체가 실패했다(네트워크, 5xx, 재시도 후 인증 실패). 이때 found=false 는
+     *   "결제사에 기록 없음"이 아니라 "모름"이다. 대사는 이것을 판정 불가로 세고, 웹훅 재검증은 기록 없음과 똑같이 거부한다.
      */
     final class ReconcileResult {
         public boolean found; // 게이트웨이에 결제 시도 기록이 존재하는지
+        public boolean lookupFailed; // 조회 자체가 실패함(found=false 와 함께 온다)
         public ReconcileStatus status; // 정규화된 결제 상태
         public String providerPaymentId; // 게이트웨이가 부여한 결제 식별자
         public long amount; // 실제 결제 금액

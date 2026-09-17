@@ -1,10 +1,10 @@
 package com.ottproject.ottbackend.controller;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.ottproject.ottbackend.config.SecurityConfig;
 import com.ottproject.ottbackend.handler.OAuth2AuthFailureHandler;
@@ -100,11 +100,7 @@ class PaymentMethodRegistrationTest {
         mvc.perform(post("/api/payment-methods")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"type\":\"KAKAO_PAY\",\"providerMethodId\":\"ott_billing_1\",\"isDefault\":true}"))
-                // 상태 코드를 405 로 고정하지 않는다. 지금은 GlobalExceptionHandler 의 Exception 처리기가
-                // HttpRequestMethodNotSupportedException 까지 잡아 500 으로 바꾼다(별도 결함). 여기서 지키는 것은
-                // "받아들여지지 않는다"이다. 수정 전에는 200 이었다.
-                .andExpect(
-                        result -> assertThat(result.getResponse().getStatus()).isGreaterThanOrEqualTo(400));
+                .andExpect(status().isMethodNotAllowed()); // 목록 조회(GET)만 남아 있다. 등록 API 가 있던 때는 200 이었다
 
         verifyNoInteractions(paymentMethodService);
     }

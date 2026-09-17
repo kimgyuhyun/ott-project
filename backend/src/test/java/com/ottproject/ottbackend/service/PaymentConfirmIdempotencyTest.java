@@ -314,7 +314,7 @@ class PaymentConfirmIdempotencyTest {
 
             // 대사 배치는 1단계에서 아직 PENDING 을 본다(웹훅이 커밋 전이므로). 그 상태로 아임포트에
             // 물어보고 paid 를 받는다. 낡은 판정으로 확정하면 여기서 구독이 하나 더 생긴다.
-            Future<Boolean> reconcile = pool.submit(() -> service.reconcilePending(paymentId));
+            Future<ReconcileOutcome> reconcile = pool.submit(() -> service.reconcilePending(paymentId));
 
             assertThat(resultOrNullIfStillRunning(reconcile, 3)).isNull(); // 결제 행 락에서 대기
 
@@ -322,7 +322,7 @@ class PaymentConfirmIdempotencyTest {
 
             assertThat(webhook.get(30, TimeUnit.SECONDS)).isNull();
             // 락을 잡고 다시 보니 이미 SUCCEEDED → 대사는 손대지 않고 물러난다
-            assertThat(reconcile.get(30, TimeUnit.SECONDS)).isFalse();
+            assertThat(reconcile.get(30, TimeUnit.SECONDS)).isEqualTo(ReconcileOutcome.UNSETTLED);
 
             assertThat(subscriptionRepository.count()).isEqualTo(1);
             assertThat(outboxEventRepository.count()).isEqualTo(1);

@@ -4,11 +4,16 @@ import com.ottproject.ottbackend.entity.ViewingProfile;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
@@ -21,7 +26,8 @@ import org.springframework.web.server.ResponseStatusException;
  * - handleRse: ResponseStatusException → 상태/메시지 반영
  * - handleValidation: 검증 실패 → 첫 필드 에러 메시지 반영(400)
  * - handleDuplicateWebhookEvent: 웹훅 멱등키 경합 → 200(재전송 루프 차단)
- * - handleAny: 기타 예외 → 500/Internal error 고정 응답
+ * - handleUnreadableRequest: 읽을 수 없는 본문·타입 불일치 → 400
+ * - handleAny: 스프링 요청 오류(ErrorResponse 4xx) → 그 상태 코드, 그 외 → 500/Internal error 고정 응답
  *
  * 응답 바디에 원본 예외 메시지나 클래스명을 싣지 않는다. 진단에 필요한 정보는 로그에만 남기고,
  * 클라이언트는 응답 헤더의 X-Request-Id 로 그 로그를 지목한다(MdcLoggingFilter 가 심는다).
@@ -97,14 +103,51 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
+    /**
+     * 본문을 읽을 수 없거나(깨진 JSON) 경로 변수·파라미터를 선언 타입으로 바꿀 수 없는 요청 → 400.
+     * 두 예외는 아래 ErrorResponse 가 아니라서 상태 코드를 스스로 갖지 않는다. 원인은 요청 쪽에 있으므로
+     * 500 으로 두면 서버 결함 신호가 오염된다. 파서 메시지에는 내부 타입명이 섞여 있어 바디에 싣지 않는다.
+     */
+    @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
+    public ResponseEntity<ApiError> handleUnreadableRequest(Exception ex, HttpServletRequest request) {
+        log.warn("잘못된 요청 at {}: {}", pathOf(request), ex.getClass().getSimpleName());
+        return clientError(HttpStatus.BAD_REQUEST, HttpHeaders.EMPTY);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleAny(Exception ex, HttpServletRequest request) {
-        String path = request != null ? request.getRequestURI() : "N/A";
+        String path = pathOf(request);
+        // 스프링이 요청 단계에서 던지는 오류(없는 메서드 405, 지원하지 않는 형식 415, 없는 경로 404 등)는
+        // 상태 코드와 응답 헤더(405 의 Allow 등)를 예외가 직접 들고 있다. 이것까지 500 으로 바꾸면
+        // 클라이언트 실수가 서버 결함처럼 보이고 ERROR 로그가 쌓인다. 5xx 를 뜻하는 것은 아래로 내려보낸다.
+        if (ex instanceof ErrorResponse errorResponse
+                && errorResponse.getStatusCode().is4xxClientError()) {
+            log.warn(
+                    "요청 오류 at {}: {} {}",
+                    path,
+                    errorResponse.getStatusCode().value(),
+                    ex.getClass().getSimpleName());
+            return clientError(errorResponse.getStatusCode(), errorResponse.getHeaders());
+        }
         log.error("Unhandled exception at {}", path, ex);
         return ResponseEntity.status(500)
                 .body(ApiError.builder()
                         .code("INTERNAL_ERROR")
                         .message("Internal server error")
                         .build()); // 500 일반 에러
+    }
+
+    private static String pathOf(HttpServletRequest request) {
+        return request != null ? request.getRequestURI() : "N/A";
+    }
+
+    /** 요청 오류 응답. 코드는 상태 이름, 메시지는 표준 사유 문구만 싣는다(원본 예외 메시지 제외). */
+    private static ResponseEntity<ApiError> clientError(HttpStatusCode statusCode, HttpHeaders headers) {
+        HttpStatus status = HttpStatus.resolve(statusCode.value());
+        String code = status != null ? status.name() : "CLIENT_ERROR";
+        String message = status != null ? status.getReasonPhrase() : "Bad request";
+        return ResponseEntity.status(statusCode)
+                .headers(headers)
+                .body(ApiError.builder().code(code).message(message).build());
     }
 }
