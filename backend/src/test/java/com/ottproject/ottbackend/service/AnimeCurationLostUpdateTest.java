@@ -123,7 +123,9 @@ class AnimeCurationLostUpdateTest {
         animeRepository.deleteAll();
         userRepository.deleteAll();
         animeId = animeRepository.save(anime("원래 제목")).getId();
-        userId = userRepository.save(User.createLocalUser("rater@example.com", "encoded", "별점러")).getId();
+        userId = userRepository
+                .save(User.createLocalUser("rater@example.com", "encoded", "별점러"))
+                .getId();
         given(ratingQueryMapper.findAverageRatingByAnimeId(animeId)).willReturn(4.0);
         given(ratingQueryMapper.countRatingsByAnimeId(animeId)).willReturn(1L);
     }
@@ -259,15 +261,12 @@ class AnimeCurationLostUpdateTest {
 
     /**
      * 평점 집계는 rating/ratingCount 만 쓴다 — 큐레이션 폼이 편집하지도, 표시하지도 않는 필드다.
-     * 그런데 영속 엔티티를 세터로 고쳐 저장하므로 @Version 이 올라가고, 열려 있던 관리자 폼이 거절된다.
-     * 시청자 행동이 편집자의 폼을 무효화하는 셈이라 이건 거짓 충돌이다.
+     * 그래서 집계는 엔티티를 거치지 않고 그 두 컬럼만 UPDATE 한다. 시청자 행동이 편집자의 폼을 무효화하면 안 된다.
      *
-     * 현재 동작을 기록한다(이 테스트는 초록). 방어가 들어가면 뒤집혀야 하는 단언
-     * - version 이 오른다 → 그대로여야 한다
-     * - 폼 저장이 거절된다 → 성공해야 한다
+     * 방어 전(커밋 529cf47)에는 version 이 오르고 폼 저장이 409 로 거절됐다. 그 두 단언이 뒤집힌 것이 이 테스트다.
      */
     @Test
-    @DisplayName("사용자 별점이 version 을 올려 관리자 폼 저장이 거절된다(현재 결함)")
+    @DisplayName("사용자 별점은 version 을 올리지 않아 관리자 폼 저장을 막지 않는다")
     void userRatingBumpsVersionAndBlocksAdminSave() {
         AdminAnimeDetailDto seen = service.get(animeId); // 관리자가 폼을 연다
 
@@ -276,14 +275,16 @@ class AnimeCurationLostUpdateTest {
         ratingService.deleteMyRating(userId, animeId);
 
         assertThat(current().getRating()).isEqualTo(4.0);
-        assertThat(current().getVersion()).as("집계 쓰기가 version 을 올렸다").isEqualTo(seen.getVersion() + 1);
+        assertThat(current().getVersion()).as("집계 쓰기는 version 을 올리지 않는다").isEqualTo(seen.getVersion());
+        assertThat(current().getUpdatedAt()).as("집계 쓰기는 수정 시각도 건드리지 않는다").isEqualTo(seen.getUpdatedAt());
 
         AnimeCurationUpdateRequest request = new AnimeCurationUpdateRequest();
         request.setIsPopular(true);
         request.setVersion(seen.getVersion());
-        Throwable thrown = catchThrowable(() -> service.update(animeId, request));
+        AdminAnimeDetailDto saved = service.update(animeId, request);
 
-        assertThat(thrown).as("별점 때문에 관리자 저장이 거절된다").isInstanceOf(AnimeVersionConflictException.class);
-        assertThat(current().getIsPopular()).isFalse();
+        assertThat(saved.getIsPopular()).as("별점이 관리자 저장을 막지 않는다").isTrue();
+        assertThat(current().getIsPopular()).isTrue();
+        assertThat(current().getRating()).as("집계 값은 그대로 남는다").isEqualTo(4.0);
     }
 }
