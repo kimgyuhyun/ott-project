@@ -3,7 +3,10 @@ package com.ottproject.ottbackend.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import com.ottproject.ottbackend.config.QuerydslConfig;
 import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
+import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
+import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.EntityTestFixtures;
@@ -54,7 +57,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
-@Import({JpaSliceTestSupport.class, AnimeCurationService.class})
+@Import({
+    JpaSliceTestSupport.class,
+    QuerydslConfig.class,
+    AnimeCurationQueryRepository.class, // 벌크 경로를 실제 SQL 로 태운다(@DataJpaTest 는 일반 @Repository 를 스캔하지 않는다)
+    AnimeCurationService.class
+})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그
 @TestPropertySource(
@@ -86,9 +94,6 @@ class AnimeCurationLostUpdateTest {
     private AnimeRepository animeRepository;
 
     @MockitoBean
-    private AnimeCurationQueryRepository curationQueryRepository; // 단건 수정 경로는 쓰지 않는다
-
-    @MockitoBean
     private AnimeCacheService animeCacheService; // Redis 캐시 무효화. 이 결함과 무관하다
 
     private Long animeId;
@@ -114,6 +119,7 @@ class AnimeCurationLostUpdateTest {
         anime.setIsDub(false);
         anime.setIsSimulcast(false);
         anime.setIsActive(true);
+        anime.setYear(2026); // 벌크 조건으로 쓴다
         anime.setCurated(false);
         anime.setCurrentEpisodes(0);
         anime.setCreatedAt(now); // 슬라이스에는 Auditing 이 없어 직접 채운다
@@ -186,5 +192,46 @@ class AnimeCurationLostUpdateTest {
         AdminAnimeDetailDto savedAgain = service.update(animeId, titleChange("이어서 저장", saved.getVersion()));
         assertThat(savedAgain.getVersion()).isEqualTo(seen + 2);
         assertThat(current().getTitle()).isEqualTo("이어서 저장");
+    }
+
+    /**
+     * 벌크 큐레이션(QueryDSL 벌크 UPDATE)은 version 을 올리지 않는다. 그래서 벌크가 바꾼 배지를
+     * 그 전에 폼을 연 관리자가 그대로 덮어쓴다 — 단건 수정끼리는 막은 갱신 분실이 이 경로로는 통과한다.
+     *
+     * 현재 동작을 기록한다(이 테스트는 초록). 방어가 들어가면 뒤집혀야 하는 단언
+     * - 옛 폼 저장이 성공한다 → 거절(409)돼야 한다
+     * - 최종 isPopular 가 false 다 → 벌크가 켠 true 가 남아야 한다
+     */
+    @Test
+    @DisplayName("벌크가 켠 배지를 옛 폼 저장이 덮어쓴다(현재 결함)")
+    void bulkCurationDoesNotBumpVersion() {
+        // 1) 관리자가 수정 폼을 연다(isPopular=false 인 상태)
+        AdminAnimeDetailDto seen = service.get(animeId);
+        assertThat(seen.getIsPopular()).isFalse();
+
+        // 2) 그 사이 벌크 큐레이션이 같은 작품의 배지를 켠다
+        assertThat(service.applyBulkCuration(popularBulkRequest())).isEqualTo(1L);
+        assertThat(current().getIsPopular()).isTrue();
+
+        // 3) 관리자가 옛 화면 기준으로 저장한다 — 벌크가 켠 것을 본 적이 없다
+        AnimeCurationUpdateRequest request = new AnimeCurationUpdateRequest();
+        request.setIsPopular(false);
+        request.setVersion(seen.getVersion());
+        service.update(animeId, request);
+
+        // 결함: 벌크가 version 을 올리지 않아 옛 version 이 그대로 통과하고, 벌크 결과가 사라진다
+        assertThat(current().getIsPopular()).as("벌크가 켠 배지가 사라졌다").isFalse();
+        assertThat(current().getVersion()).isEqualTo(seen.getVersion() + 1); // 벌크는 세지 않았다
+    }
+
+    /** year=2026 조건으로 isPopular 를 켜는 벌크 요청(대상 1건) */
+    private AnimeBulkCurationRequest popularBulkRequest() {
+        AnimeCurationSearchCondition condition = new AnimeCurationSearchCondition();
+        condition.setYear(2026);
+        AnimeBulkCurationRequest bulk = new AnimeBulkCurationRequest();
+        bulk.setCondition(condition);
+        bulk.setIsPopular(true);
+        bulk.setExpectedCount(1);
+        return bulk;
     }
 }
