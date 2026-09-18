@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.exception.AnimeVersionConflictException;
 import com.ottproject.ottbackend.exception.GlobalExceptionHandler;
@@ -121,14 +122,24 @@ class AdminAnimeExceptionBoundaryTest {
     }
 
     @Test
-    @DisplayName("서비스가 판정한 버전 불일치는 409 로 응답한다")
+    @DisplayName("서비스가 판정한 버전 불일치는 409 와 함께 서버의 현재 값을 돌려준다")
     void serviceVersionConflictIsConflict() throws Exception {
-        given(animeCurationService.update(anyLong(), any())).willThrow(new AnimeVersionConflictException(1L, 0L, 1L));
+        given(animeCurationService.update(anyLong(), any()))
+                .willThrow(new AnimeVersionConflictException(
+                        0L,
+                        AdminAnimeDetailDto.builder()
+                                .id(1L)
+                                .title("서버 제목")
+                                .version(1L)
+                                .build()));
 
         mvc.perform(patch("/api/admin/anime/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"새 제목\",\"version\":0}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"));
+                .andExpect(jsonPath("$.code").value("VERSION_CONFLICT"))
+                // 화면이 "내 값 / 서버 값"을 그리려면 거절 응답에 서버 값이 있어야 한다
+                .andExpect(jsonPath("$.current.title").value("서버 제목"))
+                .andExpect(jsonPath("$.current.version").value(1));
     }
 }

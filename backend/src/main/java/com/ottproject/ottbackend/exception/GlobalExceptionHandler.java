@@ -1,5 +1,6 @@
 package com.ottproject.ottbackend.exception;
 
+import com.ottproject.ottbackend.dto.admin.AnimeCurationConflictResponse;
 import com.ottproject.ottbackend.entity.ViewingProfile;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
@@ -107,14 +108,25 @@ public class GlobalExceptionHandler {
 
     /**
      * 수정 폼을 연 뒤 다른 사람이 같은 행을 먼저 저장했다 → 409.
-     * - AnimeVersionConflictException: 서비스가 요청 version 과 현재 version 을 비교해 즉시 던진다.
+     * - AnimeVersionConflictException: 서비스가 요청 version 과 현재 version 을 비교해 즉시 던진다. 서버의 현재 값을 함께 싣는다.
      * - ObjectOptimisticLockingFailureException: 비교 뒤 UPDATE ... WHERE version=? 이 0행일 때. 단건 수정은 findById 의
      *   비관적 락이 비교~커밋 구간을 막아 지금은 나지 않지만, 그 락이 빠지거나 다른 @Version 쓰기 경로에서 나면 500 이 아니라 409 로 둔다.
      * 자동 재시도로 덮지 않는다. 무엇을 남길지는 사람이 최신 값을 다시 보고 정해야 한다.
      */
-    @ExceptionHandler({AnimeVersionConflictException.class, ObjectOptimisticLockingFailureException.class})
-    public ResponseEntity<ApiError> handleVersionConflict(RuntimeException ex, HttpServletRequest request) {
+    @ExceptionHandler(AnimeVersionConflictException.class)
+    public ResponseEntity<AnimeCurationConflictResponse> handleAnimeVersionConflict(
+            AnimeVersionConflictException ex, HttpServletRequest request) {
         log.warn("버전 충돌 at {}: {}", pathOf(request), ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new AnimeCurationConflictResponse(
+                        "VERSION_CONFLICT", "다른 사람이 먼저 수정했습니다. 항목별로 남길 값을 고르세요.", ex.getCurrent()));
+    }
+
+    /** 커밋 시점 충돌에는 현재 값이 없다(엔티티가 어떤 상태인지 이 시점에 단정할 수 없다). 코드만 같게 두고 다시 조회하게 한다. */
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiError> handleOptimisticLockFailure(
+            ObjectOptimisticLockingFailureException ex, HttpServletRequest request) {
+        log.warn("커밋 시점 버전 충돌 at {}: {}", pathOf(request), ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiError.builder()
                         .code("VERSION_CONFLICT")

@@ -187,6 +187,9 @@ class AnimeCurationLostUpdateTest {
         assertThat(thrown)
                 .as("A 의 저장이 거절돼야 한다")
                 .isInstanceOfAny(AnimeVersionConflictException.class, ObjectOptimisticLockingFailureException.class);
+        // 거절 응답에 서버의 현재 값이 실려야 화면이 "내 값 / 서버 값"을 보여줄 수 있다
+        assertThat(((AnimeVersionConflictException) thrown).getCurrent().getTitle())
+                .isEqualTo("B 제목");
         assertThat(current().getTitle()).as("B 의 수정이 남아야 한다").isEqualTo("B 제목");
     }
 

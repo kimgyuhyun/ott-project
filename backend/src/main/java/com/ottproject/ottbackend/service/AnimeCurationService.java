@@ -96,7 +96,8 @@ public class AnimeCurationService {
         // 영속 엔티티의 version 에 요청값을 덮어쓰면 Hibernate 가 무시하므로 직접 비교한다.
         // 자동 재시도는 하지 않는다(ARCHITECTURE 9절 재시도 미적용): 어느 수정을 남길지는 사람이 최신 값을 보고 정해야 한다.
         if (!anime.getVersion().equals(request.getVersion())) {
-            throw new AnimeVersionConflictException(animeId, request.getVersion(), anime.getVersion());
+            // 현재 값을 함께 던진다 — 화면이 내 값과 서버 값을 나란히 보여주고 고르게 하려면 거절 응답에 서버 값이 있어야 한다.
+            throw new AnimeVersionConflictException(request.getVersion(), AdminAnimeDetailDto.from(anime));
         }
 
         // 콘텐츠 필드: AnimeEnhancementService 가 덮어쓰는 필드와 정확히 같은 집합이다.
