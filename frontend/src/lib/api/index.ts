@@ -31,10 +31,24 @@ async function apiCall<T>(endpoint: string, init?: RequestInit): Promise<T> {
       window.dispatchEvent(new CustomEvent("auth:unauthorized"));
     }
 
-    const error = new Error(errorMessage) as Error & {
-      response: { status: number; data: { message: string } };
+    // 에러 바디가 JSON 이면 파싱해서 싣는다. 문자열 그대로 두면 화면이 응답 전문을 그대로 보여주게 되고,
+    // 에러 코드나 충돌 응답의 현재 값처럼 바디에 담아 보낸 값을 꺼내 쓸 수 없다.
+    let data: { message?: string } & Record<string, unknown> = {
+      message: text,
     };
-    error.response = { status: res.status, data: { message: text } };
+    if ((res.headers.get("content-type") || "").includes("application/json")) {
+      try {
+        const parsed = JSON.parse(text);
+        if (parsed && typeof parsed === "object") data = parsed;
+      } catch {
+        // 헤더는 JSON 인데 바디가 깨진 경우. 원문 문자열을 그대로 둔다.
+      }
+    }
+
+    const error = new Error(errorMessage) as Error & {
+      response: { status: number; data: { message?: string } };
+    };
+    error.response = { status: res.status, data };
     throw error;
   }
 

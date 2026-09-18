@@ -134,6 +134,15 @@ export interface AnimeCurationUpdateRequest {
   version: number;
 }
 
+// 버전 충돌 409 응답 (AnimeCurationConflictResponse)
+// 거절과 함께 서버의 현재 값을 준다 — 화면이 항목별로 "내 값 / 서버 값"을 보여주려면 필요하다.
+// 다시 조회해서 받으면 그 사이 또 바뀔 수 있어 거절 시점의 값과 어긋난다.
+export interface AnimeCurationConflict {
+  code: "VERSION_CONFLICT";
+  message: string;
+  current: AdminAnimeDetail;
+}
+
 // 벌크 미리보기 응답 (AnimeBulkCurationPreviewResponse)
 export interface AnimeBulkCurationPreview {
   affectedCount: number;
@@ -212,12 +221,30 @@ export async function getAnimeForCuration(
  * - 콘텐츠(제목/줄거리/이미지)를 실제로 바꾸면 백엔드가 curated 를 켠다
  *   → 이후 TMDB 자동 보강이 그 작품을 통째로 건너뛴다. 그래서 보강이 채우던 값도 여기서 관리해야 한다.
  * - version 이 없으면 400, 폼을 연 뒤 다른 사람이 먼저 저장했으면 409. 응답의 version 이 다음 저장에 쓸 값이다.
+ * - 409 바디는 AnimeCurationConflict 이며 current 에 서버의 현재 값이 들어 있다(getCurationConflict 로 꺼낸다).
  */
 export async function updateAnimeCuration(
   animeId: number,
   request: AnimeCurationUpdateRequest,
 ): Promise<AdminAnimeDetail> {
   return api.patch<AdminAnimeDetail>(`/admin/anime/${animeId}`, request);
+}
+
+/**
+ * 저장 실패가 버전 충돌이면 서버의 현재 값을 꺼낸다. 아니면 null.
+ *
+ * 커밋 시점 충돌(ObjectOptimisticLockingFailureException)도 같은 409/VERSION_CONFLICT 지만 current 가 없다.
+ * 그 경우 null 을 돌려주므로 호출부는 일반 오류 문구로 떨어뜨리면 된다.
+ */
+export function getCurationConflict(error: unknown): AdminAnimeDetail | null {
+  if (!error || typeof error !== "object") return null;
+  const response = (
+    error as {
+      response?: { status?: number; data?: Partial<AnimeCurationConflict> };
+    }
+  ).response;
+  if (response?.status !== 409) return null;
+  return response.data?.current ?? null;
 }
 
 /**
