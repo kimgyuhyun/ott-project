@@ -2,15 +2,23 @@ package com.ottproject.ottbackend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.BDDMockito.given;
 
+import com.ottproject.ottbackend.config.QuerydslConfig;
 import com.ottproject.ottbackend.dto.admin.AdminAnimeDetailDto;
+import com.ottproject.ottbackend.dto.admin.AnimeBulkCurationRequest;
+import com.ottproject.ottbackend.dto.admin.AnimeCurationSearchCondition;
 import com.ottproject.ottbackend.dto.admin.AnimeCurationUpdateRequest;
 import com.ottproject.ottbackend.entity.Anime;
 import com.ottproject.ottbackend.entity.EntityTestFixtures;
+import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AnimeStatus;
 import com.ottproject.ottbackend.exception.AnimeVersionConflictException;
+import com.ottproject.ottbackend.mybatis.RatingQueryMapper;
 import com.ottproject.ottbackend.repository.AnimeRepository;
 import com.ottproject.ottbackend.repository.JpaSliceTestSupport;
+import com.ottproject.ottbackend.repository.RatingRepository;
+import com.ottproject.ottbackend.repository.UserRepository;
 import com.ottproject.ottbackend.repository.curation.AnimeCurationQueryRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +62,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
-@Import({JpaSliceTestSupport.class, AnimeCurationService.class})
+@Import({
+    JpaSliceTestSupport.class,
+    QuerydslConfig.class,
+    AnimeCurationQueryRepository.class, // 벌크 경로를 실제 SQL 로 태운다(@DataJpaTest 는 일반 @Repository 를 스캔하지 않는다)
+    AnimeCurationService.class,
+    RatingService.class // 사용자 별점이 같은 행의 집계 컬럼을 쓴다
+})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그
 @TestPropertySource(
@@ -85,18 +99,35 @@ class AnimeCurationLostUpdateTest {
     @Autowired
     private AnimeRepository animeRepository;
 
+    @Autowired
+    private RatingService ratingService;
+
+    @Autowired
+    private RatingRepository ratingRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
     @MockitoBean
-    private AnimeCurationQueryRepository curationQueryRepository; // 단건 수정 경로는 쓰지 않는다
+    private RatingQueryMapper ratingQueryMapper; // 집계 조회는 MyBatis 다. 이 테스트의 관심사는 쓰기 쪽이다
 
     @MockitoBean
     private AnimeCacheService animeCacheService; // Redis 캐시 무효화. 이 결함과 무관하다
 
     private Long animeId;
+    private Long userId;
 
     @BeforeEach
     void setUp() {
+        ratingRepository.deleteAll();
         animeRepository.deleteAll();
+        userRepository.deleteAll();
         animeId = animeRepository.save(anime("원래 제목")).getId();
+        userId = userRepository
+                .save(User.createLocalUser("rater@example.com", "encoded", "별점러"))
+                .getId();
+        given(ratingQueryMapper.findAverageRatingByAnimeId(animeId)).willReturn(4.0);
+        given(ratingQueryMapper.countRatingsByAnimeId(animeId)).willReturn(1L);
     }
 
     /** not-null 컬럼만 채운 최소 엔티티(AnimeCurationQueryRepositoryTest 와 같은 방식) */
@@ -114,6 +145,7 @@ class AnimeCurationLostUpdateTest {
         anime.setIsDub(false);
         anime.setIsSimulcast(false);
         anime.setIsActive(true);
+        anime.setYear(2026); // 벌크 조건으로 쓴다
         anime.setCurated(false);
         anime.setCurrentEpisodes(0);
         anime.setCreatedAt(now); // 슬라이스에는 Auditing 이 없어 직접 채운다
@@ -186,5 +218,73 @@ class AnimeCurationLostUpdateTest {
         AdminAnimeDetailDto savedAgain = service.update(animeId, titleChange("이어서 저장", saved.getVersion()));
         assertThat(savedAgain.getVersion()).isEqualTo(seen + 2);
         assertThat(current().getTitle()).isEqualTo("이어서 저장");
+    }
+
+    /**
+     * 벌크 큐레이션은 QueryDSL 벌크 UPDATE 라 하이버네이트가 @Version 을 올려주지 않는다. 리포지토리가
+     * 직접 올리지 않으면, 벌크 직전에 폼을 연 관리자가 옛 version 으로 저장해 벌크 결과를 덮어쓴다.
+     *
+     * 방어 전(커밋 1bcc4af)에는 저장이 통과하고 최종 isPopular 가 false 였다. 그 두 단언이 뒤집힌 것이 이 테스트다.
+     */
+    @Test
+    @DisplayName("벌크 뒤 옛 폼 저장은 거절되고 벌크가 켠 배지가 남는다")
+    void bulkCurationDoesNotBumpVersion() {
+        // 1) 관리자가 수정 폼을 연다(isPopular=false 인 상태)
+        AdminAnimeDetailDto seen = service.get(animeId);
+        assertThat(seen.getIsPopular()).isFalse();
+
+        // 2) 그 사이 벌크 큐레이션이 같은 작품의 배지를 켠다
+        assertThat(service.applyBulkCuration(popularBulkRequest())).isEqualTo(1L);
+        assertThat(current().getIsPopular()).isTrue();
+
+        // 3) 관리자가 옛 화면 기준으로 저장한다 — 벌크가 켠 것을 본 적이 없다
+        AnimeCurationUpdateRequest request = new AnimeCurationUpdateRequest();
+        request.setIsPopular(false);
+        request.setVersion(seen.getVersion());
+        Throwable thrown = catchThrowable(() -> service.update(animeId, request));
+
+        assertThat(thrown).as("옛 폼 저장이 거절돼야 한다").isInstanceOf(AnimeVersionConflictException.class);
+        assertThat(current().getIsPopular()).as("벌크가 켠 배지가 남아야 한다").isTrue();
+        assertThat(current().getVersion()).as("벌크도 version 을 올린다").isEqualTo(seen.getVersion() + 1);
+    }
+
+    /** year=2026 조건으로 isPopular 를 켜는 벌크 요청(대상 1건) */
+    private AnimeBulkCurationRequest popularBulkRequest() {
+        AnimeCurationSearchCondition condition = new AnimeCurationSearchCondition();
+        condition.setYear(2026);
+        AnimeBulkCurationRequest bulk = new AnimeBulkCurationRequest();
+        bulk.setCondition(condition);
+        bulk.setIsPopular(true);
+        bulk.setExpectedCount(1);
+        return bulk;
+    }
+
+    /**
+     * 평점 집계는 rating/ratingCount 만 쓴다 — 큐레이션 폼이 편집하지도, 표시하지도 않는 필드다.
+     * 그래서 집계는 엔티티를 거치지 않고 그 두 컬럼만 UPDATE 한다. 시청자 행동이 편집자의 폼을 무효화하면 안 된다.
+     *
+     * 방어 전(커밋 529cf47)에는 version 이 오르고 폼 저장이 409 로 거절됐다. 그 두 단언이 뒤집힌 것이 이 테스트다.
+     */
+    @Test
+    @DisplayName("사용자 별점은 version 을 올리지 않아 관리자 폼 저장을 막지 않는다")
+    void userRatingBumpsVersionAndBlocksAdminSave() {
+        AdminAnimeDetailDto seen = service.get(animeId); // 관리자가 폼을 연다
+
+        // 그 사이 사용자가 별점을 바꾼다. 등록/수정/삭제 모두 같은 updateAnimeAggregates 를 탄다.
+        // 삭제 경로를 쓰는 이유: 슬라이스에는 Auditing 이 없어 Rating 삽입이 not-null 시각에서 막힌다.
+        ratingService.deleteMyRating(userId, animeId);
+
+        assertThat(current().getRating()).isEqualTo(4.0);
+        assertThat(current().getVersion()).as("집계 쓰기는 version 을 올리지 않는다").isEqualTo(seen.getVersion());
+        assertThat(current().getUpdatedAt()).as("집계 쓰기는 수정 시각도 건드리지 않는다").isEqualTo(seen.getUpdatedAt());
+
+        AnimeCurationUpdateRequest request = new AnimeCurationUpdateRequest();
+        request.setIsPopular(true);
+        request.setVersion(seen.getVersion());
+        AdminAnimeDetailDto saved = service.update(animeId, request);
+
+        assertThat(saved.getIsPopular()).as("별점이 관리자 저장을 막지 않는다").isTrue();
+        assertThat(current().getIsPopular()).isTrue();
+        assertThat(current().getRating()).as("집계 값은 그대로 남는다").isEqualTo(4.0);
     }
 }
