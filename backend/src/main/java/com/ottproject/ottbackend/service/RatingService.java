@@ -35,7 +35,9 @@ public class RatingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "평점은 1.0~5.0 사이 0.5 단위여야 합니다.");
         }
         User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
-        Anime anime = animeRepository.findById(aniId).orElseThrow();
+        // 락 없는 조회를 쓴다: 여기서 애니는 Rating 의 FK 를 채우는 용도일 뿐이고, 집계는 아래에서 조건부 UPDATE 로 따로 간다.
+        // findById(PESSIMISTIC_WRITE)를 쓰면 별점 하나 남기는 동안 애니 행에 쓰기 락이 걸려 관리자 수정이 대기한다.
+        Anime anime = animeRepository.findByIdWithoutLock(aniId).orElseThrow();
 
         Rating rating = ratingRepository
                 .findByUserIdAndAnimeId(userId, aniId)
