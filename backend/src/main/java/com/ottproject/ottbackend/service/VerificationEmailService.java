@@ -1,5 +1,7 @@
 package com.ottproject.ottbackend.service;
 
+import com.ottproject.ottbackend.exception.VerificationAttemptsExceededException;
+import com.ottproject.ottbackend.util.RedisCounterUtil;
 import java.security.SecureRandom;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
@@ -24,12 +26,19 @@ import org.springframework.stereotype.Service;
  * - 재시작/다중 인스턴스: 세션과 마찬가지로 인스턴스 간 공유되고 재배포에도 살아남아야 한다.
  *   (가입 2단계와 3단계가 다른 인스턴스로 갈 수 있다)
  *
+ * 입력 시도 상한(무차별 대입 방어)
+ * - 코드 하나에 입력 5회까지만 비교한다. 넘기면 코드를 폐기하고, 새 코드를 받아야 다시 시도할 수 있다.
+ *   6자리 코드는 100만 가지라 코드 하나를 맞힐 확률이 5/1,000,000 으로 묶인다.
+ * - 새 코드를 발송하면 횟수를 새로 센다. 발송은 매번 Turnstile(사람 확인)을 거치므로 자동으로 되풀이할 수 없다.
+ * - 횟수는 비교하기 전에 원자적으로 올린다. 비교한 뒤에 올리면 동시에 들어온 요청이 모두 비교까지 가서
+ *   상한이 동시 요청 수만큼 늘어난다(VerificationCodeAttemptLimitTest).
+ *
  * 실패 정책
  * - Redis 장애 시 예외를 그대로 전파한다(fail-closed). 장애가 인증 우회 통로가 되면 안 된다.
  *
  * 메서드 개요
- * - sendVerificationEmail: 인증 코드 발송
- * - verifyCode: 인증 코드 검증(성공 시 코드 소비 + 인증완료 티켓 발급)
+ * - sendVerificationEmail: 인증 코드 발송(시도 횟수를 새로 센다)
+ * - verifyCode: 인증 코드 검증(성공 시 코드 소비 + 인증완료 티켓 발급, 시도 상한을 넘기면 코드 폐기 + 예외)
  * - isEmailVerified: 인증 여부 확인
  * - consumeVerification: 인증완료 티켓 소비(가입 확정 시 호출)
  * - sendPasswordResetEmail: 비밀번호 재설정 메일 발송
@@ -46,9 +55,12 @@ public class VerificationEmailService {
 
     private static final String CODE_KEY_PREFIX = "ott:email-verification:v1:code:"; // 이메일 -> 인증 코드
     private static final String VERIFIED_KEY_PREFIX = "ott:email-verification:v1:verified:"; // 이메일 -> 인증완료 티켓
+    private static final String ATTEMPTS_KEY_PREFIX = "ott:email-verification:v1:attempts:"; // 이메일 -> 현재 코드의 입력 시도 횟수
 
     private static final Duration CODE_TTL = Duration.ofMinutes(10); // 메일 본문 안내와 반드시 같아야 한다
     private static final Duration VERIFIED_TTL = Duration.ofMinutes(30); // 인증 직후 가입을 마치기에 충분한 창
+
+    private static final int MAX_VERIFY_ATTEMPTS = 5; // 코드 하나당 비교 상한(클래스 주석 "입력 시도 상한")
 
     // 인증 코드는 계정 소유권 증명이므로 예측 불가능해야 한다.
     // java.util.Random 은 시드(48비트)만 알면 이후 코드를 그대로 재현할 수 있어 인증에 쓸 수 없다.
@@ -56,6 +68,9 @@ public class VerificationEmailService {
 
     public void sendVerificationEmail(String to) {
         String verificationCode = generateVerificationCode();
+        // 새 코드는 시도 횟수를 새로 센다. 코드보다 먼저 지운다: 나중에 지우면 그 사이에 들어온 시도가
+        // 이전 코드의 횟수로 판정돼 방금 저장한 새 코드를 폐기할 수 있다.
+        redisTemplate.delete(attemptsKey(to));
         // TTL 과 함께 저장: 만료 판정을 Redis 에 맡긴다(인메모리 시절엔 발급 시각이 없어 만료가 불가능했다)
         redisTemplate.opsForValue().set(codeKey(to), verificationCode, CODE_TTL);
 
@@ -72,6 +87,14 @@ public class VerificationEmailService {
     }
 
     public boolean verifyCode(String email, String code) {
+        // 횟수를 비교보다 먼저 올린다(클래스 주석 "입력 시도 상한"). TTL 은 코드와 같은 10분이고 첫 시도부터 세므로
+        // 카운터는 코드보다 먼저 사라지지 않는다.
+        Long attempts = RedisCounterUtil.incrementWithTtl(redisTemplate, attemptsKey(email), CODE_TTL);
+        // 횟수를 셀 수 없으면(null) 비교하지 않는다(fail-closed).
+        if (attempts == null || attempts > MAX_VERIFY_ATTEMPTS) {
+            redisTemplate.delete(codeKey(email)); // 코드 폐기: 새 코드를 받아야 다시 시도할 수 있다
+            throw new VerificationAttemptsExceededException();
+        }
         String storedCode = redisTemplate.opsForValue().get(codeKey(email));
         // 만료됐거나 발송한 적 없으면 키가 없다(둘을 구분해 알려주지 않는다)
         if (storedCode == null || !storedCode.equals(code)) {
@@ -100,6 +123,10 @@ public class VerificationEmailService {
 
     private String verifiedKey(String email) {
         return VERIFIED_KEY_PREFIX + normalize(email);
+    }
+
+    private String attemptsKey(String email) {
+        return ATTEMPTS_KEY_PREFIX + normalize(email);
     }
 
     /**

@@ -190,6 +190,18 @@ export default function EmailAuthForm({
             ? "아래 사람 확인을 완료한 뒤 다시 로그인해주세요."
             : "로그인에 실패했습니다. 회원가입이 필요할 수 있습니다.";
         setError(msg); // 에러 메시지 출력
+      } else if (
+        err instanceof Error &&
+        err.message.includes("VERIFICATION_ATTEMPTS_EXCEEDED")
+      ) {
+        // 회원가입 인증코드 단계에서만 온다: 입력 횟수를 넘겨 백엔드가 코드를 폐기했다(429 + 이 code).
+        // 같은 코드로는 더 진행할 수 없으니 사람 확인 + 발송 버튼이 있는 이메일 단계로 되돌려 새 코드를 받게 한다.
+        setRegisterStep("email");
+        setVerificationCode("");
+        setSuccessMessage(""); // "발송되었습니다" 안내가 남아 있으면 초과 안내와 엇갈린다
+        setError(
+          "인증코드 입력 횟수를 초과했습니다. 사람 확인 후 인증코드를 다시 받아주세요.",
+        );
       } else {
         // 만약 mode가 'login'이 아니라 register 일 때 실행
         setError(err instanceof Error ? err.message : "오류가 발생했습니다."); // 에러 메시지 출력

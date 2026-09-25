@@ -1,9 +1,11 @@
 package com.ottproject.ottbackend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.verify;
 
+import com.ottproject.ottbackend.exception.VerificationAttemptsExceededException;
 import com.ottproject.ottbackend.repository.JpaSliceTestSupport;
 import java.util.List;
 import java.util.Properties;
@@ -40,9 +42,10 @@ import org.testcontainers.utility.DockerImageName;
  *
  * 왜 이 테스트가 필요한가
  * - 6자리 코드는 100만 가지다. 틀려도 코드가 살아 있으면 공격자는 코드가 만료되는 10분 동안 계속 찍을 수 있다.
+ *   그래서 코드 하나에 입력 5회까지만 비교하고, 넘기면 코드를 폐기한다.
  * - 상한은 비교하기 "전에" 세야 지켜진다. 비교한 뒤에 세면 동시에 들어온 요청이 모두 비교까지 가서
- *   상한이 동시 요청 수만큼 늘어난다. 목은 호출 순서만 보여줄 뿐이고, 동시 요청 중 몇 건이 실제로
- *   비교에 이르는지는 Redis 가 명령을 실제로 처리하는 환경에서만 확인된다.
+ *   상한이 동시 요청 수만큼 늘어난다. 목은 호출 순서만 보여줄 뿐이고, 동시 요청 100건 중 정확히 5건만
+ *   비교에 이른다는 것은 Redis 가 INCR 을 원자적으로 처리하는 실제 환경에서만 확인된다.
  *
  * 테스트 환경 선택 근거(ARCHITECTURE 15절)
  * - 결함이 서비스-Redis 경계에 있으므로 Redis 슬라이스(@DataRedisTest)에 서비스 실물을 @Import 했다.
@@ -71,6 +74,7 @@ class VerificationCodeAttemptLimitTest {
 
     private static final String EMAIL = "victim@example.com";
     private static final int THREADS = 100;
+    private static final int MAX_ATTEMPTS = 5;
 
     @Autowired
     private VerificationEmailService service;
@@ -123,17 +127,9 @@ class VerificationCodeAttemptLimitTest {
         return Long.parseLong(line.replaceFirst("^calls=(\\d+),.*$", "$1"));
     }
 
-    /**
-     * 현재 코드의 동작을 기록한다: 시도 상한이 없어 모든 시도가 코드와 비교된다(이 테스트는 초록).
-     *
-     * 방어가 들어가면 뒤집혀야 하는 단언
-     * - 코드를 읽어 비교한 요청이 100건이다 → 5건이어야 한다
-     * - 틀림 응답이 100건이다 → 5건이고, 나머지 95건은 횟수 초과로 거부돼야 한다
-     * - 100번 틀린 뒤에도 정답 코드가 통한다 → 거부돼야 한다(코드 폐기)
-     */
     @Test
-    @DisplayName("틀린 코드 100건이 동시에 오면 100건 모두 코드와 비교되고, 그 뒤에도 정답 코드가 통한다(현재 결함)")
-    void concurrentWrongGuessesAreAllCompared() throws InterruptedException {
+    @DisplayName("틀린 코드 100건이 동시에 와도 비교까지 가는 것은 5건뿐이고, 그 뒤에는 정답 코드도 거부된다")
+    void concurrentWrongGuessesAreCappedAndBurnTheCode() throws InterruptedException {
         String code = sendCode();
         String wrong = wrongCodeFor(code);
         resetCommandStats(); // 발송이 남긴 명령은 빼고, 아래 동시 구간의 명령만 센다
@@ -143,6 +139,7 @@ class VerificationCodeAttemptLimitTest {
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done = new CountDownLatch(THREADS);
         AtomicInteger mismatched = new AtomicInteger(); // "틀림"으로 응답한 요청(400)
+        AtomicInteger rejected = new AtomicInteger(); // 횟수 초과로 거부된 요청(429)
         AtomicInteger unexpected = new AtomicInteger();
 
         for (int i = 0; i < THREADS; i++) {
@@ -153,6 +150,8 @@ class VerificationCodeAttemptLimitTest {
                     if (!service.verifyCode(EMAIL, wrong)) {
                         mismatched.incrementAndGet();
                     }
+                } catch (VerificationAttemptsExceededException e) {
+                    rejected.incrementAndGet();
                 } catch (Exception e) {
                     unexpected.incrementAndGet();
                 } finally {
@@ -165,11 +164,42 @@ class VerificationCodeAttemptLimitTest {
         if (!done.await(30, TimeUnit.SECONDS)) throw new IllegalStateException("끝나지 않은 스레드가 있다");
         pool.shutdown();
 
-        // 결함: 몇 번을 틀려도 코드가 살아 있고, 동시에 온 시도가 전부 비교된다
-        assertThat(commandCalls("get")).as("코드를 읽어 비교한 요청 수").isEqualTo(THREADS);
-        assertThat(List.of(mismatched.get(), unexpected.get()))
-                .as("[틀림으로 응답한 요청, 예상 못 한 예외]")
-                .containsExactly(THREADS, 0);
-        assertThat(service.verifyCode(EMAIL, code)).as("100번 틀린 뒤의 정답 코드").isTrue();
+        // 비교하려면 저장된 코드를 읽어야 한다(GET). 서버가 센 GET 횟수가 곧 코드와 비교된 요청 수다.
+        // 응답만 세면 "먼저 비교하고 나중에 거부하는" 구현도 5/95 로 보여 통과한다.
+        assertThat(commandCalls("get")).as("코드를 읽어 비교한 요청 수").isEqualTo(MAX_ATTEMPTS);
+        assertThat(List.of(mismatched.get(), rejected.get(), unexpected.get()))
+                .as("[틀림으로 응답한 요청, 횟수 초과로 거부된 요청, 예상 못 한 예외]")
+                .containsExactly(MAX_ATTEMPTS, THREADS - MAX_ATTEMPTS, 0);
+        // 코드가 폐기됐으므로 정답을 알아도 더는 인증할 수 없다
+        assertThatThrownBy(() -> service.verifyCode(EMAIL, code))
+                .isInstanceOf(VerificationAttemptsExceededException.class);
+        assertThat(service.isEmailVerified(EMAIL)).isFalse();
+    }
+
+    @Test
+    @DisplayName("시도를 다 쓴 뒤 새 코드를 받으면 횟수가 새로 세어져 새 코드로 인증된다")
+    void newCodeStartsFreshAttempts() {
+        String wrong = wrongCodeFor(sendCode());
+        for (int i = 0; i < MAX_ATTEMPTS; i++) {
+            assertThat(service.verifyCode(EMAIL, wrong)).isFalse();
+        }
+        assertThatThrownBy(() -> service.verifyCode(EMAIL, wrong))
+                .isInstanceOf(VerificationAttemptsExceededException.class);
+
+        String newCode = sendCode();
+
+        // 정상 사용자가 오타로 시도를 다 써도 새 코드로 복구할 수 있어야 한다
+        assertThat(service.verifyCode(EMAIL, newCode)).isTrue();
+        assertThat(service.isEmailVerified(EMAIL)).isTrue();
+    }
+
+    @Test
+    @DisplayName("코드가 없는 이메일로 시도해도 시도 카운터는 10분 TTL 을 갖는다(만료 없는 키가 쌓이지 않는다)")
+    void attemptCounterAlwaysExpires() {
+        // 아무 이메일로나 찔러볼 수 있으므로, TTL 이 빠지면 키가 영구히 쌓인다(이 Redis 는 maxmemory 가 없다)
+        service.verifyCode(EMAIL, "000000");
+
+        Long ttl = redisTemplate.getExpire("ott:email-verification:v1:attempts:" + EMAIL);
+        assertThat(ttl).as("남은 TTL(초). 키가 없으면 -2, TTL 이 없으면 -1").isBetween(1L, 600L);
     }
 }

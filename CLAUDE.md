@@ -30,7 +30,7 @@ PLATFORM 0절의 항목이다. 규칙이 이 값에 따라 갈리므로 비워�
 | Runner 위치 | CD 는 프로덕션 호스트와 같은 머신 (Windows, Docker Desktop, `cd.yml` self-hosted 가 `AGE_KEY` 로 `.env` 복호화). CI 빌드·스캔·push 는 GitHub 호스팅 |
 | 엣지 프록시 | 없음 (Cloudflare 는 R2·Worker·Turnstile 용도). Docker Desktop SNAT 때문에 nginx `$remote_addr` 가 브리지 게이트웨이 하나로 모여, 속도 제한은 클라이언트별이 아니라 전체 총량으로만 동작 |
 | 실사용자와 개인정보 | 없음(포트폴리오, 테스트 계정). 저장 항목: 이메일·이름·비밀번호(BCrypt)·프로필 이미지 URL·소셜 providerId(`User`), 로그인 시도 이메일·IP·User-Agent(`AuthEvent`), 카드 브랜드·끝 4자리·만료 월/연·빌링키 식별자(`PaymentMethod`) |
-| Redis 역할 | 세션 + 캐시 + 분산 락(ShedLock) + DB 에 아직 안 내려간 시청 진행률 버퍼 + 로그인 실패 카운터·메일 인증 코드. 영속화 꺼짐(`--save "" --appendonly no`), 재시작하면 전원 로그아웃되고 미반영 진행률이 사라진다 |
+| Redis 역할 | 세션 + 캐시 + 분산 락(ShedLock) + DB 에 아직 안 내려간 시청 진행률 버퍼 + 로그인 실패 카운터·메일 인증 코드와 그 입력 시도 카운터. 영속화 꺼짐(`--save "" --appendonly no`), 재시작하면 전원 로그아웃되고 미반영 진행률이 사라진다 |
 | DB 엔진 | PostgreSQL |
 | 메시지 브로커 | Kafka(아웃박스 이벤트 발행) + RabbitMQ(정기결제 던닝의 지연 재시도). 두 브로커를 함께 쓰므로 ARCHITECTURE 13절의 역할 분리 규칙이 걸린다 |
 | 환경 구성 | 로컬 + 프로덕션. 상시 검증 환경은 없다. E2E(`docker-compose.e2e.yml`)와 복구 점검(`docker-compose.restore-test.yml`)은 필요할 때 임시 스택으로 띄운다 |

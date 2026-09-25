@@ -30,6 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
  * - handleDuplicateWebhookEvent: 웹훅 멱등키 경합 → 200(재전송 루프 차단)
  * - handleVersionConflict: 낙관적 락 버전 불일치 → 409
  * - handleUnreadableRequest: 읽을 수 없는 본문·타입 불일치 → 400
+ * - handleVerificationAttemptsExceeded: 인증 코드 입력 시도 상한 초과 → 429(VERIFICATION_ATTEMPTS_EXCEEDED)
  * - handleAny: 스프링 요청 오류(ErrorResponse 4xx) → 그 상태 코드, 그 외 → 500/Internal error 고정 응답
  *
  * 응답 바디에 원본 예외 메시지나 클래스명을 싣지 않는다. 진단에 필요한 정보는 로그에만 남기고,
@@ -103,6 +104,21 @@ public class GlobalExceptionHandler {
                 .body(ApiError.builder()
                         .code("LAST_PROFILE")
                         .message("마지막 프로필은 삭제할 수 없습니다.")
+                        .build());
+    }
+
+    /**
+     * 인증 코드 하나에 허용된 입력 시도를 넘겼다 → 429. 코드는 이미 폐기됐다.
+     * 같은 요청을 기다렸다 다시 보내도 성공하지 않으므로 재시도 시점(Retry-After)은 안내하지 않는다.
+     * 다음 행동은 새 코드를 받는 것이고, 프론트(EmailAuthForm)가 code 를 보고 발송 단계로 되돌린다.
+     */
+    @ExceptionHandler(VerificationAttemptsExceededException.class)
+    public ResponseEntity<ApiError> handleVerificationAttemptsExceeded(VerificationAttemptsExceededException ex) {
+        log.warn("인증 코드 입력 시도 상한 초과: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .body(ApiError.builder()
+                        .code("VERIFICATION_ATTEMPTS_EXCEEDED")
+                        .message("인증 코드 입력 횟수를 초과했습니다. 인증 코드를 다시 받아주세요.")
                         .build());
     }
 
