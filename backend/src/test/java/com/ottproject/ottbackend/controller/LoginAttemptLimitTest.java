@@ -87,6 +87,7 @@ class LoginAttemptLimitTest {
     private static final String COUNTER_KEY = "ott:login-fail:v1:" + EMAIL;
     private static final String WRONG_PASSWORD = "wrong-password";
     private static final int THREADS = 100;
+    private static final int MAX_ATTEMPTS = 5; // app.login.max-fail-attempts 기본값
     private static final long BCRYPT_MILLIS = 200; // 비밀번호 비교 시간. 이 동안이 경합 창이다
 
     @Autowired
@@ -131,17 +132,9 @@ class LoginAttemptLimitTest {
         controller.login(request, new MockHttpSession(), new MockHttpServletRequest(), new MockHttpServletResponse());
     }
 
-    /**
-     * 현재 코드의 동작을 기록한다: 잠금 확인은 읽기만 하고 실패는 비교가 끝난 뒤에 세서,
-     * 동시에 들어온 요청이 전부 비밀번호 비교까지 간다(이 테스트는 초록).
-     *
-     * 방어가 들어가면 뒤집혀야 하는 단언
-     * - 비밀번호 비교 100건 → 5건이어야 한다
-     * - 잠금(429) 0건 → 나머지 95건은 비교 없이 잠금으로 거부돼야 한다
-     */
     @Test
-    @DisplayName("비밀번호가 틀린 로그인 100건이 동시에 오면 잠금 상한(5회)을 넘어 100건 모두 비밀번호를 비교한다(현재 결함)")
-    void concurrentWrongPasswordsPassTheLock() throws InterruptedException {
+    @DisplayName("비밀번호가 틀린 로그인 100건이 동시에 와도 비밀번호 비교는 잠금 상한(5회)까지만 일어난다")
+    void concurrentWrongPasswordsStopAtTheLock() throws InterruptedException {
         ExecutorService pool = Executors.newFixedThreadPool(THREADS); // THREADS 와 같아야 ready 가 끝난다
         CountDownLatch ready = new CountDownLatch(THREADS);
         CountDownLatch start = new CountDownLatch(1);
@@ -178,32 +171,40 @@ class LoginAttemptLimitTest {
         if (!done.await(30, TimeUnit.SECONDS)) throw new IllegalStateException("끝나지 않은 스레드가 있다");
         pool.shutdown();
 
-        // 결함: 모두 잠금 확인을 통과해 비밀번호 비교까지 갔다
+        // 비교 전에 원자적으로 센 순번이 5 이하인 요청만 비교까지 가고, 나머지는 비교 없이 잠금으로 끝난다
         assertThat(List.of(passwordChecks.get(), wrongPassword.get(), locked.get(), unexpected.get()))
                 .as("[비밀번호 비교, 비밀번호 틀림(401), 잠금(429), 예상 못 한 결과]")
-                .containsExactly(THREADS, THREADS, 0, 0);
+                .containsExactly(MAX_ATTEMPTS, MAX_ATTEMPTS, THREADS - MAX_ATTEMPTS, 0);
     }
 
-    /**
-     * 현재 코드의 동작을 기록한다: 실패 카운터를 INCR 과 EXPIRE 두 번의 호출로 올려서, EXPIRE 만 실패하면
-     * 만료 없는 카운터가 남는다(이 테스트는 초록).
-     *
-     * 방어가 들어가면 뒤집혀야 하는 단언
-     * - 만료 설정 실패가 로그인 요청까지 번진다 → EXPIRE 를 따로 부르지 않으므로 비밀번호 틀림(401)으로 끝나야 한다
-     * - 카운터에 만료가 없다(-1) → 잠금 시간(15분) 안의 만료가 붙어 있어야 한다
-     */
     @Test
-    @DisplayName("실패 카운터의 만료 설정만 실패하면 만료 없는 카운터가 남는다(현재 결함)")
-    void failedExpireLeavesCounterWithoutTtl() {
+    @DisplayName("만료를 따로 설정하지 않으므로, 그 호출이 실패할 상황에서도 카운터는 잠금 시간(15분) 안에 만료된다")
+    void counterExpiresEvenWhenSeparateExpireWouldFail() {
+        // 증가와 만료를 따로 부르던 시절에는 이 실패로 만료 없는 카운터가 남아 계정이 영구히 잠겼다
         willThrow(new RedisConnectionFailureException("만료 설정만 실패한 상황"))
                 .given(redisTemplate)
                 .expire(anyString(), any(Duration.class));
 
-        assertThatThrownBy(this::loginWithWrongPassword).isInstanceOf(RedisConnectionFailureException.class);
+        assertThatThrownBy(this::loginWithWrongPassword)
+                .isInstanceOfSatisfying(
+                        ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode().value()).isEqualTo(401));
 
-        // 결함: 카운터는 올라갔는데 만료가 없다. 5번이 차면 이 계정은 풀리지 않는다
         assertThat(redisTemplate.getExpire(COUNTER_KEY))
                 .as("남은 TTL(초). 만료가 없으면 -1")
-                .isEqualTo(-1L);
+                .isBetween(1L, 900L);
+    }
+
+    @Test
+    @DisplayName("두 번째 시도부터는 만료를 늘리지 않는다(고정 윈도우) - 공격이 이어져도 잠금은 첫 시도 기준으로 풀린다")
+    void laterAttemptsDoNotExtendTheWindow() {
+        assertThatThrownBy(this::loginWithWrongPassword).isInstanceOf(ResponseStatusException.class);
+        redisTemplate.expire(COUNTER_KEY, Duration.ofSeconds(100)); // 첫 시도 뒤 시간이 흘러 100초 남았다고 둔다
+
+        assertThatThrownBy(this::loginWithWrongPassword).isInstanceOf(ResponseStatusException.class);
+
+        assertThat(redisTemplate.getExpire(COUNTER_KEY))
+                .as("남은 TTL(초). 900 근처로 다시 늘었다면 시도마다 만료가 밀리는 것이다")
+                .isBetween(1L, 100L);
     }
 }

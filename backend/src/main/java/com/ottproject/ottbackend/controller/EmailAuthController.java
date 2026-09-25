@@ -171,16 +171,7 @@ public class EmailAuthController {
 
         // 로그인 시도 전 잠금 확인: 실패 횟수가 임계치를 넘어 잠긴 계정이면 즉시 거부(무차별 대입 방어)
         if (loginAttemptService.isBlocked(requestDto.getEmail())) {
-            authEventService.record(
-                    AuthEventType.LOGIN_FAIL,
-                    AuthProvider.LOCAL,
-                    requestDto.getEmail(),
-                    clientIp,
-                    userAgent,
-                    session.getId(),
-                    "계정 잠금(로그인 실패 횟수 초과)");
-            throw new ResponseStatusException(
-                    HttpStatus.TOO_MANY_REQUESTS, "로그인 시도가 너무 많아 일시적으로 잠겼습니다. 잠시 후 다시 시도해주세요.");
+            throw accountLocked(requestDto.getEmail(), clientIp, userAgent, session.getId());
         }
 
         // Turnstile(사람 확인): 직전 로그인 실패가 임계치 이상이면 토큰 검증을 요구한다.
@@ -191,14 +182,19 @@ public class EmailAuthController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "TURNSTILE_REQUIRED");
         }
 
+        // 비밀번호를 비교하기 전에 시도를 센다. 위의 잠금 확인은 읽기만 해서, 동시에 들어온 요청을 모두 통과시킨다.
+        // 사람 확인 뒤에 세야 봇이 토큰 없이 요청만 보내 남의 계정을 잠그지 못한다.
+        if (!loginAttemptService.tryAcquireAttempt(requestDto.getEmail())) {
+            throw accountLocked(requestDto.getEmail(), clientIp, userAgent, session.getId());
+        }
+
         UserResponseDto responseDto;
         try {
             responseDto = emailAuthService.login(requestDto.getEmail(), requestDto.getPassword());
             // service에 login 함수에 requestDto객체에 Email값과 Password 값을 넘기면 DB까지 가서 로그인 처리를하고
             // UserResponseDto 객체를 반환하고 그 값을 responseDto에 저장함
         } catch (RuntimeException ex) {
-            // 로그인 실패(잘못된 비밀번호/비활성 계정 등): 실패 횟수 누적 후, 통계/보안 추적용 기록하고 예외 재전파
-            loginAttemptService.recordFailure(requestDto.getEmail());
+            // 로그인 실패(잘못된 비밀번호/비활성 계정 등): 시도는 위에서 이미 셌다. 통계/보안 추적용 기록하고 예외 재전파
             authEventService.record(
                     AuthEventType.LOGIN_FAIL,
                     AuthProvider.LOCAL,
@@ -249,6 +245,22 @@ public class EmailAuthController {
         // ResponseEntity.ok(responseDto)를 리턴해주는데 이때 상태코드로 200이 들어가고
         // 응답 본문에는 responseDto 객체를 JSON 문자열로 변환해서 넣어줌 이걸 전송
 
+    }
+
+    /**
+     * 잠긴 계정의 로그인 시도를 감사 로그에 남기고, 던질 429 예외를 돌려준다.
+     * - 잠금 확인(읽기)과 시도 계수(원자적 증가) 두 곳이 같은 응답을 쓴다.
+     */
+    private ResponseStatusException accountLocked(String email, String clientIp, String userAgent, String sessionId) {
+        authEventService.record(
+                AuthEventType.LOGIN_FAIL,
+                AuthProvider.LOCAL,
+                email,
+                clientIp,
+                userAgent,
+                sessionId,
+                "계정 잠금(로그인 실패 횟수 초과)");
+        return new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "로그인 시도가 너무 많아 일시적으로 잠겼습니다. 잠시 후 다시 시도해주세요.");
     }
 
     /**
