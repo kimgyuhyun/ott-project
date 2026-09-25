@@ -7,11 +7,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.ottproject.ottbackend.exception.VerificationAttemptsExceededException;
 import java.time.Duration;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,11 +22,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -38,7 +43,12 @@ import org.springframework.test.util.ReflectionTestUtils;
  * - 인증완료 티켓도 유한한 TTL 을 갖는다(한 번 인증한 이메일이 영구히 인증 상태로 남으면 안 된다)
  * - 틀린 코드/만료·미발송 이메일은 인증되지 않는다
  * - 코드는 일회용이다: 성공 즉시 소비한다
+ * - 코드 하나에 입력 5회까지만 비교한다. 넘긴 시도는 비교하지 않고 코드를 폐기한다
+ * - 새 코드는 시도 횟수를 새로 센다
  * - Redis 장애는 fail-closed 다: 우회 통로가 되면 안 된다
+ *
+ * 동시 요청에서 상한이 지켜지는지(비교 전에 원자적으로 세는지)는 목으로 증명할 수 없어
+ * 실제 Redis 로 VerificationCodeAttemptLimitTest 가 본다.
  *
  * 만료 자체(시간 경과)는 Redis 책임이라 여기서 시계를 돌리지 않는다.
  * 이 테스트가 지키는 것은 "몇 분짜리 TTL 로 넘겼는가"다.
@@ -60,11 +70,22 @@ class VerificationEmailServiceTest {
 
     private static final String CODE_KEY = "ott:email-verification:v1:code:user@test.com";
     private static final String VERIFIED_KEY = "ott:email-verification:v1:verified:user@test.com";
+    private static final String ATTEMPTS_KEY = "ott:email-verification:v1:attempts:user@test.com";
 
     @BeforeEach
     void setUp() {
         // @Value 필드는 단위테스트에서 주입되지 않는다
         ReflectionTestUtils.setField(service, "fromEmail", "noreply@test.com");
+    }
+
+    /**
+     * 이번 검증 요청에서 시도 카운터(INCR 스크립트)가 돌려줄 값.
+     * TTL 인자가 600초(코드와 같은 10분)일 때만 스텁이 걸리므로 카운터 TTL 도 함께 고정된다.
+     */
+    @SuppressWarnings("unchecked")
+    private void attemptsWillBe(long count) {
+        given(redisTemplate.execute(any(RedisScript.class), eq(List.of(ATTEMPTS_KEY)), eq("600")))
+                .willReturn(count);
     }
 
     /** 발송된 메일 본문에서 인증 코드를 꺼낸다 */
@@ -128,11 +149,25 @@ class VerificationEmailServiceTest {
         verify(valueOperations).set(eq(CODE_KEY), anyString(), any(Duration.class));
     }
 
+    @Test
+    @DisplayName("발송 - 새 코드를 저장하기 전에 시도 횟수를 지운다(새 코드는 횟수를 새로 센다)")
+    void sendResetsAttemptsBeforeStoringCode() {
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+
+        service.sendVerificationEmail("user@test.com");
+
+        // 순서가 반대면 그 사이에 들어온 시도가 이전 코드의 횟수로 판정돼 방금 저장한 새 코드를 폐기할 수 있다
+        InOrder inOrder = inOrder(redisTemplate, valueOperations);
+        inOrder.verify(redisTemplate).delete(ATTEMPTS_KEY);
+        inOrder.verify(valueOperations).set(eq(CODE_KEY), anyString(), any(Duration.class));
+    }
+
     // ===== 검증 =====
 
     @Test
     @DisplayName("검증 성공 - 코드가 일치하면 코드를 소비하고 인증완료 티켓을 30분 TTL 로 발급한다")
     void verifyCodeConsumesCodeAndIssuesTicket() {
+        attemptsWillBe(1);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(valueOperations.get(CODE_KEY)).willReturn("123456");
 
@@ -146,6 +181,7 @@ class VerificationEmailServiceTest {
     @Test
     @DisplayName("검증 실패 - 틀린 코드는 거부하고 코드를 소비하지 않는다(오타로 코드가 날아가면 안 된다)")
     void verifyCodeFailsWithWrongCode() {
+        attemptsWillBe(1);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(valueOperations.get(CODE_KEY)).willReturn("123456");
 
@@ -158,12 +194,36 @@ class VerificationEmailServiceTest {
     @Test
     @DisplayName("검증 실패 - 만료됐거나 발송한 적 없는 이메일은 인증되지 않는다")
     void verifyCodeFailsWhenCodeIsGone() {
+        attemptsWillBe(1);
         given(redisTemplate.opsForValue()).willReturn(valueOperations);
         given(valueOperations.get(CODE_KEY)).willReturn(null); // TTL 만료 후 == 발송 안 함
 
         assertThat(service.verifyCode("user@test.com", "123456")).isFalse();
 
         verify(valueOperations, never()).set(eq(VERIFIED_KEY), anyString(), any(Duration.class));
+    }
+
+    @Test
+    @DisplayName("검증 - 상한(5회)째 시도까지는 비교한다 - 경계값")
+    void fifthAttemptIsStillCompared() {
+        attemptsWillBe(5);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(valueOperations.get(CODE_KEY)).willReturn("123456");
+
+        assertThat(service.verifyCode("user@test.com", "123456")).isTrue();
+    }
+
+    @Test
+    @DisplayName("검증 - 상한을 넘긴 시도(6회째)는 비교하지 않고, 코드를 폐기한 뒤 거부한다")
+    void attemptOverLimitBurnsCodeWithoutComparing() {
+        attemptsWillBe(6);
+
+        assertThatThrownBy(() -> service.verifyCode("user@test.com", "123456"))
+                .isInstanceOf(VerificationAttemptsExceededException.class);
+
+        verify(redisTemplate).delete(CODE_KEY); // 폐기: 새 코드를 받아야 다시 시도할 수 있다
+        // 코드를 읽지도, 티켓을 쓰지도 않았다 = 정답이어도 통과할 길이 없다
+        verify(redisTemplate, never()).opsForValue();
     }
 
     // ===== 인증 여부 / 티켓 소비 =====

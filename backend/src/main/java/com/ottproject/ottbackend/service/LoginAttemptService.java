@@ -1,5 +1,6 @@
 package com.ottproject.ottbackend.service;
 
+import com.ottproject.ottbackend.util.RedisCounterUtil;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,9 +17,11 @@ import org.springframework.stereotype.Service;
  * - 카운터에는 TTL(잠금 시간)을 부여하므로, 잠금 시간이 지나면 자동으로 풀린다.
  *
  * 동작 정책
- * - 실패 시 카운터 +1, 최초 실패 시 TTL(잠금 시간) 설정
+ * - 비밀번호를 비교하기 전에 시도 1건을 원자적으로 센다(tryAcquireAttempt). 센 순번이 임계치를 넘으면 비교하지 않는다.
+ *   비교한 뒤에 세면 동시에 들어온 요청이 모두 비교까지 가서 상한이 동시 요청 수만큼 늘어난다(LoginAttemptLimitTest).
+ * - 최초 시도(카운터 생성)에만 TTL(잠금 시간)을 건다 → 고정 윈도우. 증가와 TTL 은 한 번에 실행한다(RedisCounterUtil).
  * - 카운터 ≥ 임계치 → 잠금 상태로 판단(로그인 거부)
- * - 로그인 성공 시 카운터 삭제(초기화)
+ * - 실패한 시도는 센 그대로 남고, 로그인 성공 시 카운터 삭제(초기화)
  *
  * 설정(application.yml)
  * - app.login.max-fail-attempts: 잠금 임계치(기본 5)
@@ -26,7 +29,7 @@ import org.springframework.stereotype.Service;
  *
  * 메서드 개요
  * - isBlocked: 현재 잠금 상태 여부
- * - recordFailure: 실패 1건 누적(누적 후 횟수 반환)
+ * - tryAcquireAttempt: 비밀번호 비교 전에 시도 1건을 센다(임계치 이내면 true)
  * - reset: 카운터 초기화(로그인 성공 시)
  */
 @Service
@@ -102,27 +105,28 @@ public class LoginAttemptService {
     }
 
     /**
-     * 로그인 실패 1건을 누적한다.
-     * - 최초 실패(카운터 생성) 시점에 TTL(잠금 시간)을 설정한다.
+     * 비밀번호를 비교하기 전에 시도 1건을 센다.
+     * - 원자적으로 센 순번이 임계치 이하일 때만 비교를 허용한다. 동시에 들어온 요청도 서로 다른 순번을 받으므로
+     *   비교는 잠금 시간 동안 임계치만큼만 일어난다.
+     * - 최초 시도에만 TTL(잠금 시간)을 건다. 증가와 TTL 을 따로 부르면 그 사이의 실패로 TTL 없는 카운터가 남아
+     *   계정이 영구히 잠긴다(잠금 확인이 로그인보다 먼저라 성공으로도 풀리지 않는다).
      *
      * @param email 대상 이메일
-     * @return 누적된 실패 횟수
+     * @return 비밀번호를 비교해도 되면 true, 임계치를 넘은 시도면 false
      */
-    public long recordFailure(String email) {
+    public boolean tryAcquireAttempt(String email) {
         if (email == null || email.isBlank()) {
-            return 0L;
+            return true; // 다른 메서드와 같이 빈 이메일은 세지 않는다(로그인 DTO 검증이 먼저 막는다)
         }
-        String key = key(email);
-        Long count = redisTemplate.opsForValue().increment(key); // 원자적 +1 (없으면 1로 생성)
-        if (count != null && count == 1L) {
-            // 최초 실패 시에만 만료 시간 설정 → 잠금 시간 동안 슬라이딩 없이 고정 윈도우 유지
-            redisTemplate.expire(key, Duration.ofMinutes(lockMinutes));
+        Long count = RedisCounterUtil.incrementWithTtl(redisTemplate, key(email), Duration.ofMinutes(lockMinutes));
+        if (count == null) {
+            return false; // 셀 수 없으면 비교하지 않는다(fail-closed)
         }
-        long result = count != null ? count : 0L;
-        if (result >= maxFailAttempts) {
-            log.warn("로그인 실패 임계치 도달로 계정 잠금 - email={}, count={}, lockMinutes={}", email, result, lockMinutes);
+        if (count == maxFailAttempts) {
+            // 이메일은 남기지 않는다(PLATFORM 9: 로그의 사용자 식별자는 이메일이 아니다). 요청은 상관관계 ID 로 찾는다.
+            log.warn("로그인 시도가 임계치에 도달 - 이번 시도가 실패하면 {}분간 잠긴다", lockMinutes);
         }
-        return result;
+        return count <= maxFailAttempts;
     }
 
     /**

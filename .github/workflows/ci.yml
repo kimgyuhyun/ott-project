@@ -170,7 +170,7 @@ jobs:
       - name: Gate on executed test count
         env:
           RESULTS_DIR: backend/build/test-results/test
-          MIN_TESTS: '420'
+          MIN_TESTS: '575'
           REQUIRED_CLASSES: >-
             PaymentCheckoutIdempotencyTest PaymentConfirmIdempotencyTest
             ProrationConfirmIdempotencyTest RefundIdempotencyTest
@@ -178,6 +178,8 @@ jobs:
             RecurringBillingServiceTest RebillMerchantUidTest
             OriginValidationFilterTest LoginAttemptServiceTest
             EmailAuthServiceTest OAuth2UserServiceTest
+            VerificationEmailServiceTest VerificationCodeAttemptLimitTest
+            LoginAttemptLimitTest EmailAuthControllerTest
         run: bash .github/scripts/check-test-count.sh
 
       # 정적 분석은 clean build 의 check 단계에서 함께 돌았다. 여기서는 그 리포트를 읽어
