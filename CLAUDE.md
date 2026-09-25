@@ -8,58 +8,33 @@
 단일 호스트 Docker Compose, GitHub Actions CI(ghcr push+Trivy)→CD(self-hosted 러너, 자동배포).
 
 ## 프로젝트 규칙
-- 코드와 데이터 구조 규칙은 `C:\dev-standards\standards\ARCHITECTURE.md` 를 따른다.
-- 배포, 보안, 파이프라인, 관측 규칙은 `C:\dev-standards\standards\PLATFORM.md` 를 따른다.
-- 각 규칙은 [절대]와 [상황]으로 표시돼 있다. [절대]는 예외 없음. [상황]은 적용 조건과 미적용 조건이 함께 있으니, 미적용 조건에 해당하면 규칙을 어기는 것이 맞다.
-- [상황] 규칙의 미적용 조건을 근거로 규칙을 어길 때는 그 이유를 코드 주석이나 커밋 메시지에 한 줄 남긴다.
-- 규칙끼리 충돌하거나 판단이 서지 않으면 임의로 정하지 말고 물어본다.
-- 규칙 문서는 이 저장소 밖 `C:\dev-standards` 에 있다. 저장소 안에 복사하지 않는다. 이 저장소는 공개이므로 규칙 문서 내용을 커밋하거나 README에 옮겨 적지 않는다(`.gitignore` 의 `standards/` 줄은 실수로 복사됐을 때를 막기 위해 남겨둔다).
+
+@C:/dev-standards/templates/CLAUDE-common.md
+
+- 위 공통 규칙 블록(규칙 문서 경로, 표시 읽는 법, "언제 무엇을 읽는가" 표)이 보이지 않으면 작업 전에 `C:\dev-standards\templates\CLAUDE-common.md` 를 직접 읽는다.
+- 이 저장소는 공개이므로 규칙 문서 내용을 커밋하거나 README에 옮겨 적지 않는다(`.gitignore` 의 `standards/` 줄은 실수로 복사됐을 때를 막기 위해 남겨둔다).
 - 이 프로젝트는 규칙 문서보다 먼저 만들어졌다. 기존 코드가 규칙과 다른 곳이 남아 있으므로, 주변 코드를 근거로 규칙을 판단하지 않는다.
+- 새 기기에서는 클론 직후 `docs/setup.md` 를 먼저 한다(스킬 정션 포함).
 
 ### 프로젝트 전제
 
-PLATFORM 0절의 항목이다. 규칙이 이 값에 따라 갈리므로 비워두지 않는다. 값이 바뀌는 변경(인스턴스 증설, 결제 추가, Runner 이전, 도메인 교체)은 이 표를 먼저 고친 뒤 시작한다.
+PLATFORM 0절의 항목이다. 규칙이 이 값에 따라 갈리므로 비워두지 않는다. 값이 바뀌는 변경은 이 표를 먼저 고친 뒤 시작한다.
 
 | 항목 | 값 |
 |---|---|
 | 앱 인스턴스 수 | 2 (`docker-compose.ha.yml` 의 ott-app·ott-app-2, `deploy-rolling.ps1` 이 하나씩 교체). DB 커넥션 상한 = Hikari 20 × 2 = 40 |
 | 프론트엔드 형태 | SSR 컨테이너, 같은 호스트 (Next.js standalone `node server.js`, `default` 망에만 붙고 nginx 가 3000 으로 프록시) |
-| 사이트 경계 | 공용 무료 도메인 (`laputa.kozow.com`, 프론트와 API 가 같은 오리진이지만 교차 사이트로 취급) |
+| 사이트 경계 | 공용 무료 도메인 (`laputa.kozow.com`, 프론트와 API 가 같은 오리진). SameSite 를 방어로 세지 않고 `OriginValidationFilter` 의 출처 검증을 반드시 둔다 |
 | 인증 방식 | 서버 세션 + 세션 쿠키 (Spring Session Redis, JSESSIONID `Secure; HttpOnly; SameSite=Lax`). 이메일·비밀번호 로그인과 소셜(Google·Kakao·Naver). CSRF 토큰은 기본 꺼짐, `OriginValidationFilter` 로 출처 검증 |
 | 결제 형태 | 정기(빌링키 `customer_uid`, 아임포트 V1 `api.iamport.kr`), 웹훅 수신 `/api/payments/webhook` |
 | Runner 위치 | CD 는 프로덕션 호스트와 같은 머신 (Windows, Docker Desktop, `cd.yml` self-hosted 가 `AGE_KEY` 로 `.env` 복호화). CI 빌드·스캔·push 는 GitHub 호스팅 |
 | 엣지 프록시 | 없음 (Cloudflare 는 R2·Worker·Turnstile 용도). Docker Desktop SNAT 때문에 nginx `$remote_addr` 가 브리지 게이트웨이 하나로 모여, 속도 제한은 클라이언트별이 아니라 전체 총량으로만 동작 |
 | 실사용자와 개인정보 | 없음(포트폴리오, 테스트 계정). 저장 항목: 이메일·이름·비밀번호(BCrypt)·프로필 이미지 URL·소셜 providerId(`User`), 로그인 시도 이메일·IP·User-Agent(`AuthEvent`), 카드 브랜드·끝 4자리·만료 월/연·빌링키 식별자(`PaymentMethod`) |
 | Redis 역할 | 세션 + 캐시 + 분산 락(ShedLock) + DB 에 아직 안 내려간 시청 진행률 버퍼 + 로그인 실패 카운터·메일 인증 코드. 영속화 꺼짐(`--save "" --appendonly no`), 재시작하면 전원 로그아웃되고 미반영 진행률이 사라진다 |
-
-### 언제 무엇을 읽는가
-아래 작업을 시작하기 전에 해당 절을 먼저 읽는다. 기억에 의존해 규칙을 적용하지 않는다. 측정·재현 절차는 dev-standards 스킬이 자동으로 열어주므로 이 표에는 규칙 절만 적는다.
-
-| 시작하는 작업 | 먼저 읽을 절 |
-|---|---|
-| 새 프로젝트 시작, 인스턴스 증설, 결제 추가, Runner 이전, 도메인 교체 | PLATFORM 0 — 위 전제 표를 먼저 고친다 |
-| 엔티티, DTO, Controller, Service 새로 만들기 | ARCHITECTURE 1, 2, 7 |
-| 트랜잭션 경계 잡기, 데이터 접근 수단 고르기 | ARCHITECTURE 3, 4 |
-| 인덱스 추가·삭제 | ARCHITECTURE 8 — 측정 절차는 `index-measurement` 스킬 |
-| 재고·잔액·좌석·쿠폰 차감, 같은 행 동시 갱신 | ARCHITECTURE 9 — 재현 절차는 `defect-repro` 스킬 |
-| 결제·주문, 외부 API 호출이 끼는 상태 전이 | ARCHITECTURE 5, 6 — 재현 절차는 `defect-repro` 스킬 |
-| 목록·상세 조회 성능, 페이징, N+1, 커넥션 풀 | ARCHITECTURE 11, 12 |
-| 캐시 추가 | ARCHITECTURE 10 |
-| 메시지 발행·소비, 브로커 선택 | ARCHITECTURE 13 |
-| 소비자를 별도 서비스로 분리, 데이터 망에 컨테이너 추가 | PLATFORM 3 — 브로커 인증을 걸 시점인지 판단한다 |
-| 예외 처리와 에러 응답 | ARCHITECTURE 14 |
-| 테스트 작성 | ARCHITECTURE 15 — 뮤테이션 체크 절차는 `test-writing` 스킬 |
-| 로그인, 인가, 쿠키, CORS, DB 계정 권한 | PLATFORM 4 |
-| 사용자 입력 검증, 파일 업로드, 서버가 보내는 외부 요청 | PLATFORM 5 |
-| compose, Dockerfile, nginx 설정 수정 | PLATFORM 2, 3 |
-| 워크플로 수정, 의존성 추가 | PLATFORM 6, 7 |
-| 마이그레이션 작성과 배포 | PLATFORM 8 — 파괴적 변경은 애플리케이션 배포와 같은 릴리스에 넣지 않는다 |
-| 시크릿 추가·변경, 유출 대응 | PLATFORM 1 |
-| 지표, 로그, 경보 추가 | PLATFORM 9 |
-| 부하 테스트 | PLATFORM 10 — 실행 절차는 `load-test` 스킬 |
-| 배포 후 보안 점검 | PLATFORM 1~5 — 점검 절차는 `security-audit` 스킬 |
-
-절차 스킬은 `C:\dev-standards\skills\` 에 있고 `~\.claude\skills` 정션으로 연결돼 있다. 정션이 없으면 스킬이 조용히 사라지므로 새 기기에서는 클론 직후 `docs/setup.md` 를 먼저 한다.
+| DB 엔진 | PostgreSQL |
+| 메시지 브로커 | Kafka(아웃박스 이벤트 발행) + RabbitMQ(정기결제 던닝의 지연 재시도). 두 브로커를 함께 쓰므로 ARCHITECTURE 13절의 역할 분리 규칙이 걸린다 |
+| 환경 구성 | 로컬 + 프로덕션. 상시 검증 환경은 없다. E2E(`docker-compose.e2e.yml`)와 복구 점검(`docker-compose.restore-test.yml`)은 필요할 때 임시 스택으로 띄운다 |
+| 가상 스레드 | 사용 안 함 (`spring.threads.virtual.enabled` 설정 없음) |
 
 ## 폴더
 - `backend/` Spring Boot (config/controller/dto/entity/repository/security/service 등 표준 레이어드)
