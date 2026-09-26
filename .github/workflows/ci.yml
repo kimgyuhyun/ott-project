@@ -170,7 +170,7 @@ jobs:
       - name: Gate on executed test count
         env:
           RESULTS_DIR: backend/build/test-results/test
-          MIN_TESTS: '575'
+          MIN_TESTS: '578'
           REQUIRED_CLASSES: >-
             PaymentCheckoutIdempotencyTest PaymentConfirmIdempotencyTest
             ProrationConfirmIdempotencyTest RefundIdempotencyTest

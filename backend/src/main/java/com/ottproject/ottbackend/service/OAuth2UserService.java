@@ -148,7 +148,7 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
     /**
      * 소셜 로그인 제공자별 이메일 검증 여부 추출
      * - 제공자가 "이 이메일의 소유권이 검증되었다"고 단언하는지 확인한다.
-     * - 검증되지 않은 이메일을 기존 계정에 자동 연동하면 계정 탈취 위험이 있으므로 [#7] 에서 사용한다.
+     * - 신규 사용자의 이메일 인증 표시에만 쓴다. 기존 계정 연결의 근거로는 쓰지 않는다(processOAuth2User 2번 주석).
      *
      * @param attributes 소셜 로그인 제공자에서 받은 사용자 정보
      * @param provider 소셜 로그인 제공자 (google, kakao, naver)
@@ -285,14 +285,16 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
     }
 
     /**
-     * OAuth2 사용자 정보 처리 (기존 사용자 조회 또는 신규 사용자 생성)
-     * 같은 이메일로 다른 소셜 로그인 제공자로 가입한 경우를 처리
+     * OAuth2 사용자 정보 처리 (연동된 사용자 조회 또는 신규 사용자 생성)
+     * 같은 이메일의 계정이 이미 있으면 연결하지 않고 로그인을 거절한다(아래 2번 주석 참고)
      *
      * @param email 사용자 이메일
      * @param name 사용자 이름
      * @param providerId 소셜 로그인 제공자에서의 고유 ID
      * @param authProvider 인증 제공자 (GOOGLE, KAKAO, NAVER)
-     * @return 처리된 사용자 정보 (기존 사용자 또는 신규 생성된 사용자)
+     * @param emailVerified 제공자가 이메일 소유를 검증했는지(신규 사용자의 인증 표시에만 쓴다)
+     * @return 처리된 사용자 정보 (연동된 사용자 또는 신규 생성된 사용자)
+     * @throws OAuth2AuthenticationException 같은 이메일의 계정이 이미 있을 때(email_already_registered)
      */
     @Transactional
     public User processOAuth2User(
@@ -310,30 +312,17 @@ public class OAuth2UserService extends DefaultOAuth2UserService { // DefaultOAut
             return userRepository.save(managed);
         }
 
-        // 2) 이메일 기준 기존 사용자 존재 → 자동 연동
-        Optional<User> existingUserByEmail = userRepository.findByEmail(email);
-        if (existingUserByEmail.isPresent()) {
-            User user = existingUserByEmail.get();
-            // [#7] 미검증 이메일 자동 연동 차단:
-            // 공격자가 피해자의 이메일로 소셜 계정을 만들어 기존 계정에 자동 연동되면 계정 탈취가 가능하다.
-            // 제공자가 이메일 소유권을 검증한 경우에만 자동 연동을 허용한다.
-            if (!socialAccountRepository.existsByUserAndProvider(user, authProvider)) {
-                if (!emailVerified) {
-                    log.warn("OAuth2 자동 연동 차단 - 미검증 이메일 (email: {}, provider: {})", email, authProvider);
-                    throw new OAuth2AuthenticationException(
-                            new OAuth2Error("email_not_verified"),
-                            "이미 가입된 이메일입니다. 소셜 제공자에서 이메일이 검증되지 않아 자동 연동할 수 없습니다.");
-                }
-                SocialAccount account = SocialAccount.createSocialAccount(user, authProvider, providerId, email);
-                socialAccountRepository.save(account);
-            }
-            // 사용자 프로필 최소 업데이트(닉네임은 사용자 지정값 우선, 덮어쓰지 않음)
-            if (user.getName() == null || user.getName().isBlank()) {
-                user.setName(name);
-            }
-            user.setEmailVerified(true); // 검증된 이메일로 연동되었으므로 true
-            isNewUserFlag.set(Boolean.FALSE);
-            return userRepository.save(user);
+        // 2) 같은 이메일의 계정이 이미 있으면 연결하지 않고 거절한다.
+        // - 제공자가 넘긴 이메일이 같다는 것은 그 계정의 주인이라는 증거가 아니다. 제공자가 이메일 소유를
+        //   검증했다는 보장이 없고, 네이버는 검증 여부를 알려주지도 않는다(PLATFORM 4절).
+        // - 예전에는 제공자의 검증 플래그를 보고 자동 연결했고, 주인이 같은 제공자 계정을 이미 연결해 둔
+        //   경우에는 그 플래그조차 보지 않고 주인 계정으로 로그인시켰다.
+        // - 소셜 계정 연결은 로그인한 세션에서만 한다. 그 기능이 생기기 전까지는 처음 가입한 방법으로
+        //   로그인하도록 안내한다(실패 핸들러가 이 메시지를 실패 화면으로 넘긴다).
+        if (userRepository.findByEmail(email).isPresent()) {
+            log.warn("OAuth2 로그인 거절 - 같은 이메일의 기존 계정이 있음 (provider: {})", authProvider);
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error("email_already_registered"), "이미 가입된 이메일입니다. 처음 가입한 방법으로 로그인해 주세요.");
         }
 
         // 3) 신규 사용자 + 연동 생성
