@@ -405,7 +405,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
      * 청구 결과를 구독 상태에 반영한다(호출자의 트랜잭션 안에서 수행).
      * - 성공: 결제 확정 + 기간/next_billing_at 연장, 재시도 카운트 리셋
      * - 확정 실패: PAST_DUE 전환 후 MQ 지연 큐에 건별 재시도 예약(1차 3h, 2차 24h),
-     *   3회 소진 시 해지+메일. 발행 실패 시 기존 스윕 방식(+1일)으로 폴백.
+     *   3회 소진 시 해지+메일. 발행과 메일은 커밋 뒤에 나가고, 발행이 실패하면 스윕이 +3일에 이어받는다.
      * - 미확정/중복: 아무것도 바꾸지 않는다. retryCount 를 올리면 다음 시도가 새 merchant_uid 로
      *   또 청구돼 이중 청구가 되고, 상태를 바꾸면 대사가 확정할 때 기준이 흔들린다.
      */
@@ -432,14 +432,15 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
 
                 if (nextRetry >= 3) { // 최대 재시도 소진
                     sub.cancelAfterDunningExhausted(now); // 해지 + 해지 시각 + 자동갱신 중단 + 말일 해지 예약
-                    // 알림: 결제 실패 누적 해지 안내 메일 발송
+                    // 알림: 결제 실패 누적 해지 안내 메일(커밋 뒤에 나간다 — SMTP 실패가 해지를 되돌리지 못한다)
                     notificationService.sendCanceledDueToDunning(sub.getUser(), sub);
                 } else {
-                    // MQ 지연 큐에 건별 재시도 예약(1차: 3h, 2차: 24h 뒤 정확히 이 구독만 도착)
-                    boolean scheduled = billingRetryPublisher.scheduleRetry(sub.getId(), nextRetry);
-                    // 안전망: 메시지 유실 대비 스윕이 +3일 후 잡도록 예약(성공 시 nextBillingAt이 갱신돼 중복 없음).
-                    // 발행 실패(브로커 장애) 시에는 기존 스윕 방식(+1일)으로 폴백한다.
-                    sub.scheduleNextBillingAt(scheduled ? now.plusDays(3) : now.plusDays(1));
+                    // MQ 지연 큐에 건별 재시도 예약(1차: 3h, 2차: 24h 뒤 정확히 이 구독만 도착). 발행은 커밋 뒤에 나간다.
+                    billingRetryPublisher.scheduleRetry(sub.getId(), nextRetry);
+                    // 안전망: 메시지가 유실되거나 발행이 실패해도 스윕이 +3일 후 잡는다(성공 시 nextBillingAt이 갱신돼 중복 없음).
+                    // 발행 결과는 커밋 뒤에야 나오므로 여기서 날짜를 고를 수 없다. 예전에는 발행이 실패하면 +1일로
+                    // 당겼다. 이제 그 경우 복구가 이틀 늦어지는 대신, 롤백된 실패를 근거로 재시도가 도착하는 일이 없다.
+                    sub.scheduleNextBillingAt(now.plusDays(3));
                 }
             }
         }
