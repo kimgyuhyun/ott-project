@@ -5,18 +5,22 @@ import com.ottproject.ottbackend.entity.MembershipSubscription;
 import com.ottproject.ottbackend.entity.User;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * MembershipNotificationService
  *
  * 큰 흐름
  * - 구독 말일 해지 예약 및 재시도 실패로 인한 해지 등 주요 이벤트를 이메일로 안내한다.
+ * - 트랜잭션 안에서 불리면 커밋이 끝난 뒤에 보낸다(send 주석).
  * - 운영에서는 HTML 템플릿/다국어/발송 모듈 분리를 권장한다.
  *
  * 메서드 개요
@@ -24,7 +28,9 @@ import org.springframework.stereotype.Service;
  * - sendCanceledDueToDunning: 결제 실패 누적으로 인한 해지 안내 메일 발송
  * - sendPlanChangeNotification: 플랜 변경 완료 안내 메일 발송
  * - sendPlanChangeReminder: 플랜 변경 예정 안내 메일 발송 (스케줄러)
+ * - send: 발송 시점 결정(트랜잭션 안이면 커밋 뒤, 밖이면 즉시)
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MembershipNotificationService { // 알림 메일 서비스
@@ -45,7 +51,7 @@ public class MembershipNotificationService { // 알림 메일 서비스
                 + "플랜: "
                 + planLabel + "\n" + (sub.getEndAt() != null ? ("만료일: " + sub.getEndAt()) : "")
                 + "\n\n" + "감사합니다."); // 본문
-        mailSender.send(msg); // 발송
+        send(msg); // 발송
     }
 
     public void sendCanceledDueToDunning(User user, MembershipSubscription sub) { // 연체로 인한 해지 안내
@@ -59,7 +65,7 @@ public class MembershipNotificationService { // 알림 메일 서비스
                 + "플랜: "
                 + planLabel + "\n" + "다시 구독하시려면 결제수단을 확인한 뒤 구독을 신청해주세요.\n\n"
                 + "감사합니다."); // 본문
-        mailSender.send(msg); // 발송
+        send(msg); // 발송
     }
 
     /**
@@ -80,7 +86,7 @@ public class MembershipNotificationService { // 알림 메일 서비스
                 + newPlan.getPrice() + "원\n" + "적용일: "
                 + LocalDateTime.now().toLocalDate() + "\n\n" + "새로운 플랜의 혜택을 즐겨보세요!\n\n"
                 + "감사합니다."); // 본문
-        mailSender.send(msg); // 발송
+        send(msg); // 발송
     }
 
     /**
@@ -127,7 +133,7 @@ public class MembershipNotificationService { // 알림 메일 서비스
                         : "") + "원\n" + "적용일: "
                 + subscription.getPlanChangeScheduledAt().toLocalDate() + "\n\n" + "변경을 취소하시려면 고객센터로 문의해주세요.\n\n"
                 + "감사합니다."); // 본문
-        mailSender.send(msg); // 발송
+        send(msg); // 발송
     }
 
     /**
@@ -145,7 +151,7 @@ public class MembershipNotificationService { // 알림 메일 서비스
                 + getPlanLabelFromCode(planCode) + "\n" + "결제 금액: "
                 + (amount != null ? amount : 0) + "원\n" + (paidAt != null ? ("결제 일시: " + paidAt) : "")
                 + "\n\n" + "이용해 주셔서 감사합니다."); // 본문
-        mailSender.send(msg); // 발송
+        send(msg); // 발송
     }
 
     /**
@@ -164,7 +170,34 @@ public class MembershipNotificationService { // 알림 메일 서비스
                 + planLabel + "\n" + "다음 결제일: "
                 + subscription.getNextBillingAt().toLocalDate() + "\n" + "멤버십이 자동으로 갱신됩니다.\n\n"
                 + "감사합니다."); // 본문
-        mailSender.send(msg); // 발송
+        send(msg); // 발송
+    }
+
+    /**
+     * 메일을 보낸다. 트랜잭션 안에서 불리면 커밋이 끝난 뒤에 보낸다.
+     * - 트랜잭션 안에서 바로 보내면 SMTP 실패가 해지·연체 해지 같은 상태 변경을 통째로 롤백시키고,
+     *   SMTP 가 응답하지 않는 동안 그 트랜잭션이 커넥션과 행 잠금을 쥔 채 기다린다(ARCHITECTURE 4절).
+     * - 본문은 호출한 자리(트랜잭션 안)에서 이미 만들었으므로, 커밋 뒤에는 엔티티를 읽지 않는다.
+     * - 커밋 뒤의 실패는 되돌릴 상태가 없으므로 ERROR 로 남기고 끝낸다. 롤백되면 보내지 않는다.
+     * - 트랜잭션 밖(결제 이벤트 컨슈머의 영수증)에서는 바로 보내고 실패도 그대로 던진다. 컨슈머의 재시도가 그 예외에 기댄다.
+     * - AnimeCacheService.evictAfterCommit 과 같은 방식이다.
+     */
+    private void send(SimpleMailMessage msg) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            mailSender.send(msg);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    mailSender.send(msg);
+                } catch (Exception e) {
+                    // 수신자 주소는 남기지 않는다(개인정보). 어떤 안내가 빠졌는지는 제목으로 안다.
+                    log.error("커밋 뒤 안내 메일 발송 실패 - subject: {}", msg.getSubject(), e);
+                }
+            }
+        });
     }
 
     /**

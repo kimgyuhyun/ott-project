@@ -236,7 +236,7 @@ class RecurringBillingServiceTest {
                         anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .willThrow(new PaymentGateway.ChargeException(
                         PaymentGateway.FailureType.SOFT_DECLINE, "CARD_DECLINED", "카드 승인 거절"));
-        given(billingRetryPublisher.scheduleRetry(SUB_ID, 2)).willReturn(true);
+        LocalDateTime before = LocalDateTime.now();
 
         service.retryBilling(SUB_ID, 1);
 
@@ -244,6 +244,8 @@ class RecurringBillingServiceTest {
         assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.PAST_DUE);
         assertThat(sub.getLastErrorCode()).isEqualTo("CARD_DECLINED");
         verify(billingRetryPublisher).scheduleRetry(SUB_ID, 2);
+        // 발행은 커밋 뒤에 일어나 그 결과를 여기서 알 수 없다. 그래서 스윕 안전망은 발행 결과와 상관없이 +3일이다
+        assertThat(sub.getNextBillingAt()).isAfterOrEqualTo(before.plusDays(3));
         verify(attemptRecorder).markAttemptFailed(eq(PAYMENT_ID), any(LocalDateTime.class)); // 확정 실패는 닫는다
     }
 
