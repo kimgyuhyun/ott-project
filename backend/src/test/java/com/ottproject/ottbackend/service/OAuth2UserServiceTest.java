@@ -1,22 +1,33 @@
 package com.ottproject.ottbackend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import com.ottproject.ottbackend.entity.SocialAccount;
 import com.ottproject.ottbackend.entity.User;
+import com.ottproject.ottbackend.enums.AuthProvider;
 import com.ottproject.ottbackend.repository.SocialAccountRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
@@ -25,14 +36,22 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
  *
  * 지키려는 규칙
  * - 소셜 로그인 사용자의 DB 역할(USER/ADMIN)이 Spring Security 권한(ROLE_*)으로 부여되어야 한다.
+ * - 제공자가 넘긴 이메일이 기존 계정과 같다는 이유로 그 계정에 소셜 계정을 연결하거나 로그인시키지 않는다.
  *
  * 회귀 배경(2026-07-16)
  * - DB role 을 attributes 에만 담고 authorities 에는 제공자 기본 권한만 실었다.
  * - 그 결과 DB 가 ADMIN 인 계정도 ROLE_ADMIN 이 없어 /api/admin/** 이 전부 403 이었다.
  *   (프론트는 attributes 의 role 을 보므로 화면만 열리고 API 는 막히는 형태)
+ *
+ * 결함 배경(2026-09-26)
+ * - 같은 이메일의 계정이 있으면 제공자의 검증 플래그만 보고 자동으로 연결했다. 네이버는 플래그가 없어
+ *   코드가 검증된 것으로 간주했으므로, 네이버 계정 이메일을 남의 이메일로 맞추면 그 사람 계정에 들어갔다.
+ * - 주인이 같은 제공자 계정을 이미 연결해 둔 경우에는 검증 플래그조차 보지 않고 주인 계정으로 로그인시켰다.
  */
 @ExtendWith(MockitoExtension.class)
 class OAuth2UserServiceTest {
+
+    private static final String OWNER_EMAIL = "owner@example.com";
 
     @Mock
     private UserRepository userRepository;
@@ -87,5 +106,38 @@ class OAuth2UserServiceTest {
         OAuth2User result = oAuth2UserService.createOAuth2User(providerUser(), admin);
 
         assertThat(authorityNames(result)).contains("OAUTH2_USER", "SCOPE_account_email");
+    }
+
+    @ParameterizedTest(name = "제공자 검증 플래그 = {0}")
+    @ValueSource(booleans = {true, false})
+    @DisplayName("같은 이메일의 계정이 있으면 제공자의 검증 플래그와 상관없이 연결하지 않고 로그인을 거절한다")
+    void rejectsSocialLoginForExistingEmail(boolean emailVerified) {
+        User owner = User.createLocalUser(OWNER_EMAIL, "pw", "주인");
+        when(socialAccountRepository.findByProviderAndProviderId(AuthProvider.KAKAO, "kakao-new"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmail(OWNER_EMAIL)).thenReturn(Optional.of(owner));
+
+        assertThatThrownBy(() -> oAuth2UserService.processOAuth2User(
+                        OWNER_EMAIL, "다른사람", "kakao-new", AuthProvider.KAKAO, emailVerified))
+                .isInstanceOf(OAuth2AuthenticationException.class)
+                .satisfies(e -> assertThat(
+                                ((OAuth2AuthenticationException) e).getError().getErrorCode())
+                        .isEqualTo("email_already_registered"));
+        verify(socialAccountRepository, never()).save(any());
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("처음 보는 이메일이면 새 계정과 소셜 연결을 만든다")
+    void createsUserAndSocialLinkForNewEmail() {
+        when(socialAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-1"))
+                .thenReturn(Optional.empty());
+        when(userRepository.findByEmail(OWNER_EMAIL)).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        User created = oAuth2UserService.processOAuth2User(OWNER_EMAIL, "새사용자", "google-1", AuthProvider.GOOGLE, true);
+
+        assertThat(created.getEmail()).isEqualTo(OWNER_EMAIL);
+        verify(socialAccountRepository).save(any(SocialAccount.class));
     }
 }
