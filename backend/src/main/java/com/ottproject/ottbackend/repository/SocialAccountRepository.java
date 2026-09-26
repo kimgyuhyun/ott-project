@@ -17,7 +17,6 @@ import org.springframework.stereotype.Repository;
  * 메서드 개요
  * - findByProviderAndProviderId: (제공자, 외부ID)로 단건 조회
  * - findByUser: 사용자 연동 목록 조회
- * - existsByUserAndProvider: 제공자 연동 여부 확인
  * - deleteByUser: 사용자 연동 전체 삭제(탈퇴)
  */
 @Repository // 스프링 컴포넌트 스캔
@@ -25,8 +24,6 @@ public interface SocialAccountRepository extends JpaRepository<SocialAccount, Lo
     Optional<SocialAccount> findByProviderAndProviderId(AuthProvider provider, String providerId); // 1건 조회
 
     List<SocialAccount> findByUser(User user); // 사용자에 연결된 모든 연동
-
-    boolean existsByUserAndProvider(User user, AuthProvider provider); // 이미 연동 여부
 
     void deleteByUser(User user); // 탈퇴 시 연동 해제 — 남겨두면 같은 소셜 계정으로 탈퇴한 계정에 다시 로그인된다
 }
