@@ -236,7 +236,7 @@ class RecurringBillingServiceTest {
                         anyString(), anyString(), anyString(), anyLong(), anyString(), anyString()))
                 .willThrow(new PaymentGateway.ChargeException(
                         PaymentGateway.FailureType.SOFT_DECLINE, "CARD_DECLINED", "카드 승인 거절"));
-        given(billingRetryPublisher.scheduleRetry(SUB_ID, 2)).willReturn(true);
+        LocalDateTime before = LocalDateTime.now();
 
         service.retryBilling(SUB_ID, 1);
 
@@ -244,6 +244,8 @@ class RecurringBillingServiceTest {
         assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.PAST_DUE);
         assertThat(sub.getLastErrorCode()).isEqualTo("CARD_DECLINED");
         verify(billingRetryPublisher).scheduleRetry(SUB_ID, 2);
+        // 발행은 커밋 뒤에 일어나 그 결과를 여기서 알 수 없다. 그래서 스윕 안전망은 발행 결과와 상관없이 +3일이다
+        assertThat(sub.getNextBillingAt()).isAfterOrEqualTo(before.plusDays(3));
         verify(attemptRecorder).markAttemptFailed(eq(PAYMENT_ID), any(LocalDateTime.class)); // 확정 실패는 닫는다
     }
 
@@ -470,9 +472,9 @@ class RecurringBillingServiceTest {
         r.amount = 9900L;
         given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
 
-        boolean resolved = service.reconcileRebillPayment(pending, r, LocalDateTime.now());
+        ReconcileOutcome resolved = service.reconcileRebillPayment(pending, r, LocalDateTime.now());
 
-        assertThat(resolved).isTrue();
+        assertThat(resolved).isEqualTo(ReconcileOutcome.SETTLED);
         assertThat(pending.getStatus()).isEqualTo(PaymentStatus.SUCCEEDED);
         // 체크아웃 경로(markSucceededAndProvision)를 태웠다면 여기서 새 구독이 생기고
         // 이 구독은 PAST_DUE 인 채로 던닝을 계속 돌았을 것이다
@@ -482,7 +484,7 @@ class RecurringBillingServiceTest {
     }
 
     @Test
-    @DisplayName("대사 확정 - 금액이 다르면 확정하지 않는다")
+    @DisplayName("대사 확정 - 금액이 다르면 확정하지 않고 판정 불가로 올린다")
     void reconcileRebillRejectsAmountMismatch() {
         Payment pending = pendingPayment();
         PaymentGateway.ReconcileResult r = new PaymentGateway.ReconcileResult();
@@ -491,11 +493,29 @@ class RecurringBillingServiceTest {
         r.providerPaymentId = "imp_reconciled_2";
         r.amount = 100L; // 기대 9900원과 불일치
 
-        boolean resolved = service.reconcileRebillPayment(pending, r, LocalDateTime.now());
+        ReconcileOutcome resolved = service.reconcileRebillPayment(pending, r, LocalDateTime.now());
 
-        assertThat(resolved).isFalse();
+        assertThat(resolved).isEqualTo(ReconcileOutcome.INCONCLUSIVE);
         assertThat(pending.getStatus()).isEqualTo(PaymentStatus.PENDING);
         verifyNoInteractions(subscriptionRepository);
+    }
+
+    @Test
+    @DisplayName("대사 확정 - 결제사 상태를 판독할 수 없으면 판정 불가, ready 는 정상 미결이다")
+    void reconcileRebillUnknownIsInconclusiveButReadyIsUnsettled() {
+        Payment pending = pendingPayment();
+        PaymentGateway.ReconcileResult unknown = new PaymentGateway.ReconcileResult();
+        unknown.found = true;
+        unknown.status = PaymentGateway.ReconcileStatus.UNKNOWN;
+        PaymentGateway.ReconcileResult ready = new PaymentGateway.ReconcileResult();
+        ready.found = true;
+        ready.status = PaymentGateway.ReconcileStatus.READY;
+
+        assertThat(service.reconcileRebillPayment(pending, unknown, LocalDateTime.now()))
+                .isEqualTo(ReconcileOutcome.INCONCLUSIVE);
+        assertThat(service.reconcileRebillPayment(pending, ready, LocalDateTime.now()))
+                .isEqualTo(ReconcileOutcome.UNSETTLED);
+        assertThat(pending.getStatus()).isEqualTo(PaymentStatus.PENDING);
     }
 
     // ===== 배치 생존 신호 =====

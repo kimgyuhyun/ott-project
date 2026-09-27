@@ -152,65 +152,6 @@
   color: #f7f7f7;
 }
 
-/* 간편 결제 추가 */
-.simplePaymentAdd {
-  margin-top: 0.75rem;
-}
-
-.simplePaymentButton {
-  width: 100%;
-  padding: 1.5rem 1rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-radius: 0.75rem;
-  background-color: #000000;
-  border: 2px solid #323232;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 4rem;
-  box-sizing: border-box;
-}
-
-.simplePaymentButton:hover {
-  border-color: #505050;
-  background-color: #0a0a0a;
-  transform: translateY(-2px);
-}
-
-.simplePaymentContent {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.simplePaymentIcon {
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  background-color: #323232;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  color: #f7f7f7;
-  border: 2px solid #505050;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
-}
-
-.simplePaymentButton:hover .simplePaymentIcon {
-  border-color: #816bff;
-  background-color: #816bff;
-  transform: scale(1.1);
-}
-
-.simplePaymentText {
-  color: #f7f7f7;
-  font-size: 0.8rem;
-}
-
 /* 다른 결제 수단 */
 .otherPaymentMethods {
   margin-top: 0.75rem;
@@ -243,22 +184,6 @@
 
   .paymentMethodLabel {
     font-size: 0.75rem;
-  }
-
-  /* 간편결제 버튼 모바일 조정 */
-  .simplePaymentButton {
-    padding: 1.5rem 1rem;
-    min-height: 4rem;
-  }
-
-  .simplePaymentIcon {
-    width: 2.5rem;
-    height: 2.5rem;
-    font-size: 1.25rem;
-  }
-
-  .simplePaymentText {
-    font-size: 0.8rem;
   }
 }
 

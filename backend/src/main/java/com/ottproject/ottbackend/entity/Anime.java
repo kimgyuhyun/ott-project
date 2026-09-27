@@ -158,6 +158,14 @@ public class Anime {
     @Column(nullable = false)
     private java.time.LocalDateTime updatedAt; // 수정일시
 
+    // 낙관적 락 버전. 관리자 수정 폼이 읽을 때 본 값을 들고 와서 비교한다(AnimeCurationService.update).
+    // QueryDSL 벌크 UPDATE 는 이 값을 올리지 않는다.
+    // 초기값을 두지 않는다: Spring Data save() 는 래퍼 타입 버전이 null 이면 새 엔티티로 보고 persist 한다
+    // (0L 로 두면 merge 로 빠진다). 값은 persist 시 Hibernate 가 0 으로 채운다.
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
     // ===== 에피소드 연관 =====
     /**
      * 하나의 Anime 는 여러 에피소드를 가짐

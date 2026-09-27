@@ -1046,28 +1046,32 @@ public class PaymentCommandService { // 결제 쓰기 서비스
      * - 이중 확인(클라 확정/웹훅)이 모두 실패한 희귀 케이스까지 복구하는 최후 방어선.
      * - PENDING은 imp_uid가 없으므로 merchant_uid로 역조회한다.
      * - paid면 확정/지급(공통 로직 수렴), failed/cancelled면 상태 전이, 아직 미결이면 건너뜀.
-     * @return 상태가 확정적으로 정리되면 true
+     * @return 정리 결과(ReconcileOutcome)
      */
     @Transactional(propagation = Propagation.NOT_SUPPORTED) // 아임포트 역조회가 트랜잭션 안에 들어가지 않게 한다
-    public boolean reconcilePending(Long paymentId) {
+    public ReconcileOutcome reconcilePending(Long paymentId) {
         ReconcileTarget target = self.prepareReconcile(paymentId); // 1단계: 대사 대상 여부 판정
         if (target == null) {
-            return false; // 대상 아님(이미 확정/취소됨, 차액 결제)
+            return ReconcileOutcome.UNSETTLED; // 대상 아님(이미 확정/취소됨, 차액 결제)
         }
         PaymentGateway.ReconcileResult r =
                 paymentGateway.findPaymentBySessionId(target.merchantUid()); // 2단계: 트랜잭션 밖에서 세션 식별자 역조회
-        if (!r.found || r.status == null) {
-            return false; // 결제 시도 기록 없음(prepare만) → 유지
+        if (r.lookupFailed) {
+            log.warn("대사 판정 불가(결제사 조회 실패) - paymentId: {}", paymentId);
+            return ReconcileOutcome.INCONCLUSIVE; // 기록이 없는 게 아니라 모른다. 정상 미결로 두면 경보에서 빠진다
         }
-        boolean settled = self.applyReconcileResult(paymentId, r, LocalDateTime.now()); // 3단계: 락 + 상태 재확인 + 반영
+        if (!r.found || r.status == null) {
+            return ReconcileOutcome.UNSETTLED; // 결제 시도 기록 없음(prepare만) → 유지
+        }
+        ReconcileOutcome outcome = self.applyReconcileResult(paymentId, r, LocalDateTime.now()); // 3단계: 락 + 상태 재확인 + 반영
         // 4단계: 대사로 확정된 체크아웃 결제도 저장 결제수단이 필요하다(클라 확정과 웹훅이 모두 실패한 경우).
         // 재청구 결제는 청구할 때 이미 결제수단을 들고 있다.
-        if (settled
+        if (outcome == ReconcileOutcome.SETTLED
                 && r.status == PaymentGateway.ReconcileStatus.PAID
                 && !RebillMerchantUid.isRebill(target.merchantUid())) {
             self.attachBillingKeyIfIssued(paymentId, target.userId());
         }
-        return settled;
+        return outcome;
     }
 
     /**
@@ -1098,15 +1102,90 @@ public class PaymentCommandService { // 결제 쓰기 서비스
     public record ReconcileTarget(String merchantUid, Long userId) {}
 
     /**
+     * 대사 기간(24시간)을 넘긴 PENDING 결제 정리
+     *
+     * 왜 필요한가
+     * - 결제창을 열고 이탈한 결제는 결제사에 기록이 없어 대사가 정리하지 못하고 PENDING 으로 영원히 남았다
+     *   (2026-09-17 운영 53건). 그 상태로는 "기간을 넘긴 pending" 에 경보를 걸면 늘 켜져 있게 된다(ARCHITECTURE 5절).
+     * - 그래서 기간을 넘긴 건은 결론을 낸다. 결제사에 기록이 없거나 ready 면 CANCELED(세션 만료)로 닫고,
+     *   기록이 있으면 기존 대사 규칙으로 정리한다. 결론을 못 내면 INCONCLUSIVE 로 남아 매 주기 경보용 카운터에 잡힌다.
+     * - ready 를 닫아도 되는 이유: 결제창은 카드(pay_method card)만 써서 입금을 기다리는 가상계좌가 없다.
+     *   닫힌 뒤 성공이 늦게 확정되더라도 markSucceededAndProvision 은 CANCELED 를 막지 않으므로 결제한 사용자는 지급받는다.
+     * - 차액 결제는 대사가 확정하지 못한다(prepareReconcile 주석). 결제사에 기록이 있으면 사람이 본다.
+     *
+     * @return 정리 결과(ReconcileOutcome)
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED) // 아임포트 역조회가 트랜잭션 안에 들어가지 않게 한다
+    public ReconcileOutcome reconcileExpiredPending(Long paymentId) {
+        ExpiredTarget target = self.prepareExpiredReconcile(paymentId);
+        if (target == null) {
+            return ReconcileOutcome.UNSETTLED; // 그사이 다른 경로가 정리함
+        }
+        PaymentGateway.ReconcileResult r = paymentGateway.findPaymentBySessionId(target.merchantUid());
+        if (r.lookupFailed) {
+            log.warn("대사 판정 불가(기간 초과, 결제사 조회 실패) - paymentId: {}", paymentId);
+            return ReconcileOutcome.INCONCLUSIVE; // 모르는 것을 이탈로 단정해 닫지 않는다
+        }
+        if (!r.found || r.status == PaymentGateway.ReconcileStatus.READY) {
+            return self.expireUnpaidPending(paymentId, LocalDateTime.now());
+        }
+        if (target.proration()) {
+            log.warn("대사 판정 불가(기간 초과 차액 결제에 결제사 기록 있음) - paymentId: {}, status: {}", paymentId, r.status);
+            return ReconcileOutcome.INCONCLUSIVE;
+        }
+        ReconcileOutcome outcome = self.applyReconcileResult(paymentId, r, LocalDateTime.now());
+        if (outcome == ReconcileOutcome.SETTLED
+                && r.status == PaymentGateway.ReconcileStatus.PAID
+                && !RebillMerchantUid.isRebill(target.merchantUid())) {
+            self.attachBillingKeyIfIssued(paymentId, target.userId()); // reconcilePending 4단계와 같은 이유
+        }
+        return outcome;
+    }
+
+    /**
+     * 기간 초과 대사 1단계 — 차액 결제도 포함해 역조회 키를 뽑는다.
+     * @return 역조회에 필요한 값, PENDING 이 아니면 null
+     */
+    @Transactional(readOnly = true)
+    public ExpiredTarget prepareExpiredReconcile(Long paymentId) {
+        Payment payment = paymentRepository.findById(paymentId).orElse(null);
+        if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
+            return null;
+        }
+        String sessionId = payment.getProviderSessionId();
+        return new ExpiredTarget(
+                sessionId, payment.getUser().getId(), sessionId != null && sessionId.startsWith("proration_"));
+    }
+
+    /** 기간 초과 대사 대상 — ReconcileTarget 에 차액 결제 여부를 더한 것. */
+    public record ExpiredTarget(String merchantUid, Long userId, boolean proration) {}
+
+    /**
+     * 기간 초과 대사 2단계 — 락을 잡고 PENDING 을 다시 확인한 뒤 닫는다.
+     * @return 닫았으면 SETTLED, 결제사에 묻는 동안 다른 경로가 먼저 정리했으면 UNSETTLED
+     */
+    @Transactional
+    public ReconcileOutcome expireUnpaidPending(Long paymentId, LocalDateTime now) {
+        Payment payment = paymentRepository.findByIdForUpdate(paymentId).orElse(null);
+        if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
+            return ReconcileOutcome.UNSETTLED;
+        }
+        payment.expireUnpaid(now);
+        paymentRepository.save(payment);
+        log.info("대사 기간 초과 - 결제되지 않은 결제를 CANCELED 로 닫음 - paymentId: {}", paymentId);
+        return ReconcileOutcome.SETTLED;
+    }
+
+    /**
      * 대사 3단계 — 결제 행을 잠그고 상태를 다시 확인한 뒤 아임포트 실제 상태를 반영한다.
      * - 1단계에서 본 PENDING 은 낡았을 수 있다. 아임포트에 물어보는 동안 클라 확정이나 웹훅이
      *   먼저 확정을 끝냈다면 여기서 물러나야 한다. 그러지 않으면 같은 결제로 구독이 하나 더 생긴다.
      */
     @Transactional
-    public boolean applyReconcileResult(Long paymentId, PaymentGateway.ReconcileResult r, LocalDateTime now) {
+    public ReconcileOutcome applyReconcileResult(Long paymentId, PaymentGateway.ReconcileResult r, LocalDateTime now) {
         Payment payment = paymentRepository.findByIdForUpdate(paymentId).orElse(null); // 락을 잡고 최신 상태로 다시 읽는다
         if (payment == null || payment.getStatus() != PaymentStatus.PENDING) {
-            return false; // 대사 중에 다른 확정 경로가 먼저 정리함
+            return ReconcileOutcome.UNSETTLED; // 대사 중에 다른 확정 경로가 먼저 정리함
         }
         // 정기결제 재청구는 전용 확정 경로가 처리한다.
         // 아래 markSucceededAndProvision 은 체크아웃 전제라 subscribe()로 '새 구독'을 만든다.
@@ -1119,21 +1198,24 @@ public class PaymentCommandService { // 결제 쓰기 서비스
                 long expected = (payment.getPrice() != null ? payment.getPrice().getAmount() : 0L); // 서버 확정 금액(테스트 1원)
                 if (r.amount != expected) {
                     log.warn("대사 금액 불일치 - paymentId: {}, expected: {}, actual: {}", paymentId, expected, r.amount);
-                    return false; // 금액 불일치는 자동 확정하지 않음(수동 확인 대상)
+                    return ReconcileOutcome.INCONCLUSIVE; // 금액 불일치는 자동 확정하지 않는다(사람이 봐야 하므로 판정 불가로 올린다)
                 }
                 markSucceededAndProvision(payment, r.providerPaymentId, r.receiptUrl, now); // 공통 확정 로직으로 수렴
                 log.info("대사 배치로 결제 확정 - paymentId: {}", paymentId);
-                return true;
+                return ReconcileOutcome.SETTLED;
             case FAILED:
                 payment.applyGatewayFailure(now);
                 paymentRepository.save(payment);
-                return true;
+                return ReconcileOutcome.SETTLED;
             case CANCELLED:
                 payment.applyGatewayCancellation(now);
                 paymentRepository.save(payment);
-                return true;
+                return ReconcileOutcome.SETTLED;
             default:
-                return false; // READY/UNKNOWN → 판정 불가, 미결 유지
+                // READY 는 결제창에 머물러 있는 정상 미결이다. UNKNOWN 은 결제사 답을 읽지 못한 것이라 판정 불가다.
+                return r.status == PaymentGateway.ReconcileStatus.READY
+                        ? ReconcileOutcome.UNSETTLED
+                        : ReconcileOutcome.INCONCLUSIVE;
         }
     }
 }

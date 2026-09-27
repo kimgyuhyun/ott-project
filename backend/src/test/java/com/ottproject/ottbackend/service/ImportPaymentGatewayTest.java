@@ -30,6 +30,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -358,7 +359,42 @@ class ImportPaymentGatewayTest {
                         throw new RestClientException("connection reset");
                     });
 
-            assertThat(gateway.findPaymentBySessionId(MERCHANT_UID).found).isFalse();
+            PaymentGateway.ReconcileResult r = gateway.findPaymentBySessionId(MERCHANT_UID);
+
+            assertThat(r.found).isFalse();
+            assertThat(r.lookupFailed).isTrue(); // "기록 없음"이 아니라 "모름"이다 - 대사가 판정 불가로 센다
+        }
+
+        @Test
+        @DisplayName("404 는 결제사에 기록이 없다는 답이다 - 조회 실패로 세지 않는다(결제창 이탈이 매 주기 경보가 되면 안 된다)")
+        void notFoundIsNoRecordNotLookupFailure() throws Exception {
+            givenLookupThrows(HttpClientErrorException.create(HttpStatus.NOT_FOUND, "Not Found", null, null, null));
+
+            PaymentGateway.ReconcileResult r = gateway.findPaymentBySessionId(MERCHANT_UID);
+
+            assertThat(r.found).isFalse();
+            assertThat(r.lookupFailed).isFalse();
+        }
+
+        @Test
+        @DisplayName("5xx 는 조회 실패다")
+        void serverErrorIsLookupFailure() throws Exception {
+            givenLookupThrows(HttpServerErrorException.create(HttpStatus.BAD_GATEWAY, "Bad Gateway", null, null, null));
+
+            assertThat(gateway.findPaymentBySessionId(MERCHANT_UID).lookupFailed)
+                    .isTrue();
+        }
+
+        private void givenLookupThrows(RuntimeException failure) throws Exception {
+            Object tokenResponse = newTokenResponse("test-token");
+            given(rest.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), any(Class.class)))
+                    .willAnswer(invocation -> {
+                        String url = invocation.getArgument(0);
+                        if (url.endsWith("/users/getToken")) {
+                            return ResponseEntity.ok(tokenResponse);
+                        }
+                        throw failure;
+                    });
         }
     }
 

@@ -331,6 +331,9 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
     /**
      * merchant_uid로 결제 상태 역조회
      * - GET /payments/find/{merchant_uid} 사용. 결제 시도가 없으면 found=false.
+     * - 조회 자체가 실패하면(네트워크, 5xx, 재시도 후 401) lookupFailed=true 로 "기록 없음"과 구분한다.
+     *   404 는 기록 없음으로 본다. 캡처한 실제 응답은 없다. 아임포트가 기록 없음을 200 + response:null 로 준다면
+     *   404 분기는 오지 않을 뿐이고, 404 로 준다면 결제창 이탈이 매 대사 주기마다 판정 불가로 세지는 것을 막는다.
      * - 아임포트 원문 status 는 여기서 ReconcileStatus 로 정규화한다(어휘를 아는 유일한 지점).
      */
     @Override
@@ -344,7 +347,8 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
                     new HttpEntity<>(bearer(token)),
                     java.util.Map.class));
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                return r; // found=false
+                r.lookupFailed = true; // 예외 없이 돌아온 비정상 응답 = 판정할 수 없다
+                return r;
             }
             @SuppressWarnings("unchecked")
             java.util.Map<String, Object> res =
@@ -359,9 +363,13 @@ public class ImportPaymentGateway implements PaymentGateway { // IMPORT 구현 �
             r.amount = (amt == null ? 0L : amt.longValue());
             r.receiptUrl = (String) res.get("receipt_url");
             return r;
+        } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+            log.info("merchant_uid로 결제 역조회 - 결제사에 기록 없음(404) - merchant_uid: {}", merchantUid);
+            return r; // found=false, lookupFailed=false
         } catch (Exception e) {
             log.warn("merchant_uid로 결제 역조회 실패 - merchant_uid: {}", merchantUid, e);
-            return r; // found=false
+            r.lookupFailed = true;
+            return r; // found=false 지만 "기록 없음"이 아니라 "모름"
         }
     }
 

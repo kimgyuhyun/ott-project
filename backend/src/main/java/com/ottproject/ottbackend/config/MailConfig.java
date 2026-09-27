@@ -64,7 +64,16 @@ public class MailConfig {
         props.put("mail.smtp.auth.mechanisms", "LOGIN"); // 인증 메커니즘을 LOGIN 으로 설정
         props.put("mail.smtp.auth.login.disable", "false"); // LOGIN 인증 활성화
         props.put("mail.smtp.auth.plain.disable", "false"); // PLAIN 인증 활성화
-        props.put("mail.debug", "true"); // 메일 디버그 모드 활성화 (발송 과정 로그 확인)
+        // mail.debug 는 켜지 않는다. 켜면 SMTP 대화 전체가 표준 출력으로 나가, 메일 본문(인증 코드·영수증)이
+        // 컨테이너 로그와 로그 백업에 남는다(PLATFORM 9절).
+
+        // SMTP 대기 상한. 없으면 JavaMail 기본값이 무한 대기라, SMTP 가 응답하지 않을 때 발송하는 스레드가
+        // 끝나지 않는다(ARCHITECTURE 12절). 2026-09-26 운영 컨테이너에서 SOCKS 프록시를 거쳐 SMTP 배너를 받기까지
+        // 14~53ms(5회)였다. 발송 1건 전체(DATA 응답까지)는 재지 못해, 결제 API 클라이언트와 같은 연결 3초·
+        // 읽기 10초로 시작하고 발송 실패 로그를 보며 조정한다(RestTemplateConfig 의 paymentRestTemplate 참고).
+        props.put("mail.smtp.connectiontimeout", "3000");
+        props.put("mail.smtp.timeout", "10000");
+        props.put("mail.smtp.writetimeout", "10000");
 
         if (socksHost != null && !socksHost.isBlank()) { // 값이 없으면 직통 유지
             props.put("mail.smtp.socks.host", socksHost); // SOCKS5 프록시 경유

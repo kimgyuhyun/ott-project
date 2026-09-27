@@ -35,7 +35,9 @@ public class RatingService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "평점은 1.0~5.0 사이 0.5 단위여야 합니다.");
         }
         User user = userRepository.getReferenceById(userId); // FK 바인딩만 필요하므로 프록시로 충분
-        Anime anime = animeRepository.findById(aniId).orElseThrow();
+        // 락 없는 조회를 쓴다: 여기서 애니는 Rating 의 FK 를 채우는 용도일 뿐이고, 집계는 아래에서 조건부 UPDATE 로 따로 간다.
+        // findById(PESSIMISTIC_WRITE)를 쓰면 별점 하나 남기는 동안 애니 행에 쓰기 락이 걸려 관리자 수정이 대기한다.
+        Anime anime = animeRepository.findByIdWithoutLock(aniId).orElseThrow();
 
         Rating rating = ratingRepository
                 .findByUserIdAndAnimeId(userId, aniId)
@@ -129,17 +131,11 @@ public class RatingService {
         try {
             Double avg = getAverage(aniId);
             Long cnt = ratingQueryMapper.countRatingsByAnimeId(aniId);
-            Anime anime = animeRepository.findById(aniId).orElse(null);
-            if (anime != null) {
-                anime.setRating(avg == null ? 0.0 : avg);
-                anime.setRatingCount(cnt == null ? 0 : cnt.intValue());
-                animeRepository.save(anime);
-                log.debug(
-                        "Aggregates updated aniId={}, rating={}, ratingCount={}",
-                        aniId,
-                        anime.getRating(),
-                        anime.getRatingCount());
-            }
+            // 집계 컬럼만 바꾸는 UPDATE 다. 엔티티를 읽어 세터로 고치면 @Version 과 updatedAt 까지 올라가서,
+            // 별점 하나에 관리자의 열린 큐레이션 폼이 409 로 거절된다(AnimeRepository.updateRatingAggregates 주석).
+            int updated = animeRepository.updateRatingAggregates(
+                    aniId, avg == null ? 0.0 : avg, cnt == null ? 0 : cnt.intValue());
+            log.debug("Aggregates updated aniId={}, rating={}, ratingCount={}, rows={}", aniId, avg, cnt, updated);
         } catch (Exception e) {
             log.warn("updateAnimeAggregates failed aniId={}, error={}", aniId, e.toString());
         }

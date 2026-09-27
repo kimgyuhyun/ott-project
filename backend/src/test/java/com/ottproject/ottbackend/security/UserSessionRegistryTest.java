@@ -145,6 +145,48 @@ class UserSessionRegistryTest {
     }
 
     @Nested
+    @DisplayName("revokeOthersKeepingCurrent")
+    class RevokeOthersKeepingCurrent {
+
+        @Test
+        @DisplayName("현재 세션을 뺀 나머지 세션을 삭제하고, 삭제한 ID 만 인덱스에서 뺀다")
+        void deletesOtherSessionsAndKeepsIndex() {
+            given(redisTemplate.opsForSet()).willReturn(setOps);
+            given(setOps.members(KEY)).willReturn(Set.of("current", "phone", "tablet"));
+
+            registry.revokeOthersKeepingCurrent(USER_ID, "current");
+
+            verify(sessionRepository).deleteById("phone");
+            verify(sessionRepository).deleteById("tablet");
+            verify(sessionRepository, never()).deleteById("current");
+            verify(setOps).remove(KEY, "phone");
+            verify(setOps).remove(KEY, "tablet");
+            verify(setOps, never()).remove(KEY, "current");
+            // 인덱스를 버리면 다음 비밀번호 변경이 현재 세션을 끊지 못한다
+            verify(redisTemplate, never()).delete(anyString());
+        }
+
+        @Test
+        @DisplayName("userId 가 없으면 아무것도 하지 않는다")
+        void ignoresMissingUserId() {
+            registry.revokeOthersKeepingCurrent(null, "current");
+
+            verifyNoInteractions(redisTemplate);
+            verifyNoInteractions(sessionRepository);
+        }
+
+        @Test
+        @DisplayName("Redis 가 실패해도 예외를 던지지 않는다 — 이미 커밋된 비밀번호 변경이 실패로 보이면 안 된다")
+        void swallowsRedisFailure() {
+            given(redisTemplate.opsForSet()).willReturn(setOps);
+            willThrow(new RuntimeException("redis down")).given(setOps).members(eq(KEY));
+
+            assertThatCode(() -> registry.revokeOthersKeepingCurrent(USER_ID, "current"))
+                    .doesNotThrowAnyException();
+        }
+    }
+
+    @Nested
     @DisplayName("빈 주입")
     class Wiring {
 

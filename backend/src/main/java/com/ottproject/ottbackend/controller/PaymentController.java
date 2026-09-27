@@ -4,7 +4,6 @@ import com.ottproject.ottbackend.dto.PaymentCheckoutCreateRequestDto;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateSuccessResponseDto;
 import com.ottproject.ottbackend.dto.PaymentCompleteRequestDto;
 import com.ottproject.ottbackend.dto.PaymentHistoryItemDto;
-import com.ottproject.ottbackend.dto.PaymentMethodRegisterRequestDto;
 import com.ottproject.ottbackend.dto.PaymentMethodResponseDto;
 import com.ottproject.ottbackend.dto.PaymentMethodUpdateRequestDto;
 import com.ottproject.ottbackend.dto.PaymentResultResponseDto;
@@ -30,7 +29,10 @@ import org.springframework.web.bind.annotation.*;
  *
  * 큰 흐름(Javadoc)
  * - 결제 체크아웃 생성, 웹훅 수신 처리, 결제 이력 조회를 제공한다.
- * - 결제수단 등록/목록/기본 지정/수정/삭제로 정기결제 시 기본→보조 폴백을 지원한다.
+ * - 결제수단 목록/기본 지정/수정/삭제로 정기결제 시 기본→보조 폴백을 지원한다.
+ * - 결제수단 등록 API 는 없다. 저장 결제수단은 결제사에 빌링키 발급을 확인한 뒤 서버가 만든다
+ *   (PaymentCommandService.registerBillingKey). 클라이언트가 보낸 customer_uid 를 저장하면
+ *   남의 빌링키로 청구할 수 있었다(PaymentMethodRegistrationTest).
  * - 모든 API에서 세션 기반 사용자 식별을 수행한다.
  *
  * 엔드포인트 개요
@@ -38,7 +40,7 @@ import org.springframework.web.bind.annotation.*;
  * - POST /api/payments/webhook: 웹훅 수신 (통합)
  * - GET /api/payments/{paymentId}/status: 결제 상태 확인
  * - GET /api/payments/history: 결제/환불 이력 조회
- * - POST/GET/PUT/DELETE/PATCH /api/payment-methods: 결제수단 CRUD/기본 지정
+ * - GET/PUT/DELETE/PATCH /api/payment-methods: 결제수단 목록/기본 지정/삭제/수정
  * - POST /api/payments/{paymentId}/refund: 환불 요청
  */
 @RestController // REST 컨트롤러 선언
@@ -74,16 +76,6 @@ public class PaymentController { // 결제 컨트롤러 시작
         Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인(미인증 시 401)
         paymentCommandService.completePayment(userId, paymentId, dto == null ? null : dto.impUid); // 재검증 후 확정/지급
         return ResponseEntity.ok(paymentReadService.getPaymentStatus(paymentId, userId)); // 확정된 결제 상태 반환
-    }
-
-    @Operation(summary = "결제수단 등록", description = "정기결제를 위한 저장 결제수단을 등록합니다.")
-    @ApiResponse(responseCode = "200", description = "Registered")
-    @PostMapping("/payment-methods")
-    public ResponseEntity<Void> registerPaymentMethod(
-            @RequestBody PaymentMethodRegisterRequestDto dto, HttpSession session) { // 결제수단 등록 엔드포인트
-        Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID 확인
-        paymentMethodService.register(userId, dto); // 서비스에 등록 위임
-        return ResponseEntity.ok().build(); // 200 OK 반환
     }
 
     @Operation(summary = "결제수단 목록", description = "사용자의 저장 결제수단을 기본 우선으로 조회합니다.")

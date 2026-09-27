@@ -29,6 +29,7 @@ import org.springframework.stereotype.Component;
  * 메서드 개요
  * - register: 로그인 시 세션 ID 를 사용자 인덱스에 추가
  * - revokeOthers: 탈퇴 시 현재 세션을 제외한 나머지 세션 삭제
+ * - revokeOthersKeepingCurrent: 비밀번호 변경 시 나머지 세션 삭제(인덱스는 유지)
  */
 @Slf4j
 @Component
@@ -86,6 +87,36 @@ public class UserSessionRegistry {
         } catch (Exception e) {
             // 탈퇴(DB 익명화)는 이미 커밋됐다. 여기서 예외를 던지면 성공한 탈퇴가 실패로 보인다.
             log.error("[SessionRegistry] revokeOthers 실패 userId={} error={}", userId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 비밀번호 변경 시 현재 세션을 제외한 해당 사용자의 모든 세션을 삭제한다.
+     *
+     * revokeOthers 와 다른 점
+     * - 계정이 계속 쓰이므로 인덱스를 버리지 않는다. 버리면 현재 세션이 목록에서 빠져,
+     *   다음 비밀번호 변경이 이 세션을 끊지 못한다. 삭제한 ID 만 목록에서 뺀다.
+     * - 실패해도 예외를 던지지 않는다. 비밀번호 변경은 이미 커밋됐다.
+     */
+    public void revokeOthersKeepingCurrent(Long userId, String currentSessionId) {
+        if (userId == null) {
+            return;
+        }
+        String key = key(userId);
+        try {
+            Set<String> sessionIds = redisTemplate.opsForSet().members(key);
+            if (sessionIds == null) {
+                return;
+            }
+            for (String sessionId : sessionIds) {
+                if (sessionId.equals(currentSessionId)) {
+                    continue;
+                }
+                sessionRepository.deleteById(sessionId);
+                redisTemplate.opsForSet().remove(key, sessionId);
+            }
+        } catch (Exception e) {
+            log.error("[SessionRegistry] revokeOthersKeepingCurrent 실패 userId={} error={}", userId, e.getMessage(), e);
         }
     }
 

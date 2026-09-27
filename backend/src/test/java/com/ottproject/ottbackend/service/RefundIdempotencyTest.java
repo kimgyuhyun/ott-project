@@ -30,6 +30,7 @@ import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
 import com.ottproject.ottbackend.repository.UserRepository;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -91,7 +92,12 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  */
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE) // 컨테이너 URL 을 쓰기 위해 자동 대체를 끈다
-@Import({JpaSliceTestSupport.class, PaymentCommandService.class, PaymentReconciliationService.class})
+@Import({
+    JpaSliceTestSupport.class,
+    PaymentCommandService.class,
+    PaymentReconciliationService.class,
+    SimpleMeterRegistry.class // 대사 서비스의 판정 불가 카운터용. @DataJpaTest 슬라이스에는 MeterRegistry 가 없다
+})
 @Testcontainers(disabledWithoutDocker = true)
 @Tag("testcontainers") // testFast 가 제외하는 태그. 컨테이너를 띄우는 값이 비싸서 편집 직후 되먹임용 실행에서는 뺀다.
 @TestPropertySource(

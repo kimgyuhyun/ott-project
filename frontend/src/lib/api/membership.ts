@@ -96,20 +96,6 @@ export async function cancelScheduledPlanChange() {
   });
 }
 
-// 결제수단 등록
-export async function registerPaymentMethod(
-  paymentMethod: PaymentMethodRegisterRequest,
-) {
-  return apiCall<void>(
-    "/api/payment-methods",
-    {
-      method: "POST",
-      body: JSON.stringify(paymentMethod),
-    },
-    false,
-  );
-}
-
 // 결제수단 목록 조회
 export async function getPaymentMethods() {
   return apiCall<PaymentMethodResponse[]>("/api/payment-methods");
@@ -232,15 +218,6 @@ export interface PaymentMethodResponse {
   expiryYear?: number;
   isDefault: boolean;
   createdAt: string;
-}
-
-export interface PaymentMethodRegisterRequest {
-  type: string;
-  cardNumber?: string;
-  expiryMonth?: number;
-  expiryYear?: number;
-  birthDate?: string;
-  password?: string;
 }
 
 export interface PaymentHistoryItem {

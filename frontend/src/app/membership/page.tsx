@@ -4,14 +4,10 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/lib/AuthContext";
-import {
-  subscribeMembership,
-  registerPaymentMethod,
-} from "@/lib/api/membership";
+import { subscribeMembership } from "@/lib/api/membership";
 import { useMembershipData } from "@/hooks/useMembershipData";
 // import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import PaymentModal from "@/components/membership/PaymentModal";
-import CardRegistrationModal from "@/components/membership/CardRegistrationModal";
 import { PaymentService } from "@/types/payment";
 import styles from "./membership.module.css";
 
@@ -30,8 +26,6 @@ export default function MembershipPage() {
   const [selectedPaymentService, setSelectedPaymentService] = useState<
     PaymentService | ""
   >("toss");
-  const [isCardRegistrationModalOpen, setIsCardRegistrationModalOpen] =
-    useState(false);
 
   // 멤버십 페이지는 항상 다크 모드 (라프텔 방식)
   useEffect(() => {
@@ -45,7 +39,6 @@ export default function MembershipPage() {
     paymentMethods,
     isLoading,
     error,
-    reloadPaymentMethods,
     reloadUserMembership,
   } = useMembershipData();
 
@@ -84,9 +77,6 @@ export default function MembershipPage() {
     closeModal();
   };
   const closePaymentModal = () => setIsPaymentModalOpen(false);
-  const openCardRegistrationModal = () => setIsCardRegistrationModalOpen(true);
-  const closeCardRegistrationModal = () =>
-    setIsCardRegistrationModalOpen(false);
 
   // 결제 수단 선택
   const handlePaymentMethodChange = (method: string) => {
@@ -96,49 +86,6 @@ export default function MembershipPage() {
   // 결제 서비스 선택
   const handlePaymentServiceSelect = (service: PaymentService) => {
     setSelectedPaymentService(service);
-  };
-
-  // 카드 등록
-  const handleCardRegistration = async (cardData: {
-    cardNumber: string;
-    expiryMonth: string;
-    expiryYear: string;
-    birthDate: string;
-    password: string;
-  }) => {
-    try {
-      await registerPaymentMethod({
-        type: "CARD",
-        cardNumber: cardData.cardNumber,
-        expiryMonth: Number(cardData.expiryMonth),
-        expiryYear: Number(cardData.expiryYear),
-        birthDate: cardData.birthDate,
-        password: cardData.password,
-      });
-
-      alert("카드가 등록되었습니다!");
-      closeCardRegistrationModal();
-      // 결제수단 목록 새로고침
-      reloadPaymentMethods();
-    } catch (err) {
-      alert("카드 등록에 실패했습니다.");
-      console.error("카드 등록 오류:", err);
-    }
-  };
-
-  // 카드 등록 처리
-  const handleCardRegistrationSubmit = () => {
-    // 실제 구현에서는 입력 필드의 값을 수집해야 합니다
-    // 현재는 더미 데이터로 처리
-    const cardData = {
-      cardNumber: "1234567890123456",
-      expiryMonth: "12",
-      expiryYear: "25",
-      birthDate: "901231",
-      password: "12",
-    };
-
-    handleCardRegistration(cardData);
   };
 
   // 멤버십 구독 시작
@@ -641,18 +588,6 @@ export default function MembershipPage() {
         onChangePaymentMethod={handlePaymentMethodChange}
         selectedPaymentService={selectedPaymentService}
         onSelectPaymentService={handlePaymentServiceSelect}
-        onOpenCardRegistration={openCardRegistrationModal}
-      />
-
-      {/* 카드 등록 모달 */}
-      <CardRegistrationModal
-        isOpen={isCardRegistrationModalOpen}
-        onClose={closeCardRegistrationModal}
-        onBack={() => {
-          closeCardRegistrationModal();
-          setIsPaymentModalOpen(true);
-        }}
-        onSubmit={handleCardRegistrationSubmit}
       />
     </div>
   );

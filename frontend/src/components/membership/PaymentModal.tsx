@@ -20,7 +20,6 @@ interface PaymentModalProps {
   onChangePaymentMethod: (method: string) => void;
   selectedPaymentService: PaymentService | "";
   onSelectPaymentService: (service: PaymentService) => void;
-  onOpenCardRegistration: () => void;
 }
 
 export default function PaymentModal({
@@ -31,7 +30,6 @@ export default function PaymentModal({
   onChangePaymentMethod,
   selectedPaymentService,
   onSelectPaymentService,
-  onOpenCardRegistration,
 }: PaymentModalProps) {
   const [agreed, setAgreed] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -152,21 +150,6 @@ export default function PaymentModal({
                 />
                 <span className={styles.paymentMethodText}>간편 결제</span>
               </label>
-              {paymentMethod === "simple" && (
-                <div className={styles.simplePaymentAdd}>
-                  <div
-                    className={styles.simplePaymentButton}
-                    onClick={onOpenCardRegistration}
-                  >
-                    <div className={styles.simplePaymentContent}>
-                      <span className={styles.simplePaymentIcon}>+</span>
-                      <span className={styles.simplePaymentText}>
-                        간편 결제 추가
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* 다른 결제 수단 */}

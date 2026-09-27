@@ -2,13 +2,14 @@ package com.ottproject.ottbackend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -27,7 +29,9 @@ import org.springframework.test.util.ReflectionTestUtils;
  *
  * 지키려는 규칙(무차별 대입 방어)
  * - 실패가 임계치(5회) 이상 쌓이면 잠금
- * - 최초 실패에만 TTL(잠금 시간)을 걸어 고정 윈도우를 유지한다
+ * - 비밀번호 비교 전에 센 시도가 임계치(5회)째일 때까지만 비교를 허용한다
+ * - 시도 카운터는 잠금 시간(15분) TTL 로 센다. 첫 시도에만 TTL 을 거는 고정 윈도우와 증가·TTL 의 원자성은
+ *   Lua 스크립트 안의 동작이라 실제 Redis 로 LoginAttemptLimitTest 가 본다
  *   (실패마다 TTL 을 갱신하면 공격자가 계속 시도해 잠금이 영원히 안 풀리거나 반대로 리셋될 수 있다)
  * - 로그인 성공 시 카운터 삭제
  * - 실패 1회부터 Turnstile(사람 확인) 요구
@@ -92,27 +96,29 @@ class LoginAttemptServiceTest {
         assertThat(service.isBlocked(EMAIL)).isTrue();
     }
 
-    // ===== 실패 누적 / TTL =====
+    // ===== 시도 계수 =====
 
-    @Test
-    @DisplayName("최초 실패에만 TTL(15분)을 건다 - 고정 윈도우")
-    void firstFailureSetsTtl() {
-        given(valueOps.increment(KEY)).willReturn(1L);
-
-        long count = service.recordFailure(EMAIL);
-
-        assertThat(count).isEqualTo(1L);
-        verify(redisTemplate).expire(KEY, Duration.ofMinutes(15));
+    /** 이번 시도에서 카운터(INCR 스크립트)가 돌려줄 값. TTL 인자가 900초(잠금 15분)일 때만 스텁이 걸린다 */
+    @SuppressWarnings("unchecked")
+    private void attemptsWillBe(long count) {
+        given(redisTemplate.execute(any(RedisScript.class), eq(List.of(KEY)), eq("900")))
+                .willReturn(count);
     }
 
     @Test
-    @DisplayName("두 번째 실패부터는 TTL 을 갱신하지 않는다 - 잠금 시간이 밀리면 안 됨")
-    void laterFailuresDoNotExtendTtl() {
-        given(valueOps.increment(KEY)).willReturn(2L);
+    @DisplayName("임계치(5회)째 시도까지는 비밀번호 비교를 허용한다 - 경계값")
+    void attemptUpToThresholdIsAllowed() {
+        attemptsWillBe(5);
 
-        service.recordFailure(EMAIL);
+        assertThat(service.tryAcquireAttempt(EMAIL)).isTrue();
+    }
 
-        verify(redisTemplate, never()).expire(anyString(), any(Duration.class));
+    @Test
+    @DisplayName("임계치를 넘긴 시도(6회째)는 비밀번호를 비교하지 않는다")
+    void attemptOverThresholdIsRefused() {
+        attemptsWillBe(6);
+
+        assertThat(service.tryAcquireAttempt(EMAIL)).isFalse();
     }
 
     @Test
@@ -158,10 +164,10 @@ class LoginAttemptServiceTest {
         assertThat(service.isBlocked("")).isFalse();
         assertThat(service.isBlocked(null)).isFalse();
         assertThat(service.getFailCount(null)).isZero();
-        assertThat(service.recordFailure(null)).isZero();
+        assertThat(service.tryAcquireAttempt(null)).isTrue(); // 세지 않는다(로그인 DTO 검증이 먼저 막는다)
 
         verify(valueOps, never()).get(anyString());
-        verify(valueOps, never()).increment(anyString());
+        verify(redisTemplate, never()).execute(any(RedisScript.class), anyList(), any());
     }
 
     @Test

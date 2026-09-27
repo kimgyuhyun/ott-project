@@ -127,6 +127,9 @@ function sign(expires, uriPath, secret) {
 }
 
 function timingSafeEqual(a, b) {
+  // 길이 불일치 조기 반환은 새는 정보가 없다: a(expected)는 MD5 16바이트의 base64url 이라 입력과 무관하게
+  // 항상 22자이고, 이 형식은 공개돼 있다. 내용 비교는 아래 루프가 조기 종료 없이 끝까지 돈다.
+  // crypto.subtle.timingSafeEqual 로 바꿔도 길이가 다르면 TypeError 를 던지므로 이 검사는 그대로 필요하다.
   if (a.length !== b.length) return false;
   let diff = 0;
   for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);

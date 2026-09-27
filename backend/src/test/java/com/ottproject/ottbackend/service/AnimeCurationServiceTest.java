@@ -79,10 +79,14 @@ class AnimeCurationServiceTest {
         anime.setIsDub(false);
         anime.setIsSimulcast(false);
         anime.setCurated(false);
+        anime.setVersion(0L); // 영속 전 엔티티라 Hibernate 가 채우지 않는다
     }
 
+    /** 바꿀 값 없이 현재 version 만 실은 요청. 각 테스트가 필요한 필드만 채운다. */
     private AnimeCurationUpdateRequest emptyRequest() {
-        return new AnimeCurationUpdateRequest();
+        AnimeCurationUpdateRequest request = new AnimeCurationUpdateRequest();
+        request.setVersion(anime.getVersion());
+        return request;
     }
 
     private void givenAnimeExists() {

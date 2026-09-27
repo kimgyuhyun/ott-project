@@ -76,7 +76,8 @@ public class AnimeCurationQueryRepository {
      *   호출자(AnimeCurationService)가 실행 전 flush / 실행 후 clear 를 책임진다.
      * - @LastModifiedDate 는 영속성 컨텍스트의 라이프사이클 이벤트로 동작하므로 여기서는 발동하지 않는다.
      *   그대로 두면 updated_at 이 낡은 채 남아 "언제 바뀌었나"를 추적할 수 없다. 그래서 직접 세팅한다.
-     * - Anime 에는 @Version 이 없어 낙관적 락 증가 문제는 없다.
+     * - @Version 도 하이버네이트가 자동으로 올려주지 않는다. 그래서 updatedAt 과 같이 직접 올린다.
+     *   안 올리면 벌크 직전에 수정 폼을 연 관리자가 옛 version 으로 저장해 벌크 결과를 덮어쓴다.
      *
      * 조건이 비었는지는 여기서 막지 않는다(빈 조건 = 전체). 그 판단은 서비스의 안전장치가 한다.
      */
@@ -94,6 +95,10 @@ public class AnimeCurationQueryRepository {
 
         // Auditing 이 개입하지 않으므로 수정 시각을 직접 남긴다.
         update.set(anime.updatedAt, LocalDateTime.now());
+
+        // 낙관적 락 버전도 직접 올린다. 하이버네이트는 벌크 UPDATE 에서 @Version 을 자동으로 올리지 않으므로,
+        // 그대로 두면 벌크 직전에 수정 폼을 연 관리자가 옛 version 으로 저장해 벌크 결과를 덮어쓴다.
+        update.set(anime.version, anime.version.add(1));
 
         return update.execute();
     }

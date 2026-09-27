@@ -54,6 +54,9 @@ public class AdminAnimeDetailDto {
     private final SyncOrigin syncOrigin;
     private final LocalDateTime updatedAt;
 
+    // 낙관적 락 버전 — 수정 요청에 그대로 되돌려 보내야 한다
+    private final Long version;
+
     public static AdminAnimeDetailDto from(Anime anime) {
         return AdminAnimeDetailDto.builder()
                 .id(anime.getId())
@@ -79,6 +82,7 @@ public class AdminAnimeDetailDto {
                 // 전용 컬럼이 아니라 malId 유무에서 파생한다(SyncOrigin 참고)
                 .syncOrigin(anime.getMalId() != null ? SyncOrigin.JIKAN : SyncOrigin.MANUAL)
                 .updatedAt(anime.getUpdatedAt())
+                .version(anime.getVersion())
                 .build();
     }
 }
