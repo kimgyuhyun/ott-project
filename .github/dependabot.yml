@@ -8,6 +8,12 @@ updates:
     groups:
       frontend-minor:
         update-types: ["minor", "patch"]
+      # 보안 PR 도 하나로 묶는다. 이 파일이 있으면 저장소 설정의 Grouped security updates 가 아니라
+      # 여기 그룹을 따른다 — 그룹이 없을 때 보안 PR 이 패키지마다 따로 왔다(머지 1번 = 배포 1번).
+      # 보안 PR 은 아래 ignore 의 update-types 를 따르지 않는다. 고치는 버전이 메이저면 메이저로 온다.
+      frontend-security:
+        applies-to: security-updates
+        patterns: ["*"]
     open-pull-requests-limit: 5
     ignore:
       # 메이저 버전 업그레이드는 breaking change 위험이 커서 자동 PR 제외(수동 처리)
@@ -22,6 +28,10 @@ updates:
     groups:
       backend-minor:
         update-types: ["minor", "patch"]
+      # 보안 PR 묶음 — 이유는 위 frontend-security 와 같다.
+      backend-security:
+        applies-to: security-updates
+        patterns: ["*"]
     open-pull-requests-limit: 5
     ignore:
       # 메이저 버전 업그레이드는 breaking change 위험이 커서 자동 PR 제외(수동 처리)
