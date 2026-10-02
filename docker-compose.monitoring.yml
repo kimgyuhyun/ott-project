@@ -44,7 +44,7 @@ x-logging: &default-logging
 # pull_policy: missing 근거는 docker-compose.yml 상단 주석 참고.
 services:
   prometheus:
-    image: prom/prometheus:v2.54.1
+    image: prom/prometheus:v2.54.1@sha256:f6639335d34a77d9d9db382b92eeb7fc00934be8eae81dbc03b31cfe90411a94
     pull_policy: missing
     container_name: ott-prometheus
     restart: unless-stopped
@@ -78,7 +78,7 @@ services:
       - monitoring     # grafana 통신 + 호스트 포트 publish용
 
   loki:
-    image: grafana/loki:3.1.1
+    image: grafana/loki:3.1.1@sha256:e689cc634841c937de4d7ea6157f17e29cf257d6a320f1c293ab18d46cfea986
     pull_policy: missing
     container_name: ott-loki
     restart: unless-stopped
@@ -106,7 +106,7 @@ services:
       - monitoring     # grafana 조회 + 호스트 포트 publish용
 
   grafana:
-    image: grafana/grafana:11.2.0
+    image: grafana/grafana:11.2.0@sha256:408afb9726de5122b00a2576763a8a57a3c86d5b0eff5305bc994ceb3eb96c3f
     pull_policy: missing
     container_name: ott-grafana
     restart: unless-stopped
@@ -141,7 +141,7 @@ services:
       - monitoring
 
   alloy:
-    image: grafana/alloy:v1.5.1
+    image: grafana/alloy:v1.5.1@sha256:01a63f4e032ce54ee94b22049bc27f597e74f85566478c377f4b5c7f020c1eb3
     pull_policy: missing
     container_name: ott-alloy
     restart: unless-stopped

@@ -6,7 +6,7 @@
 # 짧게 뜨는 스택이라는 것은 예외 사유가 아니다 — 이건 80 번을 인터넷에 직접 여는 컨테이너다.
 services:
   nginx-cert:
-    image: nginx:alpine
+    image: nginx:1.31.6-alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2
     pull_policy: missing          # 근거는 docker-compose.yml 상단 주석 참고
     container_name: ott-nginx-cert
     logging:                      # 도커 기본은 무제한. base 의 x-logging 은 파일을 넘어오지 않는다.

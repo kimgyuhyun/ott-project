@@ -38,6 +38,16 @@ updates:
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
+  # compose 파일의 이미지(postgres, redis, kafka, rabbitmq, nginx, 모니터링 등)
+  # 전부 "태그@sha256:index-digest" 로 고정돼 있어, 이 항목이 없으면 패치가 영원히 들어오지 않는다.
+  # 아래 docker 와 같은 이유로 daily, 메이저도 받는다. 메이저 PR 은 자동 머지하지 않는다(PLATFORM 6절).
+  # postgres 메이저는 데이터 디렉터리 포맷이 달라 PR 머지(=배포)만으로는 DB 가 뜨지 않는다.
+  # 그런 PR 은 데이터 이전 절차(덤프·복원 또는 pg_upgrade)를 먼저 세운 뒤에 다룬다.
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "daily"
+
   # Docker 베이스 이미지
   # npm/gradle과 달리 Docker는 advisory 매핑이 없어 security update PR이 따로 오지 않는다.
   # 이 스케줄이 곧 유일한 패치 주기이므로 daily로 둔다(다이제스트가 실제로 움직일 때만 PR이 열린다).
