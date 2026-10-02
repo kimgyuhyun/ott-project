@@ -10,7 +10,7 @@
 # Base is pinned by digest (2절 [절대] latest 금지). Dependabot moves it via the docker
 # ecosystem the same way it moves backend/Dockerfile.
 
-FROM alpine@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d AS build
+FROM alpine:3.21.7@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d AS build
 
 # --no-scripts: the package's post-install script would adduser/addgroup inside the staging
 # root, which needs a shell there. We create the account ourselves below instead.
