@@ -10,7 +10,7 @@
 ARG JAR_SOURCE=builder
 
 # Build stage
-FROM amazoncorretto:21@sha256:f38f422ddf282963febf97e5d65a8f81e231f777495d5428bb93be75a9a890fe AS builder
+FROM amazoncorretto:21@sha256:70c4c569bf3f794e4b9f22619efb64a072a5d97fd66867fd134398c12d6f2905 AS builder
 WORKDIR /app
 
 # amazoncorretto:21 태그가 Amazon Linux 2 -> 2023으로 올라가며 findutils가 빠졌다.
@@ -42,14 +42,14 @@ RUN cp "$(ls build/libs/*.jar | grep -v -- '-plain.jar' | head -n1)" /app/app.ja
 # CI 경로: 러너가 만든 jar 를 컨텍스트에서 받는다.
 # JAR_SOURCE=builder 일 때 buildkit 이 이 스테이지를 통째로 건너뛰므로, 컨텍스트에
 # app.jar 가 없어도 기본 빌드는 영향받지 않는다.
-FROM amazoncorretto:21@sha256:f38f422ddf282963febf97e5d65a8f81e231f777495d5428bb93be75a9a890fe AS ctxjar
+FROM amazoncorretto:21@sha256:70c4c569bf3f794e4b9f22619efb64a072a5d97fd66867fd134398c12d6f2905 AS ctxjar
 WORKDIR /app
 COPY app.jar /app/app.jar
 
 FROM ${JAR_SOURCE} AS jarsrc
 
 # Runtime stage
-FROM amazoncorretto:21@sha256:f38f422ddf282963febf97e5d65a8f81e231f777495d5428bb93be75a9a890fe
+FROM amazoncorretto:21@sha256:70c4c569bf3f794e4b9f22619efb64a072a5d97fd66867fd134398c12d6f2905
 WORKDIR /app
 # --chown 으로 복사 시점에 소유권을 정한다. 뒤에서 chown -R 로 훑으면 106MB jar 가
 # 통째로 레이어에 복제돼 이미지가 그만큼 커진다(실측: 1.14GB 중 106MB 가 그 중복분).
