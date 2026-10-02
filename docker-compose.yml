@@ -25,7 +25,7 @@ x-logging: &default-logging
 # (app/frontend 는 netlock.yml 에서 ${APP_PULL_POLICY:-never} 로 이미 고정돼 있다)
 services:                         # 서비스 정의 시작
   postgres:                       # PostgreSQL 데이터베이스 서비스
-    image: postgres:15@sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550            # PostgreSQL 15 버전 이미지
+    image: postgres:18@sha256:5a5a84b19854a9ffaa54082c166ff4ec27473a361e496e5ea167f298f2da9722            # PostgreSQL 15 버전 이미지
     pull_policy: missing
     container_name: ott-postgres  # 컨테이너 이름
     restart: unless-stopped
