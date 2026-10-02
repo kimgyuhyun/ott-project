@@ -108,7 +108,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -147,9 +147,9 @@ jobs:
       # 래퍼 JAR 해시 불일치는 공급망 침해 신호이므로 차단한다.
       # (continue-on-error 로 두면 침해를 탐지하고도 그대로 빌드가 진행된다)
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           java-version: '21'
           distribution: 'temurin'
@@ -157,8 +157,15 @@ jobs:
       # 이 잡이 파이프라인에서 가장 길다(실측 395초 / 전체 514초).
       # wrapper-validation 과 같은 저장소·같은 SHA 라 새로 신뢰할 의존성이 늘지 않는다.
       # 캐시 쓰기는 기본적으로 기본 브랜치에서만 일어난다 - PR 이 캐시를 오염시키지 않는다.
+      # cache-provider: basic - v6 의 기본값(enhanced)은 비공개 상용 컴포넌트(gradle-actions-caching)
+      # 이고 쓰는 순간 Gradle 이용약관에 동의한 것이 된다. basic 은 actions/cache 위의 MIT 구현이라
+      # 그 컴포넌트를 아예 로드하지 않는다. 위 read-only 규칙도 basic 에서 그대로 지켜진다
+      # (cache-service-basic.ts 의 readOnly 분기). restore key 가 없어 빌드 파일이 바뀐 첫 실행은
+      # 캐시 없이 돈다.
       - name: Set up Gradle (dependency + build cache)
-        uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+        with:
+          cache-provider: basic
       - name: Build backend (Gradle)
         # 테스트를 함께 실행한다(-x test 제거). 핵심 로직 회귀가 빌드 시점에 잡히도록 하는 것이 목적이므로
         # 테스트가 깨지면 이미지 push/배포로 진행되지 않아야 한다.
@@ -290,7 +297,7 @@ jobs:
       # (실측: CI 32638019679 - "Playwright requires Node.js 20 or higher").
       # 버전은 frontend/Dockerfile 의 런타임(node:24-alpine)과 맞춘다. 20 은 EOL 이다.
       - name: Use Node.js 24
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           cache: 'npm'
@@ -474,7 +481,7 @@ jobs:
       # 이미지 안의 빌드(node:24-alpine)와 같은 메이저로 맞춘다. 18 은 EOL 이고,
       # sharp 0.35 는 engines 가 >=20.9.0 이라 18 은 지원 범위 밖이었다(npm 은 경고만 낸다).
       - name: Use Node.js 24
-        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           cache: 'npm'
