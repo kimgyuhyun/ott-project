@@ -60,6 +60,15 @@ updates:
       interval: "daily"
   - package-ecosystem: "docker"
     directory: "/backend"
+    # 위 정책의 예외: amazoncorretto(JDK) 메이저만 받지 않는다. digest·패치 PR 은 그대로 온다.
+    # Dependabot 은 같은 이미지의 FROM 줄을 전부 같은 버전으로 올리는데, builder 스테이지는
+    # Gradle 8.14 가 돌아야 해서 JDK 21 에 묶여 있다(JDK 25 위에서 도는 것은 Gradle 9.1 부터).
+    # CI 는 ctxjar 경로만 빌드하므로 그 PR 은 초록불인 채로 builder 경로(dev 스택, 침해 대응
+    # 재빌드)를 깨뜨린다. 21 은 LTS(Corretto 지원 2030-10)라 EOL 에 갇히는 문제도 아직 없다.
+    # JDK 메이저는 Gradle 9 전환과 함께 다음 LTS 로 손으로 올리고, 그때 이 ignore 를 지운다.
+    ignore:
+      - dependency-name: "amazoncorretto"
+        update-types: ["version-update:semver-major"]
     schedule:
       interval: "daily"
   # 백엔드 아웃바운드 프록시 2개. 빌드 스테이지의 alpine 을 digest 로 고정했는데 이 항목이
