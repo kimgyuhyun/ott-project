@@ -67,8 +67,8 @@
 ### Data / Messaging
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue?style=flat-square&logo=postgresql)
 ![Redis](https://img.shields.io/badge/Redis-7-red?style=flat-square&logo=redis)
-![Kafka](https://img.shields.io/badge/Kafka-3.7%20KRaft-black?style=flat-square&logo=apachekafka)
-![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.13-orange?style=flat-square&logo=rabbitmq)
+![Kafka](https://img.shields.io/badge/Kafka-4.3%20KRaft-black?style=flat-square&logo=apachekafka)
+![RabbitMQ](https://img.shields.io/badge/RabbitMQ-4.3-orange?style=flat-square&logo=rabbitmq)
 
 - **PostgreSQL** 주 저장소, **Redis** 캐시/추천/트렌드
 - **Kafka** — 결제 성공 부수효과(영수증 등) 이벤트 스트림 (Outbox 패턴)

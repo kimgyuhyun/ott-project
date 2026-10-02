@@ -82,7 +82,12 @@ services:                         # 서비스 정의 시작
       - data                      # [SECURITY 2026-07-18] 데이터 계층 전용망
 
   kafka: # Kafka 브로커(KRaft 단일 노드) - 결제 부수효과 이벤트 스트림
-    image: apache/kafka:3.7.0@sha256:41c20d65b0a2180b9deca056d47540771752e69fe9225d5748dd65a25a9675d7 # 공식 ASF 이미지(KRaft 내장, 스토리지 자동 포맷)
+    # [2026-10-03] 3.7.0 → 4.3.1. 3.7.0 이미지의 시작 스크립트는 meta.properties 에
+    # cluster.id=Some(<id>) 로 써 두고 그 형태만 받는다. 4.3.1 은 <id> 만 받고 Some(...) 이면
+    # 기동을 거부한다(리허설 실측). 그래서 이 버전으로 바꾸는 배포 직전에 볼륨의 그 한 줄을
+    # 한 번 고쳐야 했다. 3.7.0 으로 되돌릴 때는 반대로 Some(...) 을 다시 씌운다.
+    # metadata.version 은 아직 3.7-IV4 다. kafka-features.sh 로 올리면 3.7 로 돌아갈 수 없다.
+    image: apache/kafka:4.3.1@sha256:77e3df9054047a88b520d0cc46e16696d3b22022e1d580aeccd2632df6532837 # 공식 ASF 이미지(KRaft 내장, 스토리지 자동 포맷)
     pull_policy: missing
     container_name: ott-kafka
     restart: unless-stopped
@@ -124,9 +129,13 @@ services:                         # 서비스 정의 시작
 
   rabbitmq: # RabbitMQ 브로커 - 정기결제 실패 재시도 지연 큐(TTL+DLX)
     # alpine 변형은 이 호스트에서 .erlang.cookie 권한 오류(eacces)로 기동 실패 → debian 기반 사용
-    image: rabbitmq:3.13-management@sha256:e582c0bc7766f3342496d8485efb5a1df782b5ce3886ad017e2eaae442311f69 # management UI 포함(로컬 시연용)
+    image: rabbitmq:4.3-management@sha256:1d7dfbe6c30e04f0a130a1d6e1b31028fe8245c7033c09ffb6ea6554b8fdb2f0 # management UI 포함(로컬 시연용)
     pull_policy: missing
     container_name: ott-rabbitmq
+    # [2026-10-03] 노드 이름(rabbit@<hostname>)이 데이터 디렉터리 이름이다. hostname 을 비워 두면
+    # 컨테이너 ID 가 들어가 재생성할 때마다 새 노드가 빈 디렉터리로 떴다. 실측: rabbitmq_data 에
+    # 노드 디렉터리 17개(현재 1 + 버려진 16) — 배포마다 대기 중이던 정기결제 재시도 메시지가 사라질 수 있었다.
+    hostname: ott-rabbitmq
     restart: unless-stopped
     logging: *default-logging
     ports:
