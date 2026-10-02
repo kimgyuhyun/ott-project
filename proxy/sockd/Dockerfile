@@ -8,7 +8,7 @@
 # Same multistage/scratch construction and the same reason as proxy/squid/Dockerfile:
 # PLATFORM 2절 [절대] no package manager in the runtime image. Base pinned by digest.
 
-FROM alpine:3.21.7@sha256:48b0309ca019d89d40f670aa1bc06e426dc0931948452e8491e3d65087abc07d AS build
+FROM alpine:3.24.2@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cabeaec77e6 AS build
 
 RUN mkdir -p /out/etc/apk \
  && cp -a /etc/apk/repositories /etc/apk/keys /out/etc/apk/ \
