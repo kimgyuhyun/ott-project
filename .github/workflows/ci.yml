@@ -147,7 +147,7 @@ jobs:
       # 래퍼 JAR 해시 불일치는 공급망 침해 신호이므로 차단한다.
       # (continue-on-error 로 두면 침해를 탐지하고도 그대로 빌드가 진행된다)
       - name: Validate Gradle wrapper
-        uses: gradle/actions/wrapper-validation@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+        uses: gradle/actions/wrapper-validation@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
       - name: Set up JDK 21
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
