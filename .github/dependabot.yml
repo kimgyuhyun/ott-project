@@ -52,6 +52,17 @@ updates:
     directory: "/backend"
     schedule:
       interval: "daily"
+  # 백엔드 아웃바운드 프록시 2개. 빌드 스테이지의 alpine 을 digest 로 고정했는데 이 항목이
+  # 없어서 패치 PR 이 한 번도 오지 않았다. 위 두 항목과 합치지 않은 것은 이미 열린 그쪽 PR 을
+  # 건드리지 않기 위해서다.
+  - package-ecosystem: "docker"
+    directories: ["/proxy/squid", "/proxy/sockd"]
+    schedule:
+      interval: "daily"
+    groups:
+      # 두 Dockerfile 이 같은 alpine 을 쓴다. 묶지 않으면 같은 갱신이 PR 두 개(배포 두 번)로 온다.
+      proxy-base:
+        patterns: ["*"]
 
   # GitHub Actions 워크플로우
   # 메이저를 무시하지 않는다. 액션 메이저는 대개 액션 런타임 교체(node20 → node24)라,
