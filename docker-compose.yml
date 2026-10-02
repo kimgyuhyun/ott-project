@@ -70,7 +70,7 @@ services:                         # 서비스 정의 시작
       - data                      # [SECURITY 2026-07-18] 데이터 계층 전용망 — frontend/nginx에서 도달 불가
 
   redis: # Redis 캐시 서비스
-    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
     pull_policy: missing
     container_name: ott-redis
     restart: unless-stopped
