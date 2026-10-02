@@ -21,7 +21,8 @@
 
 services:
   postgres:
-    image: postgres:15
+    image: postgres:15@sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550
+    pull_policy: missing
     container_name: ott-multi-postgres
     env_file:
       - .env
@@ -39,13 +40,15 @@ services:
     # 호스트 포트 미개방: 실서비스 5432 와 충돌 방지
 
   redis:
-    image: redis:7-alpine
+    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    pull_policy: missing
     container_name: ott-multi-redis
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     # 세션 공유 확인 대상. dev 프로파일은 Redis 비밀번호를 쓰지 않는다.
 
   kafka:
-    image: apache/kafka:3.7.0
+    image: apache/kafka:3.7.0@sha256:41c20d65b0a2180b9deca056d47540771752e69fe9225d5748dd65a25a9675d7
+    pull_policy: missing
     container_name: ott-multi-kafka
     environment:
       KAFKA_NODE_ID: "1"
@@ -64,7 +67,8 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
   rabbitmq:
-    image: rabbitmq:3.13-management
+    image: rabbitmq:3.13-management@sha256:e582c0bc7766f3342496d8485efb5a1df782b5ce3886ad017e2eaae442311f69
+    pull_policy: missing
     container_name: ott-multi-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: ott
@@ -74,6 +78,7 @@ services:
     # 실서비스(ott-app)가 현재 돌리고 있는 것과 동일한 이미지. 같은 코드로 실험해야 의미가 있다.
     # (ott-backend:clean 은 오래된 태그라 쓰지 않는다)
     image: ${APP_IMAGE:-ghcr.io/kimgyuhyun/ott-backend:85b83dd1fe342b80ab13fbd15f604a902865e3b9}
+    pull_policy: missing
     container_name: ott-multi-app1
     depends_on:
       postgres:
@@ -133,7 +138,8 @@ services:
 
   # [2단계] 로드밸런싱/무중단 배포 검증용. 실서비스 nginx(80/443)와 겹치지 않게 8888 을 쓴다.
   nginx:
-    image: nginx:alpine
+    image: nginx:1.31.6-alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2
+    pull_policy: missing
     container_name: ott-multi-nginx
     depends_on:
       - app1

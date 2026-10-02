@@ -19,7 +19,7 @@
 # (e2e.yml 머리말과 같은 이유: 짧게 뜨는 스택이라 괜찮다고 두면 그 예외가 다음 스택의 기본값이 된다)
 services:
   postgres:
-    image: postgres:15
+    image: postgres:15@sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550
     pull_policy: missing
     container_name: ott-restore-postgres
     logging:
