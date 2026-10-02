@@ -30,7 +30,7 @@ services:
     # 6주 전 것인데, 지금 레지스트리의 dpage/pgadmin4:latest 매니페스트는 다른 다이제스트를
     # 가리킨다. latest 로 두면 다음에 pgadmin 을 올리는 순간 조용히 다른 이미지가 떴을 것이다.
     # 갱신할 때: docker pull dpage/pgadmin4:<새태그> 후 아래 다이제스트를 바꾼다.
-    image: dpage/pgadmin4@sha256:40fa840c5bb7c8463957f1255b01283732c2d8c9396a956d180f8e6c296753b3
+    image: dpage/pgadmin4@sha256:c332c5f6dfba995d9ebc4af261d93506d6876085d712eaaa3defc8dd1a3f26de
     pull_policy: missing
     container_name: ott-pgadmin
     restart: unless-stopped
