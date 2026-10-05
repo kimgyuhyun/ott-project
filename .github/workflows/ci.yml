@@ -259,7 +259,7 @@ jobs:
         run: bash .github/scripts/capture-image-digest.sh
       - name: Upload backend image digest
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: image-digest-ott-backend
           path: digests/ott-backend.txt
@@ -385,7 +385,7 @@ jobs:
       # 스텝별 DOM 스냅샷과 네트워크가 들어 있어 재현 없이 원인을 볼 수 있다.
       - name: Upload the Playwright report
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: playwright-report
           path: |
@@ -459,7 +459,7 @@ jobs:
       # 다른 아티팩트가 생기고, 소비 측(CD)이 image-digest-* 패턴으로 한 폴더에 모은다.
       - name: Upload image digest
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: image-digest-${{ matrix.name }}
           path: digests/${{ matrix.name }}.txt
@@ -558,7 +558,7 @@ jobs:
         run: bash .github/scripts/capture-image-digest.sh
       - name: Upload frontend image digest
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: image-digest-ott-frontend
           path: digests/ott-frontend.txt
