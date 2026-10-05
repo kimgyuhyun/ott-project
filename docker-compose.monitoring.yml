@@ -141,7 +141,7 @@ services:
       - monitoring
 
   alloy:
-    image: grafana/alloy:v1.5.1@sha256:01a63f4e032ce54ee94b22049bc27f597e74f85566478c377f4b5c7f020c1eb3
+    image: grafana/alloy:v1.20.1@sha256:2aa2099af76c0098d4af7a4d6e48f86cb66dc1a000222ad927a1c67c6542d13f
     pull_policy: missing
     container_name: ott-alloy
     restart: unless-stopped
