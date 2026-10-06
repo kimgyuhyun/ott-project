@@ -1,0 +1,26 @@
+# 운영 스크립트가 "docker exec <컨테이너> <명령>" 으로 컨테이너 안에서 실행하는 명령 목록.
+# 이미지를 올리는 PR 이 이 명령을 없애면 CI(.github/scripts/check-image-tools.sh)가 막는다.
+#
+# 2026-10: loki 3.1.1 → 3.7.8 에서 베이스가 alpine → distroless 로 바뀌어 cat 이 사라졌다.
+# CI 는 통과했고, 배포 마지막 점검(check-observability.ps1)이 운영에서 4번 연속 실패하고서야 드러났다.
+#
+# 새 docker exec 를 쓰면 여기에 줄을 더한다. 안 더하면 같은 스크립트의 lint 가 CI 에서 막는다.
+# 형식: <compose 서비스> <명령>    # 쓰는 곳
+# 서비스 이름은 운영 compose 조합(deploy-rolling.ps1 의 $ComposeFiles) 기준이다.
+
+nginx       nginx        # deploy*.ps1, cd.yml: nginx -t / -s reload
+nginx       curl         # deploy*.ps1: 공개 진입점 점검
+nginx       wget         # deploy-rolling.ps1, cd.yml: 백엔드 health 대기
+prometheus  promtool     # deploy*.ps1: 설정·규칙 검사
+prometheus  wget         # check-observability.ps1: loki·prometheus·grafana 조회(Invoke-Probe)
+rabbitmq    rabbitmqctl  # check-container-hardening.ps1: 메모리 워터마크
+rabbitmq    cat          # check-container-hardening.ps1: 10-memory.conf
+postgres    psql         # check-db-privileges.ps1, restore-drill.ps1
+postgres    pg_dump      # db-backup.ps1, cd.yml: 배포 전 백업
+postgres    pg_dumpall   # db-backup.ps1: globals
+app         sh           # deploy*.ps1: DNS 차단 점검, ott-watchdog.ps1
+app         getent       # deploy*.ps1: DNS 차단 점검
+app         curl         # deploy*.ps1: 프록시 허용·차단 점검
+app         bash         # deploy*.ps1: SMTP·직접 연결 차단 점검(/dev/tcp)
+app         timeout      # deploy*.ps1: 직접 연결 차단 점검
+frontend    node         # deploy*.ps1, cd.yml: 프론트 이그레스 차단 점검

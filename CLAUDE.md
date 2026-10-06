@@ -59,6 +59,7 @@ PLATFORM 0절의 항목이다. 규칙이 이 값에 따라 갈리므로 비워�
 - 롤링 배포 중 컬럼 DROP/RENAME 마이그레이션은 구버전 인스턴스를 깨뜨림 — expand/contract 패턴 사용, 테이블 추가·nullable 컬럼·DEFAULT 있는 NOT NULL은 안전
 - postgres/redis는 `data` 네트워크에 격리되어 프론트에서 도달 불가해야 함 — 배포 스크립트가 자동 검증
 - 카프카는 의도적으로 무인증(내부망 전용 결정, 문서화됨)
+- 운영 스크립트에서 `docker exec <컨테이너> <명령>` 을 새로 쓰면 `.github/image-tools.txt` 에 적는다. CI 가 그 명령이 이미지 안에 있는지 보고, 안 적으면 lint 가 막는다. 파일만 읽을 거면 exec 대신 `docker cp` (distroless 이미지에는 cat·sh 가 없다)
 - DB 를 백업에서 되살리는 절차는 `docs/restore-runbook.md` — 평상시 점검(`restore-drill.ps1 -Mode Check`)과 실제 복구가 함께 있다. 복원은 globals(롤)를 데이터베이스 덤프보다 **먼저** 적용해야 한다
 - 구조를 **왜** 그렇게 골랐는지는 `docs/adr/` — 결정 하나당 파일 하나. 기존 결정을 뒤집을 때는 파일을 고치지 말고 새 ADR 을 쓰고 이전 것을 `대체됨` 으로 바꾼다
 

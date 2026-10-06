@@ -101,8 +101,15 @@ $probe = $svcIds['prometheus']
 # same assert shape as the rabbitmq watermark is available: read what is mounted, ask what
 # was loaded, require agreement. retention_period is the value worth guarding - it decides
 # how far back evidence exists, and getting it wrong is invisible until someone needs it.
-$mounted = docker exec $svcIds['loki'] cat /etc/loki/loki-config.yml
-if ($LASTEXITCODE -ne 0) { throw 'SECURITY INVARIANT FAILED: cannot read the mounted /etc/loki/loki-config.yml' }
+# docker cp, not docker exec cat: the 3.7.8 loki image is distroless (no cat, no shell; 3.1.1 was alpine), and
+# the daemon reads the file itself, so this does not depend on what the image ships.
+$mountedFile = New-TemporaryFile
+try {
+    docker cp "$($svcIds['loki']):/etc/loki/loki-config.yml" $mountedFile.FullName
+    if ($LASTEXITCODE -ne 0) { throw 'SECURITY INVARIANT FAILED: cannot read the mounted /etc/loki/loki-config.yml' }
+    $mounted = Get-Content -Encoding UTF8 $mountedFile.FullName
+}
+finally { Remove-Item $mountedFile.FullName -Force -ErrorAction SilentlyContinue }
 $mountedRetention = Get-YamlValueInSection -Lines $mounted -Section 'limits_config' -Key 'retention_period'
 if (-not $mountedRetention) { throw 'SECURITY INVARIANT FAILED: no limits_config.retention_period in the mounted loki config - this check cannot confirm the retention window' }
 
