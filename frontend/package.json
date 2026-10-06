@@ -15,7 +15,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.104.0",
     "hls.js": "^1.7.3",
-    "next": "15.5.26",
+    "next": "15.5.27",
     "react": "^18",
     "react-dom": "^18",
     "zod": "^4.6.5"
@@ -27,7 +27,7 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^9",
-    "eslint-config-next": "15.5.26",
+    "eslint-config-next": "15.5.27",
     "prettier": "^3.9.9",
     "typescript": "^5"
   },
