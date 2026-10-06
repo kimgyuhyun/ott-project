@@ -44,7 +44,7 @@ x-logging: &default-logging
 # pull_policy: missing 근거는 docker-compose.yml 상단 주석 참고.
 services:
   prometheus:
-    image: prom/prometheus:v2.54.1@sha256:f6639335d34a77d9d9db382b92eeb7fc00934be8eae81dbc03b31cfe90411a94
+    image: prom/prometheus:v3.15.0@sha256:efd719c99d83b060d9daefdcf00360461adf279f45ef5391f8d111892118753e
     pull_policy: missing
     container_name: ott-prometheus
     restart: unless-stopped
