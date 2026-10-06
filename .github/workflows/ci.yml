@@ -85,6 +85,17 @@ jobs:
       - name: Lint shell scripts
         run: shellcheck -x .github/scripts/*.sh .githooks/pre-commit
 
+  # 운영 스크립트가 docker exec 로 부르는 명령이 compose 의 외부 이미지 안에 있는지.
+  # 이미지 갱신 PR(Dependabot 포함)이 명령을 없애면 여기서 막는다 — 2026-10 loki 3.7.8 의 distroless
+  # 전환으로 cat 이 사라진 것을 CI 가 모르고 통과시켜 운영 배포에서야 드러났다.
+  # 자체 이미지(app, frontend)는 빌드하는 backend·frontend 잡이 같은 스크립트로 본다.
+  image-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check tools used via docker exec exist in pinned images
+        run: bash .github/scripts/check-image-tools.sh
+
   # 마이그레이션 검증 전용 잡.
   # 슬라이스 테스트는 H2 로 돌고 전부 flyway.enabled=false 라, Flyway 가 실제로 처음
   # 실행되는 곳이 CD 의 운영 DB 였다. 여기서 빈 Postgres 에 전량 적용해보고 검증한다.
@@ -235,6 +246,9 @@ jobs:
           test -n "$jar" || { echo "bootJar not found in backend/build/libs"; exit 1; }
           cp "$jar" backend/app.jar
           docker build --pull --build-arg JAR_SOURCE=ctxjar -t ${{ steps.img.outputs.ref }}:${{ github.sha }} -f backend/Dockerfile backend/
+      # 배포 스크립트가 ott-app 안에서 부르는 명령(sh, curl, bash ...)이 베이스 이미지 갱신 뒤에도 있는지.
+      - name: Check tools used via docker exec exist in backend image
+        run: bash .github/scripts/check-image-tools.sh app=${{ steps.img.outputs.ref }}:${{ github.sha }}
       # push 앞이다. 여기서 실패하면 이미지가 GHCR 에 올라가지 않는다.
       # Trivy 는 방금 build 가 러너 로컬 데몬에 남긴 그 태그를 읽으므로 레지스트리가 필요 없다.
       - name: Scan backend image (gate on fixable CRITICAL)
@@ -535,6 +549,8 @@ jobs:
       # PR 에서도 빌드·스캔한다(상단 주석). push 는 main 에서만 한다.
       - name: Build frontend image
         run: docker build --target production --pull -t ${{ steps.img.outputs.ref }}:${{ github.sha }} -f frontend/Dockerfile frontend/
+      - name: Check tools used via docker exec exist in frontend image
+        run: bash .github/scripts/check-image-tools.sh frontend=${{ steps.img.outputs.ref }}:${{ github.sha }}
       # push 앞이다(backend 잡과 같은 이유).
       - name: Scan frontend image (gate on fixable CRITICAL)
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
