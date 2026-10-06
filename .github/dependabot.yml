@@ -47,6 +47,11 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      # minor/patch 는 하나로 묶는다. 묶지 않으면 이미지마다 PR 이 따로 와서 머지 1번 = 배포 1번이 된다.
+      # 메이저는 그룹에 넣지 않아 따로 온다 — 손으로 확인하고 머지하는 대상이라 묶음에 섞이면 안 된다.
+      compose-minor:
+        update-types: ["minor", "patch"]
 
   # Docker 베이스 이미지
   # npm/gradle과 달리 Docker는 advisory 매핑이 없어 security update PR이 따로 오지 않는다.
