@@ -48,10 +48,14 @@ updates:
     schedule:
       interval: "daily"
     groups:
-      # minor/patch 는 하나로 묶는다. 묶지 않으면 이미지마다 PR 이 따로 와서 머지 1번 = 배포 1번이 된다.
-      # 메이저는 그룹에 넣지 않아 따로 온다 — 손으로 확인하고 머지하는 대상이라 묶음에 섞이면 안 된다.
-      compose-minor:
-        update-types: ["minor", "patch"]
+      # 전부 하나로 묶는다. 묶지 않으면 이미지마다 PR 이 따로 와서 머지 1번 = 배포 1번이 된다.
+      # update-types 로 minor/patch 만 묶지 않은 이유: 태그는 그대로고 digest 만 바뀐 갱신은 버전이
+      # 오르지 않아 update-types 그룹에서 빠지고 이미지마다 따로 온다(dependabot-core
+      # semver_rules_allow_grouping?). 범위 태그(postgres:15, redis:7-alpine)는 대부분의 갱신이 이 경우다.
+      # 그래서 메이저도 이 묶음에 섞여 온다. 묶음 PR 에 메이저가 보이면 손으로 확인하고, 지금 올리지 않을
+      # 메이저는 PR 에 "@dependabot ignore <이미지> major version" 을 달아 빼고 다시 만들게 한다.
+      compose-all:
+        patterns: ["*"]
 
   # Docker 베이스 이미지
   # npm/gradle과 달리 Docker는 advisory 매핑이 없어 security update PR이 따로 오지 않는다.
@@ -95,3 +99,12 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      # minor/patch 는 하나로 묶고 메이저는 따로 받는다. 액션은 SHA 에 버전 주석을 달아 고정하므로
+      # 버전 비교가 되어 compose 와 달리 update-types 그룹이 제대로 동작한다.
+      actions-minor:
+        update-types: ["minor", "patch"]
+      # 보안 PR 묶음 — 이유는 위 frontend-security 와 같다.
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
