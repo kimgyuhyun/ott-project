@@ -9,6 +9,16 @@ buildscript {
 	dependencies {
 		classpath 'org.flywaydb:flyway-database-postgresql:10.22.0'
 		classpath 'org.postgresql:postgresql:42.7.13'
+		// [SECURITY 2026-10-06] 플러그인 클래스패스(빌드 때만 쓰고 앱에는 안 들어간다)의 경보.
+		// spring-boot-gradle-plugin 의 buildpack-platform(bootBuildImage 용, 이 저장소는 안 쓴다)이 끌어온다.
+		// dependency-submission 이 이 클래스패스도 제출해서 Dependabot 경보로 잡힌다.
+		classpath platform('com.fasterxml.jackson:jackson-bom:2.21.7')
+		constraints {
+			classpath 'org.apache.commons:commons-lang3:3.18.0'
+			classpath 'org.apache.httpcomponents.client5:httpclient5:5.6.3'
+			classpath 'org.apache.httpcomponents.core5:httpcore5:5.4.3'
+			classpath 'org.apache.httpcomponents.core5:httpcore5-h2:5.4.3'
+		}
 	}
 }
 
@@ -122,12 +132,14 @@ dependencies {
 
 	// QueryDSL (jakarta) — 관리자 애니 큐레이션의 동적 검색/벌크 수정에만 사용한다.
 	// 사용자향 읽기는 MyBatis, 일반 쓰기는 JPA 를 그대로 유지한다(경계는 CLAUDE 문서 참고).
-	// 버전을 비운 것은 의도적이다: Boot 3.5.4 의 dependency-management 가 querydsl.version 을 관리한다.
-	// ':: jakarta' 표기는 "버전 생략 + classifier=jakarta" 를 뜻한다(jakarta.persistence 기반 Q 클래스 생성).
+	// [SECURITY 2026-10-06] com.querydsl 5.1.0 → OpenFeign 포크 5.6.1 (GHSA-6q3q-6v5j-h6vg, orderBy HQL 주입).
+	//   원본은 2021 년 이후 릴리스가 없어 수정본이 없다. 포크는 패키지(com.querydsl.*)가 같아 코드 변경이 없다.
+	//   Boot 가 관리하는 건 com.querydsl 그룹뿐이라 버전을 직접 적는다.
+	// ':jakarta' classifier 는 jakarta.persistence 기반 Q 클래스를 만든다.
 	// Q 클래스는 build/generated/sources/annotationProcessor/java/main 에 생성된다
 	// (Boot 기본 경로라 별도 sourceSets 설정이 필요 없고, clean 으로 함께 지워진다).
-	implementation 'com.querydsl:querydsl-jpa::jakarta'
-	annotationProcessor 'com.querydsl:querydsl-apt::jakarta'
+	implementation 'io.github.openfeign.querydsl:querydsl-jpa:5.6.1:jakarta'
+	annotationProcessor 'io.github.openfeign.querydsl:querydsl-apt:5.6.1:jakarta'
 	annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
 	annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
 
@@ -156,6 +168,10 @@ dependencies {
 	constraints {
 		implementation('at.yawk.lz4:lz4-java:1.11.1') {
 			because 'GHSA-xx22-p4ch-683r: lz4-java <= 1.11.0'
+		}
+		// testcontainers 가 끌어오는 1.24.0. 테스트 클래스패스에만 있지만 수정본이 있어 올린다.
+		testImplementation('org.apache.commons:commons-compress:1.27.1') {
+			because 'GHSA-4g9r-vxhx-9pgx, GHSA-4265-ccf5-phj5: commons-compress < 1.26.0'
 		}
 	}
 }
