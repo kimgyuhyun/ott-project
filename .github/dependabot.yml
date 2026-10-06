@@ -95,3 +95,7 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      # minor/patch 는 하나로 묶는다. 메이저는 손으로 확인하는 대상이라 묶지 않고 따로 받는다.
+      actions-minor:
+        update-types: ["minor", "patch"]
