@@ -1,5 +1,5 @@
 # Build stage
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS builder
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS builder
 WORKDIR /app
 
 # 패키지 파일 복사 및 의존성 설치 (캐싱 최적화)
@@ -11,7 +11,7 @@ COPY . .
 RUN npm run build
 
 # Development stage
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS development
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS development
 WORKDIR /app
 
 # 패키지 파일 복사 및 의존성 설치
@@ -23,7 +23,7 @@ EXPOSE 3000
 CMD ["npm", "run", "dev"]
 
 # Production stage
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS production
+FROM node:25-alpine@sha256:bdf2cca6fe3dabd014ea60163eca3f0f7015fbd5c7ee1b0e9ccb4ced6eb02ef4 AS production
 WORKDIR /app
 
 ENV NODE_ENV=production
