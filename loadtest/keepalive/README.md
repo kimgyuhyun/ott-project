@@ -124,3 +124,17 @@ PowerShell 로 불러 nginx 가 마운트한 설정 파일(`live.conf`, `before.
   양상이 다를 수 있다(검증 안 함).
 - 시험이 실행한 것은 `Set-UpstreamDrain` 함수와 같은 순서의 절차다. `deploy-rolling.ps1` 의 루프와 실패 시
   복구(catch) 경로 자체는 운영 compose 조합에서만 돌아 여기서 실행하지 않았다.
+
+## keepalive + drain — 2026-10-09
+
+drain 이 들어간 절차(위 2차)에 `after.conf`(keepalive 16, keepalive_timeout 30s, `Connection ""`)를 얹어
+같은 조건으로 순차 교체 3회를 돌렸다. 앱 이미지는 운영 배포본 그대로다(`server.tomcat.keep-alive-timeout: 60s`
+명시는 이 이미지에 없지만, 미설정 기본값이 같은 60s 라 동작이 같다 — 운영에서 약 62s 에 닫힘을 실측).
+
+| 절차 | 회차별 비200 (k6) | 다른 인스턴스로 재시도 (nginx) |
+|---|---|---|
+| keepalive, 현행 절차(drain 없음) | 27 / 0 / 51 | 18 / 16 / 14 |
+| **keepalive + drain** | **0 / 0 / 0** | **0 / 0 / 0** |
+
+합격 기준 C1(변경안에서 순차 교체 3회 비200 0건)을 처음 적은 조건 그대로 통과한다. 처음의 불통과는
+keepalive 가 아니라 drain 이 없던 절차 탓이었다.
