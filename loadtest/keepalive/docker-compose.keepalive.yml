@@ -1,0 +1,43 @@
+# [측정 전용] nginx→앱 연결 재사용(upstream keepalive) 전후 비교용 오버레이 — 2026-10-09
+#
+# docker-compose.e2e.yml 위에 얹는다. 그 스택은 default 망이 internal 이라 아웃바운드가 막혀
+# 있고, 이 오버레이는 망을 새로 열지 않는다(app2 와 프로브 모두 default 망 또는 앱의 망을 쓴다).
+#
+# 실행: README.md 의 "실행" 절. 프로젝트 이름은 -p ott-ka 로 분리한다.
+#
+# 운영 HA 와 맞춘 것: 백엔드 2대 + upstream 그룹 + proxy_next_upstream, 같은 nginx 이미지,
+#                     같은 백엔드 이미지(APP_IMAGE 로 운영 배포본을 넘긴다).
+# 운영과 다른 것: TLS 없음, limit_req 없음(부하를 리밋 위로 올려 보기 위해), dev 프로파일.
+
+services:
+  app2:
+    extends:
+      file: docker-compose.e2e.yml
+      service: app
+    container_name: ott-ka-app2
+    networks: !override
+      default:
+        aliases: [ott-app-2]
+
+  # 앱 이미지는 distroless 라 셸이 없다. 앱과 같은 네트워크 네임스페이스에 붙은 프로브로
+  # /proc/net/tcp 를 읽어 앱 쪽 소켓 상태(TIME_WAIT 등)를 센다.
+  probe1:
+    image: nginx:1.31.6-alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2
+    pull_policy: missing
+    container_name: ott-ka-probe1
+    network_mode: "service:app"
+    entrypoint: ["sleep", "infinity"]
+    depends_on: [app]
+
+  probe2:
+    image: nginx:1.31.6-alpine@sha256:df221db836e1754089190208cee7eeda94f233197056426eda74a43ab1abeac2
+    pull_policy: missing
+    container_name: ott-ka-probe2
+    network_mode: "service:app2"
+    entrypoint: ["sleep", "infinity"]
+    depends_on: [app2]
+
+  nginx:
+    depends_on: [frontend, app, app2]
+    volumes: !override
+      - ./loadtest/keepalive/${KA_NGINX:-before}.conf:/etc/nginx/conf.d/default.conf:ro
