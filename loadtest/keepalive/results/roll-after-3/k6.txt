@@ -1,0 +1,42 @@
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{phase:measure}
+    ✓ 'p(95)<1000' p(95)=17ms
+
+    http_req_failed{phase:measure}
+    ✗ 'rate<0.001' rate=1.13%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 5402   29.212657/s
+    checks_succeeded...: 99.05% 5351 out of 5402
+    checks_failed......: 0.94%  51 out of 5402
+
+    ✗ status 200
+      ↳  99% — ✓ 5351 / ✗ 51
+
+    HTTP
+    http_req_duration..............: avg=9.08ms med=6.53ms p(90)=12.47ms p(95)=17.01ms p(99)=75.25ms max=861.84ms
+      { expected_response:true }...: avg=9.14ms med=6.58ms p(90)=12.5ms  p(95)=17.04ms p(99)=75.28ms max=861.84ms
+      { phase:measure }............: avg=8.79ms med=6.97ms p(90)=12.75ms p(95)=17ms    p(99)=32.35ms max=861.84ms
+    http_req_failed................: 0.92%  51 out of 5496
+      { phase:measure }............: 1.13%  51 out of 4501
+    http_reqs......................: 5496   29.720985/s
+
+    EXECUTION
+    iteration_duration.............: avg=8.45ms med=6.65ms p(90)=12.07ms p(95)=15.97ms p(99)=30.25ms max=861.84ms
+    iterations.....................: 5402   29.212657/s
+    vus............................: 0      min=0          max=1 
+    vus_max........................: 40     min=40         max=40
+
+    NETWORK
+    data_received..................: 9.3 MB 50 kB/s
+    data_sent......................: 1.5 MB 7.9 kB/s
+
+
+
+time="2026-10-09T19:21:51+09:00" level=error msg="thresholds on metrics 'http_req_failed{phase:measure}' have been crossed"
+k6 exit 99

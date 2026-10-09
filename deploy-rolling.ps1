@@ -40,6 +40,11 @@ $ComposeFiles = @(
 # Backend instances, in replacement order.
 $Instances = @('ott-app', 'ott-app-2')
 
+# The nginx conf that docker-compose.ha.yml bind-mounts. Each instance is drained in it
+# (marked `down` + reload) before being replaced - see deploy-drain.ps1.
+$NginxConf = 'C:\ott-deploy\config\nginx\nginx.prod.ha.conf'
+. .\deploy-drain.ps1
+
 # [SECURITY 2026-08-07] This used to poll a per-instance loopback port (8090/8093).
 # That stopped working when the backends left the egress network: a container attached
 # ONLY to internal networks cannot publish a host port (PLATFORM 3절), so `docker port
@@ -85,14 +90,33 @@ docker compose @ComposeFiles up -d --remove-orphans --no-deps postgres redis kaf
 if ($LASTEXITCODE -ne 0) { throw 'docker compose up (non-backend) failed' }
 
 # --- 2. Backend instances, one at a time --------------------------------------
-foreach ($name in $Instances) {
-    $svc = if ($name -eq 'ott-app') { 'app' } else { 'app2' }
+# Each instance is drained from nginx before it is replaced. Draining the next instance
+# also puts the previous one back in the same reload, and the last one is restored after
+# the loop. Fewer reloads matter: each reload closes idle client keep-alive connections,
+# and a client that sends on one at that moment gets EOF (measured: 1 request in 3 runs).
+# The drain reloads also make nginx pick up a changed conf here rather than in step 4.
+try {
+    foreach ($name in $Instances) {
+        $svc = if ($name -eq 'ott-app') { 'app' } else { 'app2' }
 
-    Write-Host "=== Replacing $name (service: $svc) ==="
-    docker compose @ComposeFiles up -d --force-recreate --no-deps $svc
-    if ($LASTEXITCODE -ne 0) { throw "docker compose up failed for $svc" }
+        Write-Host "=== Draining $name from nginx ==="
+        Set-UpstreamDrain -ConfPath $NginxConf -NginxContainer ott-nginx -Drain $name
 
-    Wait-Healthy -Name $name
+        Write-Host "=== Replacing $name (service: $svc) ==="
+        docker compose @ComposeFiles up -d --force-recreate --no-deps $svc
+        if ($LASTEXITCODE -ne 0) { throw "docker compose up failed for $svc" }
+
+        Wait-Healthy -Name $name
+    }
+    Write-Host '=== Restoring all backends to nginx ==='
+    Set-UpstreamDrain -ConfPath $NginxConf -NginxContainer ott-nginx
+} catch {
+    # Do not leave an instance drained: put every server back (an unhealthy one is then
+    # skipped by nginx's own failure detection, as before this drain existed).
+    Write-Host 'Deploy failed mid-rolling - restoring all backends to nginx'
+    try { Set-UpstreamDrain -ConfPath $NginxConf -NginxContainer ott-nginx }
+    catch { Write-Host "WARNING: could not restore nginx upstream: $_" }
+    throw
 }
 
 # --- 3. Security invariants (same checks as deploy.ps1) -----------------------
