@@ -1,6 +1,8 @@
 # deploy-drain.ps1 - take one backend out of the nginx upstream before replacing it.
-# Dot-sourced by deploy-rolling.ps1 (and by loadtest/keepalive/rolling-drain.ps1, which
-# measures it), so the deploy and the measurement run the same code.
+# Dot-sourced by deploy-rolling.ps1, and called by loadtest/keepalive/rolling.sh (DRAIN=1)
+# when it measures the procedure, so the deploy and the measurement run the same code.
+# It finds servers by the line format `server <name>:8090 ...;` in the upstream block -
+# changing that format (port, one line per server) makes it throw "not found".
 #
 # Why: without this, nginx only learns an instance is gone when a request to it fails, and
 # then keeps it out for fail_timeout (5s) after the LAST failure. The deploy script checks

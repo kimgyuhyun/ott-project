@@ -9,6 +9,11 @@
 #     rolling  restart     : 374 requests -> 374 OK, 0 failures
 #   This script replaces one instance at a time and waits for it to answer
 #   before touching the other one.
+#   That 0 turned out to be a lucky run: nginx can still be excluding the fresh
+#   instance (fail_timeout) when the next one goes down. Re-measured 2026-10-09 at
+#   30 r/s: 51 / 0 / 0 failed requests in three runs. Each instance is now drained
+#   from nginx before it is replaced (deploy-drain.ps1): 0 / 0 / 0, no retries.
+#   See loadtest/keepalive/README.md and docs/adr/0011-drain-before-replace.md.
 #
 # Prerequisites:
 #   - .env must exist (decrypt from .env.enc with SOPS+age first).

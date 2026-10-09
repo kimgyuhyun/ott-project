@@ -35,7 +35,7 @@
   nginx 가 방금 올라온 인스턴스를 `fail_timeout`(5s) 동안 아직 제외하고 있어 502 가 난다
   (2026-10-09 실측: 30 r/s 에서 3회 중 1회 51건). 그래서 교체 전에 nginx upstream 에서 `down` 으로
   빼고 reload 하는 drain 을 넣었다(`deploy-drain.ps1`, 실측 3회 실패·재시도 0).
-  측정: `loadtest/keepalive/README.md`
+  측정: `loadtest/keepalive/README.md`, 결정과 기각한 대안: `docs/adr/0011-drain-before-replace.md`
 - ha 오버레이를 맨손 `up` 으로 올리면 동시 재생성이 되므로 반드시 스크립트를 쓸 것
 
 ### compose 파일 구성
