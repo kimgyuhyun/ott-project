@@ -259,6 +259,7 @@ jobs:
           ignore-unfixed: true
           exit-code: '1'   # [2026-07-18] 게이트 활성화: 패치 가능한 CRITICAL 이 있으면 CI 실패 → push 안 됨 → 배포 차단. ignore-unfixed 라 고칠 수 없는 취약점엔 안 막힘(무한 실패 방지).
           format: 'table'
+          trivyignores: 'backend/.trivyignore'   # 사유·만료일이 붙은 예외만. 만료되면 다시 막힌다.
       - name: Push backend image (by commit SHA)
         if: github.ref == 'refs/heads/main'
         run: docker push ${{ steps.img.outputs.ref }}:${{ github.sha }}
