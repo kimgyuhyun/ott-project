@@ -1,8 +1,13 @@
 # nginx→앱 연결 재사용(upstream keepalive) 전후 측정
 
+> **적용 상태 (2026-10-09):** 이 측정의 결론이 둘 다 운영에 들어갔다.
+> 롤링 교체 전 drain — #180, [ADR 0011](../../docs/adr/0011-drain-before-replace.md).
+> upstream keepalive — #181. 운영 첫 배포 뒤 연결 유지(ESTABLISHED)와 nginx 가 30s 에 먼저 닫는 것을 확인했다.
+> 아래 "질문"은 측정 당시의 운영 상태를 적은 것이다.
+
 ## 질문
 
-운영 `nginx.prod.ha.conf` 는 upstream 에 `keepalive` 가 없고 백엔드 경로가 `Connection: close` 를
+측정 당시 운영 `nginx.prod.ha.conf` 는 upstream 에 `keepalive` 가 없고 백엔드 경로가 `Connection: close` 를
 보낸다(`$connection_upgrade` map 이 Upgrade 없는 요청에 `close` 를 준다. 백엔드·프론트에 WebSocket·SSE 는 없다).
 그래서 API 요청마다 nginx→앱 TCP 연결을 새로 맺는다. 재사용을 켜면
 
@@ -56,6 +61,17 @@ docker compose $F down -v
 
 순차 교체는 `deploy-rolling.ps1` 과 같은 방식이다: `up -d --force-recreate --no-deps app` → nginx 안에서
 `ott-app:8090/actuator/health` 가 UP 일 때까지 대기 → `app2` 같은 순서.
+
+```bash
+# 순차 교체 1회 (30 r/s 지속 부하 중). 결과는 results/<이름>/
+loadtest/keepalive/rolling.sh <이름>
+loadtest/keepalive/rolling-analyze.sh loadtest/keepalive/results/<이름>
+```
+
+| 환경변수 | 뜻 |
+|---|---|
+| `HEALTHY_GRACE=<초>` | health UP 후 다음 인스턴스로 넘어가기 전 대기(6초 대기 대안 시험용) |
+| `DRAIN=1` | `deploy-drain.ps1` 의 `Set-UpstreamDrain` 을 그대로 불러 교체 전에 nginx 에서 뺀다. nginx 가 마운트한 `${KA_NGINX}.conf` 를 고쳐 쓰므로, 원본을 지키려면 사본으로 띄운다: `cp before.conf live.conf` 후 `KA_NGINX=live` (끝나면 `live.conf` 삭제) |
 
 ## 결과 — 2026-10-09
 
