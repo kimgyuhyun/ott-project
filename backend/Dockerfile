@@ -53,7 +53,11 @@ COPY app.jar /app/app.jar
 FROM ${JAR_SOURCE} AS jarsrc
 
 # Runtime stage
-FROM amazoncorretto:21-al2023-jdk@sha256:d965a0725293a57ea781ba3712d4f024f338aefa249af83b5c1f3981d0e21556
+# 실행은 java -jar 뿐이라 JDK 대신 headless 런타임을 쓴다(javac·jcmd·jstack 이 없다).
+# 스레드 덤프는 jcmd 대신 docker kill --signal=QUIT <컨테이너> 로 뜨면 로그로 나온다.
+# 셸이 없는 distroless, bash·curl 이 없는 alpine 계열은 deploy*.ps1 의 컨테이너 안 점검
+# (.github/image-tools.txt 의 app 줄)을 깨뜨려 후보에서 뺐다.
+FROM amazoncorretto:21-al2023-headless@sha256:b707577445897895f25c42ad4c0bfe5747a53e16c06de8ef118a55d894eb1c1e
 WORKDIR /app
 # --chown 으로 복사 시점에 소유권을 정한다. 뒤에서 chown -R 로 훑으면 106MB jar 가
 # 통째로 레이어에 복제돼 이미지가 그만큼 커진다(실측: 1.14GB 중 106MB 가 그 중복분).
