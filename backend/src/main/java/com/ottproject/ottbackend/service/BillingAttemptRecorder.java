@@ -62,7 +62,7 @@ public class BillingAttemptRecorder {
                 merchantUid,
                 price);
         payment.attachPaymentMethod(paymentMethodRepository.getReferenceById(paymentMethodId));
-        payment.describeAs("Subscription renewal");
+        payment.describeAs("OTT 멤버십 정기결제");
         paymentRepository.saveAndFlush(payment); // 제약 위반을 커밋까지 미루지 않고 여기서 드러낸다
         return payment.getId();
     }

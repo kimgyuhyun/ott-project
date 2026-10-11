@@ -370,7 +370,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
                         merchantUid, // 결정적 주문번호(중복 청구 시 게이트웨이도 거절)
                         plan.amount(), // 청구 금액
                         currency, // 통화
-                        "Subscription renewal" // 설명
+                        "OTT 멤버십 정기결제" // 설명(카카오페이 알림톡의 상품명으로 그대로 보인다)
                         );
                 return ChargeOutcome.charged(paymentId, cr);
             } catch (PaymentGateway.ChargeException ex) { // 게이트웨이 예외(유형 포함)
