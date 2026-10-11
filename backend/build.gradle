@@ -166,7 +166,7 @@ dependencies {
 
 	// kafka-clients 가 끌어오는 lz4-java 1.10.1 의 경보(GHSA-xx22-p4ch-683r). Boot 가 관리하지 않아 ext 로는 못 올린다.
 	constraints {
-		implementation('at.yawk.lz4:lz4-java:1.11.1') {
+		implementation('at.yawk.lz4:lz4-java:1.11.4') {
 			because 'GHSA-xx22-p4ch-683r: lz4-java <= 1.11.0'
 		}
 		// testcontainers 가 끌어오는 1.24.0. 테스트 클래스패스에만 있지만 수정본이 있어 올린다.
