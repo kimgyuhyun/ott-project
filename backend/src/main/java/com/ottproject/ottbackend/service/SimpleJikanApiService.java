@@ -380,28 +380,26 @@ public class SimpleJikanApiService {
     }
 
     /**
-     * 성공 기록 (스레드 안전) - 락 경합 최소화
+     * 성공 기록 (스레드 안전)
      */
     private void recordSuccess() {
-        // AtomicInteger는 이미 스레드 안전하므로 락 없이 먼저 처리
-        consecutiveFailures.set(0);
-
-        // circuitOpen 상태 변경만 락으로 보호
         synchronized (circuitLock) {
+            consecutiveFailures.set(0);
             circuitOpen = false;
         }
     }
 
     /**
-     * 실패 기록 (스레드 안전) - 락 경합 최소화
+     * 실패 기록 (스레드 안전)
+     *
+     * 카운터 증가와 열림 판정을 같은 락 안에서 한다. 증가를 락 밖에서 하면, 락을 기다리는 사이
+     * recordSuccess 가 카운터를 0 으로 되돌려도 낡은 값으로 서킷을 연다(#162,
+     * SimpleJikanCircuitBreakerRaceTest).
      */
     private void recordFailure() {
-        int currentFailures = consecutiveFailures.incrementAndGet();
-        long currentTime = System.currentTimeMillis();
-
-        // 모든 상태 변경을 락 내에서 수행하여 일관성 보장
         synchronized (circuitLock) {
-            lastFailureTime = currentTime;
+            int currentFailures = consecutiveFailures.incrementAndGet();
+            lastFailureTime = System.currentTimeMillis();
 
             if (currentFailures >= FAILURE_THRESHOLD && !circuitOpen) {
                 circuitOpen = true;

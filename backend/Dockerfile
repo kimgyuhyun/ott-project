@@ -10,7 +10,11 @@
 ARG JAR_SOURCE=builder
 
 # Build stage
-FROM amazoncorretto:21@sha256:f38f422ddf282963febf97e5d65a8f81e231f777495d5428bb93be75a9a890fe AS builder
+# 태그를 `21` 이 아니라 같은 이미지를 가리키는 `21-al2023-jdk` 로 적는다. Dependabot 이
+# 10-02 에 스스로 닫은 digest PR #139 를 "amazoncorretto 21 PR 이 열려 있음" 으로 계속 기억해서,
+# 태그 문자열이 `21` 인 동안에는 새 digest PR 을 만들지 않았다(10-09 실행 로그
+# "Pull request #139 already exists for amazoncorretto with latest version 21").
+FROM amazoncorretto:21-al2023-jdk@sha256:d965a0725293a57ea781ba3712d4f024f338aefa249af83b5c1f3981d0e21556 AS builder
 WORKDIR /app
 
 # amazoncorretto:21 태그가 Amazon Linux 2 -> 2023으로 올라가며 findutils가 빠졌다.
@@ -42,14 +46,18 @@ RUN cp "$(ls build/libs/*.jar | grep -v -- '-plain.jar' | head -n1)" /app/app.ja
 # CI 경로: 러너가 만든 jar 를 컨텍스트에서 받는다.
 # JAR_SOURCE=builder 일 때 buildkit 이 이 스테이지를 통째로 건너뛰므로, 컨텍스트에
 # app.jar 가 없어도 기본 빌드는 영향받지 않는다.
-FROM amazoncorretto:21@sha256:f38f422ddf282963febf97e5d65a8f81e231f777495d5428bb93be75a9a890fe AS ctxjar
+FROM amazoncorretto:21-al2023-jdk@sha256:d965a0725293a57ea781ba3712d4f024f338aefa249af83b5c1f3981d0e21556 AS ctxjar
 WORKDIR /app
 COPY app.jar /app/app.jar
 
 FROM ${JAR_SOURCE} AS jarsrc
 
 # Runtime stage
-FROM amazoncorretto:21@sha256:f38f422ddf282963febf97e5d65a8f81e231f777495d5428bb93be75a9a890fe
+# 실행은 java -jar 뿐이라 JDK 대신 headless 런타임을 쓴다(javac·jcmd·jstack 이 없다).
+# 스레드 덤프는 jcmd 대신 docker kill --signal=QUIT <컨테이너> 로 뜨면 로그로 나온다.
+# 셸이 없는 distroless, bash·curl 이 없는 alpine 계열은 deploy*.ps1 의 컨테이너 안 점검
+# (.github/image-tools.txt 의 app 줄)을 깨뜨려 후보에서 뺐다.
+FROM amazoncorretto:21-al2023-headless@sha256:b707577445897895f25c42ad4c0bfe5747a53e16c06de8ef118a55d894eb1c1e
 WORKDIR /app
 # --chown 으로 복사 시점에 소유권을 정한다. 뒤에서 chown -R 로 훑으면 106MB jar 가
 # 통째로 레이어에 복제돼 이미지가 그만큼 커진다(실측: 1.14GB 중 106MB 가 그 중복분).

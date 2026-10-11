@@ -1,0 +1,8 @@
+1791547276 drain='ott-app' done
+1791547276 recreate app
+1791547298 ott-app healthy
+1791547300 drain='' done
+1791547302 drain='ott-app-2' done
+1791547302 recreate app2
+1791547324 ott-app-2 healthy
+1791547326 drain='' done

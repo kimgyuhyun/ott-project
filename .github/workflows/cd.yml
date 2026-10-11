@@ -319,8 +319,9 @@ jobs:
           # 스크립트 하나만 고치면 양쪽이 같이 바뀌도록 경로를 하나로 합친다.
           #
           # 스크립트가 하는 일: 4파일 세트(yml+prod+netlock+ha)로 비백엔드부터 올리고,
-          # 백엔드는 ott-app → ott-app-2 순으로 하나씩 교체하며 각각 헬스를 확인한다.
-          # 동시 재생성은 실측 22초 장애(197요청 중 164건 502), 순차 교체는 1441요청 무실패.
+          # 백엔드는 ott-app → ott-app-2 순으로 하나씩, nginx 에서 먼저 뺀(drain) 뒤 교체하며 각각 헬스를 확인한다.
+          # 동시 재생성은 실측 22초 장애(197요청 중 164건 502). drain 없는 순차 교체도 nginx fail_timeout 경합으로
+          # 502 가 날 수 있었다(2026-10-09, 30 r/s 3회 중 1회 51건) — drain 후 0/0/0. docs/adr/0011
           Write-Host '=== DEPLOY (digest-pinned, egress-locked, rolling) ==='
           $env:APP_IMAGE = $appImage
           $env:FRONT_IMAGE = $frontImage

@@ -26,7 +26,7 @@ if [ $# -gt 0 ]; then
 else
   # lint: 스크립트가 docker exec 로 부르는 명령이 계약에 빠짐없이 있는가.
   # 새 docker exec 를 쓰고 계약에 안 적으면 아래 이미지 검사도 그 명령을 모르고 지나간다.
-  used=$(grep -hv '^[[:space:]]*#' deploy.ps1 deploy-rolling.ps1 .github/workflows/cd.yml security/*.ps1 \
+  used=$(grep -hv '^[[:space:]]*#' deploy.ps1 deploy-rolling.ps1 deploy-drain.ps1 .github/workflows/cd.yml security/*.ps1 \
     | grep -oE 'docker exec( -i)? [^ ]+ [A-Za-z0-9_.-]+' | awk '{ print $NF }' | sort -u)
   for cmd in $used; do
     if ! printf '%s\n' "${rules[@]}" | awk '{ print $2 }' | grep -qx "$cmd"; then

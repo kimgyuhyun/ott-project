@@ -3,6 +3,11 @@ server:
   port: 8090
   # Behind Nginx/SSL: trust X-Forwarded-* to compute request scheme/host for {baseUrl}
   forward-headers-strategy: framework
+  # nginx upstream keepalive_timeout(30s, nginx.prod.ha.conf)보다 길어야 한다. 짧으면 Tomcat 이 먼저 닫은
+  # 유휴 연결에 nginx 가 요청을 실어 502 가 날 수 있다. 미설정이면 connection-timeout 을 따라가서 그 값을
+  # 바꿀 때 조용히 같이 바뀌므로 명시한다. 값은 기존 동작 그대로(2026-10-09 운영에서 약 62s 에 닫힘 실측).
+  tomcat:
+    keep-alive-timeout: 60s
   # 세션 쿠키 설정 (올바른 prefix: server.servlet.session.cookie.*)
   # 주의: 기존 spring.session.cookie.* 는 Spring Boot 가 인식하지 못해 실제로는 무시되고 있었음
   servlet:

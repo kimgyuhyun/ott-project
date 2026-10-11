@@ -1,0 +1,41 @@
+time="2026-10-09T21:07:26+09:00" level=warning msg="Request Failed" error="Post \"http://127.0.0.1:8080/api/episodes/57/progress\": EOF"
+
+
+  █ THRESHOLDS 
+
+    http_req_duration{phase:measure}
+    ✓ 'p(95)<1000' p(95)=16.15ms
+
+    http_req_failed{phase:measure}
+    ✓ 'rate<0.001' rate=0.02%
+
+
+  █ TOTAL RESULTS 
+
+    checks_total.......: 5401   29.226989/s
+    checks_succeeded...: 99.98% 5400 out of 5401
+    checks_failed......: 0.01%  1 out of 5401
+
+    ✗ status 200
+      ↳  99% — ✓ 5400 / ✗ 1
+
+    HTTP
+    http_req_duration..............: avg=8.64ms med=6.63ms p(90)=12.5ms  p(95)=16.22ms p(99)=70.7ms  max=263.83ms
+      { expected_response:true }...: avg=8.65ms med=6.64ms p(90)=12.5ms  p(95)=16.22ms p(99)=70.72ms max=263.83ms
+      { phase:measure }............: avg=8.35ms med=7.02ms p(90)=12.73ms p(95)=16.15ms p(99)=25.9ms  max=143.47ms
+    http_req_failed................: 0.01%  1 out of 5495
+      { phase:measure }............: 0.02%  1 out of 4501
+    http_reqs......................: 5495   29.735661/s
+
+    EXECUTION
+    iteration_duration.............: avg=8.05ms med=6.77ms p(90)=12.19ms p(95)=15.55ms p(99)=25.09ms max=143.97ms
+    iterations.....................: 5401   29.226989/s
+    vus............................: 1      min=0         max=1 
+    vus_max........................: 40     min=40        max=40
+
+    NETWORK
+    data_received..................: 9.4 MB 51 kB/s
+    data_sent......................: 1.5 MB 7.9 kB/s
+
+
+
