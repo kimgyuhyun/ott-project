@@ -274,7 +274,7 @@ jobs:
         run: bash .github/scripts/capture-image-digest.sh
       - name: Upload backend image digest
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: image-digest-ott-backend
           path: digests/ott-backend.txt
@@ -312,7 +312,7 @@ jobs:
       # (실측: CI 32638019679 - "Playwright requires Node.js 20 or higher").
       # 버전은 frontend/Dockerfile 의 런타임(node:24-alpine)과 맞춘다. 20 은 EOL 이다.
       - name: Use Node.js 24
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           cache: 'npm'
@@ -400,7 +400,7 @@ jobs:
       # 스텝별 DOM 스냅샷과 네트워크가 들어 있어 재현 없이 원인을 볼 수 있다.
       - name: Upload the Playwright report
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report
           path: |
@@ -474,7 +474,7 @@ jobs:
       # 다른 아티팩트가 생기고, 소비 측(CD)이 image-digest-* 패턴으로 한 폴더에 모은다.
       - name: Upload image digest
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: image-digest-${{ matrix.name }}
           path: digests/${{ matrix.name }}.txt
@@ -496,7 +496,7 @@ jobs:
       # 이미지 안의 빌드(node:24-alpine)와 같은 메이저로 맞춘다. 18 은 EOL 이고,
       # sharp 0.35 는 engines 가 >=20.9.0 이라 18 은 지원 범위 밖이었다(npm 은 경고만 낸다).
       - name: Use Node.js 24
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '24'
           cache: 'npm'
@@ -575,7 +575,7 @@ jobs:
         run: bash .github/scripts/capture-image-digest.sh
       - name: Upload frontend image digest
         if: github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: image-digest-ott-frontend
           path: digests/ott-frontend.txt
