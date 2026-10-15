@@ -318,9 +318,16 @@ class RepayWhileActiveDoubleBillingTest {
         pay(userId); // 연체 중 재결제: 지금부터 한 달은 이 결제로 냈다
         int billableRowsAfterRepay = billableRows(userId);
 
+        // 거절 때 RabbitMQ 에 예약된 재시도 메시지(1차, attempt=1)가 도착한다. 발행은 목이라 직접 배달한다.
+        Long pastDueId = jdbcTemplate.queryForObject(
+                "SELECT id FROM subscriptions WHERE user_id = ? ORDER BY start_at LIMIT 1", Long.class, userId);
+        int before = charges.get();
+        recurringBillingService.retryBilling(pastDueId, 1);
+        int queuedRetry = charges.get() - before;
+
         // 재시도 창: 연체 행의 다음 시도 시각(+3일)이 지난다. 재결제로 낸 기간 안이다.
         shiftSubscriptionsBackDays(userId, 4);
-        int before = charges.get();
+        before = charges.get();
         recurringBillingService.runRecurringBilling();
         int retryWindow = charges.get() - before;
 
@@ -331,12 +338,18 @@ class RepayWhileActiveDoubleBillingTest {
         int nextCycle = charges.get() - before;
 
         System.out.printf(
-                "[#200 연체 재결제] 거절 후 상태=%s, 재결제 후 청구 대상 행=%d, 재시도 창 청구=%d, 다음 주기 청구=%d, 정기결제 합계=%d원%n",
-                statusAfterDecline, billableRowsAfterRepay, retryWindow, nextCycle, (retryWindow + nextCycle) * PRICE);
+                "[#200 연체 재결제] 거절 후 상태=%s, 재결제 후 청구 대상 행=%d, 예약된 재시도 메시지 청구=%d, 재시도 창 청구=%d, 다음 주기 청구=%d, 정기결제 합계=%d원%n",
+                statusAfterDecline,
+                billableRowsAfterRepay,
+                queuedRetry,
+                retryWindow,
+                nextCycle,
+                (queuedRetry + retryWindow + nextCycle) * PRICE);
 
         SoftAssertions soft = new SoftAssertions();
         soft.assertThat(statusAfterDecline).as("카드 거절 후 상태(재현 전제)").isEqualTo("PAST_DUE");
         soft.assertThat(billableRowsAfterRepay).as("재결제 후 청구 대상 구독 행 수").isEqualTo(1);
+        soft.assertThat(queuedRetry).as("예약된 재시도 메시지 청구 수 (재결제로 이미 낸 기간)").isZero();
         soft.assertThat(retryWindow).as("재시도 창 청구 수 (재결제로 이미 낸 기간)").isZero();
         soft.assertThat(nextCycle).as("다음 주기 청구 수").isEqualTo(1);
         soft.assertAll();
