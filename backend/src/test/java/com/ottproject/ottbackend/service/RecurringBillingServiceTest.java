@@ -12,6 +12,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
@@ -175,8 +176,9 @@ class RecurringBillingServiceTest {
 
         service.retryBilling(SUB_ID, 1);
 
-        // 락 없는 findById 로 읽으면 첫 처리 커밋 전 두 번째 메시지가 가드를 통과해 이중 청구된다
-        verify(subscriptionRepository).findByIdForUpdate(SUB_ID);
+        // 락 없는 findById 로 읽으면 첫 처리 커밋 전 두 번째 메시지가 가드를 통과해 이중 청구된다.
+        // 결제수단이 없어도 확정 거절로 결과 확정 단계까지 가므로(#199) 두 단계 모두 락으로 읽는다.
+        verify(subscriptionRepository, times(2)).findByIdForUpdate(SUB_ID);
         verify(subscriptionRepository, never()).findById(anyLong());
     }
 
@@ -447,17 +449,20 @@ class RecurringBillingServiceTest {
     }
 
     @Test
-    @DisplayName("결제수단이 없으면 PAST_DUE 유지, 재시도 카운트/예약 없음")
-    void noPaymentMethodKeepsPastDueWithoutCounting() {
+    @DisplayName("결제수단이 없으면 카드 거절과 같이 재시도 횟수를 올리고 다음 재시도를 예약한다(#199)")
+    void noPaymentMethodCountsAsDeclined() {
         given(subscriptionRepository.findByIdForUpdate(SUB_ID)).willReturn(Optional.of(sub));
         given(paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(1L))
                 .willReturn(List.of());
 
         service.retryBilling(SUB_ID, 1);
 
+        // 예전에는 카운트도 다음 청구일도 그대로 둬서 30분마다 다시 뽑히고 해지에 닿지 않았다
         assertThat(sub.getStatus()).isEqualTo(MembershipSubscriptionStatus.PAST_DUE);
-        assertThat(sub.getRetryCount()).isEqualTo(1); // 시도 자체가 없었으니 카운트 불변
-        verifyNoInteractions(billingRetryPublisher);
+        assertThat(sub.getRetryCount()).isEqualTo(2);
+        assertThat(sub.getLastErrorCode()).isEqualTo("NO_PAYMENT_METHOD");
+        verify(billingRetryPublisher).scheduleRetry(SUB_ID, 2);
+        verifyNoInteractions(paymentGateway); // 부를 수단이 없으니 PG 호출도 없다
     }
 
     @Test

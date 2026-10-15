@@ -4,6 +4,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.mockingDetails;
 
 import com.ottproject.ottbackend.dto.MembershipSubscribeRequestDto;
 import com.ottproject.ottbackend.entity.MembershipPlan;
@@ -355,6 +356,56 @@ class RepayWhileActiveDoubleBillingTest {
         soft.assertAll();
     }
 
+    /**
+     * 결제수단 없는 구독의 만료(#199)
+     * - 청구 계획을 만들 때 결제수단이 없으면 markPastDue() 만 하고 다음 청구일과 재시도 횟수를 그대로 둔다.
+     *   그래서 같은 행이 30분 주기 배치마다 다시 뽑히고, 재시도 횟수가 오르지 않아 해지(3회 실패)에 닿지 않는다.
+     * - 저장 결제수단을 모두 지운 사용자에게 생긴다. 돈은 나가지 않지만 연체 행이 영구히 남아 #200 의 원인 행이 됐다.
+     */
+    @Test
+    @DisplayName("결제수단이 없는 구독은 만료 뒤 같은 시각대에 다시 뽑히지 않고, 재시도 3회 실패 후 해지돼 더는 처리되지 않는다")
+    void noPaymentMethod_reachesDunningCancel() {
+        Long userId = userRepository
+                .save(User.createLocalUser("nomethod@example.com", "encoded", "테스터"))
+                .getId(); // 결제수단 없음
+        pay(userId);
+        shiftSubscriptionsBack(userId, 1); // 만료
+
+        int runs = 5; // 30분 주기 배치가 다음 시도 시각 전에 여러 번 돈다
+        int stillDueRuns = 0;
+        for (int i = 0; i < runs; i++) {
+            recurringBillingService.runRecurringBilling();
+            if (dueRows(userId) > 0) {
+                stillDueRuns++;
+            }
+        }
+
+        // 재시도 창(+3일) 세 번이 지난다
+        for (int i = 0; i < 3; i++) {
+            shiftSubscriptionsBackDays(userId, 4);
+            recurringBillingService.runRecurringBilling();
+        }
+        String status =
+                jdbcTemplate.queryForObject("SELECT status FROM subscriptions WHERE user_id = ?", String.class, userId);
+        Integer retryCount = jdbcTemplate.queryForObject(
+                "SELECT retry_count FROM subscriptions WHERE user_id = ?", Integer.class, userId);
+        long cancelMails = mockingDetails(notificationService).getInvocations().stream()
+                .filter(inv -> inv.getMethod().getName().equals("sendCanceledDueToDunning"))
+                .count();
+        int dueAfterCancel = dueRows(userId);
+
+        System.out.printf(
+                "[#199 결제수단 없음] 만료 직후 배치 %d회 중 다시 대상이 된 횟수=%d, 재시도 창 3번 뒤 상태=%s, 재시도 횟수=%d, 해지 안내 메일=%d, 이후 청구 대상=%d%n",
+                runs, stillDueRuns, status, retryCount, cancelMails, dueAfterCancel);
+
+        SoftAssertions soft = new SoftAssertions();
+        soft.assertThat(stillDueRuns).as("다음 시도 시각 전에 다시 대상이 된 횟수").isZero();
+        soft.assertThat(status).as("재시도 3회 실패 뒤 상태").isEqualTo("CANCELED");
+        soft.assertThat(cancelMails).as("해지 안내 메일").isEqualTo(1);
+        soft.assertThat(dueAfterCancel).as("해지 뒤 청구 대상").isZero();
+        soft.assertAll();
+    }
+
     // ===== 픽스처와 측정 =====
 
     private Long createUserWithBillingKey(String email) {
@@ -411,6 +462,23 @@ class RepayWhileActiveDoubleBillingTest {
                 days,
                 days,
                 userId);
+    }
+
+    /**
+     * 지금 배치를 돌리면 뽑히는 행: 매퍼 SQL 의 게이트 조건 그대로.
+     * 기준 시각은 DB now() 가 아니라 자바 시각을 넘긴다(컬럼이 시간대 없는 timestamp 라 컨테이너 시간대와 어긋난다).
+     */
+    private int dueRows(Long userId) {
+        return jdbcTemplate.queryForObject(
+                """
+                SELECT count(*) FROM subscriptions
+                 WHERE user_id = ? AND status IN ('ACTIVE', 'PAST_DUE')
+                   AND auto_renew = true AND cancel_at_period_end = false
+                   AND next_billing_at IS NOT NULL AND next_billing_at <= ?
+                """,
+                Integer.class,
+                userId,
+                LocalDateTime.now());
     }
 
     private int subscriptionRows(Long userId) {
