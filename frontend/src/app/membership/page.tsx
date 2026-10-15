@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Header from "@/components/layout/Header";
 import { useAuth } from "@/lib/AuthContext";
-import { subscribeMembership } from "@/lib/api/membership";
 import { useMembershipData } from "@/hooks/useMembershipData";
 // import PaymentMethodItem from "@/components/membership/PaymentMethodItem";
 import PaymentModal from "@/components/membership/PaymentModal";
@@ -33,14 +32,8 @@ export default function MembershipPage() {
   }, []);
 
   // 데이터 훅 사용
-  const {
-    membershipPlans,
-    userMembership,
-    paymentMethods,
-    isLoading,
-    error,
-    reloadUserMembership,
-  } = useMembershipData();
+  const { membershipPlans, userMembership, paymentMethods, isLoading, error } =
+    useMembershipData();
 
   // 멤버십 사용 중인 유저 리다이렉트 체크
   useEffect(() => {
@@ -93,22 +86,6 @@ export default function MembershipPage() {
   // 결제 서비스 선택
   const handlePaymentServiceSelect = (service: PaymentService) => {
     setSelectedPaymentService(service);
-  };
-
-  // 멤버십 구독 시작
-  const handleSubscribe = async () => {
-    try {
-      const result = await subscribeMembership(selectedPlan);
-      alert(
-        `${selectedPlan === "basic" ? "베이직" : "프리미엄"} 멤버십을 시작합니다!`,
-      );
-      closeModal();
-      // 사용자 멤버십 상태 새로고침
-      reloadUserMembership();
-    } catch (err) {
-      alert("멤버십 구독에 실패했습니다.");
-      console.error("구독 오류:", err);
-    }
   };
 
   // 플랜 정보 가져오기

@@ -337,7 +337,7 @@ ott-project/
 | `GET`  | `/api/search` · `/api/search/suggest` · `/api/search/recent` | 통합 검색 · 자동완성 · 최근 검색어 |
 | `GET`/`POST` | `/api/anime/{aniId}/reviews` · `/ratings` (+ `/comments`) | 리뷰 · 별점 · 리뷰 댓글 |
 | `GET`  | `/api/memberships/plans` · `/api/users/me/membership` | 멤버십 플랜 · 내 멤버십 |
-| `POST` | `/api/memberships/subscribe` · `/cancel` · `/resume` | 구독 신청 · 말일 해지 예약 · 재개 |
+| `POST` | `/api/memberships/cancel` · `/resume` | 말일 해지 예약 · 재개 (구독은 결제 확정 시 서버가 만든다) |
 | `PUT`  | `/api/memberships/change-plan` | 플랜 변경(예약) |
 | `POST` | `/api/payments/checkout` · `/api/payments/{id}/complete` | 결제 생성 · 확정 |
 | `POST` | `/api/payments/webhook` · `/api/payments/{id}/refund` | 결제 웹훅 수신 · 환불 |
