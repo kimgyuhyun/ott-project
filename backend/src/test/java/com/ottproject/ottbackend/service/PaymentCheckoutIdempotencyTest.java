@@ -319,4 +319,94 @@ class PaymentCheckoutIdempotencyTest {
         assertThat(sessionsCreated.get()).isEqualTo(2);
         assertThat(idempotencyKeyRepository.count()).isZero();
     }
+
+    // ===== #191: 멱등키 필수 + 첫 응답 재생 (ARCHITECTURE 6절) =====
+    //
+    // 프론트가 키를 보내지 않아(usePayment 가 undefined 를 넘김) 위 방어가 한 번도 작동하지 않았다.
+    // 응답이 유실돼 다시 누르면 PENDING 결제와 PG 세션이 하나 더 생겼다(2026-09-17 운영 53건과 같은 종류).
+    // 고치는 계약:
+    // - 키가 없거나 UUID 형식이 아니면 400. 선택으로 두면 키 없이 재시도되는 경로가 남는다.
+    // - 같은 사용자·같은 키·같은 내용이면 첫 응답을 그대로 돌려준다. 409 를 주면 사용자는 첫 결제창 정보를 잃고
+    //   결국 다시 결제한다(새 키 → 새 PENDING).
+    // - 같은 키에 다른 내용이면 422, 다른 사용자의 키면 409 — 남의 응답(결제 ID·세션)을 돌려주지 않는다.
+
+    private static final String INTENT_KEY = "00000000-0000-4000-8000-000000000191";
+
+    /** 체크아웃 결과를 "200:결제ID:세션" 또는 "rejected-상태코드" 로 요약한다 */
+    private String outcome(Long requester, PaymentCheckoutCreateRequestDto req) {
+        try {
+            var res = service.checkout(requester, req);
+            return "200:" + res.paymentId + ":" + res.providerSessionId;
+        } catch (ResponseStatusException e) {
+            return "rejected-" + e.getStatusCode().value();
+        }
+    }
+
+    @Test
+    @DisplayName("#191 같은 키로 다시 보내면 첫 응답을 그대로 돌려주고 결제·세션은 하나뿐이다")
+    void sameKeyAgainReplaysFirstResponse() {
+        releaseFirst.countDown();
+
+        String first = outcome(userId, checkoutReq(INTENT_KEY));
+        String again = outcome(userId, checkoutReq(INTENT_KEY));
+
+        System.out.printf(
+                "[#191 같은 키 재요청] 첫 응답=%s, 재요청 응답=%s, PENDING 결제=%d, PG 세션=%d%n",
+                first, again, paymentRepository.count(), sessionsCreated.get());
+        assertThat(again).isEqualTo(first);
+        assertThat(paymentRepository.count()).isEqualTo(1);
+        assertThat(sessionsCreated.get()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("#191 멱등키가 없거나 UUID 형식이 아니면 400 이고 아무것도 만들지 않는다")
+    void missingOrMalformedKeyIsRejected() {
+        releaseFirst.countDown();
+
+        String noKey1 = outcome(userId, checkoutReq(null));
+        String noKey2 = outcome(userId, checkoutReq(null));
+        String malformed = outcome(userId, checkoutReq("not-a-uuid"));
+
+        System.out.printf(
+                "[#191 키 없음] 응답=%s,%s / 형식 오류=%s, PENDING 결제=%d, PG 세션=%d%n",
+                noKey1, noKey2, malformed, paymentRepository.count(), sessionsCreated.get());
+        assertThat(noKey1).isEqualTo("rejected-400");
+        assertThat(noKey2).isEqualTo("rejected-400");
+        assertThat(malformed).isEqualTo("rejected-400");
+        assertThat(paymentRepository.count()).isZero();
+        assertThat(sessionsCreated.get()).isZero();
+    }
+
+    @Test
+    @DisplayName("#191 같은 키에 다른 플랜이면 422 - 첫 응답을 다른 요청의 결과로 돌려주지 않는다")
+    void sameKeyWithDifferentBodyIsRejected() {
+        releaseFirst.countDown();
+        MembershipPlan premium =
+                planRepository.save(MembershipPlan.createBasicPlan("Premium", "설명", new Money(14900L, "KRW"), 1));
+
+        outcome(userId, checkoutReq(INTENT_KEY));
+        PaymentCheckoutCreateRequestDto other = checkoutReq(INTENT_KEY);
+        other.planCode = premium.getCode();
+        String result = outcome(userId, other);
+
+        System.out.printf("[#191 같은 키 다른 내용] 응답=%s, PENDING 결제=%d%n", result, paymentRepository.count());
+        assertThat(result).isEqualTo("rejected-422");
+        assertThat(paymentRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("#191 다른 사용자의 키로는 첫 응답을 받을 수 없다 - 409")
+    void otherUsersKeyDoesNotReplay() {
+        releaseFirst.countDown();
+        Long otherUser = userRepository
+                .save(User.createLocalUser("other@example.com", "encoded", "다른 사람"))
+                .getId();
+
+        outcome(userId, checkoutReq(INTENT_KEY));
+        String result = outcome(otherUser, checkoutReq(INTENT_KEY));
+
+        System.out.printf("[#191 남의 키] 응답=%s, PENDING 결제=%d%n", result, paymentRepository.count());
+        assertThat(result).isEqualTo("rejected-409");
+        assertThat(paymentRepository.count()).isEqualTo(1);
+    }
 }
