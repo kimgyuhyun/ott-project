@@ -35,6 +35,8 @@ export default function PaymentModal({
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  // 서버 확정을 아직 확인하지 못한 결제(#192). 실패가 아니므로 "결제 실패" 제목을 달지 않는다.
+  const [isPending, setIsPending] = useState(false);
 
   const { processPayment, isLoading, error } = usePayment();
 
@@ -75,6 +77,7 @@ export default function PaymentModal({
       if (result.success) {
         setShowSuccess(true);
       } else {
+        setIsPending(!!result.pending);
         setErrorMessage(result.errorMessage || "결제에 실패했습니다.");
         setShowError(true);
       }
@@ -88,6 +91,7 @@ export default function PaymentModal({
   const handleCloseError = () => {
     setShowError(false);
     setErrorMessage("");
+    setIsPending(false);
   };
 
   if (!isOpen) return null;
@@ -394,7 +398,7 @@ export default function PaymentModal({
       {showError && (
         <div className={styles.errorModal}>
           <div className={styles.errorContent}>
-            <h3>결제 실패</h3>
+            <h3>{isPending ? "결제 확인 중" : "결제 실패"}</h3>
             <p>{errorMessage}</p>
             <button onClick={handleCloseError}>확인</button>
           </div>
