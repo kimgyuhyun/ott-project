@@ -2,10 +2,12 @@ package com.ottproject.ottbackend.repository;
 
 import com.ottproject.ottbackend.entity.User;
 import com.ottproject.ottbackend.enums.AuthProvider;
+import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -85,4 +87,19 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 관리자 페이지에서 "이메일 인증 안 한 유저들만 보기"
     // 배치 작업에서 "인증 안 한 유저들에게 리마인드 메일 보내기"같은 용도로 사용함함
 
+    // 구독 신청/연장(MembershipCommandService.subscribe) 직렬화용 비관적 쓰기 락 조회.
+    //
+    // 왜 구독 행이 아니라 사용자 행인가
+    // - 판정이 "이 사용자에게 활성 구독이 있는가"라서, 첫 구독처럼 잠글 구독 행이 아직 없는 경우에도
+    //   동시 확정 둘이 각자 새 행을 만들지 못하게 해야 한다. 존재가 보장되는 부모 행을 잠근다(ARCHITECTURE 9절).
+    // - 대기형이다. 기다렸다가 앞선 확정이 만든 구독을 보면 새 행 대신 그 행을 연장하는 것이 원하는 결말이다
+    //   (PaymentRepository.findByIdForUpdate 와 같은 이유). 대기 상한은 호출자가 limitLockWait 로 건다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id")
+    Optional<User> findByIdForUpdate(@Param("id") Long id);
+
+    // 현재 트랜잭션의 락 대기 상한(SET LOCAL lock_timeout 과 같다. 트랜잭션이 끝나면 풀린다).
+    // JPA 락 타임아웃 힌트는 0 이 아닌 값을 PostgreSQL 방언이 SQL 로 옮기지 않아 대기가 무한으로 남는다(9절).
+    @Query(value = "select set_config('lock_timeout', :timeout, true)", nativeQuery = true)
+    String limitLockWait(@Param("timeout") String timeout);
 }

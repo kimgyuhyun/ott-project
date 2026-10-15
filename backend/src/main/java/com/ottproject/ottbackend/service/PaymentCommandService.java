@@ -412,6 +412,15 @@ public class PaymentCommandService { // 결제 쓰기 서비스
         }
 
         log.info("결제 서비스 매핑 - input: {}, mapped: {}", req.paymentService, mappedPg);
+        // 이미 이용 중인 멤버십이 있으면 결제창을 열지 않는다(#193 정책: 구독 중 재결제는 막는다).
+        // 예전에는 검사가 없어 다른 탭이나 재방문으로 한 번 더 결제하면 의도하지 않은 기간 연장 결제가 됐다.
+        // 플랜 변경은 차액 결제 경로(ProrationPaymentService)로 간다. 이 검사보다 먼저 결제창을 연 탭이
+        // 결제를 마치는 경합은 여기서 못 막으므로, 확정 쪽 subscribe() 가 새 행 대신 기존 구독을 연장한다.
+        if (subscriptionRepository
+                .findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, LocalDateTime.now())
+                .isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 이용 중인 멤버십이 있습니다."); // 409
+        }
         // 멱등키 선삽입: 처리를 시작하기 전에 먼저 넣어 유니크 제약이 동시 요청을 판정하게 한다.
         //
         // 예전에는 여기서 findByKeyValue 로 확인만 하고(select-then-insert), 플랜 조회·결제수단 등록·

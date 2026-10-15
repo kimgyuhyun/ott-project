@@ -66,11 +66,18 @@ export default function MembershipPage() {
     setIsModalOpen(true);
   };
   const closeModal = () => setIsModalOpen(false);
+  // 이미 이용 중이면 결제 단계로 보내지 않는다. 서버도 체크아웃을 409 로 막지만(#193),
+  // 결제창을 띄우기 직전에 거절당하는 것보다 버튼이 아예 없는 편이 낫다.
+  const hasActiveMembership = userMembership?.status === "ACTIVE";
   const openPaymentModal = () => {
     // 비로그인 상태이거나 user 객체가 없으면 결제 단계로 가지 않고 로그인 페이지로 리다이렉트
     if (!isAuthenticated || !user) {
       console.log("결제 모달 접근 차단: 로그인 필요 또는 user 객체 없음");
       window.location.href = "/login";
+      return;
+    }
+    if (hasActiveMembership) {
+      router.push("/membership/guide");
       return;
     }
     setIsPaymentModalOpen(true);
@@ -216,10 +223,12 @@ export default function MembershipPage() {
             <h1 className={styles.mainTitle}>동시방영 신작부터</h1>
             <h2 className={styles.subTitle}>역대 인기작까지 한 곳에서</h2>
 
-            {/* 멤버십 시작 버튼 */}
-            <button onClick={openModal} className={styles.startButton}>
-              <span className={styles.startButtonText}>멤버십 시작하기</span>
-            </button>
+            {/* 멤버십 시작 버튼: 이용 중이면 보이지 않는다(가이드로 이동하기 전 잠깐 보이는 순간 포함, #193) */}
+            {!hasActiveMembership && (
+              <button onClick={openModal} className={styles.startButton}>
+                <span className={styles.startButtonText}>멤버십 시작하기</span>
+              </button>
+            )}
 
             {/* 로그인 안내 메시지 제거 */}
           </div>
@@ -549,12 +558,15 @@ export default function MembershipPage() {
             </div>
 
             {/* 구독 시작 버튼 */}
-            <button
-              onClick={openPaymentModal}
-              className={styles.subscriptionStartButton}
-            >
-              {selectedPlan === "basic" ? "베이직" : "프리미엄"} 멤버십 시작하기
-            </button>
+            {!hasActiveMembership && (
+              <button
+                onClick={openPaymentModal}
+                className={styles.subscriptionStartButton}
+              >
+                {selectedPlan === "basic" ? "베이직" : "프리미엄"} 멤버십
+                시작하기
+              </button>
+            )}
           </div>
         </div>
       )}
