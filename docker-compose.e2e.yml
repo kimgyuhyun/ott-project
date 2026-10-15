@@ -30,7 +30,7 @@
 
 services:
   postgres:
-    image: postgres:15@sha256:724292da1f2e50bdccfc3302ce75bbba7f4a6076701b588cc795fcac65683550
+    image: postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
     pull_policy: missing
     container_name: ott-e2e-postgres
     environment:
