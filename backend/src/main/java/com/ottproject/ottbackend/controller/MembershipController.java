@@ -4,7 +4,6 @@ import com.ottproject.ottbackend.dto.MembershipCancelMembershipRequestDto;
 import com.ottproject.ottbackend.dto.MembershipPlanChangeRequestDto;
 import com.ottproject.ottbackend.dto.MembershipPlanChangeResponseDto;
 import com.ottproject.ottbackend.dto.MembershipPlanDto;
-import com.ottproject.ottbackend.dto.MembershipSubscribeRequestDto;
 import com.ottproject.ottbackend.dto.UserMembershipDto;
 import com.ottproject.ottbackend.exception.DuplicateIdempotentRequestException;
 import com.ottproject.ottbackend.service.MembershipCommandService;
@@ -23,12 +22,14 @@ import org.springframework.web.bind.annotation.*;
  * MembershipController
  *
  * 큰 흐름
- * - 멤버십 플랜 조회, 내 구독 상태 조회, 구독 신청/해지를 제공한다.
+ * - 멤버십 플랜 조회, 내 구독 상태 조회, 구독 해지/재개/플랜 변경을 제공한다.
+ * - 구독 신청 API 는 두지 않는다. 구독은 결제가 확정된 뒤 PaymentCommandService 가 만든다.
+ *   예전의 POST /api/memberships/subscribe 는 결제 확인 없이 구독을 만들고 늘렸다(#195,
+ *   MembershipSubscribeWithoutPaymentTest).
  *
  * 엔드포인트 개요
  * - GET /api/memberships/plans: 플랜 목록
  * - GET /api/users/me/membership: 내 멤버십 상태
- * - POST /api/memberships/subscribe: 구독 신청
  * - POST /api/memberships/cancel: 구독 해지(말일, 멱등)
  * - PUT /api/memberships/change-plan: 플랜 변경(업그레이드/다운그레이드)
  */
@@ -54,16 +55,6 @@ public class MembershipController {
     public ResponseEntity<UserMembershipDto> myMembership(HttpSession session) { // 세션 기반으로 현재 사용자 멤버십을 조회하는 메서드
         Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 식별(미인증이면 401 예외 반환)
         return ResponseEntity.ok(readService.getMyMembership(userId)); // 읽기 서비스로 상태 조회 후 200 OK 반환
-    }
-
-    @Operation(summary = "구독 신청", description = "플랜 코드로 정기 구독을 신청합니다.")
-    @ApiResponse(responseCode = "200", description = "신청 완료: 최신 멤버십 상태 반환")
-    @PostMapping("/api/memberships/subscribe")
-    public ResponseEntity<UserMembershipDto> subscribe(
-            @RequestBody MembershipSubscribeRequestDto dto, HttpSession session) { // 요청 바디의 플랜 코드로 구독 신청 처리
-        Long userId = securityUtil.requireCurrentUserId(session); // 세션에서 사용자 ID를 확인(401 가능)
-        commandService.subscribe(userId, dto); // 쓰기 서비스에 위임하여 구독 생성/연장 로직 수행
-        return ResponseEntity.ok(readService.getMyMembership(userId)); // 변경 직후 최신 멤버십 상태 반환
     }
 
     @Operation(summary = "구독 해지", description = "말일 해지로 예약합니다. 중복 방지를 위해 idempotencyKey를 전달할 수 있습니다.")
