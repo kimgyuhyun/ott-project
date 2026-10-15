@@ -25,6 +25,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -146,8 +147,11 @@ class RepayWhileActiveDoubleBillingTest {
     @MockitoBean
     private BillingRetryPublisher billingRetryPublisher;
 
-    /** 결제사 저장수단 청구 호출 수 = 실제로 돈이 나간 횟수 */
+    /** 결제사 저장수단 청구 승인 수 = 실제로 돈이 나간 횟수(거절은 세지 않는다) */
     private AtomicInteger charges;
+
+    /** true 인 동안 결제사가 청구를 확정 거절한다(카드 거절로 연체를 만들 때) */
+    private AtomicBoolean declineCharges;
 
     private String planCode;
 
@@ -161,9 +165,14 @@ class RepayWhileActiveDoubleBillingTest {
         planCode = plan.getCode();
 
         charges = new AtomicInteger();
+        declineCharges = new AtomicBoolean(false);
         given(paymentGateway.chargeWithSavedMethod(
                         anyString(), anyString(), anyString(), anyLong(), anyString(), any()))
                 .willAnswer(inv -> {
+                    if (declineCharges.get()) {
+                        throw new PaymentGateway.ChargeException(
+                                PaymentGateway.FailureType.HARD_DECLINE, "F_DECLINED", "카드 거절");
+                    }
                     PaymentGateway.ChargeResult result = new PaymentGateway.ChargeResult();
                     result.providerPaymentId = "imp_rebill_" + charges.incrementAndGet();
                     result.paidAt = LocalDateTime.now();
@@ -287,6 +296,52 @@ class RepayWhileActiveDoubleBillingTest {
         soft.assertAll();
     }
 
+    /**
+     * 연체 중 재결제(#200)
+     * - 체크아웃의 409 는 ACTIVE 구독만 막으므로 카드 거절로 연체된 사용자는 다시 결제할 수 있다(그래야 한다).
+     * - 그런데 subscribe() 가 최근 구독이 ACTIVE 일 때만 연장해서, 연체 행은 그대로 두고 새 행을 만든다.
+     *   연체 행은 자동갱신이 켜진 채 재시도 대상이라, 새 결제수단으로 같은 기간을 또 청구한다.
+     */
+    @Test
+    @DisplayName("연체 중 재결제 후 두 주기 동안, 재결제로 낸 기간에 청구하지 않고 주기마다 1건만 청구한다")
+    void repayWhilePastDue_doesNotChargeTwice() {
+        Long userId = createUserWithBillingKey("pastdue@example.com");
+
+        pay(userId); // 구독 A
+        declineCharges.set(true); // 카드 거절
+        shiftSubscriptionsBack(userId, 1); // A 만료
+        recurringBillingService.runRecurringBilling(); // 청구 거절 → A 연체, 재시도는 3일 뒤
+        String statusAfterDecline = jdbcTemplate.queryForObject(
+                "SELECT string_agg(status, ',') FROM subscriptions WHERE user_id = ?", String.class, userId);
+
+        declineCharges.set(false); // 사용자가 결제수단을 바꿨다(같은 빌링키 식별자에 새 빌링키가 묶인다)
+        pay(userId); // 연체 중 재결제: 지금부터 한 달은 이 결제로 냈다
+        int billableRowsAfterRepay = billableRows(userId);
+
+        // 재시도 창: 연체 행의 다음 시도 시각(+3일)이 지난다. 재결제로 낸 기간 안이다.
+        shiftSubscriptionsBackDays(userId, 4);
+        int before = charges.get();
+        recurringBillingService.runRecurringBilling();
+        int retryWindow = charges.get() - before;
+
+        // 다음 주기: 재결제분 만료. 여기서 처음으로 새 청구가 1건 나가야 한다.
+        shiftSubscriptionsBack(userId, 2);
+        before = charges.get();
+        recurringBillingService.runRecurringBilling();
+        int nextCycle = charges.get() - before;
+
+        System.out.printf(
+                "[#200 연체 재결제] 거절 후 상태=%s, 재결제 후 청구 대상 행=%d, 재시도 창 청구=%d, 다음 주기 청구=%d, 정기결제 합계=%d원%n",
+                statusAfterDecline, billableRowsAfterRepay, retryWindow, nextCycle, (retryWindow + nextCycle) * PRICE);
+
+        SoftAssertions soft = new SoftAssertions();
+        soft.assertThat(statusAfterDecline).as("카드 거절 후 상태(재현 전제)").isEqualTo("PAST_DUE");
+        soft.assertThat(billableRowsAfterRepay).as("재결제 후 청구 대상 구독 행 수").isEqualTo(1);
+        soft.assertThat(retryWindow).as("재시도 창 청구 수 (재결제로 이미 낸 기간)").isZero();
+        soft.assertThat(nextCycle).as("다음 주기 청구 수").isEqualTo(1);
+        soft.assertAll();
+    }
+
     // ===== 픽스처와 측정 =====
 
     private Long createUserWithBillingKey(String email) {
@@ -326,6 +381,22 @@ class RepayWhileActiveDoubleBillingTest {
                 cycle,
                 cycle,
                 cycle,
+                userId);
+    }
+
+    /** 며칠만 흘린다(재시도 창처럼 한 주기보다 짧은 시간). 결제 행은 건드리지 않는다. */
+    private void shiftSubscriptionsBackDays(Long userId, int days) {
+        jdbcTemplate.update(
+                """
+                UPDATE subscriptions
+                   SET start_at = start_at - make_interval(days => ?),
+                       end_at = end_at - make_interval(days => ?),
+                       next_billing_at = next_billing_at - make_interval(days => ?)
+                 WHERE user_id = ?
+                """,
+                days,
+                days,
+                days,
                 userId);
     }
 
