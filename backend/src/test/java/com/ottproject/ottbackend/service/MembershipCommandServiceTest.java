@@ -26,6 +26,7 @@ import com.ottproject.ottbackend.exception.DuplicateIdempotentRequestException;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
+import com.ottproject.ottbackend.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -65,6 +66,9 @@ class MembershipCommandServiceTest {
 
     @Mock
     private MembershipNotificationService notificationService;
+
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks
     private MembershipCommandService service;
@@ -277,6 +281,11 @@ class MembershipCommandServiceTest {
         return req;
     }
 
+    /** subscribe 는 같은 사용자의 구독 결정을 사용자 행 락으로 직렬화한다 */
+    private void givenUserLock() {
+        given(userRepository.findByIdForUpdate(1L)).willReturn(Optional.of(User.reference(1L)));
+    }
+
     /** subscribe 가 저장한 구독을 꺼낸다 */
     private MembershipSubscription captureSaved() {
         ArgumentCaptor<MembershipSubscription> captor = ArgumentCaptor.forClass(MembershipSubscription.class);
@@ -298,6 +307,7 @@ class MembershipCommandServiceTest {
     @Test
     @DisplayName("구독 - 기존 구독이 없으면 지금부터 플랜 기간만큼 시작하고 다음 청구일을 종료일에 맞춘다")
     void subscribeWithoutPreviousStartsNow() {
+        givenUserLock();
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.empty());
 
@@ -312,23 +322,41 @@ class MembershipCommandServiceTest {
     }
 
     @Test
-    @DisplayName("구독 - 잔여기간이 남은 활성 구독이 있으면 그 종료일 직후부터 이어붙인다(기간 소실 방지)")
-    void subscribeExtendsFromRemainingPeriod() {
+    @DisplayName("구독 - 잔여기간이 남은 활성 구독이 있으면 새 행 없이 그 구독을 종료일 뒤로 연장한다(#193)")
+    void subscribeExtendsActiveSubscriptionInPlace() {
+        LocalDateTime latestStart = LocalDateTime.now().minusDays(20);
         LocalDateTime latestEnd = LocalDateTime.now().plusDays(10);
         MembershipSubscription latest = MembershipSubscription.createSubscription(
-                User.reference(1L),
-                plan("BASIC", 9900L, 1),
-                LocalDateTime.now().minusDays(20),
-                latestEnd); // ACTIVE + 잔여기간
+                User.reference(1L), plan("BASIC", 9900L, 1), latestStart, latestEnd); // ACTIVE + 잔여기간
+        latest.scheduleNextBillingAt(latestEnd);
+        givenUserLock();
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(latest));
 
         service.subscribe(1L, subscribeReq("BASIC"));
 
-        MembershipSubscription saved = captureSaved();
-        // 핵심: 지금부터 시작하면 남아있던 10일이 증발한다
-        assertThat(saved.getStartAt()).isEqualTo(latestEnd);
-        assertThat(saved.getEndAt()).isEqualTo(latestEnd.plusMonths(1));
+        // 새 행을 만들면 정기결제 배치가 두 행을 각자 청구한다(이미 낸 달에 또 청구 + 이후 매달 두 건)
+        verify(subscriptionRepository, never()).save(any());
+        // 지금부터 시작하면 남아있던 10일이 증발한다. 다음 청구일도 함께 밀려야 낸 달에 청구하지 않는다
+        assertThat(latest.getStartAt()).isEqualTo(latestStart);
+        assertThat(latest.getEndAt()).isEqualTo(latestEnd.plusMonths(1));
+        assertThat(latest.getNextBillingAt()).isEqualTo(latestEnd.plusMonths(1));
+    }
+
+    @Test
+    @DisplayName("구독 - 사용자 행을 잠근 뒤에 최근 구독을 읽는다(동시 확정이 같은 종료일에서 출발하지 않게)")
+    void subscribeLocksUserBeforeReadingLatest() {
+        givenUserLock();
+        given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
+        given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.empty());
+
+        service.subscribe(1L, subscribeReq("BASIC"));
+
+        // 락 없이 읽으면 두 확정이 같은 최근 구독을 보고 각자 연장해, 두 번 결제에 한 달만 늘었다(실측 20/20)
+        InOrder order = inOrder(userRepository, subscriptionRepository);
+        order.verify(userRepository).limitLockWait(any());
+        order.verify(userRepository).findByIdForUpdate(1L);
+        order.verify(subscriptionRepository).findTopByUser_IdOrderByStartAtDesc(1L);
     }
 
     @Test
@@ -337,6 +365,7 @@ class MembershipCommandServiceTest {
         MembershipSubscription expired = MembershipSubscription.createSubscription(
                 User.reference(1L), plan("BASIC", 9900L, 1),
                 LocalDateTime.now().minusMonths(2), LocalDateTime.now().minusDays(1)); // ACTIVE 지만 이미 지남
+        givenUserLock();
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(expired));
 
@@ -354,6 +383,7 @@ class MembershipCommandServiceTest {
                 User.reference(1L), plan("BASIC", 9900L, 1),
                 LocalDateTime.now().minusDays(20), LocalDateTime.now().plusDays(10)); // 날짜상으론 잔여기간이 있음
         canceled.applyImmediateCancellation(LocalDateTime.now()); // 환불 등으로 해지됨
+        givenUserLock();
         given(planRepository.findByCode("BASIC")).willReturn(Optional.of(plan("BASIC", 9900L, 1)));
         given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(canceled));
 

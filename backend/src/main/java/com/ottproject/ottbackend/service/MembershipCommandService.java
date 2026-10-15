@@ -12,6 +12,7 @@ import com.ottproject.ottbackend.enums.PlanChangeType;
 import com.ottproject.ottbackend.exception.DuplicateIdempotentRequestException;
 import com.ottproject.ottbackend.repository.MembershipPlanRepository;
 import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
+import com.ottproject.ottbackend.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -42,36 +43,53 @@ public class MembershipCommandService {
     private final MembershipPlanRepository planRepository; // 플랜 조회(JPA)
     private final MembershipSubscriptionRepository subscriptionRepository; // 구독 변경(JPA)
     private final com.ottproject.ottbackend.repository.IdempotencyKeyRepository idempotencyKeyRepository; // 멱등키 저장소
+    private final UserRepository userRepository; // 구독 결정 직렬화용 사용자 행 락
     private final MembershipNotificationService notificationService; // 알림 메일 서비스
 
     /**
      * 구독 신청/연장
      * - 실제 서비스 로직 기준(임시 처리가 아니라 도메인 규칙 반영)
+     *
+     * 활성 구독이 있으면 새 행을 만들지 않고 그 행을 연장한다
+     * - 예전에는 남은 기간 끝부터 시작하는 구독 행을 하나 더 만들었다. 정기결제 배치는 행 단위로 청구하므로
+     *   두 행이 각자 청구됐다: 이미 낸 다음 달에 또 청구하고, 그 뒤로는 매달 두 건씩 나갔다. 해지도 지금 유효한
+     *   행 하나에만 걸려 나머지 행이 계속 청구됐다(#193, RepayWhileActiveDoubleBillingTest).
+     * - 체크아웃이 활성 구독을 409 로 막지만, 막기 전에 이미 결제창을 연 두 탭은 둘 다 결제를 마친다.
+     *   돈은 받았으므로 여기서 거절하지 않고 기간을 이어 붙인다.
+     *
+     * 사용자 행을 잠근다
+     * - 잠그지 않으면 동시 확정 둘이 같은 "최근 구독"을 읽고 같은 종료일에서 출발해, 두 번 결제했는데
+     *   기간은 한 번만 늘었다(실측 20회 중 20회). 잠근 뒤 읽으면 뒤에 온 쪽이 앞선 확정의 결과를 보고 그 위에 연장한다.
      */
     public void subscribe(Long userId, MembershipSubscribeRequestDto req) {
         MembershipPlan plan = planRepository
                 .findByCode(req.planCode) // 플랜 조회
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "플랜이 존재하지 않습니다.")); // 400
 
+        userRepository.limitLockWait("5s"); // 락 대기 상한(이 트랜잭션 한정). 락 구간에 외부 호출이 없어 정상이면 즉시 풀린다
+        User user = userRepository
+                .findByIdForUpdate(userId) // 같은 사용자의 구독 결정을 직렬화
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.")); // 404
+
         LocalDateTime now = LocalDateTime.now(); // 기준 시각
         var latestOpt = subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(userId); // 최근 구독
-        LocalDateTime start = now; // 시작 시각 기본값
         if (latestOpt.isPresent()) { // 최근 구독 존재
-            LocalDateTime latestEnd = latestOpt.get().getEndAt(); // 최근 종료일
+            MembershipSubscription latest = latestOpt.get();
+            LocalDateTime latestEnd = latest.getEndAt(); // 최근 종료일
             // 잔여기간이 있고, 현재 구독이 ACTIVE 상태인 경우에만 연장
             if (latestEnd != null
                     && latestEnd.isAfter(now)
-                    && latestOpt.get().getStatus() == MembershipSubscriptionStatus.ACTIVE) {
-                start = latestEnd; // 잔여 종료 직후부터
+                    && latest.getStatus() == MembershipSubscriptionStatus.ACTIVE) {
+                latest.renewUntil(latestEnd.plusMonths(plan.getPeriodMonths()), now); // 종료일·다음 청구일을 함께 민다
+                return;
             }
         }
-        LocalDateTime end = start.plusMonths(plan.getPeriodMonths()); // 기간 산정
 
-        User user = User.reference(userId);
+        LocalDateTime end = now.plusMonths(plan.getPeriodMonths()); // 기간 산정
         MembershipSubscription sub = MembershipSubscription.createSubscription( // 엔티티 생성
-                user, // FK 바인딩(프록시)
+                user, // FK 바인딩
                 plan, // 플랜 설정
-                start, // 시작
+                now, // 시작
                 end // 종료
                 );
         sub.scheduleNextBillingAt(end); // 다음 청구 앵커

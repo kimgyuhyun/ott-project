@@ -649,6 +649,25 @@ class PaymentCommandServiceTest {
         verify(paymentMethodRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("이용 중인 멤버십이 있으면 체크아웃은 409 - 결제창을 열지 않는다(#193 구독 중 재결제 막기)")
+    void checkoutWhileSubscribedIsRejected() {
+        MembershipSubscription active = MembershipSubscription.createSubscription(
+                User.reference(1L),
+                basicPlan(),
+                LocalDateTime.now().minusDays(5),
+                LocalDateTime.now().plusDays(25));
+        given(subscriptionRepository.findActiveEffectiveByUser(eq(1L), eq(MembershipSubscriptionStatus.ACTIVE), any()))
+                .willReturn(Optional.of(active));
+
+        assertThatThrownBy(() -> service.checkout(1L, kakaoCheckoutReq()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("이미 이용 중인 멤버십");
+        // 결제창 세션도, PENDING 결제도, 멱등키도 남기지 않는다
+        verifyNoInteractions(paymentGateway, idempotencyKeyRepository);
+        verify(paymentRepository, never()).save(any());
+    }
+
     // ===== 대사(reconcilePending): 결론을 못 낸 건과 정상 미결을 가른다 =====
     // 둘 다 false 이던 때는 경보가 판정 불가만 골라 셀 수 없었다(ARCHITECTURE 5절).
 

@@ -221,8 +221,18 @@ export const usePayment = () => {
       logPaymentEvent("Payment process error", { error: err });
 
       let paymentError: PaymentError;
+      const status = (err as { response?: { status?: number } })?.response
+        ?.status;
       if (err instanceof PaymentError) {
         paymentError = err;
+      } else if (status === 409) {
+        // 이미 이용 중인 멤버십이 있어 서버가 체크아웃을 거절했다(#193). 결제창은 열리지 않았고 돈도 나가지 않았다.
+        // 네트워크 오류 문구로 덮으면 사용자가 다시 시도할 이유를 찾는다.
+        paymentError = new PaymentError(
+          PaymentErrorCode.CHECKOUT_FAILED,
+          "이미 이용 중인 멤버십이 있습니다. 멤버십 관리에서 확인해주세요.",
+          err as Error,
+        );
       } else if (err instanceof Error) {
         paymentError = new PaymentError(
           PaymentErrorCode.NETWORK_ERROR,
