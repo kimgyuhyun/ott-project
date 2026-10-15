@@ -394,6 +394,34 @@ class MembershipCommandServiceTest {
         assertThat(captureSaved().getStartAt()).isBetween(before, LocalDateTime.now());
     }
 
+    @Test
+    @DisplayName("구독 - 연체 중 재결제면 새 행 없이 연체 행을 결제한 플랜으로 살린다(#200)")
+    void subscribeRevivesPastDueSubscriptionInPlace() {
+        MembershipSubscription pastDue = MembershipSubscription.createSubscription(
+                User.reference(1L),
+                plan("BASIC", 9900L, 1),
+                LocalDateTime.now().minusMonths(1).minusDays(2),
+                LocalDateTime.now().minusDays(2));
+        pastDue.recordDeclinedCharge(LocalDateTime.now().minusDays(2), "F_DECLINED", "카드 거절"); // 연체 + 재시도 1회
+        MembershipPlan premium = plan("PREMIUM", 14900L, 1);
+        givenUserLock();
+        given(planRepository.findByCode("PREMIUM")).willReturn(Optional.of(premium));
+        given(subscriptionRepository.findTopByUser_IdOrderByStartAtDesc(1L)).willReturn(Optional.of(pastDue));
+
+        LocalDateTime before = LocalDateTime.now();
+        service.subscribe(1L, subscribeReq("PREMIUM"));
+
+        // 새 행을 만들면 연체 행이 재시도 대상으로 남아 방금 낸 기간을 또 청구한다
+        verify(subscriptionRepository, never()).save(any());
+        assertThat(pastDue.getStatus()).isEqualTo(MembershipSubscriptionStatus.ACTIVE);
+        assertThat(pastDue.getRetryCount()).isZero();
+        assertThat(pastDue.getMembershipPlan()).isSameAs(premium); // 결제한 플랜
+        // 과거 종료일이 아니라 지금부터 한 달. 다음 청구일도 함께 밀려야 배치가 바로 다시 뽑지 않는다
+        assertThat(pastDue.getEndAt())
+                .isBetween(before.plusMonths(1), LocalDateTime.now().plusMonths(1));
+        assertThat(pastDue.getNextBillingAt()).isEqualTo(pastDue.getEndAt());
+    }
+
     // ===== 플랜 변경 =====
 
     private MembershipSubscription subscriptionOnPlan(MembershipPlan current) {
