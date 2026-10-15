@@ -1,5 +1,6 @@
 package com.ottproject.ottbackend.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ottproject.ottbackend.dto.MembershipSubscribeRequestDto;
 import com.ottproject.ottbackend.dto.PaymentCheckoutCreateRequestDto;
@@ -18,6 +19,7 @@ import com.ottproject.ottbackend.enums.MembershipSubscriptionStatus;
 import com.ottproject.ottbackend.enums.PaymentMethodType;
 import com.ottproject.ottbackend.enums.PaymentProvider;
 import com.ottproject.ottbackend.enums.PaymentStatus;
+import com.ottproject.ottbackend.exception.DuplicateIdempotentRequestException;
 import com.ottproject.ottbackend.exception.DuplicateWebhookEventException;
 import com.ottproject.ottbackend.mybatis.PaymentQueryMapper;
 import com.ottproject.ottbackend.repository.IdempotencyKeyRepository;
@@ -26,8 +28,13 @@ import com.ottproject.ottbackend.repository.MembershipSubscriptionRepository;
 import com.ottproject.ottbackend.repository.OutboxEventRepository;
 import com.ottproject.ottbackend.repository.PaymentMethodRepository;
 import com.ottproject.ottbackend.repository.PaymentRepository;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -384,14 +391,90 @@ public class PaymentCommandService { // 결제 쓰기 서비스
         }
     }
 
+    private static final String CHECKOUT_PURPOSE = "payment.checkout";
+    private static final Pattern UUID_FORMAT =
+            Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
+
     /**
      * 체크아웃 생성
+     *
+     * 멱등키는 필수이고, 같은 키의 재요청에는 첫 응답을 그대로 돌려준다(#191, ARCHITECTURE 6절)
+     * - 예전에는 키가 선택이었고 프론트가 보내지 않아, 응답이 끊겨 다시 누르면 PENDING 결제와 PG 세션이 하나 더
+     *   생겼다. 키를 보내도 중복은 409 라서 사용자는 첫 결제창 정보를 잃고 새 키로 다시 결제했다.
+     * - 같은 사용자·같은 내용이면 저장해 둔 첫 응답(결제 ID·세션)을 돌려준다. 같은 키에 다른 내용이면 422,
+     *   남의 키거나 응답을 남기지 않은 옛 키면 409 다 — 남의 결제 ID 와 세션을 돌려주지 않는다.
+     * - 이 메서드는 트랜잭션 밖에 둔다. 동시 경합에서 진 요청은 유니크 인덱스에서 첫 요청의 커밋을 기다렸다가
+     *   제약 위반으로 트랜잭션이 끝나므로, 첫 응답은 새 트랜잭션(replayCheckout)에서 읽어야 한다.
      */
-    public PaymentCheckoutCreateSuccessResponseDto checkout(
-            Long userId, PaymentCheckoutCreateRequestDto req) { // 체크아웃 생성
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    public PaymentCheckoutCreateSuccessResponseDto checkout(Long userId, PaymentCheckoutCreateRequestDto req) {
         if (req == null || req.planCode == null || req.planCode.isBlank()) { // 유효성 검사
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "플랜 코드가 필요합니다."); // 400
         }
+        String key = requireCheckoutKey(req.idempotencyKey); // 400
+        String fingerprint = checkoutFingerprint(req);
+        try {
+            return self.createCheckout(userId, req, key, fingerprint);
+        } catch (DuplicateIdempotentRequestException e) { // 동시 경합에서 진 쪽: 첫 요청은 이미 커밋됐다
+            return self.replayCheckout(userId, key, fingerprint);
+        }
+    }
+
+    /** 경합에서 진 요청이 첫 응답을 읽는 자리(새 트랜잭션). checkout 주석 참고. */
+    @Transactional(readOnly = true)
+    public PaymentCheckoutCreateSuccessResponseDto replayCheckout(Long userId, String key, String fingerprint) {
+        IdempotencyKey existing = idempotencyKeyRepository
+                .findByKeyValue(key)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다.")); // 409
+        return replayCheckoutResponse(existing, userId, fingerprint);
+    }
+
+    private PaymentCheckoutCreateSuccessResponseDto replayCheckoutResponse(
+            IdempotencyKey existing, Long userId, String fingerprint) {
+        if (!CHECKOUT_PURPOSE.equals(existing.getPurpose())
+                || existing.getResponseBody() == null // 응답 재생 이전에 만든 키
+                || !userId.equals(existing.getUserId())) { // 남의 키
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다."); // 409
+        }
+        if (!fingerprint.equals(existing.getRequestFingerprint())) { // 같은 키, 다른 내용
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "같은 요청 키로 다른 결제를 요청할 수 없습니다."); // 422
+        }
+        try {
+            return objectMapper.readValue(existing.getResponseBody(), PaymentCheckoutCreateSuccessResponseDto.class);
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("저장된 체크아웃 응답을 읽을 수 없습니다 - key: " + existing.getKeyValue(), e);
+        }
+    }
+
+    /** 멱등키는 필수, UUID 형식(36자, 저장 컬럼 191자 이하). 저장을 시도하기 전에 거른다. */
+    private static String requireCheckoutKey(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "멱등키(idempotencyKey)가 필요합니다."); // 400
+        }
+        String key = raw.trim();
+        if (!UUID_FORMAT.matcher(key).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "멱등키는 UUID 형식이어야 합니다."); // 400
+        }
+        return key;
+    }
+
+    /** 요청 지문: 결제 내용을 정하는 값(플랜, 결제 서비스)만 정규화해 SHA-256 으로 남긴다. */
+    private static String checkoutFingerprint(PaymentCheckoutCreateRequestDto req) {
+        String service =
+                req.paymentService == null ? "" : req.paymentService.trim().toLowerCase();
+        String canonical = req.planCode.trim() + "|" + service;
+        try {
+            return HexFormat.of()
+                    .formatHex(MessageDigest.getInstance("SHA-256").digest(canonical.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 을 쓸 수 없습니다.", e); // JDK 필수 알고리즘이라 일어나지 않는다
+        }
+    }
+
+    /** 체크아웃 본체(트랜잭션). checkout 이 키 형식을 확인한 뒤에만 부른다. */
+    @Transactional
+    public PaymentCheckoutCreateSuccessResponseDto createCheckout(
+            Long userId, PaymentCheckoutCreateRequestDto req, String key, String fingerprint) {
         // 결제 서비스(pg) 매핑/검증: kakao|toss|nice 만 허용
         String normalizedService =
                 (req.paymentService == null ? null : req.paymentService.trim().toLowerCase());
@@ -419,7 +502,7 @@ public class PaymentCommandService { // 결제 쓰기 서비스
         if (subscriptionRepository
                 .findActiveEffectiveByUser(userId, MembershipSubscriptionStatus.ACTIVE, LocalDateTime.now())
                 .isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 이용 중인 멤버십이 있습니다."); // 409
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 이용 중인 멤버십이 있습니다. 멤버십 관리에서 확인해 주세요."); // 409
         }
         // 멱등키 선삽입: 처리를 시작하기 전에 먼저 넣어 유니크 제약이 동시 요청을 판정하게 한다.
         //
@@ -428,27 +511,22 @@ public class PaymentCommandService { // 결제 쓰기 서비스
         // 그만큼 벌어져 있어 동시 요청 둘 다 확인을 통과했고, PENDING 결제와 PG 세션이 두 개 생겼다
         // (막아줄 제약이 payments.provider_session_id 뿐인데 세션 ID 는 요청마다 다르게 발급된다).
         //
-        // saveAndFlush 로 INSERT 를 여기서 확정시켜, 제약 위반을 이 자리에서 잡는다. 중복은 기존과 똑같이
-        // 409 다 — 해지(membership.cancel)처럼 성공으로 흡수하지 않는다. 체크아웃의 응답은 결제 ID 와
-        // PG 세션이라 첫 요청의 결과를 뒤늦게 재현해 줄 수 없고, 원래 계약도 409 였다.
+        // saveAndFlush 로 INSERT 를 여기서 확정시켜, 제약 위반을 이 자리에서 잡는다. 같은 키의 중복은
+        // 첫 응답 재생으로 수렴한다(#191) — 키 행에 첫 응답을 남겨 두므로 결제 ID 와 PG 세션을 그대로 돌려줄 수 있다.
         //
         // 대가: 같은 키의 두 번째 요청은 첫 요청이 끝날 때까지 유니크 인덱스에서 대기한다.
-        // checkout 은 트랜잭션 안에서 PG 세션을 만들므로 그 대기가 PG 응답 시간만큼이다.
+        // createCheckout 은 트랜잭션 안에서 PG 세션을 만들므로 그 대기가 PG 응답 시간만큼이다.
         // 중복 요청이 결과를 알려면 기다리는 수밖에 없으므로 이는 정상 동작이다(해지 경로도 동일).
-        if (req.idempotencyKey != null && !req.idempotencyKey.isBlank()) { // 멱등키 전달 시
-            if (idempotencyKeyRepository.findByKeyValue(req.idempotencyKey).isPresent()) { // 빠른 경로: 한참 전에 처리된 키
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다."); // 409
-            }
-            try {
-                idempotencyKeyRepository.saveAndFlush(IdempotencyKey.createIdempotencyKey(
-                        req.idempotencyKey, // 키
-                        "payment.checkout", // 용도
-                        "", // 응답 데이터 (빈 값)
-                        LocalDateTime.now() // 적재 시각
-                        ));
-            } catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 처리된 요청입니다.", e); // 409(빠른 경로와 같은 응답)
-            }
+        var existingKey = idempotencyKeyRepository.findByKeyValue(key);
+        if (existingKey.isPresent()) { // 빠른 경로: 이미 끝난 키
+            return replayCheckoutResponse(existingKey.get(), userId, fingerprint);
+        }
+        IdempotencyKey claimedKey;
+        try {
+            claimedKey = idempotencyKeyRepository.saveAndFlush(
+                    IdempotencyKey.createIdempotencyKey(key, CHECKOUT_PURPOSE, null, LocalDateTime.now()));
+        } catch (DataIntegrityViolationException e) { // 동시 요청 경합에서 진 쪽 → checkout 이 새 트랜잭션에서 재생한다
+            throw new DuplicateIdempotentRequestException(CHECKOUT_PURPOSE, key, e);
         }
         MembershipPlan plan = membershipPlanRepository
                 .findByCode(req.planCode) // 플랜 조회
@@ -502,6 +580,11 @@ public class PaymentCommandService { // 결제 쓰기 서비스
         res.paymentId = payment.getId(); // 내부 결제 ID
         res.pg = mappedPg; // 프론트 PG 코드 전달
         res.customerUid = customerUid; // 빌링키 식별자(정기결제 채널일 때만)
+        try {
+            claimedKey.recordResponse(userId, fingerprint, objectMapper.writeValueAsString(res)); // 재생용 첫 응답
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("체크아웃 응답을 저장할 수 없습니다 - paymentId: " + res.paymentId, e);
+        }
         return res; // 반환
     }
 

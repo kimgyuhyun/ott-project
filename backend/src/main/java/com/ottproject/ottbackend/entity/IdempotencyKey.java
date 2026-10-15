@@ -42,6 +42,16 @@ public class IdempotencyKey {
     @Column(nullable = false)
     private LocalDateTime createdAt; // 생성 시각
 
+    // 첫 응답 재생용(체크아웃만 채운다, #191). 다른 용도의 키는 비어 있다.
+    @Column(name = "user_id")
+    private Long userId; // 키를 만든 사용자. 남의 키로 남의 응답을 받지 못하게 한다
+
+    @Column(name = "request_fingerprint", length = 64)
+    private String requestFingerprint; // 첫 요청 내용의 SHA-256. 같은 키에 다른 내용이면 거절한다
+
+    @Column(name = "response_body", columnDefinition = "TEXT")
+    private String responseBody; // 첫 응답 본문(JSON). 같은 키의 재요청에 그대로 돌려준다
+
     // ===== 정적 팩토리 메서드 =====
 
     /**
@@ -99,5 +109,17 @@ public class IdempotencyKey {
      */
     public void markConfirmed() {
         this.status = IdempotencyKeyStatus.CONFIRMED;
+    }
+
+    /**
+     * 첫 응답 기록 — 소유자·요청 지문·응답 본문은 한 벌이다. 하나라도 빠지면 재생 판정을 할 수 없다.
+     */
+    public void recordResponse(Long userId, String requestFingerprint, String responseBody) {
+        if (userId == null || requestFingerprint == null || responseBody == null) {
+            throw new IllegalArgumentException("재생에 필요한 값이 비어 있습니다.");
+        }
+        this.userId = userId;
+        this.requestFingerprint = requestFingerprint;
+        this.responseBody = responseBody;
     }
 }
