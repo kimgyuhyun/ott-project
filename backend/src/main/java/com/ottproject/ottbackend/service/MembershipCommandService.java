@@ -83,6 +83,15 @@ public class MembershipCommandService {
                 latest.renewUntil(latestEnd.plusMonths(plan.getPeriodMonths()), now); // 종료일·다음 청구일을 함께 민다
                 return;
             }
+            // 연체 중 재결제면 연체 행을 살린다(#200). 새 행을 만들면 연체 행이 자동갱신·재시도 대상으로 남아
+            // 방금 낸 기간을 새 결제수단으로 또 청구했다. 결제한 플랜으로 바꾸고 지금부터 기간을 준다.
+            // renewUntil 이 ACTIVE 복구·재시도 횟수 초기화·다음 청구일 이동을 함께 하므로, 배치는 이 행을 다시 뽑지 않고
+            // 이미 예약된 재시도 메시지는 prepareRetry 의 "PAST_DUE 가 아니면 건너뜀" 가드에 걸려 버려진다.
+            if (latest.getStatus() == MembershipSubscriptionStatus.PAST_DUE) {
+                latest.changePlanTo(plan);
+                latest.renewUntil(now.plusMonths(plan.getPeriodMonths()), now);
+                return;
+            }
         }
 
         LocalDateTime end = now.plusMonths(plan.getPeriodMonths()); // 기간 산정

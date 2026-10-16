@@ -192,7 +192,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
             log.info("재시도 메시지 경합 skip(다른 트랜잭션이 처리 중) - subscriptionId: {}, attempt: {}", subscriptionId, attempt);
             return;
         }
-        if (plan == null) { // 가드에 걸렸거나 결제수단이 없음
+        if (plan == null) { // 가드에 걸렸거나 주기 앵커가 없음
             return;
         }
 
@@ -234,7 +234,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
             return null;
         }
         ChargePlan plan = planFor(sub);
-        if (plan == null) { // 결제수단 없음
+        if (plan == null) { // 주기 앵커 없음
             sub.markPastDue(); // 연체 유지(시도가 없었으므로 카운트는 그대로)
         }
         return plan;
@@ -267,7 +267,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
      */
     private void billSubscription(Long subscriptionId, LocalDateTime now) {
         ChargePlan plan = self.prepareSweep(subscriptionId); // 1단계: 조회 + 계획 (짧은 트랜잭션)
-        if (plan == null) { // 결제수단 없음 / 주기 앵커 없음 / 구독 사라짐
+        if (plan == null) { // 주기 앵커 없음 / 구독 사라짐
             return; // 다음 구독 처리
         }
         ChargeOutcome outcome = attemptCharge(plan); // 2단계: 트랜잭션 밖에서 PG 호출
@@ -289,7 +289,7 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
             return null;
         }
         ChargePlan plan = planFor(sub);
-        if (plan == null) { // 결제수단 없음 / 주기 앵커 없음
+        if (plan == null) { // 주기 앵커 없음
             sub.markPastDue(); // 연체 전환(시도가 없었으므로 카운트는 그대로)
         }
         return plan;
@@ -302,12 +302,13 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
      * @return 청구 계획, 청구가 불가능하면 null
      */
     private ChargePlan planFor(MembershipSubscription sub) {
+        // 기본 우선 결제수단 목록(삭제 제외, 폴백 순회). 비어 있어도 계획을 만든다 — attemptCharge 가 확정 거절로
+        // 돌려줘 카드 거절과 같은 던닝(재시도 횟수 증가 → 3회 뒤 해지)을 탄다. 예전에는 여기서 null 을 돌려줘
+        // 호출자가 markPastDue() 만 했고, 다음 청구일과 재시도 횟수가 그대로라 30분마다 다시 뽑히며 해지에
+        // 닿지 않았다(#199).
         List<PaymentMethod> methods =
                 paymentMethodRepository.findByUser_IdAndDeletedAtIsNullOrderByIsDefaultDescPriorityAsc(
-                        sub.getUser().getId()); // 기본 우선 결제수단 목록(삭제 제외, 폴백 순회)
-        if (methods.isEmpty()) { // 결제수단 없음
-            return null;
-        }
+                        sub.getUser().getId());
         // 청구주기 앵커: endAt 이 정답이다(청구 성공 시에만 움직임). nextBillingAt 은 실패할 때마다
         // 갱신되므로 앵커로 못 쓰고, 여기서는 endAt 이 없는 무기한/레거시 행의 폴백으로만 쓴다.
         LocalDateTime cycleAnchor = sub.getEndAt() != null ? sub.getEndAt() : sub.getNextBillingAt();
@@ -331,6 +332,9 @@ public class RecurringBillingService { // 정기결제 스케줄러 서비스
      * - 각 시도는 PG 호출 전에 PENDING 을 먼저 커밋한다(BillingAttemptRecorder 주석 참고).
      */
     private ChargeOutcome attemptCharge(ChargePlan plan) {
+        if (plan.methods().isEmpty()) { // 결제수단 없음: PG 를 부르지 않았으니 승인됐을 리 없다 → 확정 거절
+            return ChargeOutcome.declined("NO_PAYMENT_METHOD", "등록된 결제수단이 없습니다.");
+        }
         String currency = "KRW"; // 통화 코드
         String lastErrorCode = null; // 마지막 오류 코드
         String lastErrorMessage = null; // 마지막 오류 메시지

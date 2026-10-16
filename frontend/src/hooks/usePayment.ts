@@ -10,6 +10,7 @@ import {
   getPortOneMerchantCode,
 } from "@/lib/portone/loadPortOne";
 import { useAuth } from "@/lib/AuthContext";
+import { resolveConfirmOutcome } from "@/lib/paymentConfirmation";
 import type { IamportRequestPayData, IamportResponse } from "@/types/iamport";
 import {
   PaymentError,
@@ -30,6 +31,8 @@ interface PaymentRequest {
 
 interface PaymentResult {
   success: boolean;
+  /** 결제창은 끝났지만 서버 확정을 아직 확인하지 못했다(실패가 아니다) */
+  pending?: boolean;
   paymentId?: number;
   errorMessage?: string;
   redirectUrl?: string | null;
@@ -172,23 +175,42 @@ export const usePayment = () => {
           });
 
           if (response.success) {
-            // 클라이언트 결제 확정(동기 주 경로): imp_uid로 서버가 아임포트에 재검증 후 멤버십 즉시 지급
-            try {
-              if (response.imp_uid) {
-                await completePayment(
-                  checkoutResponse.paymentId,
-                  response.imp_uid,
-                );
-              }
-              logPaymentEvent("Payment confirmed", {
-                paymentId: checkoutResponse.paymentId,
+            // 클라이언트 결제 확정(동기 주 경로): imp_uid로 서버가 아임포트에 재검증 후 멤버십 즉시 지급.
+            // 결제창의 success 는 "결제창이 끝났다"일 뿐이다. 서버가 확정했는지는 서버 상태로만 판정한다(#192).
+            // 예전에는 확정 호출이 실패하면 이유와 상관없이 성공으로 간주해, 서버가 거절한 결제(PG 재검증 불일치)도
+            // 멤버십 없이 "결제 완료"로 안내됐다.
+            const paymentId = checkoutResponse.paymentId;
+            const impUid = response.imp_uid;
+            const outcome = await resolveConfirmOutcome(
+              () =>
+                impUid
+                  ? completePayment(paymentId, impUid)
+                  : Promise.reject(new Error("imp_uid 없음")),
+              async () => (await checkPaymentStatus(paymentId)).status,
+            );
+            logPaymentEvent("Payment confirm outcome", { paymentId, outcome });
+
+            if (outcome === "FAILED") {
+              const error = new PaymentError(
+                PaymentErrorCode.PAYMENT_FAILED,
+                "결제가 완료되지 않았습니다.",
+              );
+              setPaymentState((prev) => ({ ...prev, status: "error", error }));
+              resolve({ success: false, errorMessage: error.message });
+              return;
+            }
+            if (outcome === "PENDING") {
+              // 실패가 아니다. 웹훅·대사(10분 주기)가 곧 확정할 수 있고, 금액 불일치처럼 사람이 봐야 하는 건이면
+              // 대사가 경보를 올린다. 다시 결제하면 이중 결제가 되므로 그것부터 막는다.
+              setPaymentState((prev) => ({ ...prev, status: "idle" }));
+              resolve({
+                success: false,
+                pending: true,
+                paymentId,
+                errorMessage:
+                  "결제 확인이 늦어지고 있습니다. 확인되면 멤버십이 자동으로 시작되니 다시 결제하지 마세요. 10분이 지나도 시작되지 않으면 고객센터로 문의해 주세요.",
               });
-            } catch (confirmError) {
-              // 확정 호출이 실패해도 웹훅/대사 배치가 백업으로 확정하므로 성공으로 간주하고 진행
-              logPaymentEvent("Confirm call failed (webhook/batch backup)", {
-                error: confirmError,
-                paymentId: checkoutResponse.paymentId,
-              });
+              return;
             }
             setPaymentState((prev) => ({
               ...prev,
@@ -287,6 +309,10 @@ export const usePayment = () => {
 
         if (result.success) {
           setPaymentState((prev) => ({ ...prev, retryCount: 0 }));
+          return result;
+        }
+        // 확인 중인 결제를 다시 시도하면 새 결제창이 열려 이중 결제가 된다(#192)
+        if (result.pending) {
           return result;
         }
 
