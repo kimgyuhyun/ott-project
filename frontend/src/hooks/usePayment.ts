@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   createCheckout,
   checkPaymentStatus,
@@ -44,6 +44,12 @@ export const usePayment = () => {
     retryCount: 0,
   });
   const { user } = useAuth();
+  // 진행 중인 결제 의도의 멱등키(#191). 결제창이 끝나거나 서버가 실패로 답하면 비운다.
+  const checkoutIntentRef = useRef<{
+    key: string;
+    planCode: string;
+    paymentService: PaymentService;
+  } | null>(null);
 
   // 로깅 함수
   const logPaymentEvent = (event: string, data: Record<string, unknown>) => {
@@ -68,13 +74,30 @@ export const usePayment = () => {
       paymentService: request.paymentService,
     });
 
+    // 결제 의도마다 멱등키를 하나 만들고, 같은 의도의 재시도(응답 유실 뒤 다시 누름)에는 같은 키를 쓴다(#191).
+    // 서버는 같은 키에 첫 응답(결제 ID·결제창 세션)을 그대로 돌려주므로 PENDING 결제가 하나만 생긴다.
+    // 예전에는 키를 보내지 않아 다시 누를 때마다 PENDING 결제와 결제창 세션이 하나씩 더 생겼다.
+    // 플랜이나 결제 서비스를 바꿨으면 다른 의도다(같은 키에 다른 내용을 보내면 서버가 422 로 거절한다).
+    const intent = checkoutIntentRef.current;
+    const idempotencyKey =
+      intent &&
+      intent.planCode === request.planCode &&
+      intent.paymentService === request.paymentService
+        ? intent.key
+        : crypto.randomUUID();
+    checkoutIntentRef.current = {
+      key: idempotencyKey,
+      planCode: request.planCode,
+      paymentService: request.paymentService,
+    };
+
     try {
       // 1. 백엔드에서 체크아웃 세션 생성
       const checkoutResponse = await createCheckout(
         request.planCode,
         request.successUrl,
         request.cancelUrl,
-        undefined,
+        idempotencyKey,
         request.paymentService,
       );
 
@@ -149,6 +172,8 @@ export const usePayment = () => {
         });
 
         IMP.request_pay(paymentData, async (response: IamportResponse) => {
+          // 결제창이 끝났다(성공·실패·취소 모두). 이 의도의 체크아웃은 다 썼으므로 다음 결제는 새 키로 한다.
+          checkoutIntentRef.current = null;
           // 응답 타입 검증
           const validation = validatePaymentResponse(response);
           if (!validation.isValid) {
@@ -243,16 +268,25 @@ export const usePayment = () => {
       logPaymentEvent("Payment process error", { error: err });
 
       let paymentError: PaymentError;
-      const status = (err as { response?: { status?: number } })?.response
-        ?.status;
+      const response = (
+        err as {
+          response?: { status?: number; data?: { message?: string } };
+        }
+      )?.response;
+      // 서버가 답한 실패면 이 의도는 끝났다(다음 시도는 새 키). 응답 자체를 못 받았으면 같은 키로 다시 보내야
+      // 서버가 이미 만든 결제를 그대로 돌려준다.
+      if (response) {
+        checkoutIntentRef.current = null;
+      }
       if (err instanceof PaymentError) {
         paymentError = err;
-      } else if (status === 409) {
-        // 이미 이용 중인 멤버십이 있어 서버가 체크아웃을 거절했다(#193). 결제창은 열리지 않았고 돈도 나가지 않았다.
+      } else if (response?.status === 409 || response?.status === 422) {
+        // 서버가 체크아웃을 거절했다. 결제창은 열리지 않았고 돈도 나가지 않았다. 409 는 이미 이용 중인
+        // 멤버십(#193)이거나 쓸 수 없는 멱등키, 422 는 같은 키에 다른 내용(#191)이다. 이유는 서버 문구로 보여준다.
         // 네트워크 오류 문구로 덮으면 사용자가 다시 시도할 이유를 찾는다.
         paymentError = new PaymentError(
           PaymentErrorCode.CHECKOUT_FAILED,
-          "이미 이용 중인 멤버십이 있습니다. 멤버십 관리에서 확인해주세요.",
+          response.data?.message || "결제를 시작할 수 없습니다.",
           err as Error,
         );
       } else if (err instanceof Error) {

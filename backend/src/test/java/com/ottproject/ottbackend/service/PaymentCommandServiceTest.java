@@ -37,6 +37,7 @@ import com.ottproject.ottbackend.repository.PaymentRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -610,12 +611,16 @@ class PaymentCommandServiceTest {
         PaymentCheckoutCreateRequestDto req = new PaymentCheckoutCreateRequestDto();
         req.planCode = "BASIC";
         req.paymentService = "kakao";
+        req.idempotencyKey = UUID.randomUUID().toString(); // 필수(#191). 요청마다 새 결제 의도
         return req;
     }
 
-    private void givenCheckoutDependencies() {
+    private void givenCheckoutDependencies() throws Exception {
         MembershipPlan plan = basicPlan();
         given(membershipPlanRepository.findByCode("BASIC")).willReturn(Optional.of(plan));
+        // 멱등키 선삽입 결과와 재생용 응답 직렬화(#191). 목이라 저장한 키를 그대로 돌려준다.
+        given(idempotencyKeyRepository.saveAndFlush(any())).willAnswer(inv -> inv.getArgument(0));
+        given(objectMapper.writeValueAsString(any())).willReturn("{}");
         PaymentGateway.CheckoutSession session = new PaymentGateway.CheckoutSession();
         session.sessionId = "sess_1";
         given(paymentGateway.createCheckoutSession(any(), any(), any(), any(), any(), anyLong()))
@@ -624,7 +629,7 @@ class PaymentCommandServiceTest {
 
     @Test
     @DisplayName("카카오 체크아웃은 정기결제 채널과 빌링키 식별자를 내려준다 - 결제창이 빌링키를 발급하는 조건")
-    void kakaoCheckoutReturnsSubscriptionChannelAndCustomerUid() {
+    void kakaoCheckoutReturnsSubscriptionChannelAndCustomerUid() throws Exception {
         givenCheckoutDependencies();
 
         PaymentCheckoutCreateSuccessResponseDto res = service.checkout(1L, kakaoCheckoutReq());
@@ -638,7 +643,7 @@ class PaymentCommandServiceTest {
 
     @Test
     @DisplayName("체크아웃은 결제수단을 등록하지 않는다 - 빌링키 확인은 결제 확정 후에만 가능하다")
-    void checkoutDoesNotRegisterPaymentMethod() {
+    void checkoutDoesNotRegisterPaymentMethod() throws Exception {
         givenCheckoutDependencies();
 
         service.checkout(1L, kakaoCheckoutReq());

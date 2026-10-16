@@ -1,7 +1,6 @@
 package com.ottproject.ottbackend.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.doAnswer;
@@ -37,7 +36,6 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
@@ -134,7 +132,7 @@ class PaymentCheckoutIdempotencyTest {
     }
 
     /** 같은 체크아웃 의도로 두 번 도착한 요청이 들고 오는 멱등키 */
-    private static final String CHECKOUT_KEY = "checkout-key-1";
+    private static final String CHECKOUT_KEY = "00000000-0000-4000-8000-000000000001";
 
     @Autowired
     private PaymentCommandService service;
@@ -237,21 +235,13 @@ class PaymentCheckoutIdempotencyTest {
     void concurrentCheckoutWithSameKeyCreatesOne() throws Exception {
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
-            Future<Throwable> first =
-                    pool.submit(() -> catchThrowable(() -> service.checkout(userId, checkoutReq(CHECKOUT_KEY))));
+            Future<String> first = pool.submit(() -> outcome(userId, checkoutReq(CHECKOUT_KEY)));
             assertThat(firstReachedGateway.await(30, TimeUnit.SECONDS)).isTrue(); // 첫 요청이 키를 선점하고 커밋 직전까지 옴
 
             // 두 번째 요청. 별도 스레드여야 별도 커넥션/트랜잭션이 열린다.
-            // 결과를 문자열로 돌려주는 이유: catchThrowable 로 감싸면 "성공"과 "아직 대기 중"이 둘 다
-            // null 이라 구별되지 않는다. 제약을 없애도 대기 단언이 통과해 버리는 가짜 테스트가 된다.
-            Future<String> second = pool.submit(() -> {
-                try {
-                    service.checkout(userId, checkoutReq(CHECKOUT_KEY));
-                    return "created"; // 중복이 그대로 만들어짐 = 방어 실패
-                } catch (ResponseStatusException e) {
-                    return "rejected-" + e.getStatusCode().value();
-                }
-            });
+            // 결과를 문자열로 돌려받는 이유: "성공"과 "아직 대기 중"을 구별해야 한다. 둘 다 null 이면
+            // 제약을 없애도 대기 단언이 통과해 버리는 가짜 테스트가 된다.
+            Future<String> second = pool.submit(() -> outcome(userId, checkoutReq(CHECKOUT_KEY)));
 
             // 첫 요청이 커밋하기 전에는 유니크 인덱스에서 대기해야 한다.
             // 여기서 이미 끝나 있으면 제약이 판정하지 않았다는 뜻이다 = 둘 다 통과했다.
@@ -259,9 +249,10 @@ class PaymentCheckoutIdempotencyTest {
 
             releaseFirst.countDown(); // 첫 요청 커밋
 
-            assertThat(first.get(30, TimeUnit.SECONDS)).isNull(); // 첫 요청은 정상 완료
-            // 기존 계약 유지: 중복 체크아웃은 409 다(해지처럼 성공으로 흡수하지 않는다)
-            assertThat(second.get(30, TimeUnit.SECONDS)).isEqualTo("rejected-409");
+            String firstResult = first.get(30, TimeUnit.SECONDS);
+            assertThat(firstResult).startsWith("200:"); // 첫 요청은 정상 완료
+            // 경합에서 진 요청은 첫 응답(같은 결제 ID·세션)을 받는다(#191). 예전에는 409 라서 첫 결제창 정보를 잃었다.
+            assertThat(second.get(30, TimeUnit.SECONDS)).isEqualTo(firstResult);
 
             // 사용자에게 보이는 증상: PENDING 결제와 결제창이 두 개 생기면 안 된다
             assertThat(paymentRepository.count()).isEqualTo(1);
@@ -275,48 +266,108 @@ class PaymentCheckoutIdempotencyTest {
         }
     }
 
-    @Test
-    @DisplayName("같은 멱등키로 순차 재요청하면 409 - 기존 동작을 바꾸지 않는다")
-    void sequentialCheckoutWithSameKeyIsRejected() {
-        releaseFirst.countDown(); // 붙잡지 않는다(순차 시나리오)
-
-        service.checkout(userId, checkoutReq(CHECKOUT_KEY));
-
-        Throwable thrown = catchThrowable(() -> service.checkout(userId, checkoutReq(CHECKOUT_KEY)));
-
-        assertThat(thrown).isInstanceOf(ResponseStatusException.class);
-        assertThat(((ResponseStatusException) thrown).getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(paymentRepository.count()).isEqualTo(1);
-    }
+    // 순차 재요청 409, 키 없을 때 두 건 생성을 고정하던 테스트는 #191 에서 뒤집혔다.
+    // 각각 sameKeyAgainReplaysFirstResponse, missingOrMalformedKeyIsRejected 가 새 계약을 지킨다.
 
     @Test
     @DisplayName("서로 다른 멱등키는 막히지 않는다 - 선삽입이 정상 요청을 잡아먹지 않아야 한다")
     void differentKeysAreNotBlocked() {
         releaseFirst.countDown();
 
-        service.checkout(userId, checkoutReq("checkout-key-a"));
-        service.checkout(userId, checkoutReq("checkout-key-b"));
+        service.checkout(userId, checkoutReq("00000000-0000-4000-8000-00000000000a"));
+        service.checkout(userId, checkoutReq("00000000-0000-4000-8000-00000000000b"));
 
         assertThat(paymentRepository.count()).isEqualTo(2);
         assertThat(idempotencyKeyRepository.count()).isEqualTo(2);
     }
 
-    /**
-     * 현재 프론트(useCheckout.ts / usePayment.ts)는 idempotencyKey 를 undefined 로 넘긴다.
-     * 이 테스트는 그 상태의 의미를 못박는다: 키가 없으면 중복 방어는 0 이다.
-     * 백엔드 수정만으로는 더블클릭 중복 체크아웃이 막히지 않는다는 뜻이므로, 프론트가 키를 보내기
-     * 시작하면 이 테스트를 "막힌다"로 뒤집어야 한다.
-     */
+    // ===== #191: 멱등키 필수 + 첫 응답 재생 (ARCHITECTURE 6절) =====
+    //
+    // 프론트가 키를 보내지 않아(usePayment 가 undefined 를 넘김) 위 방어가 한 번도 작동하지 않았다.
+    // 응답이 유실돼 다시 누르면 PENDING 결제와 PG 세션이 하나 더 생겼다(2026-09-17 운영 53건과 같은 종류).
+    // 고치는 계약:
+    // - 키가 없거나 UUID 형식이 아니면 400. 선택으로 두면 키 없이 재시도되는 경로가 남는다.
+    // - 같은 사용자·같은 키·같은 내용이면 첫 응답을 그대로 돌려준다. 409 를 주면 사용자는 첫 결제창 정보를 잃고
+    //   결국 다시 결제한다(새 키 → 새 PENDING).
+    // - 같은 키에 다른 내용이면 422, 다른 사용자의 키면 409 — 남의 응답(결제 ID·세션)을 돌려주지 않는다.
+
+    private static final String INTENT_KEY = "00000000-0000-4000-8000-000000000191";
+
+    /** 체크아웃 결과를 "200:결제ID:세션" 또는 "rejected-상태코드" 로 요약한다 */
+    private String outcome(Long requester, PaymentCheckoutCreateRequestDto req) {
+        try {
+            var res = service.checkout(requester, req);
+            return "200:" + res.paymentId + ":" + res.providerSessionId;
+        } catch (ResponseStatusException e) {
+            return "rejected-" + e.getStatusCode().value();
+        }
+    }
+
     @Test
-    @DisplayName("멱등키가 없으면 중복 체크아웃이 그대로 두 건 생긴다 - 프론트가 키를 보내야 방어가 작동한다")
-    void withoutKeyDuplicateCheckoutIsNotBlocked() {
+    @DisplayName("#191 같은 키로 다시 보내면 첫 응답을 그대로 돌려주고 결제·세션은 하나뿐이다")
+    void sameKeyAgainReplaysFirstResponse() {
         releaseFirst.countDown();
 
-        service.checkout(userId, checkoutReq(null));
-        service.checkout(userId, checkoutReq(null));
+        String first = outcome(userId, checkoutReq(INTENT_KEY));
+        String again = outcome(userId, checkoutReq(INTENT_KEY));
 
-        assertThat(paymentRepository.count()).isEqualTo(2);
-        assertThat(sessionsCreated.get()).isEqualTo(2);
-        assertThat(idempotencyKeyRepository.count()).isZero();
+        System.out.printf(
+                "[#191 같은 키 재요청] 첫 응답=%s, 재요청 응답=%s, PENDING 결제=%d, PG 세션=%d%n",
+                first, again, paymentRepository.count(), sessionsCreated.get());
+        assertThat(again).isEqualTo(first);
+        assertThat(paymentRepository.count()).isEqualTo(1);
+        assertThat(sessionsCreated.get()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("#191 멱등키가 없거나 UUID 형식이 아니면 400 이고 아무것도 만들지 않는다")
+    void missingOrMalformedKeyIsRejected() {
+        releaseFirst.countDown();
+
+        String noKey1 = outcome(userId, checkoutReq(null));
+        String noKey2 = outcome(userId, checkoutReq(null));
+        String malformed = outcome(userId, checkoutReq("not-a-uuid"));
+
+        System.out.printf(
+                "[#191 키 없음] 응답=%s,%s / 형식 오류=%s, PENDING 결제=%d, PG 세션=%d%n",
+                noKey1, noKey2, malformed, paymentRepository.count(), sessionsCreated.get());
+        assertThat(noKey1).isEqualTo("rejected-400");
+        assertThat(noKey2).isEqualTo("rejected-400");
+        assertThat(malformed).isEqualTo("rejected-400");
+        assertThat(paymentRepository.count()).isZero();
+        assertThat(sessionsCreated.get()).isZero();
+    }
+
+    @Test
+    @DisplayName("#191 같은 키에 다른 플랜이면 422 - 첫 응답을 다른 요청의 결과로 돌려주지 않는다")
+    void sameKeyWithDifferentBodyIsRejected() {
+        releaseFirst.countDown();
+        MembershipPlan premium =
+                planRepository.save(MembershipPlan.createBasicPlan("Premium", "설명", new Money(14900L, "KRW"), 1));
+
+        outcome(userId, checkoutReq(INTENT_KEY));
+        PaymentCheckoutCreateRequestDto other = checkoutReq(INTENT_KEY);
+        other.planCode = premium.getCode();
+        String result = outcome(userId, other);
+
+        System.out.printf("[#191 같은 키 다른 내용] 응답=%s, PENDING 결제=%d%n", result, paymentRepository.count());
+        assertThat(result).isEqualTo("rejected-422");
+        assertThat(paymentRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("#191 다른 사용자의 키로는 첫 응답을 받을 수 없다 - 409")
+    void otherUsersKeyDoesNotReplay() {
+        releaseFirst.countDown();
+        Long otherUser = userRepository
+                .save(User.createLocalUser("other@example.com", "encoded", "다른 사람"))
+                .getId();
+
+        outcome(userId, checkoutReq(INTENT_KEY));
+        String result = outcome(otherUser, checkoutReq(INTENT_KEY));
+
+        System.out.printf("[#191 남의 키] 응답=%s, PENDING 결제=%d%n", result, paymentRepository.count());
+        assertThat(result).isEqualTo("rejected-409");
+        assertThat(paymentRepository.count()).isEqualTo(1);
     }
 }
