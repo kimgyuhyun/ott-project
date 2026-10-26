@@ -21,7 +21,7 @@
 
 services:
   postgres:
-    image: postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
+    image: postgres:18@sha256:edb0c08dc33befd0262ab3b5cf1c4f3f8cfd8b09e88c05b45adee29d6761ddb6
     pull_policy: missing
     container_name: ott-multi-postgres
     env_file:
@@ -40,7 +40,7 @@ services:
     # 호스트 포트 미개방: 실서비스 5432 와 충돌 방지
 
   redis:
-    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    image: redis:7-alpine@sha256:57e4255cc971b1c8d6f8a6ca283ac01bc3ecdd914273ef6bfaede87aaecd6541
     pull_policy: missing
     container_name: ott-multi-redis
     command: ["redis-server", "--save", "", "--appendonly", "no"]
@@ -67,7 +67,7 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
 
   rabbitmq:
-    image: rabbitmq:4.3-management@sha256:1d7dfbe6c30e04f0a130a1d6e1b31028fe8245c7033c09ffb6ea6554b8fdb2f0
+    image: rabbitmq:4.4-management@sha256:c200fd496482cda18c412be4e6f244830e1e75949b8cf5f0e887cea9ea456109
     pull_policy: missing
     container_name: ott-multi-rabbitmq
     environment:
@@ -138,7 +138,7 @@ services:
 
   # [2단계] 로드밸런싱/무중단 배포 검증용. 실서비스 nginx(80/443)와 겹치지 않게 8888 을 쓴다.
   nginx:
-    image: nginx:1.31.7-alpine@sha256:892bb2152464f0c5d8972593a5f5afaf8054552580b699d95f8ff4af08c2d33d
+    image: nginx:1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60
     pull_policy: missing
     container_name: ott-multi-nginx
     depends_on:
