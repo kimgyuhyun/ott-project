@@ -138,7 +138,7 @@ services:
 
   # [2단계] 로드밸런싱/무중단 배포 검증용. 실서비스 nginx(80/443)와 겹치지 않게 8888 을 쓴다.
   nginx:
-    image: nginx:1.31.7-alpine@sha256:892bb2152464f0c5d8972593a5f5afaf8054552580b699d95f8ff4af08c2d33d
+    image: nginx:1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60
     pull_policy: missing
     container_name: ott-multi-nginx
     depends_on:
