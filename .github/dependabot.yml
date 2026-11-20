@@ -56,6 +56,14 @@ updates:
       # 메이저는 PR 에 "@dependabot ignore <이미지> major version" 을 달아 빼고 다시 만들게 한다.
       compose-all:
         patterns: ["*"]
+    # postgres 메이저만 받지 않는다. digest·패치 PR 은 그대로 온다.
+    # 위 주석의 "손으로 확인하고 빼라"는 절차가 한 번 빠졌다: 2026-10-16 #196 이 15→18 을 묶음에 실어
+    # 머지됐고, E2E 가 postgres 18 기동 실패로 main CI 를 막아 5주간 배포가 하나도 나가지 않았다.
+    # E2E 가 통과했다면 운영 postgres 가 18 로 재생성되며 15 데이터 위에서 내려갔을 것이다.
+    # 메이저 업그레이드는 데이터 이전 절차와 함께 손으로 올리고, 그때 이 ignore 를 지운다.
+    ignore:
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
 
   # Docker 베이스 이미지
   # npm/gradle과 달리 Docker는 advisory 매핑이 없어 security update PR이 따로 오지 않는다.
