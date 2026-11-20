@@ -107,8 +107,14 @@ if ($newDown) {
   Send-DiscordAlert (":warning: **OTT 컨테이너 다운** — $detail`n2회 연속 점검에서 running 이 아니다. 배포 중이었다면 곧 복구 알림이 온다.")
 }
 if ($recovered) {
-  Log "CONTAINER RECOVERED $($recovered -join ', ')"
-  Send-DiscordAlert (":white_check_mark: **OTT 컨테이너 복구** — $($recovered -join ', ')")
+  # 복구 알림에 아직 안 돌아온 것을 함께 적는다. 재알림이 없으므로 이 줄이 빠지면
+  # "복구"만 보고 끝난 줄 알게 된다. 2026-11-12: 14개 다운 → 13개 복구 알림이 갔고,
+  # 남은 ott-prometheus 는 8일 동안 꺼져 있었다.
+  $stillDown = @($alerted | Where-Object { $downNames -contains $_ })
+  $rest = if ($stillDown) { " (아직 다운: $($stillDown -join ', '))" } else { '' }
+  Log "CONTAINER RECOVERED $($recovered -join ', ')$rest"
+  Send-DiscordAlert (":white_check_mark: **OTT 컨테이너 복구** — $($recovered -join ', ')" +
+    $(if ($stillDown) { "`n:warning: 아직 다운: $($stillDown -join ', ')" } else { '' }))
 }
 # 다음 점검을 위해 저장: prev 는 이번 다운 목록, alerted 는 아직 안 돌아온 것만 남긴다.
 $alerted = @(@($alerted | Where-Object { $downNames -contains $_ }) + $newDown | Select-Object -Unique)
