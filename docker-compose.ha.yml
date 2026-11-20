@@ -63,6 +63,7 @@ services:
       - default
       - data
       - proxy
+      - obs                             # [SECURITY 2026-11-20] loki push·prometheus 스크레이프 (netlock 헤더 참고)
 
   nginx:
     volumes:

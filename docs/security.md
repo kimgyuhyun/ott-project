@@ -20,6 +20,16 @@
 - 프론트엔드는 데이터 계층에도 속하지 않는다 → 뚫려도 DB·브로커로 횡이동 불가
 - 정의는 `docker-compose.netlock.yml`. **배포 시 이 파일이 빠지면 egress가 다시 열린다**
 
+### 관측 스택 분리 (2026-11-20)
+
+- loki·prometheus·alloy 는 웹 계층(`default`)이 아니라 앱 전용 internal 망 `obs` 에 둔다.
+  `default` 에 있을 때는 프론트엔드에서 loki 로그를 읽고 인증 없이 쓸 수 있었다 — 침해 판정의
+  근거가 되는 로그를 침해 대상이 고칠 수 있는 구조였다
+- 배포 스크립트가 프론트 → loki·prometheus 차단을 확인한다
+- grafana·prometheus·loki·nginx 는 호스트 포트 공개 때문에 non-internal 망에 붙어 있어
+  아웃바운드가 열려 있다. 이 호스트(Docker Desktop)에서는 망 설정으로 막을 수 없음을 실측했고,
+  그 판단과 남은 위험은 [ADR 0012](adr/0012-published-containers-keep-egress.md)
+
 ### 아웃바운드 목적지 허용목록 (2026-08-07)
 
 망 분리는 아웃바운드가 필요 없는 서비스를 끊을 뿐, egress 망에 붙은 서비스의 목적지까지는

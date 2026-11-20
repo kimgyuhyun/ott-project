@@ -19,6 +19,7 @@
 | [0009](0009-no-volume-noexec.md) | 명명 볼륨에는 noexec 를 걸지 않는다 | 채택 | 규칙 범위 밖 — 비용/이득 비교 |
 | [0010](0010-ci-hands-digest-to-cd.md) | 배포할 이미지는 CI 가 digest 로 지목하고 CD 는 그것만 받는다 | 채택 | 실측 (RepoDigests 0번이 로컬 이름) |
 | [0011](0011-drain-before-replace.md) | 롤링 교체 전에 인스턴스를 nginx 에서 뺀다(drain). 0002 를 보완 | 채택 | 실측 (502 51/0/0 → 0/0/0, 재시도 0) |
+| [0012](0012-published-containers-keep-egress.md) | 호스트 포트를 공개하는 컨테이너의 아웃바운드는 망 설정으로 막지 않는다 | 채택 (조건부) | 실측 (NAT 끈 브리지도 아웃바운드 열림) |
 
 ## 아직 안 쓴 후보
 

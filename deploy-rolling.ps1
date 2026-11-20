@@ -135,6 +135,15 @@ $lateral = docker exec ott-frontend node -e "const s=require('net').connect({hos
 if ("$lateral" -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend can reach postgres (data tier not isolated)' }
 Write-Host "frontend -> postgres: $lateral"
 
+# [SECURITY 2026-11-20] Same for loki/prometheus, now on the app-only 'obs' network
+# (the reason is in docker-compose.netlock.yml, network obs).
+Write-Host '=== VERIFY frontend cannot reach loki/prometheus (expected: BLOCKED) ==='
+foreach ($t in @(@('loki', 3100), @('prometheus', 9090))) {
+    $obs = docker exec ott-frontend node -e "const s=require('net').connect({host:'$($t[0])',port:$($t[1]),timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
+    if ("$obs" -match 'REACHABLE') { throw "SECURITY INVARIANT FAILED: frontend can reach $($t[0]):$($t[1]) (observability not isolated)" }
+    Write-Host "frontend -> $($t[0]): $obs"
+}
+
 # [SECURITY 2026-08-07] Backend outbound is now proxy-only with a destination allow-list.
 # The old check here asserted the OPPOSITE (that the backend could resolve external hosts
 # directly); leaving it in would abort every deploy the moment app leaves the egress network.

@@ -9,13 +9,16 @@
 #     (설계 근거는 monitoring/alloy/config.alloy 상단 주석 참고)
 #
 # 네트워크 설계 (pgadmin.yml 과 동일한 패턴):
-#   - Prometheus 는 default(웹 계층)에 붙어 ott-app:8090 / ott-app-2:8090 에 도달한다.
-#     (netlock 배포 시 default 는 internal 이지만 컨테이너 간 통신은 유지되므로 스크레이프 가능)
+#   - [SECURITY 2026-11-20] Prometheus·Loki·Alloy 는 default(웹 계층)가 아니라 obs 에 붙는다.
+#     obs 는 netlock.yml 에 정의된 internal 망이고 앱(ott-app/ott-app-2)과 이 셋만 있다.
+#     default 에 두면 frontend 에서 loki 로그를 읽고 쓸 수 있었다(이유는 netlock.yml 의 obs 주석).
+#     그래서 이 파일은 netlock.yml 없이 쓸 수 없다("network obs not declared"로 바로 실패).
 #   - internal 네트워크는 호스트로 포트 publish 가 불가하므로, 별도 bridge(monitoring)에도
 #     연결해 127.0.0.1 로만 포트를 연다(외부 노출 없음).
 #   - 데이터 계층(data)에는 붙이지 않는다 — 모니터링은 postgres/redis 에 직접 접근할 이유가 없다.
 #   - 주의: monitoring 은 bridge 라 egress 가 열린다(호스트 포트 publish 를 위해 불가피).
 #     pgadmin-egress 와 동일한 트레이드오프. Grafana 텔레메트리/업데이트확인은 env 로 꺼둔다.
+#     NAT 를 끈 브리지로도 이 호스트(Docker Desktop)에서는 막히지 않는다 — 실측과 판단은 ADR 0012.
 #
 # 올리기(기존 스택은 그대로 두고 모니터링만 추가):
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml `
@@ -74,7 +77,7 @@ services:
     ports:
       - "127.0.0.1:9090:9090"   # 루프백 전용 노출 (외부 X)
     networks:
-      - default        # ott-app / ott-app-2 스크레이프용 (앱이 붙어있는 웹 계층)
+      - obs            # ott-app / ott-app-2 스크레이프용 (frontend 없는 internal 망)
       - monitoring     # grafana 통신 + 호스트 포트 publish용
 
   loki:
@@ -102,7 +105,7 @@ services:
     ports:
       - "127.0.0.1:3100:3100"   # 루프백 전용 (디버깅용)
     networks:
-      - default        # 백엔드(ott-app/ott-app-2)가 로그를 푸시하는 경로
+      - obs            # 백엔드(ott-app/ott-app-2)·alloy 가 로그를 푸시하는 경로
       - monitoring     # grafana 조회 + 호스트 포트 publish용
 
   grafana:
@@ -193,7 +196,7 @@ services:
     depends_on:
       - loki
     networks:
-      - default        # loki:3100 push 경로. netlock 시 internal 이라 egress 없음.
+      - obs            # loki:3100 push 경로. internal 이라 egress 없음.
 
   # --- 수집 대상 컨테이너에 이름표 달기 ---------------------------------------
   # 로그 파일 경로에는 컨테이너 ID밖에 없다. docker.sock 없이 ID→이름을 얻을 수 없으므로,
