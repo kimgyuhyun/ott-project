@@ -203,6 +203,7 @@ jobs:
             VerificationEmailServiceTest VerificationCodeAttemptLimitTest
             LoginAttemptLimitTest EmailAuthControllerTest
             MembershipNotificationServiceTest BillingRetryPublisherTest
+            UnpatchedSpringFeatureGuardTest
         run: bash .github/scripts/check-test-count.sh
 
       # 정적 분석은 clean build 의 check 단계에서 함께 돌았다. 여기서는 그 리포트를 읽어
