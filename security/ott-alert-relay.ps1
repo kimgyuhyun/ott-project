@@ -18,6 +18,7 @@
 #   이미 알린 경보를 기억한다. 없으면 5분마다 같은 내용이 계속 날아와서
 #   결국 알림을 무시하게 된다 — 경보를 다는 목적과 정반대가 된다.
 #   해소되면 복구 메시지를 한 번 보내고 목록에서 지운다.
+#   Prometheus 연속 조회 실패 횟수(failCount)와 그걸 알렸는지(promDownAlerted)도 여기 둔다.
 # ============================================================================
 param([switch]$Test)   # -Test: 파싱·발송 경로만 확인(실제 firing 이 없어도 샘플 1건을 보낸다)
 $ErrorActionPreference = 'Continue'
@@ -43,27 +44,55 @@ function Get-AlertKey($a) {
   return $labels
 }
 
+$notified = @(); $failCount = 0; $promDownAlerted = $false
+if (Test-Path $state) {
+  try {
+    $s = Get-Content $state -Raw | ConvertFrom-Json
+    $notified = @($s.notified)
+    if ($s.failCount) { $failCount = [int]$s.failCount }
+    $promDownAlerted = [bool]$s.promDownAlerted
+  } catch { }
+}
+$notified = @($notified | Where-Object { $_ })   # null/빈 값 제거(파일이 비었던 경우)
+
+function Save-State($keys) {
+  @{ notified = @($keys); failCount = $failCount; promDownAlerted = $promDownAlerted } |
+    ConvertTo-Json -Compress | Set-Content -Path $state -Encoding utf8
+}
+
 # --- Prometheus 조회 ---------------------------------------------------------
-# 실패해도 조용히 끝낸다. Prometheus 자체가 죽은 경우는 ott-watchdog.ps1 의
-# 컨테이너 상태 점검(expected 목록에 ott-prometheus 포함)이 이미 알린다.
+# 조회가 안 되면 이 중계는 아무 경보도 전하지 못한다. 2026-11-12~20: Prometheus 가 호스트
+# 재시작 뒤 혼자 안 올라왔고, 이 스크립트는 "워치독이 알린다"는 전제로 2,357번 skip 만
+# 기록했다. 워치독은 전체 다운 한 번과 13개 복구를 알렸을 뿐이라 8일 동안 아무도 몰랐다.
+# 그래서 여기서도 직접 알린다. 2회 연속일 때만 알리는 건 워치독·업타임과 같은 기준이다.
+$queryError = $null
 try {
   $resp = Invoke-RestMethod -Uri "$promUrl/api/v1/alerts" -TimeoutSec 10
-} catch {
-  Log "Prometheus 조회 실패: $($_.Exception.Message) — 이번 주기 skip"
+  if ($resp.status -ne 'success') { $queryError = "응답 이상: status=$($resp.status)" }
+} catch { $queryError = $_.Exception.Message }
+
+if ($queryError) {
+  $failCount++
+  Log "Prometheus 조회 실패($failCount 회 연속): $queryError — 이번 주기 skip"
+  if ($failCount -ge 2 -and -not $promDownAlerted) {
+    Send-DiscordAlert (":rotating_light: **OTT 경보 중계 중단** — Prometheus($promUrl) 조회가 $failCount 회 연속 실패했다.`n" +
+      "복구될 때까지 Prometheus 경보는 아무에게도 가지 않는다.`n오류: $queryError")
+    $promDownAlerted = $true
+  }
+  Save-State $notified   # 이미 알린 경보 목록은 그대로 둔다(복구 뒤 해소 판정에 쓴다)
   exit 0
 }
-if ($resp.status -ne 'success') { Log "Prometheus 응답 이상: status=$($resp.status)"; exit 0 }
+
+if ($promDownAlerted) {
+  Log "Prometheus 조회 복구 ($failCount 회 연속 실패 뒤)"
+  Send-DiscordAlert ":white_check_mark: **OTT 경보 중계 복구** — Prometheus 조회가 다시 된다($failCount 회 연속 실패 뒤)."
+}
+$failCount = 0; $promDownAlerted = $false
 
 # pending 은 알리지 않는다. for: 구간을 아직 채우는 중이고, 여기서 알리면
 # 규칙에 for 를 건 의미가 사라진다(잠깐 튄 값에 알림이 나간다).
 $firing = @($resp.data.alerts | Where-Object { $_.state -eq 'firing' })
 $curKeys = @($firing | ForEach-Object { Get-AlertKey $_ })
-
-$notified = @()
-if (Test-Path $state) {
-  try { $notified = @((Get-Content $state -Raw | ConvertFrom-Json).notified) } catch { }
-}
-$notified = @($notified | Where-Object { $_ })   # null/빈 값 제거(파일이 비었던 경우)
 
 $new       = @($firing | Where-Object { $notified -notcontains (Get-AlertKey $_) })
 $resolved  = @($notified | Where-Object { $curKeys -notcontains $_ })
@@ -90,5 +119,5 @@ if (-not $new -and -not $resolved) {
   Log "OK  firing=$($firing.Count) (신규/해소 없음)"
 }
 
-@{ notified = $curKeys } | ConvertTo-Json -Compress | Set-Content -Path $state -Encoding utf8
+Save-State $curKeys
 exit 0
