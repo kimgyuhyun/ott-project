@@ -54,6 +54,16 @@ $lateral = docker exec ott-frontend node -e "const s=require('net').connect({hos
 if ("$lateral" -match 'REACHABLE') { throw 'SECURITY INVARIANT FAILED: frontend can reach postgres (data tier not isolated)' }
 Write-Host "frontend -> postgres: $lateral"
 
+# [SECURITY 2026-11-20] frontend must NOT reach loki/prometheus either (they moved to the
+# app-only 'obs' network). On 'default' a compromised frontend could read every service's
+# logs from loki and push forged lines into them - no auth on either.
+Write-Host '=== VERIFY frontend cannot reach loki/prometheus (expected: BLOCKED) ==='
+foreach ($t in @(@('loki', 3100), @('prometheus', 9090))) {
+    $obs = docker exec ott-frontend node -e "const s=require('net').connect({host:'$($t[0])',port:$($t[1]),timeout:3500});s.on('connect',()=>{console.log('REACHABLE');process.exit()});s.on('timeout',()=>{console.log('BLOCKED');process.exit()});s.on('error',()=>{console.log('BLOCKED');process.exit()})"
+    if ("$obs" -match 'REACHABLE') { throw "SECURITY INVARIANT FAILED: frontend can reach $($t[0]):$($t[1]) (observability not isolated)" }
+    Write-Host "frontend -> $($t[0]): $obs"
+}
+
 # [SECURITY 2026-08-07] Backend outbound is proxy-only with a destination allow-list.
 # These four are the same invariants deploy-rolling.ps1 checks; this script had no backend
 # check at all, so without them a rollback deploy would drop the whole invariant silently.
