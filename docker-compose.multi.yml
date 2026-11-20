@@ -40,7 +40,7 @@ services:
     # 호스트 포트 미개방: 실서비스 5432 와 충돌 방지
 
   redis:
-    image: redis:7-alpine@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+    image: redis:7-alpine@sha256:7f7d30b7fdd09467bac58198a1f166dd69789d348d4fe859cccb20e0cf287fbe
     pull_policy: missing
     container_name: ott-multi-redis
     command: ["redis-server", "--save", "", "--appendonly", "no"]
@@ -138,7 +138,7 @@ services:
 
   # [2단계] 로드밸런싱/무중단 배포 검증용. 실서비스 nginx(80/443)와 겹치지 않게 8888 을 쓴다.
   nginx:
-    image: nginx:1.31.7-alpine@sha256:892bb2152464f0c5d8972593a5f5afaf8054552580b699d95f8ff4af08c2d33d
+    image: nginx:1.31.8-alpine@sha256:fed7e14be83cbd2661a75cdc5b872d936cf155d46c327084d30b8df19ae88d72
     pull_policy: missing
     container_name: ott-multi-nginx
     depends_on:
