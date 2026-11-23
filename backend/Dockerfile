@@ -14,7 +14,7 @@ ARG JAR_SOURCE=builder
 # 10-02 에 스스로 닫은 digest PR #139 를 "amazoncorretto 21 PR 이 열려 있음" 으로 계속 기억해서,
 # 태그 문자열이 `21` 인 동안에는 새 digest PR 을 만들지 않았다(10-09 실행 로그
 # "Pull request #139 already exists for amazoncorretto with latest version 21").
-FROM amazoncorretto:21-al2023-jdk@sha256:90100f194336ef2326f5efe1ee747395fd87d8210ad6d60463196aa0c4b0ad4e AS builder
+FROM amazoncorretto:21-al2023-jdk@sha256:a02f509af88bd1544d5bb42be83a20d9022dc15f388a0007e2c7d0d87170b9f4 AS builder
 WORKDIR /app
 
 # amazoncorretto:21 태그가 Amazon Linux 2 -> 2023으로 올라가며 findutils가 빠졌다.
@@ -46,7 +46,7 @@ RUN cp "$(ls build/libs/*.jar | grep -v -- '-plain.jar' | head -n1)" /app/app.ja
 # CI 경로: 러너가 만든 jar 를 컨텍스트에서 받는다.
 # JAR_SOURCE=builder 일 때 buildkit 이 이 스테이지를 통째로 건너뛰므로, 컨텍스트에
 # app.jar 가 없어도 기본 빌드는 영향받지 않는다.
-FROM amazoncorretto:21-al2023-jdk@sha256:90100f194336ef2326f5efe1ee747395fd87d8210ad6d60463196aa0c4b0ad4e AS ctxjar
+FROM amazoncorretto:21-al2023-jdk@sha256:a02f509af88bd1544d5bb42be83a20d9022dc15f388a0007e2c7d0d87170b9f4 AS ctxjar
 WORKDIR /app
 COPY app.jar /app/app.jar
 
@@ -57,7 +57,7 @@ FROM ${JAR_SOURCE} AS jarsrc
 # 스레드 덤프는 jcmd 대신 docker kill --signal=QUIT <컨테이너> 로 뜨면 로그로 나온다.
 # 셸이 없는 distroless, bash·curl 이 없는 alpine 계열은 deploy*.ps1 의 컨테이너 안 점검
 # (.github/image-tools.txt 의 app 줄)을 깨뜨려 후보에서 뺐다.
-FROM amazoncorretto:21-al2023-headless@sha256:607722709b505b0c4ab60dc89def4e52ab6b398f713b8dae031512ddf32e9d82
+FROM amazoncorretto:21-al2023-headless@sha256:5085e890043da2b63af83b0fa7259b90e6687f867db2deed628f1b68c798cadb
 WORKDIR /app
 # --chown 으로 복사 시점에 소유권을 정한다. 뒤에서 chown -R 로 훑으면 106MB jar 가
 # 통째로 레이어에 복제돼 이미지가 그만큼 커진다(실측: 1.14GB 중 106MB 가 그 중복분).
