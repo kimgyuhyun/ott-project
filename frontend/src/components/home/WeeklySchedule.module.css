@@ -25,7 +25,7 @@
 
 .weeklyNoticeButton {
   font-size: 0.875rem;
-  color: var(--foreground-slight, #ababab);
+  color: #ababab;
   background-color: var(--button-slight-1, #323232);
   border: none;
   padding: 0.5rem 1rem;
