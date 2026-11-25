@@ -1,0 +1,988 @@
+/* 멤버십 관리 페이지 컨테이너 */
+.manageContainer {
+  flex: 1; /* 공통 틀의 본문 칸을 채운다 */
+  background-color: #0a0a0a;
+  color: #ffffff;
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    Roboto,
+    "Helvetica Neue",
+    "Segoe UI",
+    "Apple SD Gothic Neo",
+    "Noto Sans KR",
+    "Malgun Gothic",
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    sans-serif;
+  line-height: 1.5;
+  letter-spacing: normal;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 메인 콘텐츠 */
+.mainContent {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+/* 페이지 헤더 */
+.pageHeader {
+  text-align: left;
+  margin-bottom: 3rem;
+}
+
+.pageTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+/* 현재 멤버십 카드 */
+.currentMembershipCard {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid #333;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* 멤버십 섹션 */
+.membershipSection {
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #333;
+}
+
+/* 해지 예약 알림이 있을 때 멤버십 섹션 간격 조정 */
+.currentMembershipCard .membershipSection:first-of-type {
+  margin-top: 3rem;
+}
+
+.membershipSection:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* 섹션 제목 */
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0 0 1rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 플랜 정보 */
+.planInfo {
+  margin: 0;
+  display: flex;
+  flex-direction: column; /* 제목 아래 버튼 배치 */
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.planName {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #816bff;
+  margin: 0;
+}
+
+/* 결제 수단 정보 */
+.paymentMethodInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* 결제 수단이 없을 때 */
+.noPaymentMethod {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.noPaymentMethodText {
+  font-size: 0.875rem;
+  color: #a0a0a0;
+  font-style: italic;
+}
+
+/* 현재 결제 수단 */
+.currentPaymentMethod {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.paymentMethodIcon {
+  width: 40px;
+  height: 40px;
+  background: rgba(129, 107, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.paymentMethodIconText {
+  font-size: 1.25rem;
+}
+
+.paymentMethodText {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+/* 결제 수단 변경 버튼 */
+.changePaymentMethodButton {
+  background: #2d2d2d;
+  color: #ffffff;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  align-self: flex-start;
+  text-decoration: none; /* a 링크 사용 시 밑줄 제거 */
+  display: inline-block; /* a 링크도 버튼처럼 렌더링 */
+  line-height: 1.2;
+  margin-top: 0; /* column 레이아웃에서 gap으로 간격 제어 */
+}
+
+.changePaymentMethodButton:hover {
+  background: #3d3d3d;
+  border-color: #555;
+}
+
+/* 결제 예정일과 금액 */
+.detailValue {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.planPrice {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* 플랜 변경 섹션 */
+.planChangeSection {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid #333;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.availablePlans {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.planOption {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.planOption:hover {
+  border-color: #816bff;
+  background: #3d3d3d;
+}
+
+.planOptionInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.planOptionName {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.planOptionPrice {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #816bff;
+}
+
+.planOptionType {
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  text-align: center;
+  width: fit-content;
+}
+
+.planOptionType:contains("업그레이드") {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+}
+
+.planOptionType:contains("다운그레이드") {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
+.changePlanButton {
+  background: linear-gradient(135deg, #816bff 0%, #6b4bff 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.changePlanButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(129, 107, 255, 0.3);
+}
+
+/* 멤버십 해지 섹션 */
+.cancelSection {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.cancelMembershipButton {
+  background: #2d2d2d;
+  color: #ffffff;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem 2rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 200px;
+}
+
+.cancelMembershipButton:hover {
+  background: #3d3d3d;
+  border-color: #555;
+}
+
+.cancelMembershipButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 돌아가기 링크 */
+.backLinkContainer {
+  text-align: center;
+}
+
+.backLink {
+  display: inline-flex;
+  align-items: center;
+  color: #816bff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+  font-size: 0.875rem;
+}
+
+.backLink:hover {
+  color: #6b4bff;
+}
+
+/* 확인 모달 오버레이 */
+.confirmModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+/* 확인 모달 컨테이너 */
+.confirmModal {
+  width: 100%;
+  max-width: 560px;
+  background: var(--background-1, #121212);
+  border: 1px solid var(--border-1, #323232);
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.confirmTitle {
+  color: var(--foreground-1, #f7f7f7);
+  font-size: 24px;
+  font-weight: 800;
+  margin: 0 0 12px 0;
+}
+
+.confirmDesc {
+  color: #cfcfcf;
+  font-size: 16px;
+  line-height: 1.6;
+  margin: 0 0 24px 0;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
+.cancelBtn {
+  background: transparent;
+  color: #8b7cff;
+  border: none;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 10px;
+}
+
+.confirmBtn {
+  background: #8b7cff;
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 10px;
+}
+
+.confirmBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .confirmModal {
+    padding: 20px;
+  }
+  .confirmTitle {
+    font-size: 20px;
+  }
+  .confirmDesc {
+    font-size: 14px;
+  }
+}
+
+/* 로딩 상태 */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+.loadingSpinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #333;
+  border-top: 4px solid #816bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingText {
+  color: #a0a0a0;
+  font-size: 1.125rem;
+}
+
+/* 에러 상태 */
+.errorContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.errorText {
+  color: #ef4444;
+  margin-bottom: 1rem;
+  font-size: 1.125rem;
+}
+
+.retryButton {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.retryButton:hover {
+  background: #dc2626;
+}
+
+/* 멤버십 없음 상태 */
+.noMembershipContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.noMembershipTitle {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.noMembershipText {
+  color: #a0a0a0;
+  margin-bottom: 2rem;
+  font-size: 1.125rem;
+}
+
+.subscribeButton {
+  background: linear-gradient(135deg, #816bff 0%, #6b4bff 100%);
+  color: #ffffff;
+  text-decoration: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: transform 0.3s ease;
+}
+
+.subscribeButton:hover {
+  transform: translateY(-2px);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .mainContent {
+    padding: 1rem;
+  }
+
+  .pageTitle {
+    font-size: 2rem;
+  }
+
+  .currentMembershipCard {
+    padding: 1.5rem;
+  }
+
+  .planChangeSection {
+    padding: 1.5rem;
+  }
+
+  .planOption {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .changePlanButton {
+    width: 100%;
+  }
+
+  .cancelMembershipButton {
+    min-width: 100%;
+  }
+}
+
+/* 해지 완료 화면 스타일 */
+.cancelledContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.cancelledTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f0f0f0;
+  margin: 0 0 16px 0;
+  line-height: 1.3;
+}
+
+.cancelledDesc {
+  font-size: 16px;
+  color: #c8c8c8;
+  margin: 0 0 32px 0;
+  line-height: 1.5;
+}
+
+.restartButton {
+  background: #9b59ff;
+  color: #111;
+  border: none;
+  border-radius: 12px;
+  padding: 16px 32px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 40px;
+  transition: background-color 0.2s ease;
+}
+
+.restartButton:hover {
+  background: #8a4bdf;
+}
+
+.restartButton:active {
+  background: #7a42c7;
+}
+
+.restartButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  background: #666;
+}
+
+.expirationInfo {
+  padding: 16px 24px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  margin-top: 20px;
+}
+
+.expirationText {
+  font-size: 14px;
+  color: #b8b8b8;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* 중앙 알림 (다크) */
+.centerNoticeOverlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1200;
+  padding: 16px;
+}
+
+.centerNoticeBox {
+  width: 100%;
+  max-width: 480px;
+  background: #121212;
+  color: #eaeaea;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+  padding: 20px 24px;
+}
+
+.centerNoticeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.centerNoticeTitle {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.centerNoticeClose {
+  background: transparent;
+  border: none;
+  color: #a8a8a8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+}
+
+.centerNoticeClose:hover {
+  background: #1e1e1e;
+  color: #ffffff;
+}
+
+.centerNoticeMessage {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #cfcfcf;
+}
+
+.centerNoticeSuccess {
+  border-color: #8b7cff;
+}
+
+.centerNoticeError {
+  border-color: #8a2b2b;
+}
+
+/* 환불 섹션 */
+.refundSection {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  border: 1px solid #333;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.refundNotice {
+  background: rgba(129, 107, 255, 0.1);
+  border: 1px solid rgba(129, 107, 255, 0.3);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.refundNoticeText {
+  font-size: 0.875rem;
+  color: #e0e0e0;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.5;
+}
+
+.refundNoticeText:last-child {
+  margin-bottom: 0;
+}
+
+/* 결제 내역 리스트 */
+.paymentHistoryList {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.paymentItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.paymentItem:hover {
+  border-color: #555;
+  background: #3d3d3d;
+}
+
+.paymentInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.paymentDescription {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.paymentAmount {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #816bff;
+}
+
+.paymentDate {
+  font-size: 0.875rem;
+  color: #a0a0a0;
+}
+
+.paymentActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.refundButton {
+  background: linear-gradient(135deg, #816bff 0%, #6b4bff 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.refundButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(129, 107, 255, 0.3);
+}
+
+.refundButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.refundedBadge {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.nonRefundableBadge {
+  background: rgba(107, 114, 128, 0.2);
+  color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.noPaymentHistory {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #a0a0a0;
+}
+
+.noPaymentHistory p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+  .refundSection {
+    padding: 1.5rem;
+  }
+
+  .paymentItem {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: stretch;
+  }
+
+  .paymentActions {
+    justify-content: center;
+  }
+
+  .refundButton {
+    width: 100%;
+  }
+}
+
+/* 환불 완료 화면 */
+.refundedContainer {
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  text-align: center;
+  border: 1px solid #333;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.refundedIcon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+}
+
+.refundedTitle {
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 1rem 0;
+}
+
+.refundedDesc {
+  color: #a0a0a0;
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 0 0 2rem 0;
+}
+
+.refundedActions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.subscribeButton {
+  background: linear-gradient(135deg, #8b7cff 0%, #6b46c1 100%);
+  color: #ffffff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  border: none;
+  cursor: pointer;
+  display: inline-block;
+}
+
+.subscribeButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(139, 124, 255, 0.3);
+}
+
+.guideButton {
+  background: transparent;
+  color: #8b7cff;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #8b7cff;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: inline-block;
+}
+
+.guideButton:hover {
+  background: rgba(139, 124, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+/* 환불 완료 중앙 정렬 래퍼 */
+.refundedWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+/* 반응형 디자인 - 환불 완료 */
+@media (max-width: 768px) {
+  .refundedContainer {
+    padding: 2rem 1.5rem;
+  }
+
+  .refundedIcon {
+    font-size: 3rem;
+  }
+
+  .refundedTitle {
+    font-size: 1.5rem;
+  }
+
+  .refundedActions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .subscribeButton,
+  .guideButton {
+    width: 100%;
+    max-width: 300px;
+  }
+}
+
+/* 정기결제 다시 시작 버튼 */
+.resumeButton {
+  background: linear-gradient(135deg, #816bff 0%, #6b5bc7 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(129, 107, 255, 0.3);
+}
+
+.resumeButton:hover {
+  background: linear-gradient(135deg, #6b5bc7 0%, #5a4bb5 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(129, 107, 255, 0.4);
+}
+
+.resumeButton:disabled {
+  background: #666666;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  opacity: 0.6;
+}
+
+/* 해지 예약 알림 */
+.cancellationNotice {
+  margin-bottom: 3rem;
+}
+
+.cancellationNoticeText {
+  width: 100%;
+}
+
+.cancellationNoticeText strong {
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.cancellationNoticeText p {
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* 결제수단 아이콘 이미지 */
+.paymentMethodIconImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 4px;
+}

@@ -1,0 +1,449 @@
+/* 설정 페이지 컨테이너 */
+.settingsPageContainer {
+  flex: 1; /* 공통 틀의 본문 칸을 채운다 */
+  background-color: #121212;
+  color: #f7f7f7;
+}
+
+.settingsContent {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* 페이지 제목 */
+.settingsPageTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #f7f7f7;
+  margin-bottom: 2rem;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* 설정 섹션 */
+.settingsSection {
+  background: none;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  border: none;
+  box-shadow: none;
+  transition: all 0.3s ease;
+}
+
+.settingsSection:hover {
+  box-shadow: none;
+  border-color: none;
+}
+
+/* 섹션 제목 */
+.settingsSectionTitle {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #f7f7f7;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 계정 아이템 */
+.accountItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 0;
+}
+
+.accountItem:last-child {
+  border-bottom: none;
+}
+
+.accountInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.accountContent {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.passwordValue {
+  font-size: 0.875rem;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.passwordChangeButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #f7f7f7;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+}
+
+.passwordChangeButton:hover {
+  background: rgba(129, 107, 255, 0.1);
+  border-color: #816bff;
+  color: #816bff;
+  text-decoration: none;
+}
+
+.accountLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #ababab;
+}
+
+.accountValue {
+  font-size: 0.875rem;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.accountDescription {
+  font-size: 0.875rem;
+  color: #ababab;
+}
+
+/* 계정 버튼 */
+.accountButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #f7f7f7;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  margin-left: 1rem;
+}
+
+.accountButton:hover {
+  background: rgba(129, 107, 255, 0.1);
+  border-color: #816bff;
+  color: #816bff;
+}
+
+.accountButtons {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: 1rem;
+}
+
+.logoutButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #ababab;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.logoutButton:hover {
+  background: rgba(58, 58, 58, 0.1);
+  color: #f7f7f7;
+}
+
+.logoutAllButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  border-radius: 6px;
+  color: #ababab;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.logoutAllButton:hover {
+  background: rgba(58, 58, 58, 0.1);
+  color: #f7f7f7;
+}
+
+/* 회원탈퇴는 되돌릴 수 없어서 로그아웃 버튼들과 색으로 구분한다 */
+.withdrawButton {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 1px solid #7f1d1d;
+  border-radius: 6px;
+  color: #ef4444;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.withdrawButton:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
+}
+
+.withdrawButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 알림 그룹 */
+.notificationGroup {
+  margin-bottom: 1.5rem;
+}
+
+.notificationGroup:last-child {
+  margin-bottom: 0;
+}
+
+.notificationGroupTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f7f7f7;
+  margin-bottom: 1rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* 체크박스 그룹 */
+.checkboxGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checkboxItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+}
+
+.checkboxItem:hover {
+  background-color: rgba(129, 107, 255, 0.05);
+}
+
+/* 체크박스 */
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  background: none;
+  border: 2px solid #ababab;
+  border-radius: 4px;
+  cursor: pointer;
+  appearance: none;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+.checkbox:checked {
+  background: #816bff;
+  border-color: #816bff;
+}
+
+.checkbox:checked::after {
+  content: "✓";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+.checkboxLabel {
+  font-size: 0.875rem;
+  color: #f7f7f7;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 테마 그룹 */
+.themeGroup {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.themeButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: transparent;
+  border: 2px solid #3a3a3a;
+  border-radius: 8px;
+  color: #ababab;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.themeButton::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(129, 107, 255, 0.1),
+    transparent
+  );
+  transition: left 0.3s ease;
+}
+
+.themeButton:hover::before {
+  left: 100%;
+}
+
+.themeButton:hover {
+  border-color: #816bff;
+  color: #f7f7f7;
+  transform: translateY(-2px);
+}
+
+.themeButtonActive {
+  border-color: #816bff;
+  background: rgba(129, 107, 255, 0.1);
+  color: #816bff;
+  box-shadow: 0 4px 12px rgba(129, 107, 255, 0.2);
+}
+
+.themeButtonActive::before {
+  display: none;
+}
+
+.themeIcon {
+  font-size: 1.5rem;
+}
+
+.themeLabel {
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* 로딩 상태 */
+.settingsLoadingContainer {
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settingsLoadingText {
+  font-size: 1.125rem;
+  color: #ababab;
+  position: relative;
+}
+
+.settingsLoadingText::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(129, 107, 255, 0.3),
+    transparent
+  );
+  animation: loading-shimmer 2s infinite;
+}
+
+/* 에러 상태 */
+.settingsErrorContainer {
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settingsErrorText {
+  font-size: 1.125rem;
+  color: #ef4444;
+}
+
+/* 애니메이션 */
+@keyframes loading-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+  .settingsContent {
+    padding: 1rem;
+  }
+
+  .settingsPageTitle {
+    font-size: 1.5rem;
+  }
+
+  .settingsSection {
+    padding: 1rem;
+  }
+
+  .themeGroup {
+    gap: 0.75rem;
+  }
+
+  .themeButton {
+    min-width: 70px;
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .settingsPageTitle {
+    font-size: 1.25rem;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  }
+
+  .settingsSectionTitle {
+    font-size: 1.125rem;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+  }
+
+  .accountItem {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .themeGroup {
+    justify-content: center;
+  }
+}
