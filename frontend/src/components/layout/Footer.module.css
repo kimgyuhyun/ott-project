@@ -4,7 +4,7 @@
 }
 
 .container {
-  width: 100%;
+  /* width 를 두지 않는다: width: 100% 에 좌우 padding(3rem)이 더해져 화면 밖으로 48px 넘쳤다 */
   max-width: none;
   margin: 0;
   padding-top: 28px;

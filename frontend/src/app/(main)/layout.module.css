@@ -1,0 +1,13 @@
+/* 화면 전체 칸: 헤더 / 본문 / 푸터를 세로로 쌓는다 */
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 본문 칸: 헤더·푸터를 뺀 나머지 높이를 모두 갖고, 페이지 루트가 flex: 1 로 이 자리를 채운다 */
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}

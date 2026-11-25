@@ -1,12 +1,11 @@
 .headerContainer {
-  position: fixed;
+  /* 공통 틀의 첫 칸에 놓이고 스크롤해도 위에 붙어 있는다. 페이지가 헤더 높이만큼 비켜 갈 필요가 없다 */
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
   z-index: 999;
   background-color: #000000;
   border-bottom: 1px solid #333333;
-  backdrop-filter: blur(10px);
+  /* backdrop-filter 는 두지 않는다: 배경이 불투명해 효과가 없고, fixed 자식(.headerOverlay)의 기준을 헤더 박스로 바꿔 바깥 클릭 닫기가 헤더 띠 안에서만 동작하게 만든다 */
   padding-left: 2rem; /* 좌측 기준 */
   padding-right: 1rem; /* 우측 살짝 축소로 균형 */
 }
@@ -81,9 +80,11 @@
 /* 모바일 네비게이션 드롭다운 (햄버거 클릭 시 헤더 아래로 펼쳐짐) */
 .mobileMenu {
   position: absolute;
-  top: 4rem; /* 헤더 바(4rem) 바로 아래 */
-  left: -2rem; /* 컨테이너 좌측 패딩(2rem) 상쇄 → 화면 끝까지 */
-  right: -1rem; /* 컨테이너 우측 패딩(1rem) 상쇄 */
+  top: 100%; /* 헤더 바로 아래 */
+  /* absolute 의 기준은 헤더의 padding 박스(=화면 폭)라 0 이면 화면 끝까지 닿는다.
+     예전 -2rem/-1rem 은 화면 밖으로 48px 나갔고, 헤더가 문서 흐름에 들어오면서 가로 스크롤을 만들었다 */
+  left: 0;
+  right: 0;
   background-color: #121212;
   border-bottom: 1px solid #333333;
   display: flex;

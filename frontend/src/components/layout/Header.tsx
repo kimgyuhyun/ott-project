@@ -36,6 +36,15 @@ export default function Header() {
     setIsProfileOpen(false);
   };
 
+  // 헤더는 공통 layout 에 있어 페이지를 옮겨도 다시 마운트되지 않는다.
+  // 페이지가 바뀌면 열린 드롭다운·메뉴를 닫고, 통계·알림 수를 페이지마다 다시 읽는다(페이지마다 헤더를 넣던 때와 같은 동작).
+  useEffect(() => {
+    setIsSearchOpen(false);
+    setIsProfileOpen(false);
+    setIsNotificationOpen(false);
+    setIsMenuOpen(false);
+  }, [pathname]);
+
   // 사용자 통계 로드
   useEffect(() => {
     if (isAuthenticated) {
@@ -43,7 +52,7 @@ export default function Header() {
         .then((stats) => setUserStats(stats))
         .catch((err) => console.error("통계 로드 실패:", err));
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, pathname]);
 
   // 읽지 않은 알림 개수 로드
   useEffect(() => {
@@ -63,7 +72,7 @@ export default function Header() {
     // 주기적으로 알림 개수 확인 (5분마다)
     const interval = setInterval(loadUnreadCount, 5 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [isAuthenticated]);
+  }, [isAuthenticated, pathname]);
 
   // 검색 실행 처리
   const handleSearch = (query: string) => {
