@@ -81,6 +81,7 @@
 
 /* 소셜 버튼 아이콘 */
 .socialButtonIcon {
+  display: block;
   width: 24px;
   height: 24px;
 }
