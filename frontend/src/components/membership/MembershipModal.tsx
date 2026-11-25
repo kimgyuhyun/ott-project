@@ -38,10 +38,7 @@ export default function MembershipModal({
   return (
     <div>
       {/* 배경 오버레이 */}
-      <div
-        style={{ backgroundColor: "var(--background-dim-1, rgba(0,0,0,0.7))" }}
-        onClick={onClose}
-      />
+      <div style={{ backgroundColor: "rgba(0,0,0,0.7)" }} onClick={onClose} />
 
       {/* 모달 컨테이너 */}
       <div
@@ -84,7 +81,7 @@ export default function MembershipModal({
               backgroundColor:
                 selectedPlan === "basic"
                   ? "var(--background-highlight, rgba(129, 107, 255, 0.1))"
-                  : "var(--background-2, #000000)",
+                  : "#000000",
               borderColor:
                 selectedPlan === "basic"
                   ? "var(--foreground-slight, #816BFF)"
@@ -114,7 +111,7 @@ export default function MembershipModal({
               backgroundColor:
                 selectedPlan === "premium"
                   ? "var(--background-highlight, rgba(129, 107, 255, 0.1))"
-                  : "var(--background-2, #000000)",
+                  : "#000000",
               borderColor:
                 selectedPlan === "premium"
                   ? "var(--foreground-slight, #816BFF)"

@@ -13,7 +13,7 @@
 }
 
 .cancelCard {
-  background-color: var(--background-2, #000000);
+  background-color: #000000;
   border: 1px solid var(--border-1, #323232);
   border-radius: 16px;
   padding: 48px;
@@ -35,7 +35,7 @@
 }
 
 .message {
-  color: var(--foreground-2, #cccccc);
+  color: #cccccc;
   font-size: 16px;
   line-height: 1.6;
   margin-bottom: 32px;

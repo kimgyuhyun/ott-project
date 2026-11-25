@@ -2,6 +2,29 @@
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 0, 0, 0;
   --background-end-rgb: 0, 0, 0;
+
+  /* 색 토큰 — 모듈 CSS 가 var(--이름, 대체값) 으로 쓰던 이름들. 값은 대체값 중 가장 많이 쓰인 것 */
+  --foreground-1: #f7f7f7;
+  --foreground-2: #ababab;
+  --foreground-3: #ababab;
+  --foreground-4: #ababab;
+  --foreground-slight: #816bff;
+
+  --background-1: #121212;
+  --background-2: #1a1a1a;
+  --background-3: #323232;
+  --background-4: #404040;
+  --background-5: #323232;
+  --background-highlight: rgba(129, 107, 255, 0.1);
+  --background-dim-1: rgba(0, 0, 0, 0.5);
+
+  --border-1: #323232;
+  --border-2: #505050;
+
+  --button-slight-1: #323232;
+  --button-slight-2: #404040;
+
+  --shadow-basic: rgba(0, 0, 0, 0.25);
 }
 
 /* 강제 다크 배경 적용 */

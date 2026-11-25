@@ -21,7 +21,7 @@ export default function PaymentMethodItem({
   const backgroundColor = selected
     ? "var(--background-highlight, rgba(129, 107, 255, 0.1))"
     : isHovered
-      ? "var(--background-2, #000000)"
+      ? "#000000"
       : "var(--background-1, #121212)";
   const borderColor = selected
     ? "var(--foreground-slight, #816BFF)"

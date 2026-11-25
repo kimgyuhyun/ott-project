@@ -429,7 +429,7 @@
 }
 
 .errorContent p {
-  color: var(--foreground-2, #cccccc);
+  color: #cccccc;
   font-size: 16px;
   line-height: 1.5;
   margin-bottom: 24px;
